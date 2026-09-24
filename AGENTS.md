@@ -102,6 +102,35 @@ README 里长期把 `daily` / `answer` 写成「今日一题遗留、前端已�
 否则首页那个「想你了」按钮直接失效。这类「名字看着像遗留、实际还有一条命」的地方，
 删之前必须 grep 一遍调用点。
 
+## 版本控制（2026-09-24 建立）
+
+**本目录已是一个独立 git 仓库**，远程 `git@github.com:DLDLDL13579/our-nest-miniprogram.git`（私有）。
+
+⚠️ 注意上层 `邓林work/` 也有一个 `.git`（空仓库、无远程），里面装着 `国科锋盾/`（3.9G 工作项目）
+和 `.dsh/` `.cluster/` `.workbuddy/` 等。**在小程序目录里跑 git 时务必先确认仓库根**：
+
+```bash
+git rev-parse --show-toplevel   # 必须输出 .../个人项目/小程序
+```
+
+万一输出的是 `.../邓林work`，说明这个独立仓库被删了或没建起来，
+此时 `git add -A` 会把工作项目和配置一起提交 —— 先停下来查清楚再动。
+
+### 本机 git 的环境坑：`GIT_CONFIG_COUNT` 注入不完整
+
+**症状**：任何 git 命令都报 `错误：缺失配置键名 GIT_CONFIG_KEY_0` /
+`致命错误：无法解析命令行中的配置`。
+
+**根因**：会话环境注入了 `GIT_CONFIG_COUNT=2` 和 `GIT_CONFIG_VALUE_0/1`（值形如
+`X-CatDesk-Request: true`），但**没有配对的 `GIT_CONFIG_KEY_0/1`**。git 读到计数却找不到键名就报错。
+这是外部注入不完整，不是仓库或用户配置的问题。
+
+**解法**：用 `env -u` 把这几个变量摘掉即可，不用改任何配置文件：
+
+```bash
+env -u GIT_CONFIG_COUNT -u GIT_CONFIG_VALUE_0 -u GIT_CONFIG_VALUE_1 git status
+```
+
 ## 可验证性关键：miniprogram-automator
 
 靠 `miniprogram-automator`（官方 SDK）能从运行时读页面数据、点元素、截图，
