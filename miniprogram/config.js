@@ -17,6 +17,7 @@ module.exports = {
     wishes: 'wishes',   // 想去·去过：清单 + 拍照点亮
     moments: 'moments',  // 随手记
     capsule: 'capsule',  // 时间胶囊：写给未来的信
-    reminds: 'reminds'   // 要记得的事：纪念日与提醒
+    reminds: 'reminds',  // 要记得的事：纪念日与提醒
+    mood: 'mood'         // 情绪·冷静期（v2）
   }
 }

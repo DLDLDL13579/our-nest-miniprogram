@@ -9,6 +9,7 @@ Page({
     loading: true, noPair: false, solo: false,
     D: null, pair: null, myName: '我', partnerName: '',
     moments: [], total: 0, todayCount: 0, onThisDay: null,
+    cooling: null,
     capsuleTip: '写给未来的信',
     remindTip: '生日、纪念日、还款',
     remindUrgent: 0,
@@ -55,6 +56,7 @@ Page({
       myName: r.myName, partnerName: r.partnerName,
       moments: r.moments || [], total: r.total || 0, todayCount: r.todayCount || 0,
       onThisDay: r.onThisDay || null,
+      cooling: r.cooling || null,
       capsuleTip: r.capsuleReady ? (r.capsuleReady + ' 封信可以拆了') : (r.capsuleLocked ? (r.capsuleLocked + ' 封封存中') : '写给未来的信'),
       remindUrgent: r.remindUrgent || 0,
       remindTip: r.remindUrgent ? (r.remindUrgent + ' 件快到日子了，该准备了') : (r.remindNear ? (r.remindNear + ' 件在 30 天内') : '生日、纪念日、还款'),
@@ -67,7 +69,8 @@ Page({
         at: Date.now(), solo: r.solo, pair: r.pair,
         myName: r.myName, partnerName: r.partnerName,
         moments: r.moments || [], total: r.total || 0, todayCount: r.todayCount || 0,
-        onThisDay: r.onThisDay || null
+        onThisDay: r.onThisDay || null,
+        cooling: r.cooling || null
       })
     } catch (e) { /* 缓存写失败不影响主流程 */ }
   },
@@ -123,6 +126,7 @@ Page({
   },
 
   goPair() { wx.navigateTo({ url: '/pages/pair/pair' }) },
+  goMood() { wx.switchTab({ url: '/pages/mood/mood' }) },
   goSettings() { wx.navigateTo({ url: '/pages/settings/settings' }) },
   goChronicle() { wx.switchTab({ url: '/pages/chronicle/chronicle' }) },
   goCapsule() { wx.navigateTo({ url: '/pages/capsule/capsule' }) },

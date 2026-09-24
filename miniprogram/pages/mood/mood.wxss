@@ -1,1 +1,86 @@
-.stub { margin-top: 40rpx; text-align: center }
+/* ---------- 顶部：平静的暖色，不用吵架感强的红 ---------- */
+.moodhero {
+  position: relative; overflow: hidden;
+  border-radius: 32rpx; margin-bottom: 26rpx;
+  background: linear-gradient(135deg, #F7E9DC 0%, #EFD9C6 60%, #E8CDB6 100%);
+}
+.mh-glow {
+  position: absolute; width: 380rpx; height: 380rpx; border-radius: 50%;
+  right: -130rpx; top: -170rpx;
+  background: radial-gradient(circle, rgba(255,255,255,.6) 0%, rgba(255,255,255,0) 70%);
+}
+.mh-in { position: relative; padding: 38rpx 34rpx 34rpx }
+.mh-lbl { font-size: 22rpx; color: #9A7A5E; letter-spacing: 3rpx }
+.mh-t { font-size: 38rpx; font-weight: 700; color: #6B4A2F; margin-top: 10rpx; line-height: 1.4 }
+.mh-s { font-size: 23rpx; color: #8A6A50; margin-top: 14rpx; line-height: 1.7 }
+
+/* ---------- 冷静中：整屏最大的东西是倒计时 ---------- */
+.coolwrap {
+  text-align: center; padding: 56rpx 30rpx 48rpx; margin-bottom: 24rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #FFF6EC, #FBE7D6);
+  border: 3rpx solid #F0D9C4;
+}
+.cool-lbl { font-size: 23rpx; color: #9A7A5E; letter-spacing: 4rpx }
+.cool-num {
+  font-size: 132rpx; font-weight: 700; line-height: 1.05; letter-spacing: -4rpx;
+  color: #B5643F; margin: 14rpx 0 10rpx;
+  font-variant-numeric: tabular-nums;   /* 数字等宽，走秒时不会左右跳 */
+}
+.cool-sub { font-size: 23rpx; color: #9A7A5E }
+
+/* ---------- 时间到 ---------- */
+.timeup { text-align: center; padding: 52rpx 36rpx; margin-bottom: 24rpx; border-radius: 30rpx; background: var(--greensoft) }
+.tu-icon { font-size: 76rpx; line-height: 1.3 }
+.tu-t { font-size: 34rpx; font-weight: 700; color: #4C6B49; margin-top: 14rpx }
+.tu-s { font-size: 24rpx; color: #5F7A5C; margin-top: 14rpx; line-height: 1.75 }
+
+/* ---------- 通用块 ---------- */
+.big-t { font-size: 36rpx; font-weight: 700; line-height: 1.45 }
+.reason-box {
+  background: #FBF3EA; border-left: 6rpx solid #E0BFA4;
+  border-radius: 14rpx; padding: 20rpx 24rpx; margin-top: 20rpx;
+  font-size: 26rpx; color: #6B5340; line-height: 1.7;
+}
+.steptip {
+  background: #F5F1EB; border-radius: 16rpx; padding: 18rpx 22rpx;
+  font-size: 23rpx; color: var(--ink2); line-height: 1.7; margin-bottom: 22rpx;
+}
+.done-row {
+  background: var(--greensoft); color: #4C6B49; border-radius: 16rpx;
+  padding: 22rpx 24rpx; font-size: 25rpx;
+}
+.warnbox {
+  background: #FDF3E4; border: 2rpx solid #F0D9AE; border-radius: 20rpx;
+  padding: 22rpx 24rpx; margin-bottom: 22rpx;
+  font-size: 24rpx; color: #8A6A22; line-height: 1.7;
+}
+.hint { font-size: 22rpx; color: var(--ink3); line-height: 1.7; margin-top: 14rpx; text-align: center }
+.ph { color: #BFB6A9 }
+.ta.small { height: 180rpx }
+.viewline {
+  margin-top: 12rpx; padding-top: 12rpx; border-top: 2rpx dashed rgba(140,120,100,.25);
+  font-size: 24rpx; color: var(--ink2);
+}
+.btnrow { display: flex; gap: 18rpx; margin-top: 26rpx }
+.btnrow .btn { margin-top: 0 }
+
+/* ---------- 规矩本 ---------- */
+.sechead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 10rpx 6rpx 18rpx;
+  font-size: 24rpx; color: var(--ink3); letter-spacing: 2rpx;
+}
+.rule { display: flex; align-items: flex-start; gap: 16rpx; padding: 16rpx 0; border-bottom: 2rpx solid var(--line) }
+.rule:last-child { border-bottom: none }
+.rule-dot {
+  width: 14rpx; height: 14rpx; border-radius: 50%; flex: none;
+  background: var(--green); margin-top: 14rpx;
+}
+.rule-t { font-size: 27rpx; font-weight: 600; line-height: 1.6; color: var(--ink) }
+
+/* ---------- 空态 ---------- */
+.gentle { text-align: center; padding: 60rpx 44rpx 50rpx }
+.gentle-icon { font-size: 76rpx; line-height: 1.4; opacity: .85 }
+.gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
+.gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }

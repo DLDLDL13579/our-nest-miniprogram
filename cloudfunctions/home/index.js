@@ -19,11 +19,37 @@ const pairs = db.collection('pairs')
 const moments = db.collection('moments')
 const capsules = db.collection('capsules')
 const reminds = db.collection('reminds')
+const cools = db.collection('cools')
 
 const { derive } = require('./derive.js')
 
 function todayCN() {
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
+}
+
+/**
+ * 冷静期摘要 —— 首页只显示"有没有在进行中、还剩多久"，
+ * 不碰 reason 也不碰任何人的感受（那些只在情绪页里、且未解锁时不返回）。
+ *
+ * 状态这里算个简化版就够了：首页只需要知道"在等回应"还是"在倒计时"。
+ * 完整的状态推导在 mood 云函数里（那边才是唯一真相）。
+ */
+function summarizeCool(c, openid, now, memberCount) {
+  if (!c) return null
+  const accepted = c.accepted || []
+  /* memberCount 由调用方从 pair.members 传入 —— cools 记录里不存这个字段，
+     存了就会在有人退出小窝时变成过期数据 */
+  const members = memberCount || 2
+  const inviting = accepted.length < members
+  return {
+    id: c._id,
+    status: inviting ? 'inviting' : (now < (c.deadline || 0) ? 'cooling' : 'feeling'),
+    minutes: c.minutes || 20,
+    remainMs: Math.max(0, (c.deadline || 0) - now),
+    mine: c.by === openid,
+    /* 对方发起的、且我还没回应 —— 首页要提示得明显一点 */
+    needsMe: inviting && c.by !== openid && accepted.indexOf(openid) < 0
+  }
 }
 
 
@@ -99,7 +125,7 @@ exports.main = async (event) => {
     /* 「那年今日」：去年同一天写过什么 */
     const lastYear = (Number(date.slice(0, 4)) - 1) + '-' + date.slice(4)
 
-    const [listRes, statsRes, todayRes, onThisDayRes, capsuleRes, remindRes] = await Promise.all([
+    const [listRes, statsRes, todayRes, onThisDayRes, capsuleRes, remindRes, coolRes] = await Promise.all([
       moments.where({ pairId: pair._id }).orderBy('createdAt', 'desc').limit(size).get(),
       moments.where({ pairId: pair._id }).count(),
       moments.where({ pairId: pair._id, date }).count(),     // 今天记了几条
@@ -110,6 +136,13 @@ exports.main = async (event) => {
       /* 提醒摘要：几件进窗口了。用 date+leadDays 本地算，不查两次 */
       reminds.where({ pairId: pair._id })
         .field({ date: true, repeat: true, leadDays: true }).limit(100).get()
+        .catch(() => ({ data: [] })),
+      /* 冷静摘要：有没有在进行中的冷静。
+         只取判状态要用的字段 —— reason 和任何人的感受都不查，
+         首页不需要，也不该看到（那些只在情绪页里）。 */
+      cools.where({ pairId: pair._id, active: true })
+        .field({ by: true, minutes: true, startedAt: true, deadline: true, accepted: true })
+        .limit(1).get()
         .catch(() => ({ data: [] }))
     ])
 
@@ -169,7 +202,9 @@ exports.main = async (event) => {
       capsuleLocked: (capsuleRes.data || []).filter(c => c.unlockAt > date).length,
       remindUrgent: countRemindUrgent(remindRes.data || [], date),
       remindNear: countRemindNear(remindRes.data || [], date),
-      todayCount: todayRes.total
+      todayCount: todayRes.total,
+      /* 有没有在进行中的冷静 —— 首页据此显示一条提示条 */
+      cooling: summarizeCool((coolRes.data || [])[0], OPENID, Date.now(), members.length)
     }
 
   } catch (err) {

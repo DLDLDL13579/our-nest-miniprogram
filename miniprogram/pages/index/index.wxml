@@ -42,6 +42,26 @@
       </view>
     </view>
 
+    <!-- 冷静中：有时效性，打开第一眼就该知道，所以放在最上面 -->
+    <view wx:if="{{cooling}}" class="coolbar {{cooling.needsMe ? 'need' : ''}}" bindtap="goMood">
+      <view class="cb-l">
+        <text class="cb-e">{{cooling.needsMe ? '💬' : '🕊️'}}</text>
+        <view>
+          <view class="cb-t">
+            {{cooling.needsMe ? (partnerName || '她') + ' 想缓一缓' :
+              (cooling.status === 'inviting' ? '在等' + (partnerName || '她') + '回应' :
+               (cooling.status === 'cooling' ? '正在缓一缓' : '可以聊聊了'))}}
+          </view>
+          <view class="cb-s">
+            {{cooling.needsMe ? '点进来看她怎么说' :
+              (cooling.status === 'inviting' ? '她已经发出请求了' :
+               (cooling.status === 'cooling' ? '点进来看看还有多久' : '时间到了，先各自写写感受'))}}
+          </view>
+        </view>
+      </view>
+      <text class="cb-r">▸</text>
+    </view>
+
     <!-- 时间胶囊入口：低频但高价值，放在记一笔下面不抢焦点 -->
     <view class="capsulebar" bindtap="goCapsule">
       <view class="cb-l">

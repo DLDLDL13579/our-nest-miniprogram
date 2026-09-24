@@ -1,5 +1,278 @@
 <view class="page">
-  <view class="card flat stub">
-    <view class="note">「情绪 · 冷静期」在 v2 实现。它必须存 deadline 而不是用定时器 —— 小程序一进后台定时器就死了。</view>
-  </view>
+  <view wx:if="{{loading}}" class="empty">…</view>
+  <view wx:elif="{{noPair}}" class="empty">还没有小窝</view>
+
+  <block wx:else>
+
+    <!-- ============ 有进行中的冷静 ============ -->
+    <block wx:if="{{cool}}">
+
+      <!-- ① 等对方回应（协商式暂停：不能一方单方面开始计时） -->
+      <block wx:if="{{cool.status === 'inviting'}}">
+        <block wx:if="{{cool.mine}}">
+          <!-- 我是发起方：等她回应 -->
+          <view class="card hl">
+            <view class="lbl">已经发出去了</view>
+            <view class="big-t">等{{partnerName}}回应</view>
+            <view class="note" style="margin-top:14rpx">
+              你说需要缓一缓 {{cool.minutes}} 分钟<block wx:if="{{cool.reason}}">，因为「{{cool.reason}}」</block>。
+              <view style="height:8rpx"></view>
+              她回应之后，这段时间才开始算 —— 这不是你单方面宣布不理她。
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <!-- 我是被发起方：看到她的请求 -->
+          <view class="card hl">
+            <view class="lbl">💬 {{cool.byName}}说</view>
+            <view class="big-t">需要缓一缓 {{cool.minutes}} 分钟</view>
+            <view wx:if="{{cool.reason}}" class="reason-box">「{{cool.reason}}」</view>
+            <view class="note" style="margin-top:16rpx">
+              她不是不想理你，是现在说不好话。<view style="height:8rpx"></view>
+              选一个回应就好 —— 你不选，她那边也动不了。
+            </view>
+          </view>
+          <view class="btn main" data-how="ok" bindtap="accept">好，我等你</view>
+          <view class="btn" style="margin-top:16rpx" data-how="together" bindtap="accept">我也需要缓一缓</view>
+          <view class="btn ghostb" style="margin-top:16rpx" data-how="now" bindtap="accept">现在就想说清楚</view>
+          <view class="hint">选「现在就想说清楚」不会打断她 —— 只是让她知道你的想法</view>
+        </block>
+      </block>
+
+      <!-- ② 冷静中 -->
+      <block wx:elif="{{cool.status === 'cooling'}}">
+        <view class="coolwrap">
+          <view class="cool-lbl">缓一缓</view>
+          <view class="cool-num">{{remainText}}</view>
+          <view class="cool-sub">
+            {{cool.mine ? '你发起的' : (cool.byName + ' 发起的')}} · 共 {{cool.minutes}} 分钟
+          </view>
+        </view>
+
+        <view wx:if="{{cool.reason}}" class="reason-box">「{{cool.reason}}」</view>
+
+        <!-- 双方状态 -->
+        <view class="card">
+          <view class="row2">
+            <view class="ico">我</view>
+            <view style="flex:1">
+              <view class="gt">{{cool.iReady ? '我缓好了' : '我在缓'}}</view>
+              <view class="xs">{{cool.iReady ? '等她一起' : '慢慢来，不着急'}}</view>
+            </view>
+            <text wx:if="{{cool.iReady}}" class="pill green">✓</text>
+          </view>
+          <view class="row2">
+            <view class="ico" style="background:var(--bluesoft);color:var(--blue)">她</view>
+            <view style="flex:1">
+              <view class="gt">{{cool.partnerReady ? (partnerName + ' 缓好了') : (partnerName + ' 还在缓')}}</view>
+              <view class="xs">{{cool.partnerReady ? '可以开始聊了' : '给她一点时间'}}</view>
+            </view>
+            <text wx:if="{{cool.partnerReady}}" class="pill green">✓</text>
+          </view>
+        </view>
+
+        <view wx:if="{{cool.partnerWanted === 'now'}}" class="warnbox">
+          她其实想现在就说清楚。你要是也觉得可以了，点下面「我缓好了」。
+        </view>
+
+        <view wx:if="{{!cool.iReady}}" class="btn main" bindtap="ready">我缓好了</view>
+        <view wx:else class="btn disabled">等她一起 ▸</view>
+        <view class="hint">两个人都说缓好了，就可以开始聊了 —— 不用等时间走完</view>
+        <view class="btn ghostb" style="margin-top:24rpx" bindtap="drop">这次先算了</view>
+      </block>
+
+      <!-- ③ 时间到（或双方都缓好了），提示可以聊了。
+           注意条件只看 status==='feeling' 且我还没写 ——
+           不能要求 iReady，因为时间自然走完时用户可能压根没点过「我缓好了」。 -->
+      <block wx:if="{{cool.status === 'feeling' && !cool.iWroteFeeling}}">
+        <view class="timeup">
+          <view class="tu-icon">🕊️</view>
+          <view class="tu-t">{{timeUp ? '时间到了，可以聊聊了' : '你们都缓好了'}}</view>
+          <view class="tu-s">先各自写下当时的感受，写完之后你们会同时看到对方的</view>
+        </view>
+      </block>
+
+      <!-- ④ 写感受（双盲） -->
+      <block wx:if="{{cool.status === 'feeling'}}">
+        <view class="card">
+          <view class="lbl">第一步 · 我的感受</view>
+          <view class="steptip">{{stepTip}}</view>
+
+          <block wx:if="{{cool.iWroteFeeling}}">
+            <view class="done-row">✓ 你已经写好了，等她写完就能互相看到</view>
+          </block>
+          <block wx:else>
+            <textarea class="ta" value="{{feelingText}}" maxlength="600"
+                      placeholder="我当时觉得…（不用解释为什么）" placeholder-class="ph"
+                      bindinput="onFeeling" />
+            <view class="lbl" style="margin-top:22rpx">我这边看到的情况（可以不写）</view>
+            <textarea class="ta small" value="{{feelingView}}" maxlength="600"
+                      placeholder="像记者一样只说你看到听到的" placeholder-class="ph"
+                      bindinput="onView" />
+            <view class="btn main" style="margin-top:22rpx" bindtap="saveFeeling">写好了</view>
+          </block>
+        </view>
+
+        <!-- 解锁后显示双方感受 -->
+        <view wx:if="{{cool.feelDone}}">
+          <view wx:for="{{cool.feelings}}" wx:key="at" class="side {{item.by==='me'?'me':'ta'}}" style="margin-bottom:16rpx">
+            <view class="n"><text class="rd {{item.by==='me'?'':'b'}}"></text>{{item.name}} · {{item.at}}</view>
+            <view>{{item.text}}</view>
+            <view wx:if="{{item.view}}" class="viewline">{{item.view}}</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- ⑤ 各自的责任（双盲） -->
+      <block wx:if="{{cool.status === 'owning'}}">
+        <view class="card">
+          <view class="lbl">第二步 · 我这边可以更好的地方</view>
+          <view class="steptip">{{stepTip}}</view>
+          <block wx:if="{{cool.iWroteOwn}}">
+            <view class="done-row">✓ 你写好了，等她写完</view>
+          </block>
+          <block wx:else>
+            <textarea class="ta" value="{{ownText}}" maxlength="600"
+                      placeholder="这次我这边…" placeholder-class="ph" bindinput="onOwn" />
+            <view class="btn main" style="margin-top:22rpx" bindtap="saveOwn">写好了</view>
+          </block>
+        </view>
+        <view wx:if="{{cool.ownDone}}">
+          <view wx:for="{{cool.owns}}" wx:key="at" class="side {{item.by==='me'?'me':'ta'}}" style="margin-bottom:16rpx">
+            <view class="n"><text class="rd {{item.by==='me'?'':'b'}}"></text>{{item.name}}</view>
+            <view>{{item.text}}</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- ⑥ 下次怎么办（双盲） -->
+      <block wx:if="{{cool.status === 'planning'}}">
+        <view class="card">
+          <view class="lbl">第三步 · 下次我们可以怎么更好</view>
+          <view class="steptip">{{stepTip}}</view>
+          <block wx:if="{{cool.iWrotePlan}}">
+            <view class="done-row">✓ 你写好了，等她写完就进规矩本</view>
+          </block>
+          <block wx:else>
+            <textarea class="ta" value="{{planText}}" maxlength="600"
+                      placeholder="下次可以…" placeholder-class="ph" bindinput="onPlan" />
+            <view class="btn main" style="margin-top:22rpx" bindtap="savePlan">记进规矩本</view>
+          </block>
+        </view>
+        <view wx:if="{{cool.planDone}}">
+          <view wx:for="{{cool.plans}}" wx:key="at" class="side {{item.by==='me'?'me':'ta'}}" style="margin-bottom:16rpx">
+            <view class="n"><text class="rd {{item.by==='me'?'':'b'}}"></text>{{item.name}}</view>
+            <view>{{item.text}}</view>
+          </view>
+        </view>
+      </block>
+
+      <!-- ⑦ 走完了 -->
+      <block wx:if="{{cool.status === 'done'}}">
+        <view class="timeup">
+          <view class="tu-icon">🌿</view>
+          <view class="tu-t">这次过去了</view>
+          <view class="tu-s">你们各自写了感受、认了自己那部分，也定下了下次怎么办</view>
+        </view>
+        <view class="btn main" bindtap="goHome">回今日</view>
+      </block>
+
+      <!-- 放弃态 -->
+      <block wx:if="{{cool.status === 'dropped'}}">
+        <view class="empty">这次已经算了。<view style="height:8rpx"></view>随时可以重新发起。</view>
+        <view class="btn main" bindtap="goHome">回今日</view>
+      </block>
+
+      <view wx:if="{{cool.status !== 'done' && cool.status !== 'dropped'}}" class="hint" style="margin-top:20rpx">
+        这条记录不会出现在历史里，除非你们走完
+      </view>
+    </block>
+
+    <!-- ============ 没有进行中的冷静 ============ -->
+    <block wx:else>
+      <view class="moodhero">
+        <view class="mh-glow"></view>
+        <view class="mh-in">
+          <view class="mh-lbl">情绪</view>
+          <view class="mh-t">吵架的时候，先停下来</view>
+          <view class="mh-s">身体平复下来至少要 20 分钟。在那之前说的话，多半不是本意。</view>
+        </view>
+      </view>
+
+      <view wx:if="{{staleTip}}" class="warnbox">{{staleTip}}</view>
+
+      <view wx:if="{{!starting}}" class="btn main" bindtap="startPanel">我们现在需要缓一缓</view>
+
+      <!-- 发起面板 -->
+      <view wx:if="{{starting}}" class="card hl">
+        <view class="lbl">缓多久</view>
+        <view class="chiprow">
+          <view wx:for="{{minuteOpts}}" wx:key="v"
+                class="pill {{minutes===item.v?'':'ghost'}}"
+                data-v="{{item.v}}" bindtap="pickMinutes">{{item.t}}</view>
+        </view>
+        <view class="hint">推荐 20 分钟 —— 情绪淹没后身体代谢掉压力激素至少要这么久，5 分钟、10 分钟通常不够</view>
+
+        <view class="lbl" style="margin-top:26rpx">为什么（可以不写）</view>
+        <textarea class="ta small" value="{{reason}}" maxlength="200"
+                  placeholder="比如：刚才那句话说重了" placeholder-class="ph" bindinput="onReason" />
+        <view class="hint">写一句会让她知道你不是在赌气 —— 这也是「暂停」和「冷暴力」的区别</view>
+
+        <view class="btnrow">
+          <view class="btn" style="flex:1" bindtap="cancelPanel">算了</view>
+          <view class="btn main" style="flex:2" bindtap="doStart">发给她</view>
+        </view>
+      </view>
+
+      <!-- 规矩本 -->
+      <block wx:if="{{rules.length}}">
+        <view class="sechead">
+          <text>我们家的规矩</text>
+          <text class="xs">{{rules.length}} 条</text>
+        </view>
+        <view class="card">
+          <view wx:for="{{rules}}" wx:key="at" class="rule">
+            <text class="rule-dot"></text>
+            <view style="flex:1">
+              <view class="rule-t">{{item.text}}</view>
+              <view class="xs">{{item.name}} · {{item.at}}</view>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 历史 -->
+      <block wx:if="{{list.length}}">
+        <view class="sechead">
+          <text>走过的事</text>
+          <text class="xs">{{list.length}} 次</text>
+        </view>
+        <view class="card">
+          <view wx:for="{{list}}" wx:key="id" class="row2">
+            <view class="ico">{{item.dropped ? '·' : (item.done ? '🌿' : '…')}}</view>
+            <view style="flex:1">
+              <view class="gt">{{item.at}}</view>
+              <view class="xs">
+                {{item.minutes}} 分钟 ·
+                {{item.done ? '走完了' : (item.dropped ? '这次算了' : '还没走完')}}
+              </view>
+            </view>
+            <text wx:if="{{item.idleDays >= 3}}" class="cd">{{item.idleDays}} 天前</text>
+          </view>
+        </view>
+        <view class="hint">这里只记「发生过、我们走过来了」，不记吵架内容</view>
+      </block>
+
+      <!-- 空态 -->
+      <view wx:if="{{!list.length && !rules.length}}" class="gentle">
+        <view class="gentle-icon">🌤️</view>
+        <view class="gentle-t">这里现在是空的</view>
+        <view class="gentle-s">
+          挺好的。<view style="height:8rpx"></view>
+          真需要的时候再进来 —— 它不催你，也不记录你们吵了什么。
+        </view>
+      </view>
+    </block>
+
+  </block>
 </view>

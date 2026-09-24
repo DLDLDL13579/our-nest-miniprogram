@@ -16,7 +16,8 @@ const COLLECTIONS = [
   'moments',       // 随手记
   'wishes',        // 想去·去过
   'capsules',      // 时间胶囊
-  'reminds'        // 要记得的事
+  'reminds',       // 要记得的事
+  'cools'          // 情绪·冷静期（v2）
 ]
 
 exports.main = async () => {

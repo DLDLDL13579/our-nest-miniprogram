@@ -39,8 +39,9 @@ App({
   bootstrap() {
     /* 用版本号而不是布尔值：以后再加集合时，把 DB_VERSION 加一，
        所有设备下次启动会自动补建，不用教用户清缓存。
-       5 = 删掉 questions/answers/pings/foods 遗留集合后的版本 */
-    const DB_VERSION = 5
+       5 = 删掉 questions/answers/pings/foods 遗留集合后的版本
+       6 = v2 新增 cools（情绪·冷静期） */
+    const DB_VERSION = 6
     if (wx.getStorageSync('dbReady') === DB_VERSION) return
 
     /* 先调 bootstrap（它会在云端替我们调 initdb）；bootstrap 没部署时退回直接调 initdb */
