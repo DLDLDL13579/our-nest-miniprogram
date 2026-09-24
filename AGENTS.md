@@ -183,6 +183,34 @@ git rev-parse --show-toplevel   # 必须输出 .../个人项目/小程序
 env -u GIT_CONFIG_COUNT -u GIT_CONFIG_VALUE_0 -u GIT_CONFIG_VALUE_1 git status
 ```
 
+## 交付渠道：微信推送（iLink 机器人）
+
+**能用**：`~/.dsh/weixin_push.py`（脚本直调 iLink API，绕过 dsh-im）。
+
+```bash
+cd ~/.dsh && python3 weixin_push.py "消息内容"
+# 返回 "✅ 成功: 已送达" 才算真的送到（它检查响应体里的 ret，不只看 HTTP 200）
+```
+
+**关键前提**：iLink 主动推送必须带 `context_token`，它来自**用户最近一条入站消息**，
+由 dsh-im 持久化在 `~/.dsh/integrations/dsh-weixin/accounts/<id>/state.json`。
+**会话窗口会过期** —— 2026-09-24 实测：09-22 的 token 调用返回 `ret=-2 prepare failed`，
+用户在微信里发一条消息后（18:31:32 刷新）立刻就能发送了。
+
+> 所以「发不出去」时先看 token 时间戳，别反复重试 —— 脚本注释里明确写了
+> 「不要靠反复发送续期」。
+
+**发不了图片**（2026-09-24 实测确认）：
+
+- `wechat-ilink` 渠道声明 `imageOutbound: false`
+- 源码注释：「iLink 图片字段仍未有真实设备证据」
+- iLink 只有 4 个端点（getupdates / sendmessage / get_bot_qrcode / get_qrcode_status），
+  **没有媒体上传接口**，拿不到 `media_id`
+- 实测用 URL 形式发 `image_item` → `{"ret":-2,"errmsg":"invalid arguments"}`
+
+→ **二维码只能发文本 + 本机路径**，让用户自己在电脑上打开。
+`dsh_im_return_file` 是另一条路（投递到当前对话），但它走的是 Web GUI 而非微信。
+
 ## 可验证性关键：miniprogram-automator
 
 靠 `miniprogram-automator`（官方 SDK）能从运行时读页面数据、点元素、截图，
