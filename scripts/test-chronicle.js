@@ -50,8 +50,6 @@ const ROOT=path.join(__dirname,'..')
 const orig=Module._load; Module._load=function(r){if(r==='wx-server-sdk')return mock;return orig.apply(this,arguments)}
 
 const pair=require(path.join(ROOT,'cloudfunctions','pair','index.js'))
-const answer=require(path.join(ROOT,'cloudfunctions','answer','index.js'))
-const daily=require(path.join(ROOT,'cloudfunctions','daily','index.js'))
 const chronicle=require(path.join(ROOT,'cloudfunctions','chronicle','index.js'))
 const wishes=require(path.join(ROOT,'cloudfunctions','wishes','index.js'))
 const moments=require(path.join(ROOT,'cloudfunctions','moments','index.js'))

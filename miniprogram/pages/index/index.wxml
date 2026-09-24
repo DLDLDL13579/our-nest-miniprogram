@@ -75,37 +75,6 @@
       <view class="wc-pen">✎</view>
     </view>
 
-
-    <!-- 小工具：紧跟「记一笔」，首屏就能点到，不用往下滑 -->
-    <view class="toolrow" bindtap="spinFood">
-      <view class="toolrow-l">
-        <text class="toolrow-e">🍜</text>
-        <text class="toolrow-t">今晚吃啥</text>
-      </view>
-      <view class="toolrow-r">
-        <text wx:if="{{foodResult}}" class="foodres">{{foodResult}}</text>
-        <text wx:else class="toolrow-h">{{foodRolling ? '转着…' : '点我决定'}}</text>
-      </view>
-    </view>
-
-    <view class="duo">
-      <view class="duoc" bindtap="ping">
-        <view wx:if="{{partnerPing}}" class="badge">{{partnerPing}}</view>
-        <view class="duo-e">💗</view>
-        <view class="duo-t">{{pingedJustNow ? '已送达' : '想你了'}}</view>
-        <view class="duo-s">{{pingWord}}</view>
-      </view>
-      <view class="duoc" bindtap="dice">
-        <view class="duo-e">🎲</view>
-        <view class="duo-t">今天谁做饭</view>
-        <view class="duo-s">{{diceResult || '点一下决定'}}</view>
-      </view>
-    </view>
-
-    <view wx:if="{{partnerPing}}" class="whisper">
-      {{partnerName || '她'}} 今天想了你 {{partnerPing}} 次。不用回，看到就行。
-    </view>
-
     <!-- ③ 最近记的：回来了能立刻看到东西，不是空页面 -->
     <block wx:if="{{moments.length}}">
       <view class="sechead">

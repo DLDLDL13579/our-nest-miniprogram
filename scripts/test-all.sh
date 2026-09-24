@@ -2,7 +2,7 @@
 # 一次跑完所有云函数逻辑测试。改完代码先跑这个，再部署。
 set -e
 cd "$(dirname "$0")/.."
-echo "═══ 1/5 核心链路（配对 / 双盲解锁 / 想你了）═══"
+echo "═══ 1/5 核心链路（配对 / 随手记 / 内容安全）═══"
 node scripts/mock-test.js
 echo "═══ 2/5 编年史 + 想去去过 ═══"
 node scripts/test-chronicle.js

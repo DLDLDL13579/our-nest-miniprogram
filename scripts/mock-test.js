@@ -1,17 +1,21 @@
 /**
- * mock-test.js —— 不装微信开发者工具，也能证明双盲解锁没写错
+ * mock-test.js —— 不装微信开发者工具，也能证明核心链路没写错
  *
- * 做法：把 wx-server-sdk 换成一个内存版，真正 require 进 pair / daily / answer
+ * 做法：把 wx-server-sdk 换成一个内存版，真正 require 进 pair / moments / initdb
  * 三个云函数的 index.js，按真实用户顺序调一遍，逐条断言。
  *
  * 跑法：node scripts/mock-test.js
- * 它不是给小程序用的，是给我们自己看的 —— 尤其是第 6 步那条断言。
+ *
+ * 历史：这个文件原本测的是「今日一题」的双盲解锁（14 项断言）。
+ * 2026-09-24 该功能连同 daily / answer 两个云函数一起删除 ——
+ * 产品决定是「不要每日打卡」，随手记（moments）取代了它。
+ * 所以现在测的是配对 + 随手记这条真正在用的链路。
  */
 const Module = require('module')
 const assert = require('assert')
 
 /* ---------------- 内存数据库 ---------------- */
-const store = { pairs: [], questions: [], answers: [], pings: [] }
+const store = { pairs: [], questions: [], answers: [], pings: [], moments: [] }
 let seq = 0
 const nextId = () => 'id' + (++seq)
 
@@ -34,11 +38,22 @@ function collection(name) {
     where(q) {
       const cond = q
       return {
-        _f: null,
+        _f: null, _n: null, _sel: null, _o: [], _s: 0,
         limit(n) { this._n = n; return this },
         field(sel) { this._sel = sel; return this },
+        orderBy(f, d) { this._o.push([f, d]); return this },
+        skip(n) { this._s = n; return this },
         async get() {
           let out = rows().filter(d => match(d, cond))
+          for (let i = this._o.length - 1; i >= 0; i--) {
+            const [f, dir] = this._o[i]
+            out = out.slice().sort((a, b) => {
+              const x = a[f], y = b[f]
+              if (x === y) return 0
+              return (x > y ? 1 : -1) * (dir === 'desc' ? -1 : 1)
+            })
+          }
+          if (this._s) out = out.slice(this._s)
           if (this._n) out = out.slice(0, this._n)
           out = out.map(d => {
             const c = Object.assign({}, d)
@@ -115,8 +130,7 @@ Module._load = function (request) {
 const path = require('path')
 const base = p => path.join(__dirname, '..', 'cloudfunctions', p, 'index.js')
 const pair = require(base('pair'))
-const daily = require(base('daily'))
-const answer = require(base('answer'))
+const moments = require(base('moments'))
 const initdb = require(base('initdb'))
 
 const DENG = 'oid_denglin'
@@ -126,11 +140,10 @@ let pass = 0
 function ok(msg) { pass++; console.log('  ✓ ' + msg) }
 
 ;(async () => {
-  console.log('\n=== 准备：建库灌题库 ===')
+  console.log('\n=== 准备：建库 ===')
   const init = await initdb.main()
   assert.ok(init.ok, 'initdb 应成功')
-  assert.ok(store.questions.length >= 20, '题库应有题')
-  ok(`initdb 建了 ${Object.keys(store).length} 个集合、灌入 ${store.questions.length} 道题`)
+  ok(`initdb 建了 ${Object.keys(store).length} 个集合（created ${init.created.length} / 已存在 ${init.alreadyExists.length}）`)
 
   console.log('\n=== 1. 邓林生成邀请码 ===')
   CURRENT_OPENID = DENG
@@ -154,92 +167,122 @@ function ok(msg) { pass++; console.log('  ✓ ' + msg) }
   const st = await pair.main({ action: 'set', anniversary: '2024-03-26' })
   assert.ok(st.ok && st.pair.anniversary === '2024-03-26')
   assert.strictEqual(store.pairs.filter(p => p._id === pid)[0].anniversary, '2024-03-26')
-  ok('anniversary 已存，answers / pings 里不需要任何日期字段之外的时间')
+  ok('anniversary 已存，其余时间值全部由 derive.js 现算')
 
-  console.log('\n=== 4. 两人必须拿到同一道题 ===')
+  console.log('\n=== 4. 随手记：邓林记一条 ===')
   CURRENT_OPENID = DENG
-  const d1 = await daily.main({ action: 'today', date: '2026-09-22' })
+  const m1 = await moments.main({
+    action: 'add', text: '今天一起去了菜市场', mood: 'happy',
+    photos: ['cloud://x/moments/a.jpg'], thumbs: ['cloud://x/moments/a_thumb.jpg']
+  })
+  assert.ok(m1.ok && m1.id, '写一条应成功')
+  ok('记下了，id=' + m1.id)
+
+  console.log('\n=== 5. ★ 随手记不是双盲：她立刻能看见 ===')
   CURRENT_OPENID = QP
-  const d2 = await daily.main({ action: 'today', date: '2026-09-22' })
-  assert.ok(d1.ok && d2.ok, '两人都应取到题')
-  assert.strictEqual(d1.qid, d2.qid, '同一天两人必须同题')
-  assert.strictEqual(d1.question, d2.question, '题干渲染结果也必须一致')
-  assert.ok(d1.question.indexOf('{span}') < 0, '模板占位符不能漏到界面上')
-  ok(`同题 ✓ 题干「${d1.question.slice(0, 18)}…」`)
+  const l1 = await moments.main({ action: 'list' })
+  assert.ok(l1.ok, '列表应成功')
+  assert.strictEqual(l1.list.length, 1, '应看到 1 条')
+  assert.strictEqual(l1.list[0].text, '今天一起去了菜市场', '★ 对方刚写的正文必须立刻可见')
+  assert.strictEqual(l1.list[0].who, 'partner', '应标记为对方写的')
+  assert.strictEqual(l1.list[0].mine, false)
+  ok('★ 她立刻看到邓林刚写的内容（双盲是答题的规则，不是记录的规则）')
 
-  console.log('\n=== 5. 倩萍先交卷 ===')
-  CURRENT_OPENID = QP
-  const a1 = await answer.main({ action: 'submit', text: '是你发烧到 39 度那晚，我睡着了还给你掖被子。', qid: d1.qid, date: '2026-09-22' })
-  assert.ok(a1.ok, '提交应成功')
-  assert.strictEqual(a1.unlocked, false, '对方没答，不该解锁')
-  assert.strictEqual(a1.partnerText, null, '不该拿到对方内容')
-  ok('倩萍交卷，unlocked=false、partnerText=null ✓')
+  console.log('\n=== 6. 缩略图字段必须完整往返 ===')
+  assert.deepStrictEqual(l1.list[0].thumbs, ['cloud://x/moments/a_thumb.jpg'], 'thumbs 必须原样返回')
+  assert.deepStrictEqual(l1.list[0].photos, ['cloud://x/moments/a.jpg'])
+  ok('photos 与 thumbs 一一对应返回（列表用小图，点开才用原图）')
 
-  console.log('\n=== 6. ★ 邓林没交卷时去读 —— 双盲的命门 ===')
+  console.log('\n=== 7. 一个人也能先用（不用等对方加入）===')
+  /* 单人场景要单独造一个小窝：一个 openid 只能属于一个 pair，
+     上面 DENG 已经在两人小窝里了，所以换一个没配对的 openid 来验。 */
+  CURRENT_OPENID = 'oid_solo_user'
+  const soloCreate = await pair.main({ action: 'create' })
+  assert.ok(soloCreate.ok, '单人应能建窝')
+  const soloList = await moments.main({ action: 'list' })
+  assert.ok(soloList.ok, '单人状态下也应能用')
+  assert.strictEqual(soloList.solo, true, '应标记为单人')
+  const soloAdd = await moments.main({ action: 'add', text: '一个人的第一条' })
+  assert.ok(soloAdd.ok, '单人应能记录')
+  ok('未配对时 solo=true，仍可记录（不用等她进来才敢动笔）')
+
+  /* 回到两人小窝继续后面的用例 */
   CURRENT_OPENID = DENG
-  const d3 = await daily.main({ action: 'today', date: '2026-09-22' })
-  assert.strictEqual(d3.ok, true)
-  assert.strictEqual(d3.partnerAnswered, true, '应知道对方写了（只有一个布尔）')
-  assert.strictEqual(d3.partnerText, null, '★ 绝不能拿到对方正文')
-  assert.strictEqual(d3.unlocked, false, '★ 不该是解锁态')
-  assert.strictEqual(JSON.stringify(d3).indexOf('掖被子'), -1, '★ 整个响应里连对方文本的碎片都不该出现')
-  ok('未交卷方：只拿到 partnerAnswered=true，正文在数据库层就没被查出来')
 
-  console.log('\n=== 7. 邓林交卷 → 当场互相解锁 ===')
-  CURRENT_OPENID = DENG
-  const a2 = await answer.main({ action: 'submit', text: '第一次去见我我妈，你出门前在镜子前整理了三次头发。', qid: d1.qid, date: '2026-09-22' })
-  assert.ok(a2.unlocked, '双方都答了，应解锁')
-  assert.ok(a2.partnerText && a2.partnerText.indexOf('掖被子') > 0, '应拿到倩萍的答案')
-  ok('解锁成功，拿到对方文本 ✓')
-
-  console.log('\n=== 8. 倩萍侧对称验证 ===')
-  CURRENT_OPENID = QP
-  const d4 = await daily.main({ action: 'today', date: '2026-09-22' })
-  assert.strictEqual(d4.unlocked, true, '她那边也该是解锁态')
-  assert.ok(d4.partnerText.indexOf('整理') > 0 || d4.partnerText.indexOf('头发') > 0, '她也该看到邓林的')
-  ok('双向解锁对称 ✓')
-
-  console.log('\n=== 9. 唯一索引缺失时的兜底：同一个人重复提交 ===')
-  CURRENT_OPENID = DENG
-  const dup1 = await answer.main({ action: 'submit', text: '改成这一句了。', qid: d1.qid, date: '2026-09-22' })
-  assert.ok(dup1.ok)
-  const cnt = store.answers.filter(x => x.pairId === pid && x.date === '2026-09-22').length
-  assert.strictEqual(cnt, 2, '★ 同一天同一人只能有一条，改答案是 update 不是 add')
-  ok('重复提交走 update，全天共 2 条（一人一条）✓')
-
-  console.log('\n=== 10. 内容安全确实被调用了 ===')
-  assert.ok(SEC_CALLS > 0, 'msgSecCheck 必须被调用过')
-  CURRENT_OPENID = DENG
-  const bad = await answer.main({ action: 'submit', text: '这是一条违禁内容测试', qid: d1.qid, date: '2026-09-22' })
+  console.log('\n=== 8. 内容安全被调用，敏感内容被拦 ===')
+  const before = SEC_CALLS
+  const bad = await moments.main({ action: 'add', text: '这是一条违禁内容测试' })
   assert.strictEqual(bad.ok, false, '敏感内容应被拒')
+  assert.ok(SEC_CALLS > before, 'msgSecCheck 必须被调用')
+  assert.strictEqual(store.moments.filter(m => /违禁/.test(m.text || '')).length, 0, '敏感内容不得落库')
   ok(`msgSecCheck 调用 ${SEC_CALLS} 次，敏感内容被拦在写库之前 ✓`)
 
-  console.log('\n=== 11. 想你了：只记条数，不越权 ===')
+  console.log('\n=== 9. 空内容不许提交 ===')
+  const empty = await moments.main({ action: 'add', text: '   ' })
+  assert.strictEqual(empty.ok, false, '既没文字也没照片应被拒')
+  ok('空记录被拒：「' + empty.msg + '」')
+
+  console.log('\n=== 10. 超长文本被截断，照片最多 3 张 ===')
+  const long = await moments.main({
+    action: 'add', text: 'x'.repeat(800),
+    photos: ['a', 'b', 'c', 'd', 'e'], thumbs: ['a', 'b', 'c', 'd', 'e']
+  })
+  assert.ok(long.ok)
+  const saved = store.moments.filter(m => m._id === long.id)[0]
+  assert.strictEqual(saved.text.length, 500, '正文应截到 500 字')
+  assert.strictEqual(saved.photos.length, 3, '照片应截到 3 张')
+  assert.strictEqual(saved.thumbs.length, 3, '缩略图必须同步截到 3 张，否则错位')
+  ok('正文截到 500 字、照片与缩略图同步截到 3 张')
+
+  console.log('\n=== 11. 只能删自己记的 ===')
   CURRENT_OPENID = QP
-  await daily.main({ action: 'ping', date: '2026-09-22' })
-  await daily.main({ action: 'ping', date: '2026-09-22' })
+  const steal = await moments.main({ action: 'remove', id: m1.id })
+  assert.strictEqual(steal.ok, false, '不能删对方记的')
+  ok('删别人的被拒：「' + steal.msg + '」')
+
   CURRENT_OPENID = DENG
-  const d5 = await daily.main({ action: 'today', date: '2026-09-22' })
-  assert.strictEqual(d5.partnerPingedToday, 2, '邓林应看到倩萍想了他 2 次')
-  assert.strictEqual(d5.myPingCount, 0)
-  ok('ping 计数正确 ✓')
+  const own = await moments.main({ action: 'remove', id: m1.id })
+  assert.ok(own.ok, '删自己的应成功')
+  ok('删自己的成功')
 
-  console.log('\n=== 12. 没配对的人什么都拿不到 ===')
+  console.log('\n=== 12. 越权：别人的记录删不掉 ===')
+  store.moments.push({
+    _id: 'alien', pairId: 'other_pair', by: DENG, text: '别人家的',
+    photos: [], thumbs: [], date: '2026-01-01', at: '2026-01-01 10:00'
+  })
+  const alien = await moments.main({ action: 'remove', id: 'alien' })
+  assert.strictEqual(alien.ok, false, '跨小窝的记录不能删')
+  ok('跨小窝删除被拒：「' + alien.msg + '」')
+
+  console.log('\n=== 13. 按天聚合（编年史的数据源）===')
+  CURRENT_OPENID = DENG
+  await moments.main({ action: 'add', text: '同一天第二条' })
+  const days = await moments.main({ action: 'days', size: 10 })
+  assert.ok(days.ok && days.days.length, '应返回按天聚合的数据')
+  assert.ok(days.days[0].items.length >= 1, '每天下面应挂 items')
+  ok(`按天聚合：${days.totalDays} 天，最新一天 ${days.days[0].items.length} 条`)
+
+  console.log('\n=== 14. 统计：总条数与天数 ===')
+  const stats = await moments.main({ action: 'stats' })
+  assert.ok(stats.ok)
+  assert.ok(stats.total >= 2, '总数应统计到')
+  assert.ok(stats.days >= 1, '天数应统计到')
+  ok(`统计：共 ${stats.total} 条 / ${stats.days} 天`)
+
+  console.log('\n=== 15. 没配对的人什么都拿不到 ===')
   CURRENT_OPENID = 'oid_stranger'
-  const s1 = await daily.main({ action: 'today' })
-  const s2 = await answer.main({ action: 'submit', text: '偷看一下', date: '2026-09-22' })
-  assert.strictEqual(s1.ok, false, '陌生人取题应被拒')
-  assert.strictEqual(s2.ok, false, '陌生人提交应被拒')
-  ok('未配对 openid 无法读到任何小窝数据 ✓')
+  const s1 = await moments.main({ action: 'list' })
+  assert.strictEqual(s1.ok, false, '陌生人应被拒')
+  assert.strictEqual(s1.code, 'NO_PAIR')
+  ok('未配对 openid 读不到任何小窝数据 ✓')
 
-  console.log('\n=== 13. 数据隔离：所有记录都挂在 pairId 上 ===')
-  store.pairs.push({ _id: 'other', members: [DENG, 'x'], inviteActive: false, inviteCode: '', names: {}, anniversary: '2020-01-01', createdAt: '2020-01-01', pairedAt: '' })
-  const leak = store.answers.filter(x => x.pairId !== pid).length
+  console.log('\n=== 16. 数据隔离：所有记录都挂在 pairId 上 ===')
+  const leak = store.moments.filter(m => !m.pairId).length
   assert.strictEqual(leak, 0, '不应有无 pairId 的脏数据')
-  ok(`answers ${store.answers.length} 条 / pings ${store.pings.length} 条，全部带 pairId ✓`)
+  ok(`moments ${store.moments.length} 条，全部带 pairId ✓`)
 
   console.log(`\n${'='.repeat(58)}`)
-  console.log(`  全部 ${pass} 项断言通过 —— 双盲解锁在云函数侧成立`)
+  console.log(`  全部 ${pass} 项断言通过 —— 配对与随手记链路成立`)
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

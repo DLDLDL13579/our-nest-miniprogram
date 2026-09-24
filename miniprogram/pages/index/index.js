@@ -2,18 +2,6 @@ const app = getApp()
 const { call, todayISO } = require('../../utils/cloud.js')
 const { derive } = require('../../utils/derive.js')
 
-const FOODS = ['在家做', '外面吃', '点外卖', '懒得动']
-
-/* 「想你了」被点第 N 次时显示的话 —— 数字太冷，一句人话才有温度 */
-const PING_WORDS = [
-  '她知道啦',
-  '又说了一次',
-  '今天第二次',
-  '她一定在偷偷笑',
-  '好吧，我知道你很想她',
-  '这条她已经数不清了'
-]
-
 const CACHE_KEY = 'homeCache'
 
 Page({
@@ -21,9 +9,6 @@ Page({
     loading: true, noPair: false, solo: false,
     D: null, pair: null, myName: '我', partnerName: '',
     moments: [], total: 0, todayCount: 0, onThisDay: null,
-    foods: FOODS, foodResult: '', foodRolling: false,
-    pingCount: 0, partnerPing: 0, pingedJustNow: false, pingWord: '点一下让她知道',
-    diceResult: '',
     capsuleTip: '写给未来的信',
     remindTip: '生日、纪念日、还款',
     remindUrgent: 0,
@@ -70,7 +55,6 @@ Page({
       myName: r.myName, partnerName: r.partnerName,
       moments: r.moments || [], total: r.total || 0, todayCount: r.todayCount || 0,
       onThisDay: r.onThisDay || null,
-      pingCount: r.pingCount || 0, partnerPing: r.partnerPing || 0,
       capsuleTip: r.capsuleReady ? (r.capsuleReady + ' 封信可以拆了') : (r.capsuleLocked ? (r.capsuleLocked + ' 封封存中') : '写给未来的信'),
       remindUrgent: r.remindUrgent || 0,
       remindTip: r.remindUrgent ? (r.remindUrgent + ' 件快到日子了，该准备了') : (r.remindNear ? (r.remindNear + ' 件在 30 天内') : '生日、纪念日、还款'),
@@ -83,8 +67,7 @@ Page({
         at: Date.now(), solo: r.solo, pair: r.pair,
         myName: r.myName, partnerName: r.partnerName,
         moments: r.moments || [], total: r.total || 0, todayCount: r.todayCount || 0,
-        onThisDay: r.onThisDay || null,
-        pingCount: r.pingCount || 0, partnerPing: r.partnerPing || 0
+        onThisDay: r.onThisDay || null
       })
     } catch (e) { /* 缓存写失败不影响主流程 */ }
   },
@@ -107,7 +90,6 @@ Page({
       myName: c.myName || '我', partnerName: c.partnerName || '',
       moments: c.moments || [], total: c.total || 0, todayCount: c.todayCount || 0,
       onThisDay: null,
-      pingCount: c.pingCount || 0, partnerPing: c.partnerPing || 0,
       fromCache: true
     })
   },
@@ -138,36 +120,6 @@ Page({
         }
       }
     })
-  },
-
-  spinFood() {
-    if (this.data.foodRolling) return
-    this.setData({ foodRolling: true })
-    let n = 0
-    const timer = setInterval(() => {
-      this.setData({ foodResult: FOODS[Math.floor(Math.random() * FOODS.length)] })
-      if (++n > 7) { clearInterval(timer); this.setData({ foodRolling: false }) }
-    }, 70)
-  },
-
-  dice() {
-    const me = this.data.myName || '我'
-    const ta = this.data.partnerName || 'TA'
-    this.setData({ diceResult: (Math.random() < 0.5 ? me : ta) + ' 做' })
-  },
-
-  async ping() {
-    if (this.data.pingedJustNow) return
-    this.setData({ pingedJustNow: true })
-    const r = await call('daily', { action: 'ping', date: todayISO() }, { silent: true }).catch(() => null)
-    if (r) {
-      const n = this.data.pingCount + 1
-      this.setData({ pingCount: n, pingWord: PING_WORDS[Math.min(n - 1, PING_WORDS.length - 1)] })
-      try { wx.removeStorageSync(CACHE_KEY) } catch (e) {}
-    } else {
-      this.setData({ pingedJustNow: false })
-    }
-    setTimeout(() => this.setData({ pingedJustNow: false }), 1500)
   },
 
   goPair() { wx.navigateTo({ url: '/pages/pair/pair' }) },

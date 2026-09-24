@@ -10,13 +10,12 @@ module.exports = {
   /* 云函数名统一在这里，避免各页面字符串写错拼不拢 */
   fn: {
     pair: 'pair',       // 配对 / 状态 / 设置
-    daily: 'daily',     // 今日一题 + 双盲读取 + 想你了
-    answer: 'answer',   // 交卷（双盲写入侧）
-    initdb: 'initdb',   // 建库灌题库，只跑一次
+    initdb: 'initdb',   // 建库，只跑一次
     bootstrap: 'bootstrap', // 云端替我们调 initdb（CLI 没有 invoke 命令）
+    home: 'home',       // 首页聚合：一次往返拿齐所有数据
     chronicle: 'chronicle', // 编年史：那年今日 + 流水 + 里程碑
     wishes: 'wishes',   // 想去·去过：清单 + 拍照点亮
-    moments: 'moments',  // 随手记（替代原今日一题）
+    moments: 'moments',  // 随手记
     capsule: 'capsule',  // 时间胶囊：写给未来的信
     reminds: 'reminds'   // 要记得的事：纪念日与提醒
   }

@@ -15,10 +15,8 @@ const cloud = require('wx-server-sdk')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
-const _ = db.command
 const pairs = db.collection('pairs')
 const moments = db.collection('moments')
-const pings = db.collection('pings')
 const capsules = db.collection('capsules')
 const reminds = db.collection('reminds')
 
@@ -96,17 +94,14 @@ exports.main = async (event) => {
     /* ---- ② 时间派生（纯计算，没有 IO） ---- */
     const D = pair.anniversary ? derive(pair.anniversary, date) : null
 
-    /* ---- ③ 剩下四个查询并发跑，不再串行 ---- */
+    /* ---- ③ 剩下几个查询并发跑，不再串行 ---- */
     const size = Math.min(Number(event.size) || 2, 10)
     /* 「那年今日」：去年同一天写过什么 */
     const lastYear = (Number(date.slice(0, 4)) - 1) + '-' + date.slice(4)
 
-    const [listRes, statsRes, pingMine, pingTheirs, todayRes, onThisDayRes, capsuleRes, remindRes] = await Promise.all([
+    const [listRes, statsRes, todayRes, onThisDayRes, capsuleRes, remindRes] = await Promise.all([
       moments.where({ pairId: pair._id }).orderBy('createdAt', 'desc').limit(size).get(),
       moments.where({ pairId: pair._id }).count(),
-      pings.where({ pairId: pair._id, date, by: OPENID }).count(),
-      solo ? Promise.resolve({ total: 0 })
-           : pings.where({ pairId: pair._id, date, by: _.neq(OPENID) }).count(),
       moments.where({ pairId: pair._id, date }).count(),     // 今天记了几条
       moments.where({ pairId: pair._id, date: lastYear }).limit(5).get(),
       /* 胶囊摘要：几封能拆、几封封存中。失败不影响首页 —— 表可能还没建 */
@@ -174,9 +169,7 @@ exports.main = async (event) => {
       capsuleLocked: (capsuleRes.data || []).filter(c => c.unlockAt > date).length,
       remindUrgent: countRemindUrgent(remindRes.data || [], date),
       remindNear: countRemindNear(remindRes.data || [], date),
-      todayCount: todayRes.total,
-      pingCount: pingMine.total,
-      partnerPing: pingTheirs.total || 0
+      todayCount: todayRes.total
     }
 
   } catch (err) {

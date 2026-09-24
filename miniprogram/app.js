@@ -38,8 +38,9 @@ App({
    */
   bootstrap() {
     /* 用版本号而不是布尔值：以后再加集合时，把 DB_VERSION 加一，
-       所有设备下次启动会自动补建，不用教用户清缓存 */
-    const DB_VERSION = 4
+       所有设备下次启动会自动补建，不用教用户清缓存。
+       5 = 删掉 questions/answers/pings/foods 遗留集合后的版本 */
+    const DB_VERSION = 5
     if (wx.getStorageSync('dbReady') === DB_VERSION) return
 
     /* 先调 bootstrap（它会在云端替我们调 initdb）；bootstrap 没部署时退回直接调 initdb */
@@ -51,13 +52,12 @@ App({
       const inner = (r && r.initdb) || r || {}
       if (inner.ok) {
         wx.setStorageSync('dbReady', DB_VERSION)
-        /* 提示语要跟当前架构一致：随手记（moments）已经取代了「今日一题」（answers），
-           所以该建索引的是 moments 的 pairId + createdAt，不是 answers。 */
+        /* 提示语要跟当前架构一致：随手记（moments）已经取代了「今日一题」，
+           题库和 questions/answers 表都已删除，这里不再提题库。 */
         const tables = (inner.created || []).length + (inner.alreadyExists || []).length
-        const q = inner.questionsInserted ? ('题库 ' + inner.questionsInserted + ' 道') : '题库已存在'
         wx.showModal({
           title: '数据表已就绪',
-          content: tables + ' 张表 · ' + q + '\n\n' +
+          content: tables + ' 张表\n\n' +
                    '建议顺手做一件事（控制台 → 数据库 → moments → 索引管理）：\n' +
                    '给 pairId + createdAt 建一个普通索引。\n' +
                    '不建也能用，只是记录多了翻页会慢一点。',

@@ -4,20 +4,51 @@
 
 ---
 
-## ✅ 当前状态：已上线，v1.5.1（2026-09-23）；工作区代码已修至 v1.5.2（2026-09-24，待部署）
+## ✅ 当前状态：已上线 **v1.5.3**（2026-09-24）
 
 | 项目 | 值 |
 |---|---|
 | AppID | `wx657601ccf8fd6e12` |
 | 云环境 ID | `cloudbase-d4goh1zdtc8eb9708` |
-| 云端云函数 | 11 个，全部可调：`pair` `daily` `moments` `chronicle` `wishes` `initdb` `bootstrap` `answer` `home` `capsule` `reminds` |
-| 线上版本 | **1.5.1**（95.8 KB）—— 2026-09-24 的修复尚未上传 |
-| 自动化断言 | **57 项**（核心 14 + 编年史 11 + 胶囊 11 + 提醒 12 + 契约 9），`./scripts/test-all.sh` 全绿 |
+| 本地云函数 | **9 个**：`pair` `moments` `home` `chronicle` `wishes` `capsule` `reminds` `initdb` `bootstrap` |
+| 云端云函数 | 11 个（含待删的 `daily` / `answer`，CLI 无删除命令，需控制台手工删） |
+| 线上版本 | **1.5.3**（93.7 KB）—— 2026-09-24 已部署 |
+| 自动化断言 | **61 项**（核心 18 + 编年史 11 + 胶囊 11 + 提醒 12 + 契约 9），`./scripts/test-all.sh` 全绿 |
 
-> 上面这几行是 2026-09-23 用 `.tooling/probe-cloud.js` 真连云端探出来的，不是凭记忆写的。
 > 想知道云端跑的是不是本地这份代码，跑 `node .tooling/probe-cloud.js` —— CLI 没有 invoke 命令，
-> 只能在小程序运行时里调云端函数来核对。
-> **注意**：云端现在跑的是 1.5.1，本地已修到 1.5.2 —— 两边不一致，详见下面「1.5.2」一节。
+> 只能在小程序运行时里调云端函数来核对（需要开发者工具「设置 → 安全设置 → 服务端口」开着）。
+
+### 1.5.3 删掉三个鸡肋功能（2026-09-24 用户决定）
+
+用户原话：「今晚吃啥，想你了，今天谁做饭，这三个功能有点鸡肋，可以删除」。
+
+三个都是首页的「小工具」，删得很干净 —— 但**只有「想你了」牵动云端**：
+
+| 功能 | 删掉的东西 | 云函数影响 |
+|---|---|---|
+| 今晚吃啥 | `spinFood` + `FOODS` + `.toolrow` 样式 | 无（纯前端随机） |
+| 今天谁做饭 | `dice` + `diceResult` + `.duoc` 样式 | 无（纯前端随机） |
+| **想你了** | `ping` + `PING_WORDS` + `.whisper` 徽标 | **`daily` 云函数 + `pings` 集合** |
+
+**顺带拿到的性能收益**：`home` 聚合接口原本每次要多打两次 `pings` 计数查询
+（我的 + 她的），删掉后首页少两次数据库往返。响应里也不再返回 `pingCount` / `partnerPing`。
+
+**连带清理**（用户选择「连云端 daily 函数一起删」）：
+
+- 删除云函数 `daily` 和 `answer`（前者只剩 `ping` 一个 action 活着，后者早已全废）
+- 删除 `pings` 查询与 `db.command`（`home` 里 `_` 已无用途）
+- `initdb` 集合清单从 10 个精简到 **5 个**：`pairs` `moments` `wishes` `capsules` `reminds`
+  （去掉 `questions` `answers` `pings` `foods` 及从未使用的 `anniversaries`）
+- `initdb` 里的 20 道种子题库一并删除（服务的是已废弃的「今日一题」）
+- `config.js` 的 `fn` 映射去掉 `daily` / `answer`，补上漏掉的 `home`
+- `app.js` 的 `DB_VERSION` 从 4 提到 **5** —— 否则已装设备不会重新走建库流程
+- 测试：`mock-test.js` 原有 14 项断言全在已删的双盲机制上，**重写为 18 项**，
+  覆盖配对 + 随手记 + 内容安全 + 越权 + 按天聚合这条真正在用的链路
+
+> ⚠️ **云端还剩两个空函数**：`daily` 和 `answer`。微信开发者工具 CLI **没有删除云函数的命令**
+> （只有 list / info / deploy / inc-deploy / download），只能在
+> 云开发控制台 → 云函数 → 选中 → 删除。不删也不影响运行，只是留着占位。
+> 同理 `questions` / `answers` / `pings` / `foods` 四张空表也要在控制台删。
 
 ### 1.5.2 修掉的五类问题（2026-09-24 体检）
 
@@ -47,7 +78,7 @@
 ### 1.5.2 的工程修复：derive.js 同步漏洞（**这条比上面所有 UI 问题都重要**）
 
 `derive.js` 是「全 App 唯一的时间算法源」，云函数独立打包不能跨目录 require，所以每个用它的
-云函数都留一份拷贝。**实际有 6 处**（prototype + miniprogram/utils + daily/home/chronicle/reminds），
+云函数都留一份拷贝。**当时实际有 6 处**（prototype + miniprogram/utils + daily/home/chronicle/reminds），
 但旧版 `scripts/sync-derive.sh` **硬编码了 2 条路径**，`check.sh` 也只校验这 2 处。
 
 结果：`home` 和 `chronicle` 的拷贝长期停在旧版，**少了 `clampDay`** ——
@@ -57,11 +88,11 @@
 调一次 `nextMonthly`，就会拿到错误日期，而且没有任何测试会拦住它。
 
 修法：`sync-derive.sh` 改成自动扫描 `cloudfunctions/*/derive.js`，以后新增云函数自动纳入。
-现在 `check.sh` 会校验全部 6 处，输出 `derive.js 6 处一致 ✓`。
+现在 `check.sh` 会校验全部拷贝 —— 1.5.3 删掉 `daily` 后是 **5 处**，输出 `derive.js 5 处一致 ✓`。
 
 ### 1.5.2 新增的回归防线：`scripts/test-contract.js`
 
-上面五类问题有一个共同点 —— **没有任何测试能发现它们**。原有的 48 项断言全在云函数业务逻辑里，
+上面五类问题有一个共同点 —— **没有任何测试能发现它们**。原有的断言全在云函数业务逻辑里，
 而这些都是「接口字段和模板对不上」。所以新增 9 项契约断言：
 
 1. 列表接口必须返回 `thumbs`（`moments.list` / `home` / `chronicle` 三处，含老记录回退成 `[]`）
@@ -159,18 +190,22 @@ pair(status) → moments(list) → moments(stats) → chronicle(list) → daily
 | 在一起天数 | ✅ | 只填一个日期，其余全部现算 |
 | 编年史 | ✅ | 按天归档 + 那年今日 + 里程碑 + 只看她 |
 | 想去·去过 | ✅ | 完成必须拍照，日期地点自动盖章 |
-| 想你了 | ✅ | 文案随次数变化，不做打卡 |
-| 今晚吃啥 / 谁做饭 | ✅ | 随手决定，别为这个吵架 |
 | **时间胶囊** | ✅ 1.5.1 | 写给未来的信，到期前服务端不返回正文 |
 | **要记得的事** | ✅ 1.5.1 | 生日/纪念日/还款，带提前量与日期滚动 |
+| ~~想你了~~ | ❌ 1.5.3 删 | 鸡肋，用户明确要求删除 |
+| ~~今晚吃啥 / 谁做饭~~ | ❌ 1.5.3 删 | 鸡肋，用户明确要求删除 |
 | 情绪·冷静期 | ⏳ v2 | 存 deadline，不用定时器（唯一没做的） |
 
 ### 部署前先跑检查
 
 ```bash
-./scripts/check.sh      # 语法 + WXML 标签 + 页面齐全 + derive 一致（校验全部 6 处拷贝）
-./scripts/test-all.sh   # 57 项断言（5 组：核心 / 编年史 / 胶囊 / 提醒 / 字段契约）
+./scripts/check.sh      # 语法 + WXML 标签 + 页面齐全 + derive 一致（校验全部 5 处拷贝）
+./scripts/test-all.sh   # 61 项断言（5 组：核心 / 编年史 / 胶囊 / 提醒 / 字段契约）
 ```
+
+> **部署云函数时 `--names` 和 `--paths` 必须一一对应**。写成
+> `--names home,initdb,bootstrap --paths .../cloudfunctions/home` 只会成功部署 `home`，
+> 另外两个报 `cloudfunction path not found`。要传多个就得给多个 `--paths`，或干脆一次一个。
 
 ### 发布一次新版本（两条命令）
 
@@ -191,27 +226,28 @@ pair(status) → moments(list) → moments(stats) → chronicle(list) → daily
 上传完后还有**一步只能手工点**：微信后台「管理 → 版本管理 → 开发版本 → 选为体验版本」，
 倩萍才能扫到新版。这一步 CLI 做不到。
 
-### 关于 `answers` 的唯一索引
+### 关于 `answers` 的唯一索引（1.5.3 已作废）
 
-历史遗留：`answers` 是旧版「今日一题」的表，已被 `moments` 取代，前端早就没有答题页了
-（`miniprogram/pages/answer/` 已删除），`answer` 云函数只是留着没删。
-所以那条唯一索引**现在不建也不影响任何功能** —— 真要清理旧代码时一起删掉即可。
+历史遗留：`answers` 是旧版「今日一题」的表，已被 `moments` 取代。
+1.5.3 删掉了 `daily` / `answer` 云函数与 `initdb` 里的题库种子，
+所以那条唯一索引**再也不需要建了** —— 直接在控制台把 `questions` / `answers` /
+`pings` / `foods` 四张空表删掉即可。
 
 ### 关于 bootstrap 这个函数
 
 微信 CLI **没有调用云函数的命令**，`initdb` 只能人工去控制台点。为了让它能自动跑，
 加了一个 `bootstrap` 云函数：云函数之间可以互相 `callFunction`，所以由它在云端替你调 `initdb`。
-小程序启动时会先调 `bootstrap`，**跑完弹窗告诉你建了几个集合、灌了几道题**。
+小程序启动时会先调 `bootstrap`，**跑完弹窗告诉你建了几个集合**。
 
-## 一、现状一栏（2026-09-23 实测，不是凭记忆写的）
+## 一、现状一栏（2026-09-24 更新）
 
 | 部分 | 状态 |
 |---|---|
 | 界面原型（13 屏） | ✅ 完成，在 `prototype/` |
-| 时间派生 `derive.js` | ✅ **6 处拷贝一致**，每次 `check.sh` 校验（2026-09-24 修正：原只校验 2 处） |
+| 时间派生 `derive.js` | ✅ **5 处拷贝一致**，每次 `check.sh` 校验（2026-09-24 修正：原只校验 2 处） |
 | 前端 | ✅ 10 个页面，4 个 tab |
-| 云函数 | ✅ 11 个全部部署且可调（实测探测） |
-| 自动化断言 | ✅ **57 项**（5 组），`./scripts/test-all.sh` 全绿 |
+| 云函数 | ✅ 本地 9 个（云端还有 2 个待手工删的空函数） |
+| 自动化断言 | ✅ **61 项**（5 组），`./scripts/test-all.sh` 全绿 |
 | 真机运行 | ✅ **已上线**，倩萍是体验成员，扫体验版二维码可用 |
 
 下面「二～四」是**第一次部署**的完整步骤 —— 只在换 AppID 或换电脑时才需要重做。
@@ -267,7 +303,7 @@ module.exports = {
 
 ```bash
 CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli
-for fn in pair daily moments chronicle wishes initdb bootstrap answer home capsule reminds; do
+for fn in pair moments home chronicle wishes capsule reminds initdb bootstrap; do
   $CLI cloud functions deploy --project "$(pwd)" --env <环境ID> \
     --names "$fn" --paths "$(pwd)/cloudfunctions/$fn" --remote-npm-install true
 done
@@ -294,12 +330,13 @@ done
 - [ ] 两边都跳到设置页 → 选 `2024-03-26` → 保存
 - [ ] 回到「今日」：顶部天数 + 第几个年头，和设置里选的日期对得上
 - [ ] 记一笔 → 她那边立刻能看见
-- [ ] 点「想你了」→ 她下次进今日页能看到次数
+- [ ] 点开记里的照片 → 能放大看（列表显示的是缩略图）
+- [ ] 编年史里点某一天的标题 → 能进那一天详情
 - [ ] 写一封时间胶囊 → 未到期时列表里**看不到正文，只有字数**
 - [ ] 加一条「要记得的事」→ 进入提前量窗口时标红
 
 > 「双盲解锁」现在只服务于**时间胶囊**（原本的「每日一题」已被否掉，见开头）。
-> 遗留的 `daily` / `answer` 两个云函数没人调用了，前端答题页已删除。
+> 1.5.3 已把 `daily` / `answer` 云函数连同前端答题页一起删除。
 > 胶囊的锁是硬验证：未到期时整个响应里搜不到正文的任何一个字。
 
 ---
@@ -332,7 +369,7 @@ done
 │   │   ├── derive.js        ★ 时间算法唯一源
 │   │   └── cloud.js         云函数调用统一封装
 │   └── pages/               10 个页面
-│       ├── index/           今日（tab1）：天数 + 记一笔 + 吃啥 + 想你了
+│       ├── index/           今日（tab1）：天数 + 记一笔 + 时间胶囊 + 要记得的事
 │       ├── write/           记一笔
 │       ├── chronicle/ + chronicle/day/   编年史（tab2）+ 某天详情
 │       ├── wishes/          想去·去过（tab3）
@@ -341,7 +378,7 @@ done
 │       ├── settings/        设置（唯一的时间输入口）
 │       ├── capsule/         时间胶囊
 │       └── reminds/         要记得的事
-├── cloudfunctions/          11 个
+├── cloudfunctions/          9 个
 │   ├── pair      配对 / 状态 / 设置
 │   ├── moments   随手记
 │   ├── chronicle 编年史（数据源是 moments）
@@ -349,21 +386,19 @@ done
 │   ├── home      首页聚合（1 次往返替代 5 次）
 │   ├── capsule   时间胶囊
 │   ├── reminds   要记得的事
-│   ├── daily     想你了（原「今日一题」遗留）
-│   ├── answer    交卷（遗留，前端已无入口）
-│   ├── initdb    建库 + 灌题库
+│   ├── initdb    建库（5 个集合）
 │   └── bootstrap 在云端替你调 initdb
 ├── scripts/
-│   ├── check.sh             语法 + WXML + 页面齐全 + derive 一致（全部 6 处）
-│   ├── test-all.sh          5 组共 57 项断言
+│   ├── check.sh             语法 + WXML + 页面齐全 + derive 一致（全部 5 处）
+│   ├── test-all.sh          5 组共 61 项断言
 │   ├── test-contract.js     字段契约：缩略图 / 死绑定 / 幽灵字段
 │   └── sync-derive.sh       改完 prototype/derive.js 后跑它（自动扫描所有拷贝）
 ├── .tooling/                调试脚本（automator）；probe-cloud.js 用来核对云端
 └── prototype/               13 屏原型 + 派生引擎源文件
 ```
 
-**一条纪律**：`derive.js` 有 **6 处拷贝**（`prototype/` 是源，另有 `miniprogram/utils/` 和
-`daily` / `home` / `chronicle` / `reminds` 四个云函数各一份），因为云函数独立打包不能跨目录引用。
+**一条纪律**：`derive.js` 有 **5 处拷贝**（`prototype/` 是源，另有 `miniprogram/utils/` 和
+`home` / `chronicle` / `reminds` 三个云函数各一份），因为云函数独立打包不能跨目录引用。
 改算法**只能改 `prototype/derive.js`**，然后跑 `./scripts/sync-derive.sh` 同步全部拷贝。
 
 > 2026-09-24 修正：这里原来写「三份拷贝」，而同步脚本只硬编码了 2 条路径，
@@ -373,31 +408,25 @@ done
 
 ## 六、下一步做什么
 
-**v1 和 v1.5 都已上线**，v1.5.2 的修复已改完并通过全部断言，**但还没上传到云端**。
+**v1 / v1.5 / 1.5.2 / 1.5.3 都已上线**（2026-09-24）。当前只剩两件收尾的事：
 
-要让它生效，需要跑（会启动开发者工具 GUI，需要人在场）：
+### 1. 手工清理云端残留（CLI 做不到）
 
-```bash
-# 1. 传改过的云函数（home / chronicle 两个）
-CLI=/Applications/wechatwebdevtools.app/Contents/MacOS/cli
-for fn in home chronicle; do
-  $CLI cloud functions deploy --project "$(pwd)" --env cloudbase-d4goh1zdtc8eb9708 \
-    --names "$fn" --paths "$(pwd)/cloudfunctions/$fn" --remote-npm-install true
-done
+微信开发者工具 CLI **没有删除云函数的命令**（只有 list / info / deploy / inc-deploy / download），
+所以下面这些只能在**云开发控制台**手动删：
 
-# 2. 传小程序本体
-$CLI upload --project "$(pwd)" --version 1.5.2 --desc "修缩略图字段、图片点不开、derive 同步漏洞"
-```
+| 删什么 | 在哪 | 为什么 |
+|---|---|---|
+| 云函数 `daily` | 云函数 → 选中 → 删除 | 1.5.3 已从本地删除，云端还在 |
+| 云函数 `answer` | 同上 | 同上 |
+| 集合 `questions` | 数据库 → 选中 → 删除 | 题库，服务已删的「今日一题」 |
+| 集合 `answers` | 同上 | 同上 |
+| 集合 `pings` | 同上 | 「想你了」已删 |
+| 集合 `foods` | 同上 | 从未被任何代码使用过 |
 
-上传后还有一步只能手工点：后台「管理 → 版本管理 → 开发版本 → 选为体验版本」。
+**不删也不影响使用** —— 它们只是占位，没有代码会去读。
 
-**注意**：`home` / `chronicle` 这两个云函数必须传，否则缩略图修复不生效 ——
-前端改了但云端还在返回没有 `thumbs` 的老响应，等于没修。
-
-剩下的功能项：
+### 2. 剩下的功能项
 
 1. **情绪·冷静期**（v2）—— 存 `deadline` 不用定时器，因为小程序一进后台定时器就死了
-
-可选的技术债清理（不影响使用）：删掉遗留的 `daily` / `answer` 云函数与 `answers` / `questions` 集合。
-注意 `daily` 还有一个**在用的** action：`ping`（首页「想你了」），清理时要先把这一小块搬走，
-不能整个函数删掉。
+   （`pages/mood/` 目前还是占位页）
