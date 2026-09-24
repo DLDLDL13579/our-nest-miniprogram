@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我们的小窝 · 界面原型</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>我们的小窝 · 界面原型 v1</h1>
+    <div class="sub">
+      <span class="tag">在一起多年</span><span class="tag">同城 · 天天见面</span><span class="tag">温暖但不下腻</span>
+      主色 陶土红 #E0714F ／ 底 米白 #F5F0EA ／ 强调 麦金 #E8B33C。核心机制：<b>双方都作答后才互相可见</b>（图上锁与解锁态）。
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- 1 今日 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>今日</h2><div class="who"><div class="av a">邓</div><div class="av b">萍</div></div></div>
+        <div class="body">
+          <div class="c big">
+            <div class="lbl">在一起</div>
+            <div class="days"><b data-d="days"></b><span>天 · 第 <span data-d="headNo"></span> 个年头</span></div>
+            <div style="font-size:11.5px;opacity:.85">从 <span data-d="anniversaryLabel"></span> 起 · 下次纪念日 <span data-d="nextLabel"></span></div>
+          </div>
+          <div class="c">
+            <div class="lbl">🔒 今日一题 · 你和倩萍分开作答</div>
+            <div class="q"><span data-d="spanText"></span>里，哪个瞬间你确定「就是这个人了」？</div>
+            <div class="btn ghostb">写点什么</div>
+            <div style="height:8px"></div>
+            <div class="lock"><span>🔒</span><span>倩萍已回答，等你写完就能看见</span></div>
+          </div>
+          <div class="c" style="padding:13px 14px 14px">
+            <div class="lbl">今晚吃啥 · 交给它决定</div>
+            <div class="chiprow">
+              <span class="pill on">在家做</span><span class="pill ghost">外面吃</span><span class="pill ghost">点外卖</span><span class="pill ghost">懒得动</span>
+            </div>
+            <div class="btn main">转一下</div>
+          </div>
+          <div class="grid2">
+            <div class="c heart" style="margin:0">
+              <div class="ic">💗</div>
+              <div class="sm" style="font-weight:600">想你了</div>
+              <div style="font-size:10px;color:var(--ink3)">今天 2 次</div>
+            </div>
+            <div class="c heart" style="margin:0">
+              <div class="dice">🎲</div>
+              <div class="sm" style="font-weight:600">今天谁做饭</div>
+              <div style="font-size:10px;color:var(--ink3)">上次：倩萍</div>
+            </div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5M9 9.5h.01M15 9.5h.01"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>① 今日</b> — 一屏解决每天三次打开的理由<br>天数 · 一题 · 吃啥 · 想你了</div>
+    </div>
+
+    <!-- 2 解锁态 + 抽签结果 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>21:07</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>今日一题</h2><span class="pill on">已解锁</span></div>
+        <div class="body">
+          <div class="c" style="margin-bottom:13px">
+            <div class="lbl"><span data-d="todayLabel"></span> · 在一起 <span data-d="days"></span> 天</div>
+            <div class="q" style="margin-bottom:0"><span data-d="spanText"></span>里，哪个瞬间你确定「就是这个人了」？</div>
+          </div>
+          <div class="c" style="background:transparent;box-shadow:none;padding:0">
+            <div class="side ta" style="margin-bottom:9px">
+              <div class="n"><span class="rd" style="background:var(--blue)"></span>倩萍的回答 · 20:41</div>
+              是你发烧到 39 度那晚，我睡着了，半夜醒来发现你已经把药和水放在床头，一句都没说。那一下觉得，行了，就你。
+            </div>
+            <div class="side me">
+              <div class="n"><span class="rd"></span>我的回答 · 21:02</div>
+              第一次去见我妈，出门前你在镜子前理了三次头发，比我还紧张。
+            </div>
+          </div>
+          <div class="c" style="text-align:center;padding:11px">
+            <div class="lbl" style="justify-content:center">今晚吃啥 · 结果</div>
+            <div class="wheel"><i>🐟</i></div>
+            <div class="res">巷子口那家酸菜鱼</div>
+            <div class="sm mut" style="margin-bottom:11px">你标记过 3 次想吃 · 距家 800m</div>
+            <div style="display:flex;gap:9px">
+              <div class="btn main" style="flex:1">就它了</div>
+              <div class="btn ghostb" style="flex:1">再来一次</div>
+            </div>
+          </div>
+          <div class="lock" style="margin-top:12px"><span>✨</span><span>两条回答已存进「我们的编年史」</span></div>
+        </div>
+        <div class="tab">
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>② 今日 · 已解锁态</b> — 整个产品的灵魂<br>先写自己的，才能读到对方的</div>
+    </div>
+
+    <!-- 3 编年史 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>22:14</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>我们的编年史</h2><span class="pill ghost">已攒 128 条（示意）</span></div>
+        <div class="body">
+          <div class="c" style="background:linear-gradient(135deg,#F6E7C3,#F0D08A);border:0">
+            <div class="lbl" style="color:#8A6A22">📅 那年今日 · 一年前的今天</div>
+            <div style="font-size:13px;line-height:1.6;margin-top:6px;color:#4A3A15">
+              <b>她：</b>"今天他说想把阳台那把旧椅子扔了，我才知道他记得我说过想在那儿晒太阳。"
+            </div>
+            <hr class="d" style="border-color:rgba(140,110,40,.28)">
+            <div style="font-size:13px;line-height:1.6;color:#4A3A15">
+              <b>我：</b>"吵了一架，但她说'我不是气你，我是担心你'，我就没气了。"
+            </div>
+          </div>
+          <div class="c">
+            <div class="mile" data-milestones></div>
+          </div>
+          <div class="c" style="padding:13px 12px">
+            <div class="lbl" style="padding-left:30px;margin-bottom:9px">9 月</div>
+            <div class="tl"><div class="d">22</div><div class="ln"></div><div class="cc">
+              <div class="side me" style="font-size:11.5px;padding:8px 10px">"第一次一起做饭，盐放多了，但她说比饭店好吃。"</div>
+            </div></div>
+            <div class="tl"><div class="d">21</div><div class="ln"></div><div class="cc">
+              <div class="side ta" style="font-size:11.5px;padding:8px 10px">"今天最想吐槽：他洗完澡又不擦地。"</div>
+            </div></div>
+            <div class="tl"><div class="d">18</div><div class="ln"></div><div class="cc">
+              <div class="side me" style="font-size:11.5px;padding:8px 10px">"和好了。原来她气的不是那句玩笑，是我当着人怼她。"</div>
+            </div></div>
+          </div>
+          <div class="chiprow" style="margin:0;padding-left:2px">
+            <span class="pill on">全部</span><span class="pill ghost">只看我</span><span class="pill ghost">只看她</span><span class="pill ghost">开心</span><span class="pill ghost">吐槽</span><span class="pill ghost">复盘</span>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>③ 编年史</b> — 多年情侣最有杀伤力的一屏<br>「那年今日」+ 里程碑 + 按天沉淀</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- 4 想去去过 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>20:03</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>想去 · 去过</h2><div class="who"><div class="av a">邓</div><div class="av b">萍</div></div></div>
+        <div class="body">
+          <div class="c">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <div class="lbl">100 件想一起做的事</div>
+              <div style="font-size:19px;font-weight:700;color:var(--brand2)">34<span style="font-size:12px;color:var(--ink3);font-weight:400">/100</span></div>
+            </div>
+            <div class="prog"><i></i></div>
+            <div class="sm mut">最近完成：第 33 件「一起拼完那幅 1000 块拼图」· 9 月 12 日</div>
+          </div>
+          <div class="c">
+            <div class="wrow" style="margin-bottom:11px">
+              <div class="ph">🌄</div>
+              <div class="tx"><div style="font-size:14px;font-weight:600">一起看一次日照金山</div><div class="sm" style="color:var(--ink3)">想去 · 已放进 3 次</div></div>
+              <span class="pill ghost">改期</span>
+            </div>
+            <hr class="d">
+            <div class="wrow">
+              <div class="ph" style="background:linear-gradient(135deg,#8FB0A8,#6D9E6A)">✓</div>
+              <div class="tx"><div style="font-size:14px;font-weight:600;color:var(--ink2);text-decoration:line-through">一起去一次菜市场买菜做饭</div><div class="sm" style="color:var(--ink3)">已完成 · <span data-d="todayLabel"></span> · 附 4 张照片</div></div>
+              <span class="pill on">点亮</span>
+            </div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:8px">一起去过 <b style="color:var(--brand2);font-size:14px">27</b> 个地方</div>
+            <div class="map"><div class="pin"></div></div>
+            <div class="chiprow" style="margin:9px 0 0">
+              <span class="pill ghost">成都 14</span><span class="pill ghost">重庆 6</span><span class="pill ghost">乐山 3</span><span class="pill ghost">＋ 标记这里</span>
+            </div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>④ 想去 · 去过</b> — 愿望清单进度 + 足迹地图<br>完成时拍照，才变成"我们的证据"</div>
+    </div>
+
+    <!-- 5 情绪 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>23:26</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>情绪</h2><span class="pill" style="background:var(--brand);color:#fff">冷静中</span></div>
+        <div class="body">
+          <div class="c" style="text-align:center;padding-top:4px">
+            <div class="lbl" style="justify-content:center">冷静期还剩</div>
+            <div class="ring"><div><b>12:04</b><span>你选的 20 分钟</span></div></div>
+            <div class="sm mut" style="margin:-4px 0 12px">倩萍也在冷静 · 结束前互相看不到消息</div>
+            <hr class="d">
+            <div style="display:flex;gap:9px;margin-top:11px">
+              <div class="btn main" style="flex:1">写下我当时的感受</div>
+              <div class="btn" style="flex:none;width:96px;background:#F2ECE4;color:var(--ink2)">再多 10 分钟</div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:7px">🔒 冷静结束后会看到</div>
+            <div class="note">各自写完才互相解锁 — 和好的那一刻，你会读到 她当时真正在想什么，而不是吵得最凶时那句气话。</div>
+            <div style="height:9px"></div>
+            <div class="btn" style="height:38px;background:#EAF0E9;color:var(--green)">✓ 我们和好了</div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:4px">我们吵过的（已和解 6 次）</div>
+            <div class="hist"><span class="tag2">已和解</span><div><div class="sm" style="font-weight:600">2026.09.18 · 当着人的那句玩笑</div><div style="font-size:11px;color:var(--ink3)">我们在意的是「给不给面子」，不是那件事</div></div></div>
+            <div class="hist"><span class="tag2">已和解</span><div><div class="sm" style="font-weight:600">2026.07.04 · 洗完澡又不擦地</div><div style="font-size:11px;color:var(--ink3)">我们把它变成了一条规矩：谁最后洗谁擦</div></div></div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5M9 9.5h.01M15 9.5h.01"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑤ 情绪 · 冷静期</b> — 倒计时不推消息，只等双方都写完<br>历史复盘是把吵架变成"规矩"的地方</div>
+    </div>
+
+    <!-- 6 配对 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2></h2></div>
+        <div class="body" style="padding-top:34px">
+          <div style="text-align:center;margin-bottom:26px">
+            <div style="width:66px;height:66px;border-radius:22px;background:linear-gradient(135deg,#E0714F,#C9583A);margin:0 auto 13px;display:flex;align-items:center;justify-content:center;font-size:29px;color:#fff">🏠</div>
+            <div style="font-size:21px;font-weight:700;letter-spacing:-.4px">我们的小窝</div>
+            <div class="sm mut" style="margin-top:5px">邓林 & 倩萍 · 只属于我们两个人的地方</div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:9px">我的邀请码 · 给倩萍输一次就好</div>
+            <div style="display:flex;gap:7px;justify-content:center;margin-bottom:11px">
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">D</span>
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">L</span>
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">Q</span>
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">P</span>
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">5</span>
+              <span style="width:36px;height:44px;line-height:44px;text-align:center;background:var(--brandsoft);border-radius:9px;font-size:21px;font-weight:700;color:var(--brand2)">2</span>
+            </div>
+            <div class="btn ghostb" style="height:38px">复制给倩萍</div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:9px">已经配对？输入倩萍的码</div>
+            <div style="height:40px;border-radius:11px;border:1px solid var(--line);background:#FDFBF8;display:flex;align-items:center;padding:0 12px;font-size:13px;color:var(--ink3)">输入倩萍给你的 6 位码</div>
+          </div>
+          <div class="c" style="background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">配对成功后会一起建立一个小窝，所有记录都只挂在这个小窝下 —— 这也是以后能开放给别人用的原因：数据天生按「小窝」隔离。</div>
+          </div>
+        </div>
+        <div style="flex:none;padding:0 20px 26px;text-align:center;font-size:10.5px;color:var(--ink3)">数据只存你们两个人的 · 不上公开广场</div>
+      </div></div>
+      <div class="cap"><b>⑥ 配对页</b> — 唯一入口，6 位码搞定<br>不需要手机号登录、不需要通讯录</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- 7 设置：唯一输入 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>10:12</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>设置</h2><div class="who"><div class="av a">邓</div><div class="av b">萍</div></div></div>
+        <div class="body">
+          <div class="c" style="border:1.5px solid var(--brand)">
+            <div class="lbl" style="margin-bottom:9px">✏️ 在一起的那天 · 全 App 唯一要你填的时间</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;height:44px;padding:0 12px;background:#FDFBF8;border-radius:11px;border:1px solid var(--line)">
+              <span style="font-size:19px;font-weight:700;color:var(--brand2);font-variant-numeric:tabular-nums" data-d="anniversaryLabel"></span>
+              <span style="font-size:12px;color:var(--ink3)">📅 修改 ▾</span>
+            </div>
+            <div class="xs" style="margin-top:8px;line-height:1.55">原生 <b style="color:var(--ink2)">&lt;picker mode="date"&gt;</b>，不给手输框 —— 免得 2024.3.26 / 24-3-26 打架。</div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="margin-bottom:8px">↓ 它自动算出来的东西，一处都不写死</div>
+            <div style="font-size:12px;line-height:2.15;color:var(--ink2)">
+              <div>在一起 <b style="color:var(--brand2);font-size:14px" data-d="days"></b> 天</div>
+              <div><span data-d="yearsLine"></span> → 第 <b data-d="headNo"></b> 个年头</div>
+              <div>下次纪念日 <b data-d="nextDate"></b> · <b data-d="nextLabel"></b>（<b data-d="nextWhich"></b>周年）</div>
+              <div>下一个里程碑 <b data-d="nextMilestone"></b></div>
+              <div>题干自动说人话：「<b data-d="spanText"></b>里，你最想谢谢我什么？」</div>
+              <div>「那年今日」自动对齐 <b data-d="lastYearLabel"></b></div>
+            </div>
+          </div>
+          <div class="c" style="background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">改成任何一天，上面 <b>6 处同时变</b>，不用重启、不用改代码 —— 因为页面上没有一个是常量。</div>
+          </div>
+          
+        </div>
+              </div></div>
+      <div class="cap"><b>⑦ 设置 · 唯一输入口</b> — 一个 picker，其余全是它的函数<br>称呼也在这里，界面文案不写死人名</div>
+    </div>
+
+    <!-- 派生关系说明 -->
+    <div style="flex:1;min-width:0">
+      <div class="sec" style="background:#EFE8DE;border-radius:18px;padding:18px 20px 20px">
+        <h3 style="font-size:15px;margin-bottom:3px">一个输入 → 全部派生 · 落地方式</h3>
+        <div class="s" style="font-size:12px;color:var(--ink2);margin-bottom:14px;line-height:1.65">核心只有一个文件 <b>derive.js</b>，纯函数、无依赖、小程序和这张原型图共用同一份 —— 你现在看到的每个数字都是它当场算出来的，包括今天是多少天。</div>
+        <div style="display:flex;gap:10px">
+          <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+            <div class="lbl" style="margin-bottom:6px">① 数据层</div>
+            <div class="s" style="font-size:11.5px;line-height:1.75">只有 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">pairs.anniversary</code> 一个时间字段。<br>纪念日、里程碑<b>不入库</b> —— 入库就等于写死。</div>
+          </div>
+          <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+            <div class="lbl" style="margin-bottom:6px">② 渲染层</div>
+            <div class="s" style="font-size:11.5px;line-height:1.75">页面 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">onShow</code> 调 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">derive()</code> 塞进 data，WXML 只绑变量。跨零点自动重算，不需要定时器。</div>
+          </div>
+          <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+            <div class="lbl" style="margin-bottom:6px">③ 题库层</div>
+            <div class="s" style="font-size:11.5px;line-height:1.75">题目存模板：<code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">「{span}里，你最想谢谢我什么？」</code><br>渲染时 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">fill()</code> 替换。题目会随年份自己长大。</div>
+          </div>
+        </div>
+        <div style="height:11px"></div>
+        <div class="c" style="background:#2C2822;border-radius:12px;padding:13px 15px">
+          <div style="font-size:12.5px;font-weight:700;color:#fff;margin-bottom:8px">三个会把天数算错的地方，derive.js 里已经处理了</div>
+          <div style="font-size:11.8px;line-height:1.85;color:#D8CFC2">
+            <b style="color:#E8B33C">① iOS 日期解析不一致</b> —— <code style="color:#E8B33C">new Date('2024-03-26')</code> 按 UTC 解析、<code style="color:#E8B33C">new Date('2024/03/26')</code> 按本地解析，差 8 小时，跨零点就少算一天。解法：全部拆成 y/m/d 用 <code style="color:#E8B33C">Date.UTC()</code> 拼整数，再做减法。<br>
+            <b style="color:#E8B33C">② 纪念日落在 2/29</b> —— 平年没有这天，<code style="color:#E8B33C">Date.UTC(2027,1,29)</code> 会静默跳到 3/1。解法：<code style="color:#E8B33C">safeUts()</code> 检测月份是否溢出，溢出则回落到 2 月最后一天。<br>
+            <b style="color:#E8B33C">③ 里程碑会越跑越长</b> —— 到第十八年还显示「1 年 2 年 3 年」就是废条。解法：固定档 1/2/3/5/10 + 自动插入「下一个年头」并开窗取 5 个，保证既有已过进度、也有前方目标。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="head" style="margin-top:6px">
+    <div class="sub">
+      <b>为什么"多年 + 同城"要这么改：</b>
+      ① 去掉见面倒计时和异地时区；② 「那年今日」和里程碑上到编年史首屏 —— <span data-d="spanText"></span>的积累是最大的资产；③ 今晚吃啥 / 谁做饭 上到今日页最显眼位置 —— 天天见面的人，每天真正的摩擦是决策而不是想念；④ 题库往「回忆 · 感谢 · 未来三年规划」倾斜，而不是热恋期的小惊喜。
+    </div>
+  </div>
+</div>
+
+<script src="derive.js"></script>
+<script>
+(function(){
+  var ANNIV = '2024-03-26';            /* 演示值；真机里 = pairs.anniversary，用户在设置页选 */
+  var D = derive(ANNIV);
+  var nextMs = '—';
+  for (var i=0;i<D.milestones.length;i++) if (D.milestones[i].isNext) nextMs = D.milestones[i].label;
+  var map = {
+    days: D.days, headNo: D.headNo, fullYears: D.fullYears, remMonths: D.remMonths,
+    spanText: D.spanText, yearsLine: D.yearsLine, anniversaryLabel: D.anniversaryLabel, todayLabel: D.todayLabel,
+    nextLabel: '还有 ' + D.next.daysUntil + ' 天', nextDate: D.next.label,
+    nextWhich: '第 ' + D.next.which + ' 个', nextMilestone: nextMs, lastYearLabel: D.lastYearLabel
+  };
+  var els = document.querySelectorAll('[data-d]');
+  for (var k=0;k<els.length;k++){
+    var v = map[els[k].getAttribute('data-d')];
+    if (v !== undefined) els[k].textContent = v;
+  }
+  var box = document.querySelector('[data-milestones]');
+  if (box) {
+    var h = '';
+    for (var j=0;j<D.milestones.length;j++){
+      var m = D.milestones[j];
+      h += '<div class="m' + (m.done?' done':(m.isNext?' now':'')) + '">'
+         + (j < D.milestones.length-1 ? '<span class="bar"></span>' : '') + m.label + '</div>';
+    }
+    box.innerHTML = h;
+  }
+})();
+</script>
+</body>
+</html>

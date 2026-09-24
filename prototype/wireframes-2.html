@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我们的小窝 · 界面原型 第二批（下钻与关键时刻）</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* 本批专用组件 */
+.ta{width:100%;height:132px;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:13px;line-height:1.75;color:var(--ink);background:#FDFBF8;font-family:inherit}
+.cnt{text-align:right;font-size:10.5px;color:var(--ink3);margin-top:4px}
+.seal .blurred{filter:blur(4.5px);user-select:none;color:#6E675E}
+.stamp{position:absolute;right:8px;top:8px;width:58px;height:58px;border-radius:50%;border:2px dashed var(--brand);color:var(--brand2);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9.5px;text-align:center;line-height:1.25;transform:rotate(-11deg);background:rgba(252,235,228,.94);font-weight:700}
+.stamp b{font-size:12.5px;display:block}
+.cam{height:186px;border-radius:14px;background:linear-gradient(150deg,#5A4E42,#2C2822);position:relative;overflow:hidden;margin-bottom:11px}
+.cam:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 44px),repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 44px)}
+.vf{position:absolute;width:20px;height:20px;border:2px solid rgba(255,255,255,.8)}
+.shut{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);width:42px;height:42px;border-radius:50%;border:3px solid rgba(255,255,255,.9);background:rgba(255,255,255,.14)}
+.row2{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row2:last-child{border:0;padding-bottom:0}
+.ico{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:14px;background:#F2ECE4}
+.cd{font-size:10.5px;font-weight:700;color:var(--brand2);background:var(--brandsoft);padding:4px 7px;border-radius:7px;flex:none;min-width:62px;text-align:center}
+.cd.far{background:#F2ECE4;color:var(--ink2);font-weight:600}
+.guide{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border-radius:12px;background:#fff;margin-bottom:9px;box-shadow:0 1px 2px rgba(70,55,40,.05)}
+.no{width:21px;height:21px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+.no.ok{background:var(--green)}
+.gt{font-size:13px;font-weight:600}
+.gp{font-size:11px;color:var(--ink2);line-height:1.6;margin-top:2px}
+.lockbar{display:flex;align-items:center;gap:7px;background:#F5F1EB;border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--ink2);margin-bottom:11px}
+.grp{font-size:10.5px;color:var(--ink3);letter-spacing:.5px;margin:12px 0 2px;padding-left:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <h1>我们的小窝 · 界面原型 第二批</h1>
+    <div class="sub">
+      <span class="tag">下钻页</span><span class="tag">关键时刻</span><span class="tag">2 个新增功能</span>
+      第一批画的是"打开看到什么"，这一批画的是<b>决定这个产品成不成的那几秒钟</b>：写答案的那一下、冷静结束读到对方感受的那一下、把"想去"变成"去过"的那一下。⑧—⑬ 屏，所有日期同样由 <code>derive.js</code> 实时算出。
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- 8 答题页 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>21:02</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2><span style="color:var(--ink3);font-weight:400">‹</span>&nbsp; 今日一题</h2><span class="pill ghost">倩萍 已回答</span></div>
+        <div class="body">
+          <div class="c">
+            <div class="lbl"><span data-d="todayLabel"></span> · 在一起 <span data-d="days"></span> 天</div>
+            <div class="q" style="margin-bottom:0"><span data-d="spanText"></span>里，哪个瞬间你确定「就是这个人了」？</div>
+          </div>
+          <div class="lockbar"><span>🔒</span><span>写完之前，你看不到倩萍的答案 —— 现在去偷看没有意义</span></div>
+          <div class="c">
+            <div class="ta">大概是去年冬天，我妈第一次当面问你"你们以后怎么打算的"，你比我先开口答了。那一下我觉得，行了，这人靠得住。</div>
+            <div class="cnt">82 / 300</div>
+          </div>
+          <div class="btn main" style="height:44px">写好了 · 提交</div>
+          <div class="c" style="margin-top:11px;background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">
+              <b>提交后今天还能改，明天就定格。</b><br>编年史要的是你当时怎么想的，不是你改漂亮之后的版本 —— 所以不给"永久编辑"。
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:11px">
+            <span class="pill ghost">跳过今天</span><span class="pill ghost">换一题</span><span class="pill ghost">＋ 我想问她这个</span>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑧ 答题页</b> — 核心机制的操作现场<br>「当天可改、隔天定格」是它的诚实设计</div>
+    </div>
+
+    <!-- 9 冷静结束 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>00:24</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>情绪</h2><span class="pill" style="background:var(--green);color:#fff">冷静结束</span></div>
+        <div class="body">
+          <div class="c" style="text-align:center;padding:12px">
+            <div class="lbl" style="justify-content:center">你们各写了一句 · 现在能看了</div>
+            <div style="font-size:26px;font-weight:700;color:var(--green);margin-top:4px;letter-spacing:-.5px">🔓 已解锁</div>
+          </div>
+          <div class="side ta" style="margin-bottom:9px">
+            <div class="n"><span class="rd" style="background:var(--blue)"></span>倩萍的感受 · 23:41</div>
+            我不是气你说那句话，我是气你当着人。你给我留一次面子，我什么都好说。
+          </div>
+          <div class="side me" style="margin-bottom:11px">
+            <div class="n"><span class="rd"></span>我的感受 · 23:58</div>
+            我当时以为你在挑我说话的方式。其实我是怕你觉得我在你朋友面前没主见。
+          </div>
+          <div class="btn" style="height:42px;background:#EAF0E9;color:var(--green);font-size:15px">✓ 我们和好了</div>
+          <div class="c" style="margin-top:11px">
+            <div class="lbl" style="margin-bottom:6px">和好后顺手记一句 · 下次怎么避免</div>
+            <div style="min-height:38px;border:1px dashed var(--line);border-radius:10px;padding:9px 10px;font-size:12px;color:var(--ink3)">我们定个规矩：当着人的分歧，回家再说 →</div>
+          </div>
+          <div class="lockbar" style="margin:11px 0 0"><span>📖</span><span>这条会进编年史，标题：<b style="color:var(--ink2)">「当着人的那句玩笑」</b></span></div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5M9 9.5h.01M15 9.5h.01"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑨ 冷静结束的那一下</b> — 全产品情绪浓度最高的界面<br>平时说不出口的话，都在这 20 分钟里写完了</div>
+    </div>
+
+    <!-- 10 拍照点亮 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>19:36</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2><span style="color:var(--ink3);font-weight:400">‹</span>&nbsp; 点亮第 27 件</h2><span class="pill ghost">34 / 100</span></div>
+        <div class="body">
+          <div class="cam">
+            <div class="vf" style="left:14px;top:14px;border-right:0;border-bottom:0"></div>
+            <div class="vf" style="right:14px;top:14px;border-left:0;border-bottom:0"></div>
+            <div class="vf" style="left:14px;bottom:52px;border-right:0;border-top:0"></div>
+            <div class="vf" style="right:14px;bottom:52px;border-left:0;border-top:0"></div>
+            <div style="position:absolute;left:0;right:0;top:44%;text-align:center;color:rgba(255,255,255,.9);font-size:12.5px;line-height:1.6">拍一张<br><span style="font-size:10.5px;opacity:.7">不用好看，能看出是那天就行</span></div>
+            <div class="shut"></div>
+          </div>
+          <div class="c">
+            <div class="lbl">要点亮的是</div>
+            <div style="font-size:15px;font-weight:600;margin:5px 0 7px">一起去一次菜市场买菜做饭</div>
+            <div class="sm" style="color:var(--ink3)">自动带上 <b data-d="todayLabel"></b> · 成都 · 不用你填</div>
+          </div>
+          <div class="btn main" style="height:44px">✓ 点亮它</div>
+          <div class="c" style="margin-top:11px;background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">照片只存你们的小窝，<b>不进手机相册、不上传任何公开的地方</b>。它存在的唯一目的是让三年后的你能想起那天菜市场的味道。</div>
+          </div>
+          <div class="chiprow" style="margin:11px 0 0">
+            <span class="pill ghost">从相册选一张</span><span class="pill ghost">先不拍，记住这件事</span>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑩ 拍照点亮</b> — 强制一张照片，清单才不沦为待办<br>日期地点自动带上，一个字段都不用手填</div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- 11 时间胶囊 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>22:48</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>时间胶囊</h2><span class="pill ghost">3 封</span></div>
+        <div class="body">
+          <div class="c" style="background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">写给未来的某一天。<b>到那天之前谁都打不开，包括你自己。</b></div>
+          </div>
+          <div class="c seal" style="position:relative">
+            <div class="stamp"><b data-d="nextDays"></b><span>天后解封</span></div>
+            <div class="lbl">✉️ 写给 <span data-d="nextDate"></span> 的我们</div>
+            <div class="blurred" style="font-size:12px;line-height:1.7;margin-top:7px">倩萍，如果今天你还在生我的气，那这封信你就当没收到。但我知道三年后的我们一定又在为新的事情发愁，所以我先替那时候的我谢谢你现在还…</div>
+            <div class="sm" style="color:var(--ink3);margin-top:8px">写于 <span data-d="todayLabel"></span> · 封存中</div>
+          </div>
+          <div class="c">
+            <div class="lbl" style="color:var(--green)">🔓 已解封 · 写给一年前的我们</div>
+            <div style="font-size:12px;line-height:1.7;margin-top:6px;color:var(--ink2)">"如果你正在读这封信，说明我们真的走过来了。那天我不敢说的那句'我其实很怕失去你'，现在可以说了。"</div>
+            <div class="sm" style="color:var(--ink3);margin-top:7px">写于 2025.09.22 · 解封于 2026.09.22</div>
+          </div>
+          <div class="btn main" style="height:44px">写一封 · 选一个能打开的日子</div>
+          <div class="c" style="margin-top:11px;background:#2C2822;box-shadow:none">
+            <div style="font-size:11.5px;line-height:1.75;color:#D8CFC2"><b style="color:#E8B33C">为什么它几乎不增加工作量：</b>解封判定放云函数，未到期时接口<b style="color:#fff">根本不返回正文</b> —— 和「双盲解锁」是同一套代码，只是把"对方也答完"换成"日期到了"。</div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑪ 时间胶囊（新增）</b> — 我建议加，成本约 1 天<br>复用双盲解锁机制，情感价值在所有功能里最高</div>
+    </div>
+
+    <!-- 12 要记得的事 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>08:15</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>要记得的事</h2><span class="pill on">最近 45 天</span></div>
+        <div class="body">
+          <div class="c" style="background:linear-gradient(135deg,#F6E7C3,#F0D08A);border:0">
+            <div class="lbl" style="color:#8A6A22">⏰ 这个月别忘</div>
+            <div style="font-size:14px;font-weight:700;margin-top:5px;color:#4A3A15">11.06 倩萍的妈妈生日 · 还有 <span data-e="mama"></span> 天</div>
+            <div class="sm" style="color:#7A5F28;margin-top:3px">去年送的是按摩仪（她说好用）· 今年换个思路</div>
+          </div>
+          <div class="c">
+            <div class="grp" style="margin-top:0">她 家</div>
+            <div class="row2"><div class="ico">👩</div><div style="flex:1"><div class="gt">妈妈</div><div class="sm" style="color:var(--ink3)">11.06 · 属猴</div></div><span class="cd" data-e="mamaT"></span></div>
+            <div class="row2"><div class="ico">👨</div><div style="flex:1"><div class="gt">爸爸</div><div class="sm" style="color:var(--ink3)">04.18 · 去年送茶叶</div></div><span class="cd far" data-e="papaT"></span></div>
+            <div class="grp">我 家</div>
+            <div class="row2"><div class="ico">👩</div><div style="flex:1"><div class="gt">我妈</div><div class="sm" style="color:var(--ink3)">09.12 · 倩萍说想送丝巾</div></div><span class="cd far" data-e="myMamaT"></span></div>
+            <div class="grp">我 们</div>
+            <div class="row2"><div class="ico">💗</div><div style="flex:1"><div class="gt">在一起纪念日</div><div class="sm" style="color:var(--ink3)"><span data-d="anniversaryLabel"></span> · 第 <span data-d="nextWhich"></span> 个</div></div><span class="cd" data-d="nextDaysText"></span></div>
+            <div class="row2"><div class="ico">💳</div><div style="flex:1"><div class="gt">信用卡还款</div><div class="sm" style="color:var(--ink3)">每月 14 日 · 下次 <span data-e="cardD"></span></div></div><span class="cd far" data-e="cardT"></span></div>
+          </div>
+          <div class="btn ghostb" style="height:42px">＋ 加一件要记得的事</div>
+          <div class="c" style="margin-top:11px;background:#F5F1EB;box-shadow:none">
+            <div class="note" style="background:transparent;padding:0">到了多年这一步，<b>「记得她妈生日」比「我爱你」更能救命</b>。每条还能记一笔"去年送了什么"，避免连送三年同款。</div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑫ 要记得的事（新增）</b> — 唯一纯工具屏，但最"实用"<br>生日全部按年滚动，倒计时由 nextOccur() 算</div>
+    </div>
+
+    <!-- 13 第一天 -->
+    <div>
+      <div class="phone"><div class="scr">
+        <div class="st"><span>15:20</span><span class="dots"><i></i><i></i><i></i></span></div>
+        <div class="nav"><h2>我们的小窝</h2><div class="who"><div class="av a">邓</div><div class="av b">萍</div></div></div>
+        <div class="body">
+          <div class="c big" style="text-align:center;padding:20px 14px">
+            <div class="lbl">配对成功</div>
+            <div style="font-size:34px;font-weight:700;letter-spacing:-1px;margin:3px 0 2px">今天是第 1 天</div>
+            <div style="font-size:11.5px;opacity:.85"><span data-d0="todayLabel"></span> · 在一起 <span data-d0="days"></span> 天 · 第 <span data-d0="headNo"></span> 个年头</div>
+          </div>
+          <div class="lbl" style="margin:2px 0 8px 3px">接下来三件事，做完这个窝就活了</div>
+          <div class="guide"><div class="no ok">✓</div><div><div class="gt">填在一起的日子</div><div class="gp">已完成 · 剩下所有数字都由它算出来</div></div></div>
+          <div class="guide" style="border:1.5px solid var(--brand)"><div class="no">2</div><div><div class="gt">回答今天的第一题</div><div class="gp">「今天最想跟我吐槽的事是什么？」<br>你俩分开写，写完才能互相看</div></div></div>
+          <div class="guide"><div class="no">3</div><div><div class="gt">写下第一件想一起做的事</div><div class="gp">不用多，一件就够 —— 清单是从 1 开始长的</div></div></div>
+          <div class="c" style="background:#F5F1EB;box-shadow:none;margin-top:12px">
+            <div class="note" style="background:transparent;padding:0;text-align:center">编年史现在是空的。<br><b>从今晚开始，它每天会长一条。</b></div>
+          </div>
+        </div>
+        <div class="tab">
+          <div class="t on"><svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7v9a1 1 0 01-1 1h-4v-6H9v6H5a1 1 0 01-1-1z"/></svg>今日</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h10"/></svg>编年史</div>
+          <div class="t"><svg viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 10-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>想去·去过</div>
+          <div class="t"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.2-1.5 3.5-1.5 3.5 1.5 3.5 1.5"/></svg>情绪</div>
+        </div>
+      </div></div>
+      <div class="cap"><b>⑬ 第一天 · 空状态</b> — 最容易被忘、最容易流失的一屏<br>刚配对时什么都没有，必须给三件事做</div>
+    </div>
+  </div>
+
+  <!-- 第二批设计说明 -->
+  <div class="sec" style="background:#EFE8DE;border-radius:18px;padding:18px 20px 20px">
+    <h3 style="font-size:15px;margin-bottom:3px;display:flex;align-items:center;gap:8px"><em style="font-style:normal;font-size:11px;background:var(--brand);color:#fff;width:19px;height:19px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center">E</em> 为什么第二批画这 6 屏，以及两个新功能值不值</h3>
+    <div class="s" style="font-size:12px;color:var(--ink2);margin-bottom:14px;line-height:1.65">第一批解决"打开看到什么"，但一个产品成不成，取决于最难设计的那几个瞬间。⑧⑨ 是三个关键时刻，⑬ 是最容易被忽略的流失点，⑪⑫ 是我建议新增的。</div>
+    <div style="display:flex;gap:10px">
+      <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+        <div class="lbl" style="margin-bottom:6px">⑧⑩ 三个"那一下"</div>
+        <div class="s" style="font-size:11.5px;line-height:1.8">
+          <b>⑧ 提交答案</b>：决定她会不会写真话。「当天可改、隔天定格」比"随时能改"更诚实 —— 编年史要的是当时的想法，不是改漂亮的版本。<br>
+          <b>⑨ 读到对方的感受</b>：全产品情绪浓度最高的一秒。这一屏不要放任何别的按钮，只放「我们和好了」。<br>
+          <b>⑩ 拍照点亮</b>：没有照片的愿望清单就是待办清单。强制一张、且不进相册，是它和"清单 App"的分界。
+        </div>
+      </div>
+      <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+        <div class="lbl" style="margin-bottom:6px">⑪ 时间胶囊 · 建议加</div>
+        <div class="s" style="font-size:11.5px;line-height:1.8">
+          <b>值不值：值。</b>它把你们已经写下的话，交给未来的自己拆封 —— 三年后打开一封"当时我不敢说的那句"，比任何功能都重。<br>
+          <b>成本约 1 天</b>：解封判定和「双盲解锁」是同一套云函数，只是把条件从"对方也答完"换成"日期到了"。数据多一张 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">capsules{pairId, to, unlockAt, text, sealed}</code>。<br>
+          <b>关键约束</b>：未到期时接口不返回正文。前端做遮罩只是装饰，真锁必须在服务端。
+        </div>
+      </div>
+      <div class="c" style="flex:1;background:#fff;border-radius:12px;padding:12px">
+        <div class="lbl" style="margin-bottom:6px">⑫ 要记得的事 · 建议加</div>
+        <div class="s" style="font-size:11.5px;line-height:1.8">
+          <b>值不值：这是"实用"那一侧最重的功能。</b>在一起两年以后，真正会出事的不是忘了说爱你，是忘了她妈生日。<br>
+          <b>两个细节</b>：① 每条可记"去年送了什么"，防止连送三年同款；② 生日只存出生日期，倒计时由 <code style="background:#F5F1EB;padding:1px 4px;border-radius:4px">nextOccur()</code> 按年滚动 —— 依然不写死，"过 58 岁"也是算出来的。<br>
+          <b>成本约 1 天</b>，纯 CRUD + 一个派生函数。
+        </div>
+      </div>
+    </div>
+    <div style="height:11px"></div>
+    <div class="c" style="background:#2C2822;border-radius:12px;padding:13px 15px">
+      <div style="font-size:12.5px;font-weight:700;color:#fff;margin-bottom:8px">⑬ 空状态为什么单独占一屏</div>
+      <div style="font-size:11.8px;line-height:1.8;color:#D8CFC2">
+        你们大概率会在某个晚上配对成功，然后打开 —— 里面<b style="color:#fff">什么都没有</b>：0 条答案、0 件愿望、0 个地方。如果这时候界面是一片空白加一个"暂无数据"，这个窝当晚就凉了。<br>
+        所以第一屏必须是<b style="color:#E8B33C">三件具体的事</b>，而且第二件要当场就能做完（回答今天这题）。做完了，编年史就有了第一条，产品从此开始自己长。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="derive.js"></script>
+<script>
+(function(){
+  function p2(n){ return n < 10 ? '0' + n : '' + n }
+  var ANNIV = '2024-03-26';                     /* 演示值；真机 = pairs.anniversary */
+  var D = derive(ANNIV);
+  var T = new Date();
+  var E = derive(T.getFullYear()+'-'+p2(T.getMonth()+1)+'-'+p2(T.getDate()));  /* ⑬ 空状态：当作今天开始 */
+
+  var map  = { days:D.days, headNo:D.headNo, spanText:D.spanText, anniversaryLabel:D.anniversaryLabel,
+               todayLabel:D.todayLabel, nextDate:D.next.label, nextDays:D.next.daysUntil,
+               nextDaysText:'还有 '+D.next.daysUntil+' 天', nextWhich:D.next.which };
+  var map0 = { days:E.days, headNo:E.headNo, todayLabel:E.todayLabel };
+
+  function bind(attr, m){
+    var els = document.querySelectorAll('['+attr+']');
+    for (var i=0;i<els.length;i++){
+      var v = m[els[i].getAttribute(attr)];
+      if (v !== undefined) els[i].textContent = v;
+    }
+  }
+  bind('data-d', map);
+  bind('data-d0', map0);
+
+  /* ⑫ 倒计时全部现场算，一个数字都不写死 */
+  var ev = {
+    mama:   nextOccur('1968-11-06'),
+    papa:   nextOccur('1966-04-18'),
+    myMama: nextOccur('1962-09-12'),
+    card:   nextMonthly(14)
+  };
+  function set(sel, val){
+    var n = document.querySelectorAll('[data-e="'+sel+'"]');
+    for (var i=0;i<n.length;i++) n[i].textContent = val;
+  }
+  set('mama', ev.mama.daysUntil); set('mamaT', ev.mama.text);
+  set('papaT', ev.papa.text); set('myMamaT', ev.myMama.text);
+  set('cardT', ev.card.text);
+  set('cardD', ev.card.label);
+})();
+</script>
+</body>
+</html>

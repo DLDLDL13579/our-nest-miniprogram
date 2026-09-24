@@ -1,0 +1,125 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">翻记事本…</view>
+  <view wx:elif="{{noPair}}" class="empty">还没有小窝</view>
+
+  <block wx:else>
+    <!-- 顶部：有几件快到的事 -->
+    <view class="hero {{urgent ? 'hot' : ''}}">
+      <view class="hero-l">
+        <view class="hero-lbl">要记得的事</view>
+        <view class="hero-num" wx:if="{{urgent}}">
+          <text class="hn">{{urgent}}</text><text class="hn-u">件快到日子了</text>
+        </view>
+        <view class="hero-num" wx:else>
+          <text class="hn-ok">暂时没有要紧的</text>
+        </view>
+      </view>
+      <view class="hero-r" wx:if="{{total}}">共 {{total}} 条</view>
+    </view>
+
+    <view wx:if="{{!adding}}" class="btn main addbtn" bindtap="startAdd">＋ 加一件要记得的事</view>
+
+    <!-- 新增表单 -->
+    <view wx:if="{{adding}}" class="card hl">
+      <view class="lbl">什么事</view>
+      <input class="tin" value="{{f.title}}" maxlength="30" placeholder="比如：倩萍妈妈生日"
+             placeholder-class="ph" bindinput="onTitle" />
+
+      <view class="lbl" style="margin-top:24rpx">日期</view>
+      <picker mode="date" value="{{f.date}}" bindchange="onDate">
+        <view class="datebox">
+          <text class="dv">{{f.date || '点我选日期'}}</text>
+          <text class="xs">📅 ▾</text>
+        </view>
+      </picker>
+
+      <view class="lbl" style="margin-top:24rpx">怎么重复</view>
+      <view class="chiprow">
+        <view wx:for="{{repeats}}" wx:key="v" class="pill {{f.repeat===item.v?'':'ghost'}}"
+              data-v="{{item.v}}" bindtap="pickRepeat">{{item.t}}</view>
+      </view>
+
+      <view class="lbl" style="margin-top:24rpx">提前多久提醒</view>
+      <view class="chiprow">
+        <view wx:for="{{leads}}" wx:key="v" class="pill {{f.leadDays===item.v?'':'ghost'}}"
+              data-v="{{item.v}}" bindtap="pickLead">{{item.t}}</view>
+      </view>
+      <view class="hint">生日这类建议「提前两周」—— 当天才提醒就来不及买礼物了</view>
+
+      <view class="lbl" style="margin-top:24rpx">哪一边</view>
+      <view class="chiprow">
+        <view wx:for="{{whos}}" wx:key="*this" class="pill {{f.who===item?'':'ghost'}}"
+              data-v="{{item}}" bindtap="pickWho">{{item}}</view>
+      </view>
+
+      <view class="lbl" style="margin-top:24rpx">去年送了什么（可以不写）</view>
+      <input class="tin" value="{{f.lastGift}}" maxlength="120" placeholder="防止连送三年同款"
+             placeholder-class="ph" bindinput="onGift" />
+
+      <view class="btnrow">
+        <view class="btn" style="flex:1" bindtap="cancelAdd">算了</view>
+        <view class="btn main" style="flex:2" bindtap="save">记下</view>
+      </view>
+    </view>
+
+    <!-- 列表 -->
+    <block wx:if="{{list.length && !adding}}">
+      <view wx:for="{{list}}" wx:key="id" class="item {{item.inWindow && !item.overdue ? 'urgent' : ''}} {{item.overdue ? 'past' : ''}}">
+        <view class="it-main">
+          <view class="it-top">
+            <text class="it-title">{{item.title}}</text>
+            <text wx:if="{{item.who}}" class="it-who">{{item.who}}</text>
+          </view>
+          <view class="it-sub">
+            <text>{{item.date}}</text>
+            <text wx:if="{{item.repeat==='yearly'}}"> · 每年</text>
+            <text wx:elif="{{item.repeat==='monthly'}}"> · 每月</text>
+            <text wx:else> · 只一次</text>
+            <text wx:if="{{item.turning}}"> · 过 {{item.turning}} 岁</text>
+          </view>
+
+          <!-- 去年送了什么：直接显示，防重复送礼 -->
+          <view wx:if="{{item.lastGift && editing !== item.id}}" class="it-gift">
+            上次送：{{item.lastGift}}
+          </view>
+          <view wx:if="{{editing === item.id}}" class="gift-edit">
+            <input class="tin sm" value="{{giftText}}" maxlength="120" focus="{{true}}"
+                   placeholder="上次送了什么" placeholder-class="ph" bindinput="onGiftInput" />
+            <view class="btnrow" style="margin-top:14rpx">
+              <view class="btn sm" style="flex:1" bindtap="cancelGift">取消</view>
+              <view class="btn main sm" style="flex:2" bindtap="saveGift">存下</view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 右侧倒计时：进窗口换一种说法 -->
+        <view class="it-cd">
+          <view wx:if="{{item.overdue}}" class="cd-past">已过</view>
+          <block wx:elif="{{item.inWindow}}">
+            <view class="cd-hot">{{item.daysUntil === 0 ? '就是今天' : item.daysUntil + ' 天'}}</view>
+            <view class="cd-tip">该准备了</view>
+          </block>
+          <block wx:else>
+            <view class="cd-num">{{item.daysUntil}}</view>
+            <view class="cd-unit">天后</view>
+          </block>
+        </view>
+
+        <view class="it-act">
+          <text wx:if="{{!editing}}" class="ia" data-id="{{item.id}}" catchtap="startGift">记礼物</text>
+          <text class="ia del" data-id="{{item.id}}" catchtap="remove">删</text>
+        </view>
+      </view>
+    </block>
+
+    <view wx:if="{{!list.length && !adding}}" class="gentle">
+      <view class="gentle-icon">🗓️</view>
+      <view class="gentle-t">还没有记下什么</view>
+      <view class="gentle-s">
+        她妈生日、我爸生日、还款日、下次体检……
+        <view style="height:6rpx"></view>
+        提前记下来，到日子它会提醒你。
+      </view>
+    </view>
+  </block>
+</view>

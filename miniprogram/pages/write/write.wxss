@@ -1,0 +1,57 @@
+.write-page { padding-bottom: 80rpx }
+
+/* 心情选择 */
+.moodrow { display: flex; gap: 12rpx; margin-bottom: 26rpx }
+.mood {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 20rpx 4rpx; border-radius: 22rpx;
+  background: var(--card); border: 3rpx solid transparent;
+  transition: all .18s;
+}
+.mood.on { border-color: var(--brand); background: #FFF4EE; transform: translateY(-4rpx) }
+.me { font-size: 40rpx; line-height: 1.2 }
+.mt { font-size: 19rpx; color: var(--ink3); margin-top: 8rpx }
+.mood.on .mt { color: var(--brand2); font-weight: 600 }
+
+/* 纸张感输入区 */
+.paper {
+  background: var(--card); border-radius: 30rpx;
+  padding: 30rpx 30rpx 16rpx; margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(70,55,40,.06);
+}
+.ptext { width: 100%; height: 380rpx; font-size: 30rpx; line-height: 1.85; color: var(--ink) }
+.pph { color: #C4B8AB; font-size: 28rpx }
+.pfoot { display: flex; justify-content: flex-end; padding-bottom: 12rpx }
+.pcount { font-size: 21rpx; color: var(--ink3) }
+
+/* 照片 */
+.photorow { display: flex; gap: 16rpx; margin-bottom: 24rpx }
+/* 统一 160x160 方图 + aspectFill 裁切：上传前看不出尺寸差异，看起来整齐 */
+.pitem { position: relative; width: 160rpx; height: 160rpx }
+.pimg { width: 100%; height: 100%; border-radius: 20rpx; background: #EFE8DE }
+.pdel {
+  position: absolute; top: -10rpx; right: -10rpx;
+  width: 40rpx; height: 40rpx; border-radius: 50%;
+  background: rgba(44,40,34,.78); color: #fff;
+  font-size: 26rpx; line-height: 40rpx; text-align: center;
+}
+.padd {
+  width: 160rpx; height: 160rpx; border-radius: 20rpx;
+  border: 3rpx dashed #DFD2C2; background: #FDFBF8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.padd-i { font-size: 44rpx; color: #C4B8AB; line-height: 1 }
+.padd-t { font-size: 20rpx; color: var(--ink3); margin-top: 8rpx }
+
+/* 引子 */
+.spark {
+  display: flex; align-items: center; gap: 14rpx;
+  padding: 24rpx 28rpx; border-radius: 26rpx;
+  background: #F5F1EB; margin-bottom: 30rpx;
+}
+.spark-i { font-size: 30rpx }
+.spark-t { flex: 1; font-size: 24rpx; color: var(--ink2); line-height: 1.6 }
+.spark-r { font-size: 21rpx; color: var(--brand2) }
+
+.savebtn { height: 96rpx; font-size: 32rpx; margin-bottom: 20rpx }
+.hint { text-align: center; font-size: 22rpx; color: var(--ink3); line-height: 1.7 }

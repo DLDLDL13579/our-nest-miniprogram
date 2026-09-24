@@ -1,0 +1,58 @@
+<view class="page" style="padding-top:60rpx">
+  <view style="text-align:center;margin-bottom:40rpx">
+    <view style="font-size:88rpx;line-height:1.2">🏠</view>
+    <view style="font-size:40rpx;font-weight:700;margin-top:12rpx">我们的小窝</view>
+    <view class="xs" style="margin-top:8rpx">只属于我们两个人的地方</view>
+  </view>
+
+  <!-- 已配对：两人到齐了 -->
+  <block wx:if="{{pair.paired}}">
+    <view class="card" style="text-align:center">
+      <view class="lbl" style="justify-content:center">已经和小窝连上了</view>
+      <view class="q">{{pair.coupleName || (pair.myName + ' & ' + pair.partnerName)}}</view>
+      <view class="xs" style="margin-top:10rpx">配对日 {{pair.pairedAt}}</view>
+      <view class="btn main" style="margin-top:28rpx" bindtap="goHome">进去看看</view>
+    </view>
+  </block>
+
+  <block wx:else>
+    <!-- 我生成码：这是我这一侧的状态，要讲清楚"还没连上" -->
+    <view wx:if="{{pair}}" class="waiting">
+      <text class="wt-dot"></text>
+      <text class="wt-t">小窝已经建好了，还在等倩萍输这个码</text>
+    </view>
+    <view class="card">
+      <view class="lbl">我的邀请码 · 给倩萍输一次就好</view>
+      <view wx:if="{{code}}" class="codebox" bindtap="copyCode">
+        <text wx:for="{{chars}}" wx:key="i" class="cl">{{item.c}}</text>
+      </view>
+      <view wx:elif="{{err}}" class="empty" style="padding:24rpx 0">
+        <view style="color:var(--brand2);font-weight:600;margin-bottom:10rpx">邀请码生成不了</view>
+        <view class="xs">{{err}}</view>
+      </view>
+      <view wx:else class="empty" style="padding:30rpx 0">正在生成…</view>
+      <view class="btn ghostb" style="margin-top:22rpx" bindtap="copyCode">复制给倩萍</view>
+      <view class="xs" style="text-align:center;margin-top:14rpx">
+        配对成功后会一起建一个小窝，所有记录只挂在这个小窝下 ——
+        这也是以后能开放给别人用的原因：数据天生按「小窝」隔离。
+      </view>
+    </view>
+
+    <!-- 我输别人的码 -->
+    <view class="card">
+      <view class="lbl">已经配对？输入倩萍的码</view>
+      <input class="jin" type="text" maxlength="6" value="{{joinCode}}" placeholder="6 位字母数字"
+             placeholder-class="ph" bindinput="onInput" confirm-type="done" bindconfirm="doJoin" />
+      <view class="btn main" style="margin-top:20rpx;{{joining?'opacity:.5':''}}" bindtap="doJoin">
+        {{joining ? '连过去…' : '进入我们的小窝'}}
+      </view>
+      <view class="xs" style="text-align:center;margin-top:16rpx">不需要手机号登录、不需要通讯录、不需要密码</view>
+    </view>
+
+    <view wx:if="{{!loading}}" class="xs" style="text-align:center;margin-top:8rpx" bindtap="regen">
+      码不对？重新生成一个
+    </view>
+  </block>
+
+  <view class="xs" style="text-align:center;margin-top:40rpx;opacity:.7">数据只存你们两个人的 · 不上公开广场</view>
+</view>

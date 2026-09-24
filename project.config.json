@@ -1,0 +1,65 @@
+{
+  "miniprogramRoot": "miniprogram/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "compileType": "miniprogram",
+  "appid": "wx657601ccf8fd6e12",
+  "projectname": "women-de-xiao-wo",
+  "libVersion": "3.5.5",
+  "description": "我们的小窝 · 只属于两个人的地方",
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "file",
+        "value": "prototype"
+      },
+      {
+        "type": "glob",
+        "value": "**/*.md"
+      },
+      {
+        "type": "folder",
+        "value": "outputs"
+      }
+    ]
+  },
+  "setting": {
+    "urlCheck": true,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "coverView": true,
+    "nodeModules": false,
+    "autoAudits": false,
+    "showShadowRootInWxmlPanel": true,
+    "scopeDataCheck": false,
+    "checkInvalidKey": true,
+    "checkSiteMap": true,
+    "uploadWithSourceMap": true,
+    "useCompilerModule": true,
+    "packNpmManually": false,
+    "packNpmRelationList": []
+  },
+  "condition": {
+    "miniprogram": {
+      "list": [
+        {
+          "name": "配对页",
+          "pathName": "pages/pair/pair",
+          "query": ""
+        },
+        {
+          "name": "今日",
+          "pathName": "pages/index/index",
+          "query": ""
+        },
+        {
+          "name": "答题",
+          "pathName": "pages/answer/answer",
+          "query": ""
+        }
+      ]
+    }
+  }
+}

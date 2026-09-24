@@ -1,0 +1,132 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">打开信箱…</view>
+
+  <view wx:elif="{{noPair}}" class="empty">还没有小窝</view>
+
+  <block wx:else>
+    <!-- 顶部：信箱概览 -->
+    <view class="hero">
+      <view class="hero-glow"></view>
+      <view class="hero-in">
+        <view class="hero-lbl">写给未来的信</view>
+        <view class="hero-row">
+          <view class="hero-num">
+            <text class="hn-big">{{locked}}</text>
+            <text class="hn-unit">封封存中</text>
+          </view>
+          <view class="hero-num" wx:if="{{ready}}">
+            <text class="hn-big ready">{{ready}}</text>
+            <text class="hn-unit">封可拆</text>
+          </view>
+        </view>
+        <view class="hero-tip">没到日子的信，连你自己也打不开</view>
+      </view>
+    </view>
+
+    <view wx:if="{{!writing}}" class="btn main writebtn" bindtap="startWrite">✉️ 写一封给未来</view>
+
+    <!-- 写信面板 -->
+    <view wx:if="{{writing}}" class="card hl">
+      <view class="lbl">写给哪一天</view>
+      <picker mode="date" value="{{unlockAt}}" bindchange="onDate">
+        <view class="datebox">
+          <text class="dv">{{unlockAt || '点我选日期'}}</text>
+          <text class="xs">📅 改 ▾</text>
+        </view>
+      </picker>
+      <view class="quick">
+        <view wx:for="{{picks}}" wx:key="value"
+              class="pill {{unlockAt===item.value?'':'ghost'}}"
+              data-v="{{item.value}}" bindtap="pickQuick">{{item.label}}</view>
+      </view>
+
+      <view class="lbl" style="margin-top:26rpx">标题（可以不写）</view>
+      <input class="tin" value="{{title}}" maxlength="40" placeholder="写给三年后的我们"
+             placeholder-class="ph" bindinput="onTitle" />
+
+      <view class="lbl" style="margin-top:26rpx">正文</view>
+      <textarea class="ta" value="{{text}}" maxlength="2000"
+                placeholder="想对未来的你们说什么…" placeholder-class="ph" bindinput="onText" />
+
+      <view class="photorow">
+        <view wx:for="{{thumbs}}" wx:key="*this" class="pitem">
+          <image src="{{item}}" mode="aspectFill" class="pimg"
+                 data-src="{{photos[index]}}" bindtap="previewPhoto" />
+        </view>
+        <view wx:if="{{photos.length < 3}}" class="padd" bindtap="addPhoto">
+          <text class="padd-i">＋</text><text class="padd-t">照片</text>
+        </view>
+      </view>
+
+      <view class="locknote">🔒 封存之后，在 {{unlockAt}} 之前谁都看不到这些字 —— 包括你自己</view>
+      <view class="btnrow">
+        <view class="btn" style="flex:1" bindtap="cancelWrite">算了</view>
+        <view class="btn main" style="flex:2" bindtap="save">{{saving ? '封存中…' : '封存它'}}</view>
+      </view>
+    </view>
+
+    <!-- 列表 -->
+    <view wx:if="{{list.length && !writing}}" class="sechead"><text>信箱</text></view>
+
+    <block wx:if="{{!writing}}">
+      <view wx:for="{{list}}" wx:key="id" class="letter {{item.unlocked ? 'open' : 'sealed'}}"
+            data-id="{{item.id}}" bindtap="open">
+        <view class="lt-top">
+          <text class="lt-title">{{item.title}}</text>
+          <text class="lt-who">{{item.byName}}</text>
+        </view>
+
+        <!-- 未到期：显示封条，正文一个字都不给 -->
+        <view wx:if="{{!item.unlocked}}" class="seal">
+          <view class="seal-stamp">封</view>
+          <view class="seal-info">
+            <view class="seal-days">还有 {{item.daysLeft}} 天</view>
+            <view class="seal-sub">写于 {{item.createdAt}} · 共 {{item.textLength}} 字</view>
+          </view>
+        </view>
+
+        <!-- 已到期：给一句开头，点开看全文 -->
+        <view wx:else class="opened">
+          <view class="opened-tag">{{item.opened ? '已拆开' : '可以拆了'}}</view>
+          <view class="opened-preview">{{item.text}}</view>
+        </view>
+
+        <view wx:if="{{!item.unlocked && item.mine}}" class="lt-del" data-id="{{item.id}}" catchtap="remove">删掉</view>
+      </view>
+    </block>
+
+    <!-- 空态 -->
+    <view wx:if="{{!list.length && !writing}}" class="gentle">
+      <view class="gentle-icon">📮</view>
+      <view class="gentle-t">信箱还是空的</view>
+      <view class="gentle-s">
+        写给一年后的自己，或者三年后的你们。
+        <view style="height:6rpx"></view>
+        时间会替你保管它。
+      </view>
+    </view>
+
+    <!-- 读信弹层 -->
+    <view wx:if="{{reading}}" class="mask" bindtap="closeReading">
+      <view class="sheet" catchtap="">
+        <view class="sheet-hd">
+          <text class="sheet-title">{{reading.title}}</text>
+          <text class="sheet-close" bindtap="closeReading">✕</text>
+        </view>
+        <view class="sheet-at">写于 {{reading.at}}</view>
+        <scroll-view scroll-y class="sheet-body">
+          <view class="sheet-text">{{reading.text}}</view>
+          <view wx:if="{{reading.photos.length}}" class="sheet-photos">
+            <image wx:for="{{reading.photos}}" wx:key="*this" src="{{item}}"
+                   mode="widthFix" class="sheet-photo" data-src="{{item}}" bindtap="previewPhoto" />
+          </view>
+        </scroll-view>
+        <view class="reply">
+          <input class="tin" value="{{replyText}}" maxlength="2000"
+                 placeholder="给写这封信的人回一句…" placeholder-class="ph" bindinput="onReply" />
+          <view class="btn main" style="margin-top:16rpx" bindtap="sendReply">寄回去</view>
+        </view>
+      </view>
+    </view>
+  </block>
+</view>

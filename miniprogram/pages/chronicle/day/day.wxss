@@ -1,0 +1,7 @@
+/* 一天里的照片：和首页 / 编年史列表保持同样的九宫格观感 */
+.photos { display: flex; flex-wrap: wrap; gap: 12rpx; margin-top: 12rpx }
+.photo {
+  width: 180rpx; height: 180rpx; border-radius: 18rpx;
+  background: #EFE7DD;
+}
+.photos .photo:only-child { width: 320rpx; height: 320rpx }

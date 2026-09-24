@@ -1,0 +1,5 @@
+<view class="page">
+  <view class="card flat stub">
+    <view class="note">「情绪 · 冷静期」在 v2 实现。它必须存 deadline 而不是用定时器 —— 小程序一进后台定时器就死了。</view>
+  </view>
+</view>

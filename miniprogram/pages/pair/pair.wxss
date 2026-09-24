@@ -1,0 +1,28 @@
+.codebox { display: flex; justify-content: space-between; gap: 10rpx; margin: 8rpx 0 4rpx }
+.cl {
+  flex: 1; height: 96rpx; border-radius: 18rpx; background: #FDFBF8;
+  border: 2rpx solid var(--line);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; font-weight: 700; color: var(--brand2);
+}
+.jin {
+  height: 88rpx; border: 2rpx solid var(--line); border-radius: 20rpx;
+  background: #FDFBF8; padding: 0 24rpx; font-size: 32rpx;
+  letter-spacing: 8rpx; text-align: center; color: var(--ink);
+}
+.ph { color: var(--ink3); letter-spacing: 0; font-size: 27rpx }
+
+/* 等待对方输码的状态条 —— 必须和"已配对"长得完全不一样 */
+.waiting {
+  display: flex; align-items: center; gap: 14rpx;
+  padding: 22rpx 26rpx; margin-bottom: 22rpx;
+  background: #FFF6E4; border-radius: 22rpx;
+  border: 2rpx solid #F0D9AE;
+}
+.wt-dot {
+  width: 16rpx; height: 16rpx; border-radius: 50%;
+  background: var(--gold); flex: none;
+  animation: wtpulse 1.5s infinite;
+}
+.wt-t { font-size: 23rpx; color: #8A6A22; line-height: 1.5 }
+@keyframes wtpulse { 0%,100%{opacity:1} 50%{opacity:.35} }

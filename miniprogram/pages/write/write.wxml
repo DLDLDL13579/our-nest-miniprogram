@@ -1,0 +1,47 @@
+<view class="page write-page">
+  <!-- 心情：一排表情，点一下就好，不用打字 -->
+  <view class="moodrow">
+    <view wx:for="{{moods}}" wx:key="k"
+          class="mood {{mood===item.k?'on':''}}"
+          data-k="{{item.k}}" bindtap="pickMood">
+      <text class="me">{{item.e}}</text>
+      <text class="mt">{{item.t}}</text>
+    </view>
+  </view>
+
+  <!-- 正文 -->
+  <view class="paper">
+    <textarea class="ptext" value="{{text}}" maxlength="500"
+              placeholder="想到什么写什么…" placeholder-class="pph"
+              bindinput="onInput" auto-height="{{false}}" focus="{{true}}" />
+    <view class="pfoot">
+      <text class="pcount">{{500 - left}}</text>
+    </view>
+  </view>
+
+  <!-- 照片 -->
+  <view class="photorow">
+    <view wx:for="{{photos}}" wx:key="*this" class="pitem">
+      <image src="{{item}}" mode="aspectFill" class="pimg"
+             data-src="{{item}}" bindtap="previewPhoto" />
+      <view class="pdel" data-i="{{index}}" catchtap="delPhoto">×</view>
+    </view>
+    <view wx:if="{{photos.length < 3}}" class="padd" bindtap="addPhoto">
+      <text class="padd-i">{{uploading ? '⋯' : '＋'}}</text>
+      <text class="padd-t">{{uploading ? '上传中' : '照片'}}</text>
+    </view>
+  </view>
+
+  <!-- 引子：没头绪时看一眼，点一下换一条 -->
+  <view wx:if="{{!text}}" class="spark" bindtap="nextSpark">
+    <text class="spark-i">💡</text>
+    <text class="spark-t">{{spark}}</text>
+    <text class="spark-r">换一个</text>
+  </view>
+
+  <!-- 保存 -->
+  <view class="btn main savebtn" bindtap="save">{{saving ? '记下来…' : '记下来'}}</view>
+  <view class="hint">
+    {{solo ? '她还没进来，你先记着 —— 等她加入就能看到' : '记完她打开就能看到。不用等她写什么。'}}
+  </view>
+</view>

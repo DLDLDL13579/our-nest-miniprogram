@@ -1,0 +1,21 @@
+# ---------- 依赖 ----------
+# 调试工具（miniprogram-automator）的依赖，27MB，可 npm install 复原。
+# package-lock.json 要留着，锁住版本才能复现同一套工具链。
+.tooling/node_modules/
+node_modules/
+
+# ---------- 系统 / 编辑器 ----------
+.DS_Store
+**/.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# ---------- 云函数本地依赖（云端用 --remote-npm-install 装）----------
+cloudfunctions/*/node_modules/
+
+# ---------- 临时产物 ----------
+*.log
+*.bak
+*.bak_*
+/tmp/

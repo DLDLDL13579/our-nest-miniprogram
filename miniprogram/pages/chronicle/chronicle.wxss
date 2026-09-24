@@ -1,0 +1,31 @@
+.mile { display: flex; align-items: flex-end; margin-top: 8rpx }
+.m { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx }
+.m .dot { width: 16rpx; height: 16rpx; border-radius: 50%; background: var(--line) }
+.m .lb { font-size: 19rpx; color: var(--ink3) }
+.m.done .dot { background: var(--gold) }
+.m.done .lb { color: var(--ink2) }
+.m.now .dot { background: var(--brand); box-shadow: 0 0 0 6rpx var(--brandsoft) }
+.m.now .lb { color: var(--brand2); font-weight: 700 }
+
+/* 按天分组的分隔线 */
+.dayblock { margin-bottom: 8rpx }
+.dayhead { display: flex; align-items: center; gap: 18rpx; margin: 30rpx 6rpx 20rpx }
+.dhline { flex: 1; height: 2rpx; background: linear-gradient(90deg, transparent, var(--line), transparent) }
+.dhtxt { font-size: 23rpx; color: var(--ink3); letter-spacing: 2rpx; flex: none }
+
+/* 记录卡：她的靠左蓝调、我的靠右暖调，一眼看出是谁说的 */
+.mcard {
+  background: var(--card); border-radius: 28rpx;
+  padding: 26rpx 28rpx; margin-bottom: 18rpx;
+  box-shadow: 0 3rpx 10rpx rgba(70,55,40,.05);
+  border-left: 6rpx solid var(--brand);
+}
+.mcard.fromta { border-left-color: var(--blue) }
+.mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx }
+.mc-who { font-size: 24rpx; font-weight: 700; color: var(--brand2) }
+.mc-who.ta { color: var(--blue) }
+.mc-time { font-size: 21rpx; color: var(--ink3) }
+.mc-text { font-size: 28rpx; line-height: 1.75; color: var(--ink) }
+.mc-photos { display: flex; gap: 10rpx; margin-top: 16rpx }
+.mc-photo { flex: 1; min-width: 0; height: 220rpx; border-radius: 18rpx; background: #EFE8DE }
+.mc-photos.single .mc-photo { height: 340rpx }

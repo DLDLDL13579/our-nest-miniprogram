@@ -1,0 +1,57 @@
+.hero { display: flex; align-items: center; justify-content: space-between;
+  padding: 32rpx 34rpx; border-radius: 32rpx; margin-bottom: 24rpx;
+  background: linear-gradient(135deg, #F3F0EA, #E9E3D8); }
+.hero.hot { background: linear-gradient(135deg, #FFE9D6, #FBD3B4) }
+.hero-lbl { font-size: 22rpx; color: var(--ink2); letter-spacing: 2rpx }
+.hero-num { display: flex; align-items: baseline; gap: 10rpx; margin-top: 8rpx }
+.hn { font-size: 64rpx; font-weight: 700; color: #C4573A; line-height: 1 }
+.hn-u { font-size: 24rpx; color: #A86446 }
+.hn-ok { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 6rpx }
+.hero-r { font-size: 21rpx; color: var(--ink3) }
+
+.addbtn { height: 92rpx; font-size: 30rpx; margin-bottom: 24rpx }
+
+.datebox { display: flex; align-items: center; justify-content: space-between;
+  height: 84rpx; padding: 0 22rpx; background: #FDFBF8;
+  border: 2rpx solid var(--line); border-radius: 20rpx }
+.dv { font-size: 32rpx; font-weight: 700; color: var(--brand2) }
+.tin { height: 84rpx; border: 2rpx solid var(--line); border-radius: 20rpx;
+  background: #FDFBF8; padding: 0 22rpx; font-size: 27rpx }
+.tin.sm { height: 72rpx; font-size: 25rpx }
+.ph { color: var(--ink3); font-size: 26rpx }
+.hint { font-size: 21rpx; color: var(--ink3); margin-top: 14rpx; line-height: 1.6 }
+.btnrow { display: flex; gap: 16rpx; margin-top: 26rpx }
+.btn.sm { height: 72rpx; font-size: 26rpx }
+
+.item { position: relative; background: var(--card); border-radius: 28rpx;
+  padding: 26rpx 28rpx 52rpx; margin-bottom: 18rpx;
+  box-shadow: 0 3rpx 10rpx rgba(70,55,40,.05);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 20rpx }
+.item.urgent { border: 3rpx solid #F0B27A; background: #FFFCF7 }
+.item.past { opacity: .55 }
+.it-main { flex: 1; min-width: 0 }
+.it-top { display: flex; align-items: center; gap: 14rpx }
+.it-title { font-size: 29rpx; font-weight: 600 }
+.it-who { font-size: 19rpx; color: var(--ink3); background: #F2ECE4;
+  padding: 3rpx 12rpx; border-radius: 999rpx }
+.it-sub { font-size: 21rpx; color: var(--ink3); margin-top: 8rpx }
+.it-gift { margin-top: 12rpx; font-size: 22rpx; color: #8A6A22;
+  background: #FBF3E2; padding: 10rpx 16rpx; border-radius: 14rpx; display: inline-block }
+.gift-edit { margin-top: 14rpx }
+
+.it-cd { flex: none; text-align: center; min-width: 96rpx }
+.cd-num { font-size: 44rpx; font-weight: 700; color: var(--ink2); line-height: 1 }
+.cd-unit { font-size: 19rpx; color: var(--ink3); margin-top: 4rpx }
+.cd-hot { font-size: 30rpx; font-weight: 700; color: #C4573A; line-height: 1.2 }
+.cd-tip { font-size: 19rpx; color: #C4573A; margin-top: 4rpx }
+.cd-past { font-size: 24rpx; color: var(--ink3) }
+
+.it-act { position: absolute; right: 26rpx; bottom: 16rpx;
+  display: flex; gap: 26rpx }
+.ia { font-size: 21rpx; color: var(--brand2) }
+.ia.del { color: var(--ink3) }
+
+.gentle { text-align: center; padding: 70rpx 50rpx }
+.gentle-icon { font-size: 76rpx; line-height: 1.4 }
+.gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
+.gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }

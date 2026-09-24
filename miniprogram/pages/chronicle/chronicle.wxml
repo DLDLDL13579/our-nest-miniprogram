@@ -1,0 +1,99 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">翻开编年史…</view>
+
+  <view wx:elif="{{noPair}}" class="empty">
+    <view style="margin-bottom:24rpx">还没有小窝</view>
+    <view class="btn main" style="max-width:300rpx;margin:0 auto" bindtap="goPair">去看看</view>
+  </view>
+
+  <block wx:else>
+    <!-- 顶部：天数 + 攒了多少 -->
+    <view wx:if="{{D}}" class="card" style="background:linear-gradient(135deg,#FFF6E4,#FBE7C4);border:0">
+      <view style="display:flex;align-items:flex-end;justify-content:space-between">
+        <view>
+          <view class="lbl" style="color:#8A6A22;margin-bottom:4rpx">我们已经在一起</view>
+          <view style="font-size:60rpx;font-weight:700;color:#4A3A15;line-height:1.1">
+            {{D.days}}<text style="font-size:26rpx;font-weight:400"> 天</text>
+          </view>
+          <view class="xs" style="color:#7A5F28;margin-top:6rpx">第 {{D.headNo}} 个年头 · 下次纪念日还有 {{D.next.daysUntil}} 天</view>
+        </view>
+        <view style="text-align:right">
+          <view class="xs" style="color:#8A6A22">已攒</view>
+          <view style="font-size:40rpx;font-weight:700;color:#8A6A22">{{stats.fullDays || 0}}</view>
+          <view class="xs" style="color:#8A6A22">天 · 两个人的</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 那年今日。原来这里有一行 {{onThisDay.q}}（今日一题的题干），
+         随手记没有题干、云函数恒返回空串，渲染出来就是一条空行。已去掉。 -->
+    <view wx:if="{{onThisDay}}" class="card hl">
+      <view class="lbl">📅 那年今日 · {{onThisDay.date}}</view>
+      <view class="side ta" style="margin-bottom:12rpx">
+        <view class="n"><text class="rd b"></text>{{onThisDay.partnerName}}说</view>
+        <view>{{onThisDay.partner}}</view>
+      </view>
+      <view class="side me">
+        <view class="n"><text class="rd"></text>我说</view>
+        <view>{{onThisDay.mine}}</view>
+      </view>
+    </view>
+
+    <!-- 里程碑：全部现算 -->
+    <view wx:if="{{ms.length}}" class="card">
+      <view class="lbl">🏁 里程碑 · 由在一起那天算出</view>
+      <view class="mile">
+        <view wx:for="{{ms}}" wx:key="label" class="m {{item.done?'done':(item.isNext?'now':'')}}">
+          <view class="dot"></view>
+          <view class="lb">{{item.label}}</view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 筛选 -->
+    <view class="chiprow" style="margin:8rpx 0 20rpx">
+      <view class="pill {{filter==='all'?'':'ghost'}}" data-f="all" bindtap="setFilter">全部</view>
+      <view class="pill {{filter==='me'?'':'ghost'}}" data-f="me" bindtap="setFilter">只看我</view>
+      <view class="pill {{filter==='partner'?'':'ghost'}}" data-f="partner" bindtap="setFilter">只看她</view>
+    </view>
+
+    <!-- 流水 -->
+    <block wx:if="{{list.length}}">
+      <view wx:for="{{list}}" wx:key="date" class="dayblock">
+        <!-- 点这一天进详情页。openDay 和 pages/chronicle/day/ 一直都在，
+             但列表上没有任何入口调它 —— 页面等于白写了。 -->
+        <view class="dayhead" data-date="{{item.date}}" bindtap="openDay">
+          <text class="dhline"></text>
+          <text class="dhtxt">{{item.date}} ▸</text>
+          <text class="dhline"></text>
+        </view>
+        <block wx:for="{{item.items}}" wx:for-item="it" wx:key="at">
+          <view wx:if="{{filter==='all' || it.who===filter}}"
+                class="mcard {{it.who==='partner'?'fromta':''}}">
+            <view class="mc-top">
+              <text class="mc-who {{it.who==='partner'?'ta':''}}">{{it.name}}</text>
+              <text class="mc-time">{{it.at}}</text>
+            </view>
+            <view wx:if="{{it.text}}" class="mc-text">{{it.text}}</view>
+            <view wx:if="{{it.photos.length}}" class="mc-photos {{it.photos.length === 1 ? 'single' : ''}}">
+              <image wx:for="{{it.thumbs.length ? it.thumbs : it.photos}}" wx:for-item="ph" wx:for-index="pi" wx:key="*this"
+                     src="{{ph}}" mode="aspectFill" class="mc-photo"
+                     lazy-load="{{true}}"
+                     data-src="{{it.photos[pi]}}" data-list="{{it.photos}}" catchtap="previewPhoto" />
+            </view>
+          </view>
+        </block>
+      </view>
+    </block>
+
+    <view wx:elif="{{empty}}" class="card flat" style="text-align:center;padding:60rpx 40rpx">
+      <view style="font-size:72rpx;line-height:1.4">📖</view>
+      <view class="note" style="margin-top:12rpx">
+        编年史现在是空的。
+        <view style="height:6rpx"></view>
+        <b>什么时候有话想说，记一笔就好。</b>
+      </view>
+      <view class="btn main" style="margin-top:28rpx" bindtap="goWrite">记一笔</view>
+    </view>
+  </block>
+</view>

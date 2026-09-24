@@ -1,0 +1,55 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">读取中…</view>
+
+  <block wx:else>
+    <view wx:if="{{first}}" class="card" style="text-align:center;background:linear-gradient(135deg,#E0714F,#C4573A);color:#fff">
+      <view class="lbl" style="color:rgba(255,255,255,.75);justify-content:center">小窝建好了</view>
+      <view style="font-size:36rpx;font-weight:700">先告诉我，我们从哪天开始算</view>
+    </view>
+
+    <view class="card hl">
+      <view class="lbl">✏️ 在一起的那天 · 全 App 唯一要你填的时间</view>
+      <picker mode="date" value="{{anniv}}" start="1970-01-01" end="{{today}}" bindchange="onDate">
+        <view class="datebox">
+          <text class="dv">{{anniv || '点我选日期'}}</text>
+          <text class="xs">📅 修改 ▾</text>
+        </view>
+      </picker>
+      <view class="xs" style="margin-top:14rpx">用原生 picker，不给手输框 —— 免得 2024.3.26 / 24-3-26 三种格式打架。</view>
+    </view>
+
+    <view wx:if="{{D}}" class="card">
+      <view class="lbl">↓ 它自动算出来的东西，一处都不写死</view>
+      <view class="plist">
+        <view>在一起 <text class="em">{{D.days}}</text> 天</view>
+        <view>{{D.yearsLine}} → 第 <text class="em">{{D.headNo}}</text> 个年头</view>
+        <view>下次纪念日 <text class="em">{{D.next.label}}</text> · 还有 <text class="em">{{D.next.daysUntil}}</text> 天（第 {{D.next.which}} 个周年）</view>
+        <view>下一个里程碑 <text class="em">{{nextMs}}</text></view>
+        <view>题干会自动说人话：「<text class="em">{{D.spanText}}</text>里，你最想谢谢我什么？」</view>
+        <view>「那年今日」对齐 <text class="em">{{D.lastYearLabel}}</text></view>
+      </view>
+    </view>
+
+    <view class="card flat">
+      <view class="note">改成任何一天，上面 <text style="color:var(--brand2);font-weight:700">6 处同时变</text>，不用重启、不用改代码 —— 因为页面上没有一个是常量。</view>
+    </view>
+
+    <view class="card">
+      <view class="lbl">其他</view>
+      <view class="rline">
+        <text>我的称呼</text>
+        <input class="rin" value="{{myName}}" maxlength="8" placeholder="{{pair.myName || '我'}}" bindinput="onName" />
+      </view>
+      <view class="rline">
+        <text>TA 的称呼</text>
+        <text class="rov">{{pair.partnerName || '还没配对'}}</text>
+      </view>
+      <view class="rline" bindtap="goPair">
+        <text>配对信息</text>
+        <text class="rov">查看 ▸</text>
+      </view>
+    </view>
+
+    <view class="btn main {{saving?'disabled':''}}" bindtap="save">保存</view>
+  </block>
+</view>

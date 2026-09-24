@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>我们的小窝 · 流程与数据</title>
+<style>
+:root{--ink:#2C2822;--ink2:#736A5F;--line:#E0D6C8;--brand:#E0714F;--bs:#FCEBE4;--blue:#5E7FA6;--bs2:#EDF1F6;--gold:#E8B33C;--green:#6D9E6A;--gs:#EAF0E9;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E4DCD1;font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;color:var(--ink);padding:36px 30px 50px;-webkit-font-smoothing:antialiased}
+.wrap{width:1220px;margin:0 auto}
+h1{font-size:24px;letter-spacing:-.4px}
+.lead{font-size:13px;color:var(--ink2);margin:6px 0 22px;line-height:1.7}
+.sec{background:#EFE8DE;border-radius:18px;padding:18px 20px 20px;margin-bottom:20px}
+.sec>h3{font-size:15px;margin-bottom:3px;display:flex;align-items:center;gap:8px}
+.sec>h3 em{font-style:normal;font-size:11px;background:var(--brand);color:#fff;width:19px;height:19px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.sec>.note{font-size:12px;color:var(--ink2);margin-bottom:14px;line-height:1.6}
+.card{background:var(--card);border-radius:12px;padding:11px 12px;box-shadow:0 1px 2px rgba(70,55,40,.06)}
+.t{font-size:12.5px;font-weight:600}
+.s{font-size:11px;color:var(--ink2);line-height:1.55}
+.xs{font-size:10.5px;color:#9A9083}
+.ar{color:#B7AB9B;font-size:15px;align-self:center;flex:none}
+.f{display:flex;gap:10px;align-items:stretch}
+.f>*{min-width:0}
+
+/* IA */
+.ia{display:flex;gap:12px;align-items:center}
+.ia .root{flex:none;width:170px;background:linear-gradient(135deg,#E0714F,#C9583A);color:#fff;border:0}
+.ia .root .t{color:#fff;font-size:14px}
+.ia .root .s{color:rgba(255,255,255,.82)}
+.tabs{flex:1;display:flex;gap:10px}
+.tabc{flex:1;background:#fff;border-radius:12px;padding:11px;border-top:3px solid var(--brand)}
+.tabc:nth-child(2){border-top-color:var(--gold)}.tabc:nth-child(3){border-top-color:var(--blue)}.tabc:nth-child(4){border-top-color:var(--green)}
+.tabc ul{margin:7px 0 0 0;list-style:none}
+.tabc li{font-size:11px;color:var(--ink2);line-height:1.85;padding-left:9px;position:relative}
+.tabc li:before{content:"";position:absolute;left:0;top:8px;width:3px;height:3px;border-radius:50%;background:#C9BCA9}
+.tabc li b{color:var(--ink);font-weight:600}
+.down{margin-top:10px;display:flex;gap:10px;align-items:center;font-size:11px;color:var(--ink2)}
+
+/* sequence */
+.sq{display:flex;gap:0}
+.lane{flex:1;padding:0 9px;border-left:1px dashed var(--line)}
+.lane:first-child{border:0}
+.lane .hd{font-size:11.5px;font-weight:700;text-align:center;padding:7px 0 9px;color:#6B6156;letter-spacing:.2px}
+.step{background:#fff;border-radius:9px;padding:8px 9px;margin-bottom:8px;font-size:10.8px;line-height:1.5;color:var(--ink2);position:relative;border-left:2.5px solid var(--brand)}
+.step.b{border-left-color:var(--blue)}
+.step.g{border-left-color:var(--green)}
+.step.gold{border-left-color:var(--gold)}
+.step b{color:var(--ink);display:block;font-size:11px;margin-bottom:2px}
+.step .n{position:absolute;right:6px;top:-6px;width:15px;height:15px;border-radius:50%;background:var(--ink);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700}
+.key{background:#FBEDE7;border:1px solid #F0D3C7;border-radius:9px;padding:9px 11px;font-size:11.5px;color:#7A452F;line-height:1.6;margin-top:11px}
+
+/* data */
+.db{display:flex;gap:11px;align-items:flex-start}
+.hub{flex:none;width:190px;background:#2C2822;color:#fff;border-radius:12px;padding:12px}
+.hub .t{color:#fff;font-size:13.5px}
+.hub code{display:block;font-family:ui-monospace,Menlo,monospace;font-size:10.2px;line-height:1.75;color:#C8BEAE;margin-top:7px;white-space:pre-wrap}
+.hub .hi{color:var(--gold);font-weight:700}
+.tbl{flex:1;background:#fff;border-radius:11px;padding:10px 11px}
+.tbl .t{display:flex;justify-content:space-between;align-items:center}
+.tbl .t span:last-child{font-size:9.5px;font-weight:600;color:#fff;background:var(--brand);padding:1px 6px;border-radius:5px}
+.tbl.p0 .t span:last-child{background:var(--green)}
+.tbl.p2 .t span:last-child{background:#B7AB9B}
+.tbl code{display:block;font-family:ui-monospace,Menlo,monospace;font-size:10px;line-height:1.7;color:#6B6156;margin-top:6px;white-space:pre-wrap}
+.tbl .why{font-size:10px;color:#A3998A;margin-top:5px;font-style:italic}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* scope */
+.sc{display:flex;gap:12px}
+.sc>div{flex:1;border-radius:12px;padding:12px 13px}
+.now{background:#FBEDE7;border:1.5px solid var(--brand)}
+.next{background:#fff;border:1px dashed var(--line)}
+.sc h4{font-size:12.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sc ol{margin-left:16px}
+.sc li{font-size:11.5px;color:var(--ink2);line-height:1.9}
+.sc li b{color:var(--ink)}
+.sc .est{float:right;font-size:10px;color:#9A9083;font-weight:400}
+.warn{background:#2C2822;color:#E6DED2;border-radius:12px;padding:13px 15px;font-size:11.8px;line-height:1.8}
+.warn b{color:#fff}
+.warn .w{color:var(--gold);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>我们的小窝 · 信息架构、核心流程与数据模型</h1>
+<div class="lead">这一张是给写代码用的：页面层级、"双盲解锁"的服务端时序、云数据库集合设计，以及第一版该砍到什么范围。配色与组件规格见上一张线框图。</div>
+
+<!-- A 信息架构 -->
+<div class="sec">
+  <h3><em>A</em> 信息架构 · 一个入口，四个 Tab，两层下钻</h3>
+  <div class="note">小程序只有 1 个入口页 + 4 个主页面 + 4 个下钻页，总共 9 个页面。刻意做小：任何需要"三级页面"的功能都不进第一版。</div>
+  <div class="ia">
+    <div class="card root">
+      <div class="t">配对 / 启动页</div>
+      <div class="s">wx.login → openid<br>生成或输入 6 位邀请码<br>写入 <b>pairId</b> 到本地缓存<br><br>已配对则直接跳「今日」</div>
+    </div>
+    <div class="ar">→</div>
+    <div class="tabs">
+      <div class="tabc"><div class="t">① 今日</div>
+        <ul><li><b>在一起天数</b> + 纪念日条</li><li><b>今日一题</b>（锁/解锁）</li><li><b>今晚吃啥</b> 转盘</li><li>想你了 · 谁做饭</li><li>下钻：答题页 · 转盘结果页</li></ul></div>
+      <div class="tabc"><div class="t">② 编年史</div>
+        <ul><li><b>那年今日</b>（首屏顶卡）</li><li>里程碑条 100天/1/2/3/5年</li><li><b>按天时间轴</b> 左右分栏</li><li>筛选：我/TA/情绪标签</li><li>下钻：某天详情 · 纪念日编辑</li></ul></div>
+      <div class="tabc"><div class="t">③ 想去·去过</div>
+        <ul><li>愿望清单进度 <b>34/100</b></li><li>想去做 / 已点亮两态</li><li>完成时<b>强制拍一张照</b></li><li>足迹地图 + 城市聚合</li><li>下钻：新增事项 · 地点详情</li></ul></div>
+      <div class="tabc"><div class="t">④ 情绪</div>
+        <ul><li><b>冷静期倒计时</b>（可选10/20/30分）</li><li>双方各写感受 → 双向解锁</li><li>「我们和好了」归档</li><li><b>历史复盘 → 沉淀成规矩</b></li><li>下钻：复盘详情</li></ul></div>
+    </div>
+  </div>
+</div>
+
+<!-- B 时序 -->
+<div class="sec">
+  <h3><em>B</em> 核心机制时序 · 双盲解锁（整个产品唯一必须做对的地方）</h3>
+  <div class="note">铁律：客户端永远不拉"对方未解锁的答案"。解锁判定只在云函数做，避免任何提前偷看。这条做歪了，产品就退化成一个普通备忘录。</div>
+  <div class="sq">
+    <div class="lane"><div class="hd">我（客户端）</div>
+      <div class="step"><span class="n">1</span><b>写答案</b>提交 300 字以内文本</div>
+      <div class="step"><span class="n">2</span><b>只拿到回执</b>返回 {saved:true}，不含 TA 的内容</div>
+      <div class="step gold"><span class="n">6</span><b>轮询 / 重进页面</b>云函数返回 unlocked:true 才渲染对方气泡</div>
+    </div>
+    <div class="lane"><div class="hd">云函数</div>
+      <div class="step b"><span class="n">3</span><b>入库前检测</b>内容安全接口 → 不过则拒绝写入</div>
+      <div class="step b"><span class="n">4</span><b>齐没齐</b>查 answers 里 (pairId,date) 是否已有两条</div>
+      <div class="step g"><span class="n">5</span><b>齐了就解锁</b>回写 unlockedAt，可选发一条订阅消息</div>
+    </div>
+    <div class="lane"><div class="hd">云数据库</div>
+      <div class="step"><span class="n">·</span><b>answers</b>pairId + date + questionId + by + text</div>
+      <div class="step gold"><span class="n">·</span><b>per-day 唯一约束</b>(pairId,date,by) 防重复提交</div>
+      <div class="step g"><span class="n">·</span><b>解锁字段</b>unlockedAt 存在 pair-day 记录上，不是题目上</div>
+    </div>
+    <div class="lane"><div class="hd">TA（客户端）</div>
+      <div class="step b"><span class="n">A</span><b>独立作答</b>与我的路径完全对称，互相不知情</div>
+      <div class="step g"><span class="n">B</span><b>看到解锁提示</b>「你们俩都写完了」→ 同时打开两条</div>
+      <div class="step"><span class="n">C</span><b>沉进编年史</b>无需任何整理动作，自动按日归档</div>
+    </div>
+  </div>
+  <div class="key"><b>为什么值得多写这 30 行云函数：</b>"答完才能看"制造了一次真实的坦白机会。两个人同时写下各自版本，多年以后你手里不是一堆照片，而是同一件事的两个说法 —— 这是市面上任何恋爱 App 都给不了的东西，因为它们必须服务所有人。</div>
+</div>
+
+<!-- C 数据 -->
+<div class="sec">
+  <h3><em>C</em> 云数据库 · 全部以 pairId 分区（这是留给"以后推广"的唯一口子）</h3>
+  <div class="note">规则：<b>任何集合、任何查询都不允许用 openid 当业务主键</b>；openid 只出现在 pairs.members 里。做到这一条，从 2 个人扩到 2 万对情侣不用重写；做不到，只能推倒。</div>
+  <div class="db">
+    <div class="hub"><div class="t">pairs（根）</div>
+      <code>_id: <span class="hi">pairId</span>
+inviteCode: "DLQP52"
+members: [openid(邓林), openid(倩萍)]
+<span class="hi">anniversary</span>: "2020-09-21"
+coupleName: "邓林 & 倩萍"
+createdAt, status</code>
+      <div class="s" style="color:#C8BEAE;margin-top:8px">其余 7 张表全部只存 pairId 外键，<b>永不改动这张表的结构</b>就能支持多对。</div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+      <div class="two">
+        <div class="tbl p0"><div class="t"><span>questions</span><span>第一版</span></div><code>_id, text, category
+weight, usedCount</code><div class="why">内置 100 题，冷启动不依赖网络</div></div>
+        <div class="tbl p0"><div class="t"><span>answers</span><span>第一版</span></div><code>pairId, date, questionId,
+by, text, createdAt</code><div class="why">唯一索引 (pairId,date,by)</div></div>
+        <div class="tbl p0"><div class="t"><span>pings</span><span>第一版</span></div><code>pairId, from, type,
+createdAt, read</code><div class="why">"想你了"只做红点，不依赖推送</div></div>
+        <div class="tbl p0"><div class="t"><span>foods</span><span>第一版</span></div><code>pairId, name, tag, times,
+lastPicked, banned</code><div class="why">纯本地，转盘的数据源</div></div>
+      </div>
+      <div class="two">
+        <div class="tbl"><div class="t"><span>anniversaries</span><span>第二版</span></div><code>pairId, title, date, yearly</code></div>
+        <div class="tbl"><div class="t"><span>wishes</span><span>第二版</span></div><code>pairId, title, done, doneAt,
+photos[], placeId</code></div>
+        <div class="tbl p2"><div class="t"><span>quarrels</span><span>第三版</span></div><code>pairId, startedAt, deadline,
+mySide, yourSide, lesson,
+resolvedAt</code></div>
+        <div class="tbl p2"><div class="t"><span>places</span><span>第三版</span></div><code>pairId, name, lat, lng,
+date, cover</code></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D 范围 -->
+<div class="sec" style="background:#E9E1D6">
+  <h3><em>D</em> 第一版砍到什么范围</h3>
+  <div class="note">判断标准只有一条：做完的当晚你们会不会真的打开第二次。地图、拍照上传、订阅消息都各自要权限和审核，混进第一版会把你拖到三周以后。</div>
+  <div class="sc">
+    <div class="now"><h4>🔴 第一版（约 4 个可验证节点）</h4>
+      <ol>
+        <li><b>配对跑通</b> — 邀请码 + 云开发 + pairId 落库<span class="est">1~2 天</span></li>
+        <li><b>今日一题 + 双盲解锁</b> — 含内容安全检测<span class="est">2~3 天</span></li>
+        <li><b>今晚吃啥转盘 + 想你了红点</b><span class="est">半天</span></li>
+        <li><b>编年史</b> — 天数、那年今日、按天回看<span class="est">1~2 天</span></li>
+      </ol>
+    </div>
+    <div class="next"><h4>⚪ 明确先不做</h4>
+      <ol>
+        <li>足迹地图 / 拍照点亮（要相册与位置权限、要审核）</li>
+        <li>吵架冷静期（需要计时器在退出后仍准确 → 只能存 deadline 时间戳，别真写 setInterval）</li>
+        <li>订阅消息推送（额度规则麻烦，先用红点验证需求真假）</li>
+        <li>任何支付、会员、分享裂变 —— 个人主体下全是坑</li>
+        <li>UI 动效、主题换肤、多套配色</li>
+      </ol>
+    </div>
+  </div>
+  <div style="height:12px"></div>
+  <div class="warn">
+    <b>三条会省你两天以上经验的提醒：</b><br>
+    ① <span class="w">冷静期不要用 setInterval 计时</span> —— 小程序一切后台就停。只存 <code style="color:#E8B33C">deadline</code> 时间戳，每次进页面用 <code style="color:#E8B33C">Date.now()</code> 减出来。<br>
+    ② <span class="w">"想你了"不要指望推送</span> —— 小程序没有真后台推送，订阅消息是一次授权换一条。第一版就做打开才可见的红点，情感强度几乎不掉，省一整天的坑。<br>
+    ③ <span class="w">内容检测放在云函数而不是前端</span> —— 前端能绕过。自用阶段可以先不做，但<b>字段和调用位置第一天就留好</b>，否则上架时要改所有写入口。<br>
+    <span class="xs" style="color:#8A8073">（以上关于微信资质、内容安全接口、订阅消息额度的描述请按官方文档二次确认 —— 本机 web search 工具当前不可用，我没能替你核实最新规则。）</span>
+  </div>
+</div>
+
+</div>
+</body>
+</html>

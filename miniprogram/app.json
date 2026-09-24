@@ -1,0 +1,50 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/write/write",
+    "pages/chronicle/chronicle",
+    "pages/chronicle/day/day",
+    "pages/mood/mood",
+    "pages/pair/pair",
+    "pages/settings/settings",
+    "pages/wishes/wishes",
+    "pages/capsule/capsule",
+    "pages/reminds/reminds"
+  ],
+  "window": {
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#F5F0EA",
+    "navigationBarTitleText": "我们的小窝",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F0EA"
+  },
+  "tabBar": {
+    "color": "#9A9188",
+    "selectedColor": "#E0714F",
+    "backgroundColor": "#FFFDF9",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "今日"
+      },
+      {
+        "pagePath": "pages/chronicle/chronicle",
+        "text": "编年史"
+      },
+      {
+        "pagePath": "pages/wishes/wishes",
+        "text": "想去·去过"
+      },
+      {
+        "pagePath": "pages/mood/mood",
+        "text": "情绪"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "cloud": true,
+  "lazyCodeLoading": "requiredComponents",
+  "__usePrivacyCheck__": true
+}

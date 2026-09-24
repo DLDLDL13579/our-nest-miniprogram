@@ -1,0 +1,154 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">
+    <view class="loadheart">♡</view>
+    <view style="margin-top:12rpx">正在打开我们的小窝…</view>
+  </view>
+
+  <view wx:elif="{{noPair}}" class="empty">
+    <view style="font-size:96rpx;line-height:1.4">🏠</view>
+    <view style="margin:16rpx 0 28rpx">还没有小窝，先把倩萍拉进来</view>
+    <view class="btn main" style="max-width:320rpx;margin:0 auto" bindtap="goPair">去配对</view>
+  </view>
+
+  <block wx:else>
+    <!-- ① 在一起：整页的情感锚点，做成暖色渐变 + 柔和内光 -->
+    <view class="hero" bindtap="goSettings">
+      <view class="hero-glow"></view>
+      <view class="hero-inner">
+        <!-- 已配对但还没填「在一起那天」时 D 是 null。
+             这里必须显式分支，否则整块 hero 全是空白 —— 新用户第一眼看到的就是个空壳。 -->
+        <block wx:if="{{D}}">
+          <view class="hero-label">我们在一起</view>
+          <view class="hero-num">
+            <text class="hero-big">{{D.days}}</text>
+            <text class="hero-unit">天</text>
+          </view>
+          <view class="hero-line">{{D.anniversaryLabel}} 那天起 · 第 {{D.headNoCn}} 个年头</view>
+          <view class="hero-next" wx:if="{{D.next.daysUntil <= 60}}">
+            🎈 {{D.next.daysUntil}} 天后是我们的纪念日
+          </view>
+          <view class="hero-next" wx:else>
+            🎈 下次纪念日 {{D.next.label}}，还有 {{D.next.daysUntil}} 天
+          </view>
+        </block>
+        <block wx:else>
+          <view class="hero-label">我们在一起</view>
+          <view class="hero-num">
+            <text class="hero-big">—</text>
+          </view>
+          <view class="hero-line">还没选「在一起那天」</view>
+          <view class="hero-next">点这里填一下，天数就出来了 ▸</view>
+        </block>
+      </view>
+    </view>
+
+    <!-- 时间胶囊入口：低频但高价值，放在记一笔下面不抢焦点 -->
+    <view class="capsulebar" bindtap="goCapsule">
+      <view class="cb-l">
+        <text class="cb-e">✉️</text>
+        <view>
+          <view class="cb-t">时间胶囊</view>
+          <view class="cb-s">{{capsuleTip}}</view>
+        </view>
+      </view>
+      <text class="cb-r">▸</text>
+    </view>
+
+    <!-- 要记得的事：只有快到期时才显眼，平时安静待着 -->
+    <view class="remindbar {{remindUrgent ? 'hot' : ''}}" bindtap="goReminds">
+      <view class="cb-l">
+        <text class="cb-e">🗓️</text>
+        <view>
+          <view class="cb-t">要记得的事</view>
+          <view class="cb-s">{{remindTip}}</view>
+        </view>
+      </view>
+      <text class="cb-r">▸</text>
+    </view>
+
+    <!-- ② 随手记：核心动作，做得最显眼 -->
+    <view class="writecard" bindtap="goWrite">
+      <view class="wc-left">
+        <view class="wc-title">记一笔</view>
+        <view class="wc-sub">今天想留下点什么</view>
+      </view>
+      <view class="wc-pen">✎</view>
+    </view>
+
+
+    <!-- 小工具：紧跟「记一笔」，首屏就能点到，不用往下滑 -->
+    <view class="toolrow" bindtap="spinFood">
+      <view class="toolrow-l">
+        <text class="toolrow-e">🍜</text>
+        <text class="toolrow-t">今晚吃啥</text>
+      </view>
+      <view class="toolrow-r">
+        <text wx:if="{{foodResult}}" class="foodres">{{foodResult}}</text>
+        <text wx:else class="toolrow-h">{{foodRolling ? '转着…' : '点我决定'}}</text>
+      </view>
+    </view>
+
+    <view class="duo">
+      <view class="duoc" bindtap="ping">
+        <view wx:if="{{partnerPing}}" class="badge">{{partnerPing}}</view>
+        <view class="duo-e">💗</view>
+        <view class="duo-t">{{pingedJustNow ? '已送达' : '想你了'}}</view>
+        <view class="duo-s">{{pingWord}}</view>
+      </view>
+      <view class="duoc" bindtap="dice">
+        <view class="duo-e">🎲</view>
+        <view class="duo-t">今天谁做饭</view>
+        <view class="duo-s">{{diceResult || '点一下决定'}}</view>
+      </view>
+    </view>
+
+    <view wx:if="{{partnerPing}}" class="whisper">
+      {{partnerName || '她'}} 今天想了你 {{partnerPing}} 次。不用回，看到就行。
+    </view>
+
+    <!-- ③ 最近记的：回来了能立刻看到东西，不是空页面 -->
+    <block wx:if="{{moments.length}}">
+      <view class="sechead">
+        <text>最近记的</text>
+        <text class="more" bindtap="goChronicle">全部 {{total}} 条 ▸</text>
+      </view>
+      <view wx:for="{{moments}}" wx:key="id" class="mcard"
+            data-i="{{index}}" bindlongpress="onMomentLongPress">
+        <view class="mc-top">
+          <text class="mc-who {{item.who==='partner'?'ta':''}}">{{item.name}}</text>
+          <text class="mc-time">{{item.at}}</text>
+        </view>
+        <view wx:if="{{item.text}}" class="mc-text">{{item.text}}</view>
+        <view wx:if="{{item.photos.length}}" class="mc-photos {{item.photos.length === 1 ? 'single' : ''}}">
+          <image wx:for="{{item.thumbs.length ? item.thumbs : item.photos}}" wx:for-item="ph" wx:for-index="pi" wx:key="*this"
+                 src="{{ph}}" mode="aspectFill" class="mc-photo"
+                 lazy-load="{{true}}"
+                 data-i="{{index}}" data-src="{{item.photos[pi]}}" catchtap="previewPhoto" />
+        </view>
+        <view class="mc-hint">长按可删除</view>
+      </view>
+    </block>
+
+    <!-- ④ 那年今日：把编年史里最动人的一块提到首页。
+         原来这里还有一行 {{onThisDay.q}} —— 那是「今日一题」的题干，随手记没有题干，
+         云函数永远返回空串，界面上就是一条莫名其妙空行。已去掉。 -->
+    <view wx:if="{{onThisDay}}" class="today-card" bindtap="goChronicle">
+      <view class="tc-badge">那年今日</view>
+      <view class="tc-row">
+        <text class="tc-who">{{onThisDay.partnerName}}</text>
+        <text class="tc-txt">{{onThisDay.partner}}</text>
+      </view>
+    </view>
+
+    <!-- ⑤ 空态：什么都没记的时候，温柔一点，别说"暂无数据" -->
+    <view wx:if="{{!moments.length}}" class="gentle">
+      <view class="gentle-icon">🕯️</view>
+      <view class="gentle-t">这里还是空的</view>
+      <view class="gentle-s">
+        {{solo ? '等她进来之后，你们记的东西会一起出现在这里' : '不用每天写。什么时候有话想说，点上面「记一笔」就好'}}
+      </view>
+    </view>
+
+
+  </block>
+</view>

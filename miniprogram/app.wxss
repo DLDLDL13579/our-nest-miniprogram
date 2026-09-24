@@ -1,0 +1,163 @@
+/**
+ * 设计令牌 —— 和 prototype/styles.css 同一套值。
+ * 改颜色只改这里，不要到各页面里散着写。
+ */
+page {
+  --brand: #E0714F;        /* 陶土红：主色，暖而不艳 */
+  --brand2: #C4573A;       /* 按下 / 强调文字 */
+  --brandsoft: #F5DDD3;
+  --gold: #E8B33C;         /* 麦金：只给"在一起天数"这类高光 */
+  --goldsoft: #F6E7C3;
+  --blue: #5E7FA6;         /* 她的 */
+  --bluesoft: #E4EBF3;
+  --green: #6D9E6A;        /* 已达成 / 和解 */
+  --greensoft: #EAF0E9;
+  --bg: #F5F0EA;           /* 米白底 */
+  --card: #FFFDF9;
+  --ink: #2C2822;
+  --ink2: #6E675E;
+  --ink3: #A39B90;
+  --line: #E7DFD3;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+view, text, button, input, textarea { box-sizing: border-box }
+
+/* ---------- 卡片 ---------- */
+.card {
+  background: var(--card);
+  border-radius: 28rpx;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 6rpx rgba(70, 55, 40, .05);
+}
+.card.hl { border: 3rpx solid var(--brand) }
+.card.flat { background: #F5F1EB; box-shadow: none }
+
+.lbl {
+  font-size: 22rpx;
+  color: var(--ink3);
+  letter-spacing: 1rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-bottom: 14rpx;
+}
+.q { font-size: 32rpx; font-weight: 600; line-height: 1.5 }
+.note { font-size: 23rpx; color: var(--ink2); line-height: 1.7 }
+.sm { font-size: 23rpx }
+.xs { font-size: 21rpx; color: var(--ink3); line-height: 1.6 }
+
+/* ---------- 主色块（今日页顶部那块红） ---------- */
+.hero {
+  background: linear-gradient(135deg, #E0714F, #C4573A);
+  color: #fff;
+  border-radius: 28rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
+}
+.hero .big { font-size: 76rpx; font-weight: 700; line-height: 1.1; letter-spacing: -2rpx }
+.hero .sub { font-size: 23rpx; opacity: .9; margin-top: 10rpx }
+
+/* ---------- 按钮 ---------- */
+.btn {
+  height: 88rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  background: #F0EAE1;
+  color: var(--ink2);
+}
+.btn.main { background: var(--brand); color: #fff }
+.btn.ok { background: var(--greensoft); color: var(--green) }
+.btn.ghostb { background: transparent; border: 2rpx solid var(--brand); color: var(--brand2) }
+.btn.on { background: var(--brand); color: #fff }
+.btn:active { opacity: .82 }
+.btn.disabled { opacity: .45 }
+
+/* ---------- 小标签 ---------- */
+.pill {
+  font-size: 22rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  background: var(--brandsoft);
+  color: var(--brand2);
+  font-weight: 600;
+}
+.pill.ghost { background: transparent; border: 2rpx solid var(--line); color: var(--ink3); font-weight: 400 }
+.pill.gold { background: var(--goldsoft); color: #8A6A22 }
+.pill.green { background: var(--greensoft); color: var(--green) }
+.pill.blue { background: var(--bluesoft); color: var(--blue) }
+
+/* ---------- 双头像 ---------- */
+.who { display: flex }
+.av {
+  width: 56rpx; height: 56rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: 700; color: #fff;
+}
+.av.a { background: var(--brand) }
+.av.b { background: var(--blue); margin-left: -14rpx; box-shadow: 0 0 0 4rpx var(--bg) }
+
+/* ---------- 左右对白（解锁后读对方答案的样式） ---------- */
+.side { border-radius: 20rpx; padding: 22rpx 24rpx; font-size: 26rpx; line-height: 1.75 }
+.side.ta { background: var(--bluesoft) }
+.side.me { background: var(--brandsoft) }
+.side .n { font-size: 22rpx; color: var(--ink2); margin-bottom: 8rpx; display: flex; align-items: center; gap: 8rpx }
+.rd { width: 12rpx; height: 12rpx; border-radius: 50%; background: var(--brand); display: inline-block }
+.rd.b { background: var(--blue) }
+
+/* ---------- 锁定条 ---------- */
+.lockbar {
+  display: flex; align-items: center; gap: 14rpx;
+  background: #F5F1EB; border-radius: 20rpx;
+  padding: 20rpx 22rpx; font-size: 23rpx; color: var(--ink2);
+  margin-bottom: 22rpx;
+}
+
+/* ---------- 输入 ---------- */
+.ta {
+  width: 100%; height: 280rpx;
+  border: 2rpx solid var(--line); border-radius: 24rpx;
+  padding: 22rpx; font-size: 27rpx; line-height: 1.75;
+  background: #FDFBF8;
+}
+.cnt { text-align: right; font-size: 21rpx; color: var(--ink3); margin-top: 8rpx }
+
+/* ---------- 列表行 ---------- */
+.row2 { display: flex; align-items: center; gap: 20rpx; padding: 18rpx 0; border-bottom: 2rpx solid var(--line) }
+.row2:last-child { border-bottom: none }
+.ico { width: 64rpx; height: 64rpx; border-radius: 50%; background: #F2ECE4; display: flex; align-items: center; justify-content: center; font-size: 28rpx; flex-shrink: 0 }
+.gt { font-size: 26rpx; font-weight: 600 }
+.cd { font-size: 21rpx; font-weight: 700; color: var(--brand2); background: var(--brandsoft); padding: 8rpx 14rpx; border-radius: 14rpx; flex-shrink: 0 }
+.cd.far { background: #F2ECE4; color: var(--ink2); font-weight: 400 }
+
+/* ---------- 里程碑 ---------- */
+.mile { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 6rpx }
+.m { display: flex; flex-direction: column; align-items: center; gap: 10rpx; font-size: 20rpx; color: var(--ink3); flex: 1 }
+.m .bar { width: 100%; height: 6rpx; background: var(--line); border-radius: 3rpx }
+.m .dot { width: 18rpx; height: 18rpx; border-radius: 50%; background: var(--line) }
+.m.done .dot { background: var(--gold) }
+.m.done { color: var(--ink2) }
+.m.now .dot { background: var(--brand); box-shadow: 0 0 0 6rpx var(--brandsoft) }
+.m.now { color: var(--brand2); font-weight: 700 }
+
+/* ---------- 横向标签组 ----------
+   这个类之前只在页面里用过、没定义，导致「全部 / 只看我 / 只看她」
+   三个标签竖着堆成三行，白占半屏。小程序里没有 flex 默认值，必须显式声明。 */
+.chiprow { display: flex; flex-wrap: wrap; align-items: center; gap: 14rpx }
+.chiprow .pill { flex: none }
+
+/* ---------- 页面骨架 ---------- */
+/* 底部要留出 tabBar 的高度，否则最后一块卡片会被压在下面。
+   100rpx 是 tabBar 本身，再加 40rpx 呼吸感。 */
+.page { padding: 28rpx 28rpx calc(140rpx + env(safe-area-inset-bottom)) }
+.empty { text-align: center; padding: 80rpx 40rpx; color: var(--ink3); font-size: 25rpx; line-height: 1.8 }
+.divider { height: 2rpx; background: var(--line); margin: 24rpx 0 }

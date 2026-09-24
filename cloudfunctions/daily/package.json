@@ -1,0 +1,7 @@
+{
+  "name": "daily",
+  "version": "1.0.0",
+  "description": "我们的小窝 · daily",
+  "main": "index.js",
+  "dependencies": { "wx-server-sdk": "~2.6.3" }
+}

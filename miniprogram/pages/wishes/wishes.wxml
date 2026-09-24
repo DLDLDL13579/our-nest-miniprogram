@@ -1,0 +1,81 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">看看我们的清单…</view>
+
+  <view wx:elif="{{noPair}}" class="empty">还没有小窝</view>
+
+  <block wx:else>
+    <!-- 进度 -->
+    <view class="card hl">
+      <view class="lbl">一起去过的 · 和还想一起去的</view>
+      <view style="display:flex;align-items:baseline;gap:10rpx;margin:4rpx 0 16rpx">
+        <text style="font-size:56rpx;font-weight:700;color:var(--brand2);line-height:1">{{doneCount}}</text>
+        <text style="font-size:28rpx;color:var(--ink3)">/ {{total}} 件</text>
+      </view>
+      <view class="pbar"><view class="pfill" style="width:{{total ? (doneCount*100/total) : 0}}%"></view></view>
+      <view class="xs" style="margin-top:12rpx">已完成 {{doneCount}} 件 · 还想做 {{todoCount}} 件</view>
+    </view>
+
+    <!-- 切换 -->
+    <view class="chiprow" style="margin:0 0 20rpx">
+      <view class="pill {{tab==='todo'?'':'ghost'}}" data-t="todo" bindtap="setTab">想去 · {{todoCount}}</view>
+      <view class="pill {{tab==='done'?'':'ghost'}}" data-t="done" bindtap="setTab">去过 · {{doneCount}}</view>
+    </view>
+
+    <!-- 新增 -->
+    <view wx:if="{{adding}}" class="card">
+      <input class="jin" value="{{newText}}" maxlength="60" placeholder="比如：一起去一次菜市场买菜做饭"
+             placeholder-class="ph" bindinput="onNewInput" focus="{{true}}" confirm-type="done" bindconfirm="doAdd" />
+      <view style="display:flex;gap:16rpx;margin-top:20rpx">
+        <view class="btn" style="flex:1" bindtap="cancelAdd">算了</view>
+        <view class="btn main" style="flex:2" bindtap="doAdd">记下来</view>
+      </view>
+    </view>
+    <view wx:else class="btn ghostb" style="margin-bottom:24rpx" bindtap="startAdd">＋ 加一件想一起做的事</view>
+
+    <!-- 列表 -->
+    <block wx:if="{{list.length}}">
+      <view wx:for="{{list}}" wx:key="id" class="card">
+        <view style="display:flex;align-items:flex-start;gap:18rpx">
+          <view class="mk {{item.done?'on':''}}">{{item.done ? '✓' : '○'}}</view>
+          <view style="flex:1;min-width:0">
+            <view style="font-size:28rpx;font-weight:600;{{item.done?'color:var(--ink2)':''}}">{{item.text}}</view>
+            <view class="xs" style="margin-top:8rpx">
+              <text wx:if="{{item.done}}">已完成 · {{item.doneAt}}{{item.place ? ' · ' + item.place : ''}}</text>
+              <text wx:else>由 {{item.byName}} 记下 · {{item.createdAt}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 已完成的：显示照片，这是它和待办清单的区别。
+             点照片是「看大图」，不是「撤销」—— 撤销是破坏性操作，
+             不该绑在最容易误触的那块区域上，单独给一个入口。 -->
+        <image wx:if="{{item.done && item.photo}}" src="{{item.photoThumb || item.photo}}" mode="aspectFill"
+               lazy-load="{{true}}"
+               class="shot" data-src="{{item.photo}}" bindtap="previewPhoto" />
+
+        <view wx:if="{{item.done}}" style="display:flex;gap:16rpx;margin-top:18rpx">
+          <view class="btn" style="flex:1" data-id="{{item.id}}" catchtap="remove">删掉</view>
+          <view class="btn" style="flex:1" data-id="{{item.id}}" catchtap="undo">撤销点亮</view>
+        </view>
+
+        <view wx:if="{{!item.done}}" style="display:flex;gap:16rpx;margin-top:18rpx">
+          <view class="btn" style="flex:1" data-id="{{item.id}}" catchtap="remove">删掉</view>
+          <view class="btn main" style="flex:2" data-id="{{item.id}}" catchtap="light">📷 拍一张 · 点亮它</view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:elif="{{tab==='done'}}" class="card flat" style="text-align:center;padding:60rpx 40rpx">
+      <view style="font-size:68rpx;line-height:1.4">📍</view>
+      <view class="note" style="margin-top:12rpx">还没有一起去过的地方。
+        <view style="height:6rpx"></view>
+        点亮第一件的时候，记得拍一张。</view>
+    </view>
+    <view wx:else class="card flat" style="text-align:center;padding:60rpx 40rpx">
+      <view style="font-size:68rpx;line-height:1.4">✨</view>
+      <view class="note" style="margin-top:12rpx">清单是空的。
+        <view style="height:6rpx"></view>
+        <b>一件就够 —— 它从这里开始长。</b></view>
+    </view>
+  </block>
+</view>

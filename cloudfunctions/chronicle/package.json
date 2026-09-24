@@ -1,0 +1,9 @@
+{
+  "name": "chronicle",
+  "version": "1.0.0",
+  "description": "我们的小窝 · chronicle",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

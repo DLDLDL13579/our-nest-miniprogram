@@ -1,0 +1,165 @@
+/* ---------- 在一起：暖色渐变 + 内光，不用纯色块 ---------- */
+.hero {
+  position: relative; overflow: hidden;
+  border-radius: 36rpx; margin-bottom: 28rpx;
+  background: linear-gradient(135deg, #E88060 0%, #D9603E 55%, #C24E2F 100%);
+  box-shadow: 0 10rpx 34rpx rgba(196, 78, 47, .28);
+}
+.hero-glow {
+  position: absolute; width: 420rpx; height: 420rpx; border-radius: 50%;
+  right: -140rpx; top: -180rpx;
+  background: radial-gradient(circle, rgba(255,225,200,.42) 0%, rgba(255,225,200,0) 68%);
+}
+.hero-inner { position: relative; padding: 40rpx 36rpx 36rpx; }
+.hero-label { font-size: 23rpx; color: rgba(255,255,255,.82); letter-spacing: 3rpx }
+.hero-num { display: flex; align-items: baseline; margin: 8rpx 0 14rpx }
+.hero-big { font-size: 100rpx; font-weight: 700; color: #fff; line-height: 1; letter-spacing: -3rpx }
+.hero-unit { font-size: 30rpx; color: rgba(255,255,255,.9); margin-left: 10rpx }
+.hero-line { font-size: 24rpx; color: rgba(255,255,255,.86); line-height: 1.6 }
+.hero-next {
+  display: inline-block; margin-top: 18rpx; padding: 10rpx 22rpx;
+  background: rgba(255,255,255,.2); border-radius: 999rpx;
+  font-size: 22rpx; color: #fff;
+}
+
+/* ---------- 记一笔：整页最显眼的东西 ---------- */
+.writecard {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 34rpx 36rpx; margin-bottom: 28rpx;
+  border-radius: 32rpx;
+  background: linear-gradient(135deg, #FFFBF4, #FDF1E4);
+  border: 3rpx solid #F2D9C4;
+  box-shadow: 0 6rpx 22rpx rgba(200,140,100,.13);
+}
+.writecard:active { transform: scale(.985) }
+.wc-title { font-size: 36rpx; font-weight: 700; color: var(--brand2); letter-spacing: 1rpx }
+.wc-sub { font-size: 23rpx; color: #B08066; margin-top: 8rpx }
+.wc-pen {
+  width: 86rpx; height: 86rpx; border-radius: 50%; flex: none;
+  background: linear-gradient(135deg, #E88060, #CE5738);
+  color: #fff; font-size: 40rpx;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 18rpx rgba(206,87,56,.34);
+}
+
+/* ---------- 区块标题 ---------- */
+.sechead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 8rpx 6rpx 18rpx;
+  font-size: 24rpx; color: var(--ink3); letter-spacing: 2rpx;
+}
+.sechead .more { color: var(--brand2); font-size: 22rpx; letter-spacing: 0 }
+
+/* ---------- 记录卡 ---------- */
+.mcard {
+  background: var(--card); border-radius: 28rpx;
+  padding: 26rpx 28rpx; margin-bottom: 20rpx;
+  box-shadow: 0 3rpx 10rpx rgba(70,55,40,.05);
+}
+.mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx }
+.mc-who { font-size: 24rpx; font-weight: 700; color: var(--brand2) }
+.mc-who.ta { color: var(--blue) }
+.mc-time { font-size: 21rpx; color: var(--ink3) }
+.mc-text { font-size: 28rpx; line-height: 1.75; color: var(--ink) }
+/* 照片：不同尺寸的图直接铺会高矮不齐，所以统一用固定比例 + aspectFill 裁切。
+   1 张时给大图（更像在翻相册），2-3 张时等分网格。 */
+.mc-photos { display: flex; gap: 10rpx; margin-top: 16rpx }
+.mc-photo {
+  flex: 1; min-width: 0;
+  height: 220rpx; border-radius: 18rpx;
+  background: #EFE8DE;
+}
+/* 只有一张：整宽大图，比例更舒服 */
+.mc-photos.single .mc-photo { height: 340rpx }
+.mc-hint { font-size: 19rpx; color: #C9BEB2; margin-top: 14rpx; text-align: right }
+
+/* ---------- 那年今日 ---------- */
+.today-card {
+  position: relative; margin-bottom: 24rpx;
+  padding: 30rpx 30rpx 26rpx;
+  border-radius: 30rpx;
+  background: linear-gradient(135deg, #FFF6E4, #FBE9CE);
+  border: 2rpx solid #F0D9AE;
+}
+.tc-badge {
+  display: inline-block; padding: 5rpx 18rpx; border-radius: 999rpx;
+  background: rgba(232,179,60,.25); color: #8A6A22;
+  font-size: 20rpx; margin-bottom: 14rpx; letter-spacing: 1rpx;
+}
+.tc-row { font-size: 26rpx; line-height: 1.7; color: #4A3A15 }
+.tc-who { font-weight: 700; margin-right: 10rpx; color: #8A6A22 }
+
+/* ---------- 空态：温柔，别像报错 ---------- */
+.gentle { text-align: center; padding: 70rpx 50rpx 60rpx }
+.gentle-icon { font-size: 76rpx; line-height: 1.4; opacity: .85 }
+.gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
+.gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }
+
+/* ---------- 小工具 ---------- */
+.foodres {
+  text-align: center; margin-top: 22rpx;
+  font-size: 40rpx; font-weight: 700; color: var(--brand2);
+  letter-spacing: 2rpx;
+}
+/* 两个小卡片：自己带卡片样式，因为已从 .card 挪出来（不再放在底部） */
+.duo { display: flex; gap: 20rpx; margin-bottom: 24rpx }
+.duoc {
+  flex: 1; text-align: center; position: relative; padding: 28rpx 18rpx;
+  background: var(--card); border-radius: 28rpx;
+  box-shadow: 0 3rpx 10rpx rgba(70,55,40,.05);
+}
+.duoc:active { background: #FBF6F0 }
+.duo-e { font-size: 52rpx; line-height: 1.2 }
+.duo-t { font-size: 27rpx; font-weight: 600; margin-top: 14rpx }
+.duo-s { font-size: 21rpx; color: var(--ink3); margin-top: 8rpx }
+.badge {
+  position: absolute; top: -10rpx; right: -6rpx;
+  min-width: 36rpx; height: 36rpx; padding: 0 10rpx; border-radius: 999rpx;
+  background: var(--brand); color: #fff; font-size: 21rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.whisper {
+  margin-top: 22rpx; padding: 24rpx 28rpx; border-radius: 24rpx;
+  background: #F5F1EB; font-size: 23rpx; color: var(--ink2);
+  line-height: 1.7; text-align: center;
+}
+.loadheart { font-size: 80rpx; color: var(--brand); animation: beat 1s infinite }
+@keyframes beat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+
+/* 紧凑工具行：一个玩具不该占掉整屏 */
+.toolrow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 30rpx 32rpx; margin-bottom: 20rpx;
+  background: var(--card); border-radius: 28rpx;
+  box-shadow: 0 3rpx 10rpx rgba(70,55,40,.05);
+}
+.toolrow:active { background: #FBF6F0 }
+.toolrow-l { display: flex; align-items: center; gap: 16rpx }
+.toolrow-e { font-size: 40rpx }
+.toolrow-t { font-size: 28rpx; font-weight: 600; color: var(--ink) }
+.toolrow-r { display: flex; align-items: center }
+.toolrow-h { font-size: 24rpx; color: var(--ink3) }
+.foodres { font-size: 34rpx; font-weight: 700; color: var(--brand2); letter-spacing: 2rpx }
+
+/* 时间胶囊入口：一行，不抢「记一笔」的焦点 */
+.capsulebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 30rpx; margin-bottom: 24rpx;
+  background: linear-gradient(135deg, #F4F6FB, #E9EDF6);
+  border-radius: 26rpx; border: 2rpx solid #DCE3F0;
+}
+.capsulebar:active { background: #E9EDF6 }
+.cb-l { display: flex; align-items: center; gap: 16rpx }
+.cb-e { font-size: 40rpx }
+.cb-t { font-size: 27rpx; font-weight: 600; color: #4E5B7A }
+.cb-s { font-size: 21rpx; color: #8492AD; margin-top: 4rpx }
+.cb-r { font-size: 28rpx; color: #A8B4CC }
+
+/* 要记得的事入口：平时素净，有急事才变暖 */
+.remindbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 30rpx; margin-bottom: 24rpx;
+  background: #F7F4EE; border-radius: 26rpx; border: 2rpx solid #EAE2D6;
+}
+.remindbar.hot { background: linear-gradient(135deg, #FFEFE0, #FBDFC6); border-color: #F0C9A4 }
+.remindbar:active { opacity: .85 }

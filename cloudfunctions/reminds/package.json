@@ -1,0 +1,9 @@
+{
+  "name": "reminds",
+  "version": "1.0.0",
+  "description": "我们的小窝 · reminds（要记得的事）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

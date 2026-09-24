@@ -1,0 +1,12 @@
+.datebox {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 92rpx; padding: 0 24rpx; background: #FDFBF8;
+  border: 2rpx solid var(--line); border-radius: 22rpx;
+}
+.dv { font-size: 38rpx; font-weight: 700; color: var(--brand2); letter-spacing: 1rpx }
+.plist { font-size: 25rpx; line-height: 2.2; color: var(--ink2) }
+.plist .em { color: var(--brand2); font-weight: 700 }
+.rline { display: flex; align-items: center; justify-content: space-between; padding: 16rpx 0; border-bottom: 2rpx solid var(--line); font-size: 26rpx }
+.rline:last-child { border-bottom: none }
+.rin { text-align: right; flex: 1; margin-left: 20rpx; font-size: 26rpx }
+.rov { color: var(--ink3); font-size: 25rpx }

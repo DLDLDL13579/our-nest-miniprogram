@@ -1,0 +1,40 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="empty">翻开那一天…</view>
+  <block wx:elif="{{d}}">
+    <view class="card">
+      <view class="lbl">{{d.date}}</view>
+    </view>
+
+    <!-- d.mine / d.partner 是数组（一天可能记了多条），
+         原来写成 {{d.partner.at}} / {{d.partner.text}} 当对象用 ——
+         数组上没有这两个属性，渲染出来永远是空白。必须 wx:for 展开。 -->
+    <view wx:if="{{d.partner.length}}" class="side ta" style="margin-bottom:20rpx">
+      <view class="n"><text class="rd b"></text>{{d.partnerName}}</view>
+      <view wx:for="{{d.partner}}" wx:for-item="it" wx:key="at" style="margin-top:10rpx">
+        <view class="xs">{{it.at}}</view>
+        <view wx:if="{{it.text}}">{{it.text}}</view>
+        <view wx:if="{{it.photos.length}}" class="photos">
+          <image wx:for="{{it.photos}}" wx:for-item="ph" wx:key="*this"
+                 src="{{ph}}" mode="aspectFill" class="photo"
+                 lazy-load="{{true}}"
+                 data-src="{{ph}}" data-list="{{it.photos}}" catchtap="previewPhoto" />
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{d.mine.length}}" class="side me">
+      <view class="n"><text class="rd"></text>我</view>
+      <view wx:for="{{d.mine}}" wx:for-item="it" wx:key="at" style="margin-top:10rpx">
+        <view class="xs">{{it.at}}</view>
+        <view wx:if="{{it.text}}">{{it.text}}</view>
+        <view wx:if="{{it.photos.length}}" class="photos">
+          <image wx:for="{{it.photos}}" wx:for-item="ph" wx:key="*this"
+                 src="{{ph}}" mode="aspectFill" class="photo"
+                 lazy-load="{{true}}"
+                 data-src="{{ph}}" data-list="{{it.photos}}" catchtap="previewPhoto" />
+        </view>
+      </view>
+    </view>
+  </block>
+  <view wx:else class="empty">这一天还没有记录</view>
+</view>
