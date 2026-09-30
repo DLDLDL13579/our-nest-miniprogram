@@ -38,6 +38,17 @@ function daysBetween(fromISO, toISO) {
   return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000)
 }
 
+/**
+ * 内容安全。
+ *
+ * ★ 发布策略：**调用失败即拒绝**（fail-closed）。
+ *   自用阶段这里是「失败就放行」，保证功能可用；但正式发布后那样等于把内容安全
+ *   变成可绕过的 —— 只要让接口超时就能封存任意内容，审核也会据此驳回。
+ *
+ *   错误信息刻意分两种，别让人误以为是自己写的内容有问题：
+ *     · 内容被判风险 → 「改一改再封存」
+ *     · 检查服务不可用 → 「稍后再试」（不是你写的问题）
+ */
 async function safe(text, openid) {
   try {
     const r = await cloud.openapi.security.msgSecCheck({
@@ -47,8 +58,9 @@ async function safe(text, openid) {
     if (s && s !== 'pass') return { pass: false, msg: '这封信里有系统判断为风险的内容，改一改再封存' }
     return { pass: true }
   } catch (err) {
-    console.warn('[capsule] msgSecCheck 没跑成，暂时放行：', err.errCode)
-    return { pass: true, degraded: true }
+    console.error('[capsule] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
   }
 }
 
@@ -139,7 +151,8 @@ exports.main = async (event) => {
           unlockAt: unlockAt,
           createdAt: t.at,
           openedAt: '',
-          secPass: !sec.degraded
+          /* 能走到这里的信，内容检查必然跑过且通过（fail-closed） */
+          secChecked: true
         }
       })
       return { ok: true, id: added._id, daysLeft: d }

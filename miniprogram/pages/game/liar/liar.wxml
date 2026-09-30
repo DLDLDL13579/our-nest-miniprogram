@@ -1,0 +1,148 @@
+<view class="gamepage">
+  <view class="gbar">
+    <view class="gbar-l" bindtap="goLobby">
+      <text class="gbar-back">‹</text>
+      <text class="gbar-t">大话骰</text>
+    </view>
+    <view class="gbar-r" bindtap="toggleMute">
+      <text class="gbar-mute">{{muted ? '🔇' : '🔊'}}</text>
+    </view>
+  </view>
+
+  <!-- ============ 开局 ============ -->
+  <block wx:if="{{phase === 'ready'}}">
+    <view class="center-box">
+      <view class="bigicon">🎯</view>
+      <view class="ct-t">大话骰</view>
+      <view class="ct-s">
+        每人 5 颗骰子，只有自己能看。
+        <view style="height:8rpx"></view>
+        轮流往上叫「几个几」，不信就开盅。
+      </view>
+      <view class="rulebox">
+        <view class="ruleline"><text class="rk">1 点</text><text class="rv">万能牌，能当任何点数</text></view>
+        <view class="ruleline"><text class="rk">叫斋</text><text class="rv">1 点不再万能，只算 1</text></view>
+        <view class="ruleline"><text class="rk">往上叫</text><text class="rv">数量变大，或数量同、点数大</text></view>
+        <view class="ruleline"><text class="rk">开盅</text><text class="rv">叫的不够就你喝，够了就对方喝</text></view>
+      </view>
+      <view class="btn main bigbtn" bindtap="newRound">开始</view>
+    </view>
+  </block>
+
+  <!-- ============ 交接屏 ============ -->
+  <!-- 注意：小程序里 bindtap 不能用 {{}} 动态绑方法名（不可靠），
+       所以两种用途各写一个分支。 -->
+  <block wx:elif="{{phase === 'handoff'}}">
+    <view class="center-box">
+      <view class="handoff-icon">🤝</view>
+      <view class="ct-t">把手机交给 玩家{{turn}}</view>
+      <block wx:if="{{handoffTo === 'peek'}}">
+        <view class="ct-s">让他看一眼自己的骰子，别让另一个人看到</view>
+        <view class="btn main bigbtn" bindtap="peek">我是玩家{{turn}}，看我的</view>
+      </block>
+      <block wx:else>
+        <view class="ct-s">轮到他叫骰了</view>
+        <view class="btn main bigbtn" bindtap="toBid">我是玩家{{turn}}，继续</view>
+      </block>
+    </view>
+  </block>
+
+  <!-- ============ 看自己的骰子 ============ -->
+  <block wx:elif="{{phase === 'peek'}}">
+    <view class="center-box">
+      <view class="peek-head">玩家{{turn}} 的骰子</view>
+      <view class="dicebox">
+        <view wx:for="{{turn === 1 ? p1 : p2}}" wx:key="index" class="die small">
+          <view wx:for="{{item.cells}}" wx:for-item="on" wx:for-index="ci" wx:key="ci"
+                class="pip {{on ? 'on' : ''}}"></view>
+        </view>
+      </view>
+      <view class="peek-tip">记住了就盖住 —— 别让对方看到</view>
+      <view class="btn main bigbtn" bindtap="cover">我记住了</view>
+    </view>
+  </block>
+
+  <!-- ============ 叫骰 ============ -->
+  <block wx:elif="{{phase === 'bid'}}">
+    <!-- 当前叫骰 -->
+    <view class="bidbar">
+      <block wx:if="{{bid}}">
+        <view class="bid-lbl">现在叫到</view>
+        <view class="bid-val">{{bid.n}} 个 {{bid.face}}{{bid.zhai ? ' 斋' : ''}}</view>
+        <view class="bid-by">玩家{{bid.by}} 叫的</view>
+      </block>
+      <block wx:else>
+        <view class="bid-lbl">轮到 玩家{{turn}} 先叫</view>
+        <view class="bid-val hint">随便叫一个开始</view>
+      </block>
+    </view>
+
+    <!-- 叫骰历史 -->
+    <view wx:if="{{trail.length}}" class="trail">
+      <view wx:for="{{trail}}" wx:key="index" class="trail-item">
+        <text class="ti-by">P{{item.by}}</text>
+        <text class="ti-label">{{item.label}}</text>
+      </view>
+    </view>
+
+    <!-- 我的骰子（可折叠） -->
+    <view class="minebar" bindtap="toggleMine">
+      <text class="mb-t">玩家{{turn}} 的骰子</text>
+      <text class="mb-x">{{showMine ? '收起 ▴' : '看一眼 ▾'}}</text>
+    </view>
+    <view wx:if="{{showMine}}" class="dicebox mini">
+      <view wx:for="{{turn === 1 ? p1 : p2}}" wx:key="index" class="die tiny">
+        <view wx:for="{{item.cells}}" wx:for-item="on" wx:for-index="ci" wx:key="ci"
+              class="pip {{on ? 'on' : ''}}"></view>
+      </view>
+    </view>
+
+    <!-- 选项 -->
+    <view class="optgrid">
+      <view wx:for="{{options}}" wx:key="index" class="optbtn"
+            data-i="{{index}}" bindtap="makeBid">{{item.label}}</view>
+    </view>
+    <view class="morebtn" bindtap="moreOptions">更多叫法 ▾</view>
+
+    <!-- 开骰 -->
+    <view wx:if="{{bid}}" class="btn openbtn" bindtap="open">
+      开！我不信（{{bid.n}} 个 {{bid.face}}{{bid.zhai ? ' 斋' : ''}}）
+    </view>
+  </block>
+
+  <!-- ============ 结算 ============ -->
+  <block wx:elif="{{phase === 'over'}}">
+    <view class="center-box">
+      <view class="over-tag {{reveal.ok ? 'ok' : 'no'}}">
+        {{reveal.ok ? '叫骰成立' : '吹牛被抓'}}
+      </view>
+      <view class="over-num">
+        <text class="on-big">{{reveal.actual}}</text>
+        <text class="on-unit">个 {{reveal.face}}</text>
+      </view>
+      <view class="over-need">叫的是 {{reveal.need}} 个{{reveal.zhai ? '（斋）' : ''}}</view>
+      <view class="over-text">{{resultText}}</view>
+
+      <!-- 亮出全部骰子 -->
+      <view class="revealbox">
+        <view class="rv-lbl">玩家1</view>
+        <view class="dicebox mini">
+          <view wx:for="{{p1}}" wx:key="index" class="die tiny">
+            <view wx:for="{{item.cells}}" wx:for-item="on" wx:for-index="ci" wx:key="ci"
+                  class="pip {{on ? 'on' : ''}}"></view>
+          </view>
+        </view>
+        <view class="rv-lbl">玩家2</view>
+        <view class="dicebox mini">
+          <view wx:for="{{p2}}" wx:key="index" class="die tiny">
+            <view wx:for="{{item.cells}}" wx:for-item="on" wx:for-index="ci" wx:key="ci"
+                  class="pip {{on ? 'on' : ''}}"></view>
+          </view>
+        </view>
+      </view>
+
+      <view class="loserbox">{{loser}} 喝一杯 🍺</view>
+      <view class="btn main bigbtn" bindtap="newRound">再来一局</view>
+    </view>
+  </block>
+</view>

@@ -1,0 +1,32 @@
+<view class="page">
+  <!-- 顶部：夜色氛围，和主 App 的米白暖调区分开（游戏是"玩"的场域） -->
+  <view class="lobby-hero">
+    <view class="lh-glow"></view>
+    <view class="lh-in">
+      <view class="lh-lbl">两个人玩</view>
+      <view class="lh-t">酒桌游戏</view>
+      <view class="lh-s">一部手机传着玩 · 不用联网</view>
+    </view>
+  </view>
+
+  <!-- 游戏列表 -->
+  <view wx:for="{{games}}" wx:key="k" class="gcard"
+        data-k="{{item.k}}" bindtap="go" style="--accent:{{item.color}}">
+    <view class="gc-icon">{{item.icon}}</view>
+    <view class="gc-main">
+      <view class="gc-top">
+        <text class="gc-name">{{item.name}}</text>
+        <text class="gc-tag">{{item.tag}}</text>
+      </view>
+      <view class="gc-desc">{{item.desc}}</view>
+      <view wx:if="{{played[item.k]}}" class="gc-played">玩过 {{played[item.k]}} 次</view>
+    </view>
+    <text class="gc-arrow">▸</text>
+  </view>
+
+  <view class="lobby-tip" bindlongpress="clearPlayed">
+    玩游戏的时候把手机放在桌上，声音开大一点。
+    <view style="height:8rpx"></view>
+    不用联网，也不会记录你们说了什么。
+  </view>
+</view>

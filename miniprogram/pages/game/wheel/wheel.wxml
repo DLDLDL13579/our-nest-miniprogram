@@ -1,0 +1,73 @@
+<view class="gamepage">
+  <view class="gbar">
+    <view class="gbar-l" bindtap="goLobby">
+      <text class="gbar-back">‹</text>
+      <text class="gbar-t">命运转盘</text>
+    </view>
+    <view class="gbar-r" bindtap="toggleMute">
+      <text class="gbar-mute">{{muted ? '🔇' : '🔊'}}</text>
+    </view>
+  </view>
+
+  <!-- 转盘 -->
+  <view class="wheelwrap">
+    <!-- 入场动画放在这层：它只管自己的 transform，
+         内层 .wheel 的 rotate 是动态的，两者不能挤在同一个元素上 -->
+    <view class="wheel-enter">
+      <!-- 转盘本体：旋转由 CSS transition 完成，不逐帧算 -->
+      <view class="wheel"
+            style="background: {{gradient}}; transform: rotate({{rotation}}deg); transition-duration: {{duration}}ms;">
+        <!-- 扇区标签 -->
+        <view wx:for="{{sectors}}" wx:key="k" class="sector-label"
+              style="left:{{item.lx}}%; top:{{item.ly}}%;">
+          <text class="sl-icon">{{item.icon}}</text>
+          <text class="sl-t">{{item.t}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 指针：固定在 12 点，向下指 -->
+    <view class="pointer">
+      <view class="pointer-tri"></view>
+    </view>
+
+    <!-- 中心轴 -->
+    <view class="hub {{spinning ? 'spin' : ''}}">
+      <view class="hub-in">GO</view>
+    </view>
+  </view>
+
+  <!-- 操作 -->
+  <view class="ops">
+    <view class="btn main bigbtn {{spinning ? 'disabled' : ''}}" bindtap="spin">
+      {{spinning ? '转着…' : '转一下'}}
+    </view>
+  </view>
+
+  <!-- 历史 -->
+  <view wx:if="{{history.length}}" class="hist">
+    <view class="hist-t">刚才转到</view>
+    <view class="hist-list">
+      <view wx:for="{{history}}" wx:key="index" class="hist-item">
+        <text class="hi-icon">{{item.icon}}</text>
+        <text class="hi-t" style="color:{{item.color}}">{{item.t}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 结果弹层 -->
+  <view wx:if="{{showResult}}" class="mask" bindtap="closeResult">
+    <view class="rescard" catchtap="closeResult">
+      <view class="rc-icon">{{result.icon}}</view>
+      <view class="rc-t" style="color:{{result.color}}">{{resultText}}</view>
+      <view wx:if="{{resultText === '真心话' || resultText === '大冒险'}}" class="rc-detail">
+        {{resultText === '真心话' ? history[0].detail : history[0].detail}}
+      </view>
+      <view wx:elif="{{resultText === '免罚一次'}}" class="rc-detail">
+        这一轮你可以不喝，也可以留着下次用。
+      </view>
+      <view wx:else class="rc-detail">干杯 🍻</view>
+      <view class="rc-btn">知道了</view>
+    </view>
+  </view>
+</view>

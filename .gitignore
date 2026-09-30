@@ -19,3 +19,7 @@ cloudfunctions/*/node_modules/
 *.bak
 *.bak_*
 /tmp/
+
+# ---------- Python 缓存（音效生成脚本用）----------
+__pycache__/
+*.pyc

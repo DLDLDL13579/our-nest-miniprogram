@@ -1,0 +1,158 @@
+/* 摇骰子：深色桌面 + 白色骰子，对比强烈（酒桌氛围） */
+
+.gamepage {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 30%, #3A2B24 0%, #241A16 70%);
+  padding: 0 32rpx calc(60rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column;
+}
+
+/* ---------- 顶栏 ---------- */
+.gbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20rpx 0 10rpx;
+}
+.gbar-l { display: flex; align-items: center; gap: 10rpx; padding: 10rpx 6rpx }
+.gbar-back { font-size: 44rpx; color: rgba(255,255,255,.7); line-height: 1 }
+.gbar-t { font-size: 30rpx; color: rgba(255,255,255,.85); font-weight: 600 }
+.gbar-r { padding: 10rpx 14rpx }
+.gbar-mute { font-size: 34rpx }
+
+/* ---------- 桌面 ---------- */
+.table {
+  position: relative; flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  min-height: 520rpx;
+}
+.table-glow {
+  position: absolute; width: 520rpx; height: 520rpx; border-radius: 50%;
+  background: radial-gradient(circle, rgba(232,179,60,.22) 0%, rgba(232,179,60,0) 68%);
+  opacity: 0; transition: opacity .25s;
+  pointer-events: none;
+}
+.table-glow.on { opacity: 1; animation: glowPulse .55s ease-in-out infinite alternate }
+
+.dicebox {
+  display: flex; flex-wrap: wrap; gap: 26rpx;
+  justify-content: center; align-items: center;
+  position: relative; z-index: 2;
+  max-width: 620rpx;
+}
+
+/* ---------- 骰子本体 ----------
+   用 3x3 网格 + 圆形点阵画点数，不用字体符号（跨机型不一致）。 */
+.die {
+  width: 128rpx; height: 128rpx;
+  background: linear-gradient(145deg, #FFFFFF 0%, #F0EBE3 100%);
+  border-radius: 22rpx;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 14rpx;
+  gap: 4rpx;
+  box-shadow:
+    0 8rpx 20rpx rgba(0,0,0,.45),
+    inset 0 -4rpx 8rpx rgba(0,0,0,.06),
+    inset 0 3rpx 6rpx rgba(255,255,255,.9);
+  transition: transform .16s;
+}
+
+/* 摇动中：快速抖动 + 轻微旋转 */
+.die.tumbling {
+  animation: tumble .3s linear infinite;
+}
+@keyframes tumble {
+  0%   { transform: translateY(0) rotate(0deg) scale(1) }
+  25%  { transform: translateY(-14rpx) rotate(-8deg) scale(1.04) }
+  50%  { transform: translateY(4rpx) rotate(6deg) scale(.97) }
+  75%  { transform: translateY(-8rpx) rotate(-4deg) scale(1.02) }
+  100% { transform: translateY(0) rotate(0deg) scale(1) }
+}
+
+/* 落定：一个短促的"砸下"回弹 */
+.die.settled {
+  animation: landIn .32s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes landIn {
+  0%   { transform: scale(1.22) translateY(-18rpx) }
+  60%  { transform: scale(.96) translateY(3rpx) }
+  100% { transform: scale(1) translateY(0) }
+}
+
+/* 点数 */
+.pip {
+  border-radius: 50%;
+  background: transparent;
+  align-self: center; justify-self: center;
+  width: 22rpx; height: 22rpx;
+}
+.pip.on {
+  background: radial-gradient(circle at 35% 32%, #4A4038 0%, #211B16 75%);
+  box-shadow: inset 0 1rpx 2rpx rgba(255,255,255,.25);
+}
+
+/* ---------- 力度提示 ---------- */
+.powerhint {
+  margin-top: 44rpx; display: flex; flex-direction: column;
+  align-items: center; gap: 12rpx; position: relative; z-index: 2;
+}
+.powerbar {
+  width: 300rpx; height: 8rpx; border-radius: 4rpx;
+  background: rgba(255,255,255,.12); overflow: hidden;
+}
+.powerfill {
+  height: 100%; border-radius: 4rpx;
+  background: linear-gradient(90deg, #6D9E6A, #E8B33C, #E0714F);
+  transition: width .08s linear;
+}
+.powertxt { font-size: 21rpx; color: rgba(255,255,255,.4); letter-spacing: 2rpx }
+
+/* ---------- 结果 ---------- */
+.result {
+  min-height: 190rpx;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+}
+.res-inner { animation: resultIn .4s cubic-bezier(.34, 1.56, .64, 1) }
+@keyframes resultIn {
+  0%   { opacity: 0; transform: scale(.6) translateY(20rpx) }
+  100% { opacity: 1; transform: scale(1) translateY(0) }
+}
+.res-total {
+  font-size: 96rpx; font-weight: 700; color: #F6E7C3;
+  line-height: 1; letter-spacing: -3rpx;
+  text-shadow: 0 4rpx 24rpx rgba(232,179,60,.35);
+}
+.res-text {
+  font-size: 30rpx; margin-top: 10rpx;
+  color: rgba(255,255,255,.75); letter-spacing: 2rpx;
+}
+.res-text.max { color: #FFD86B; font-weight: 700 }
+.res-text.min { color: #E08B7A; font-weight: 700 }
+.res-hint { font-size: 25rpx; color: rgba(255,255,255,.38); letter-spacing: 2rpx }
+
+/* ---------- 操作区 ---------- */
+.ops { padding-top: 10rpx }
+.countrow {
+  display: flex; gap: 12rpx; justify-content: center;
+  margin-bottom: 26rpx; flex-wrap: wrap;
+}
+.countrow .pill {
+  background: rgba(255,255,255,.14); color: #F6E7C3;
+  font-size: 23rpx; padding: 10rpx 24rpx;
+}
+.countrow .pill.ghost {
+  background: transparent; color: rgba(255,255,255,.42);
+  border: 2rpx solid rgba(255,255,255,.18);
+}
+.bigbtn {
+  height: 100rpx; font-size: 34rpx; letter-spacing: 6rpx;
+  background: linear-gradient(135deg, #E88060, #CE5738);
+  box-shadow: 0 8rpx 24rpx rgba(206,87,56,.4);
+}
+.bigbtn.disabled { opacity: .45 }
+.optip {
+  text-align: center; font-size: 21rpx;
+  color: rgba(255,255,255,.3); margin-top: 20rpx;
+}

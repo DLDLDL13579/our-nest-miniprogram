@@ -1,0 +1,91 @@
+/* 游戏大厅：比主 App 更暗、更"场域感"，但仍是同一套暖色血脉。
+   做法是把米白底压暗一点、卡片加一点内发光，而不是换成黑底 —— 换黑底会像另一个 App。 */
+
+.lobby-hero {
+  position: relative; overflow: hidden;
+  border-radius: var(--r-3); margin-bottom: var(--gap-3);
+  background: linear-gradient(135deg, #3E2E28 0%, #2E211C 60%, #241A16 100%);
+  box-shadow: var(--sh-3);
+}
+.lh-glow {
+  position: absolute; width: 400rpx; height: 400rpx; border-radius: 50%;
+  right: -130rpx; top: -160rpx;
+  background: radial-gradient(circle, rgba(232,179,60,.28) 0%, rgba(232,179,60,0) 70%);
+  /* 光晕缓慢呼吸 —— 让静态页面有生命感 */
+  animation: glowBreathe 4s ease-in-out infinite;
+}
+@keyframes glowBreathe {
+  0%, 100% { opacity: .7;  transform: scale(1) }
+  50%      { opacity: 1;   transform: scale(1.12) }
+}
+.lh-in { position: relative; padding: 38rpx 34rpx 34rpx }
+.lh-lbl { font-size: 22rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx }
+.lh-t { font-size: 46rpx; font-weight: 700; color: #F6E7C3; margin-top: 8rpx; letter-spacing: 2rpx }
+.lh-s { font-size: 23rpx; color: rgba(255,255,255,.5); margin-top: 12rpx }
+
+/* 标题上的骰子：轻微晃动，暗示"可以玩" */
+.lh-t::after {
+  content: '🎲';
+  font-size: 40rpx; margin-left: 14rpx;
+  display: inline-block;
+  animation: diceWiggle 2.4s ease-in-out infinite;
+}
+@keyframes diceWiggle {
+  0%, 70%, 100% { transform: rotate(0deg) }
+  75%           { transform: rotate(-16deg) }
+  80%           { transform: rotate(14deg) }
+  85%           { transform: rotate(-8deg) }
+  90%           { transform: rotate(4deg) }
+}
+
+/* ---------- 游戏卡 ---------- */
+.gcard {
+  display: flex; align-items: center; gap: 22rpx;
+  padding: 28rpx 26rpx; margin-bottom: var(--gap-2);
+  background: var(--card);
+  border-radius: var(--r-2);
+  box-shadow: var(--sh-1);
+  border-left: 8rpx solid var(--accent, var(--brand));
+  transition: transform .12s;
+  /* 入场：逐张滑入，靠 animation-delay 错开 */
+  animation: cardSlideIn .45s cubic-bezier(.22, 1, .36, 1) backwards;
+}
+/* 三张卡依次入场，每张晚 90ms */
+.gcard:nth-of-type(1) { animation-delay: .05s }
+.gcard:nth-of-type(2) { animation-delay: .14s }
+.gcard:nth-of-type(3) { animation-delay: .23s }
+@keyframes cardSlideIn {
+  0%   { opacity: 0; transform: translateX(40rpx) }
+  100% { opacity: 1; transform: translateX(0) }
+}
+.gcard:active { transform: scale(.985); box-shadow: var(--sh-2) }
+
+.gc-icon {
+  width: 92rpx; height: 92rpx; border-radius: 24rpx; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 48rpx;
+  background: linear-gradient(135deg, #FBF3E8, #F3E4D2);
+  transition: transform .2s;
+}
+.gcard:active .gc-icon { transform: scale(1.1) rotate(-6deg) }
+.gc-main { flex: 1; min-width: 0 }
+.gc-top { display: flex; align-items: center; gap: 14rpx }
+.gc-name { font-size: 32rpx; font-weight: 700; color: var(--ink) }
+.gc-tag {
+  font-size: 19rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  background: var(--brandsoft); color: var(--brand2);
+}
+.gc-desc { font-size: 23rpx; color: var(--ink2); margin-top: 8rpx }
+.gc-played { font-size: 20rpx; color: var(--ink3); margin-top: 6rpx }
+.gc-arrow {
+  font-size: 30rpx; color: var(--ink3); flex: none;
+  transition: transform .2s;
+}
+.gcard:active .gc-arrow { transform: translateX(6rpx) }
+
+.lobby-tip {
+  margin-top: 12rpx; padding: 26rpx 28rpx;
+  background: #F5F1EB; border-radius: var(--r-2);
+  font-size: 22rpx; color: var(--ink3); line-height: 1.8;
+  text-align: center;
+}

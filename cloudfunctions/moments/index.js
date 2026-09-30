@@ -34,7 +34,18 @@ function nowCN() {
   return { date: d.toISOString().slice(0, 10), at: d.toISOString().slice(0, 16).replace('T', ' ') }
 }
 
-/** 内容安全。没开通时放行，保证功能可用；对外发布前必须改成拒绝 */
+/**
+ * 内容安全。
+ *
+ * ★ 发布策略：**调用失败即拒绝**（fail-closed）。
+ *   自用阶段这里是「失败就放行」，保证功能可用；但正式发布后那样等于把内容安全
+ *   变成可绕过的 —— 只要让接口超时就能写入任意内容，审核也会据此驳回。
+ *
+ *   代价要认：接口抽风时你们会暂时记不了东西。
+ *   所以错误信息刻意分成两种，别让人误以为是自己写的内容有问题：
+ *     · 内容被判风险 → 「改一改再记」
+ *     · 检查服务不可用 → 「稍后再试」（不是你写的问题）
+ */
 async function safe(text, openid) {
   if (!text) return { pass: true }
   try {
@@ -45,8 +56,10 @@ async function safe(text, openid) {
     if (s && s !== 'pass') return { pass: false, msg: '这段话系统判断有风险，改一改再记' }
     return { pass: true }
   } catch (err) {
-    console.warn('[moments] msgSecCheck 没跑成，暂时放行：', err.errCode, err.errMsg || err.message)
-    return { pass: true, degraded: true }
+    /* 日志留全，方便事后区分「接口挂了」和「内容被拦」 */
+    console.error('[moments] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
   }
 }
 
@@ -89,7 +102,10 @@ exports.main = async (event) => {
           pairId: pair._id, by: OPENID,
           text: text, photos: photos, thumbs: thumbs, mood: mood,
           date: t.date, at: t.at,
-          createdAt: t.at, secPass: !sec.degraded
+          createdAt: t.at,
+          /* 能走到这里的记录，内容检查必然是「跑过且通过」的（fail-closed）。
+             留这个字段是为了以后能验证：确实每条都过检，不是靠放行进来的。 */
+          secChecked: true
         }
       })
       return { ok: true, id: added._id }
@@ -153,13 +169,29 @@ exports.main = async (event) => {
       return { ok: true, days: days, totalDays: order.length }
     }
 
-    /* ---------------- 统计 ---------------- */
+    /* ---------------- 统计 ----------------
+       注：前端目前已无调用（首页走 home 聚合、编年史走 chronicle.stats），
+       但保留这个 action —— 它是编年史统计的等价入口，删掉会让云函数能力不完整。
+       实现与 chronicle.stats 一致：天数在数据库端聚合去重，
+       不再用 limit(1000) 拉记录（那样超过 1000 条天数会静默算少）。 */
     if (action === 'stats') {
       const c = await moments.where({ pairId: pair._id }).count()
-      const r = await moments.where({ pairId: pair._id }).field({ date: true }).limit(1000).get()
-      const set = {}
-      r.data.forEach(m => { set[m.date] = 1 })
-      return { ok: true, total: c.total, days: Object.keys(set).length }
+      let days = 0
+      try {
+        const agg = await moments.aggregate()
+          .match({ pairId: pair._id })
+          .group({ _id: '$date' })
+          .count('n')
+          .end()
+        days = (agg.list && agg.list[0] && agg.list[0].n) || 0
+      } catch (e) {
+        console.warn('[moments] 聚合不可用，回退本地去重：', e.errMsg || e.message)
+        const r = await moments.where({ pairId: pair._id }).field({ date: true }).limit(1000).get()
+        const set = {}
+        r.data.forEach(m => { set[m.date] = 1 })
+        days = Object.keys(set).length
+      }
+      return { ok: true, total: c.total, days: days }
     }
 
     /* ---------------- 删除（只能删自己的）---------------- */

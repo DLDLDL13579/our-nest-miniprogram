@@ -49,6 +49,20 @@ function nowCN() {
 }
 
 /** 内容安全。没开通时放行，保证功能可用 */
+/**
+ * 内容安全。
+ *
+ * ★ 发布策略：**调用失败即拒绝**（fail-closed）。
+ *   自用阶段这里是「失败就放行」，但正式发布后那样等于把内容安全变成可绕过的 ——
+ *   只要让接口超时就能写入任意内容，审核也会据此驳回。
+ *
+ *   错误信息分两种，别让人误以为是自己写的内容有问题：
+ *     · 内容被判风险 → 「改一改再写」
+ *     · 检查服务不可用 → 「稍后再试」
+ *
+ *   这一条对「情绪」功能尤其重要：这里写的是吵架时的气话，
+ *   恰恰是最需要过一遍内容安全的场景。
+ */
 async function safe(text, openid) {
   if (!text) return { pass: true }
   try {
@@ -59,8 +73,9 @@ async function safe(text, openid) {
     if (s && s !== 'pass') return { pass: false, msg: '这段里有系统判断为风险的内容，改一改再写' }
     return { pass: true }
   } catch (err) {
-    console.warn('[mood] msgSecCheck 没跑成，暂时放行：', err.errCode)
-    return { pass: true, degraded: true }
+    console.error('[mood] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
   }
 }
 

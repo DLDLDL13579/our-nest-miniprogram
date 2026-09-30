@@ -92,7 +92,31 @@ function collection(name) {
       }
     },
     async add({ data }) { const d = Object.assign({ _id: nextId() }, data); rows().push(d); return { _id: d._id } },
-    async count() { return { total: rows().length } }
+    async count() { return { total: rows().length } },
+    /* 聚合链：chronicle.stats 用它按 date 去重数天数。
+       真聚合在数据库端跑，这里等价地在内存里做 ——
+       没有它，contract 测试里调 chronicle 会直接抛错。 */
+    aggregate() {
+      const stages = []
+      const api = {
+        match(c) { stages.push(['match', c]); return api },
+        group(g) { stages.push(['group', g]); return api },
+        count(f) { stages.push(['count', f]); return api },
+        async end() {
+          let cur = rows().slice()
+          for (const [op, arg] of stages) {
+            if (op === 'match') cur = cur.filter(d => match(d, arg))
+            else if (op === 'group') {
+              const key = String(arg._id || '').replace(/^\$/, '')
+              const seen = new Set()
+              cur = cur.filter(d => { const v = d[key]; if (seen.has(v)) return false; seen.add(v); return true })
+            } else if (op === 'count') { cur = [{ [arg || 'n']: cur.length }] }
+          }
+          return { list: cur }
+        }
+      }
+      return api
+    }
   }
 }
 let OPENID = ''

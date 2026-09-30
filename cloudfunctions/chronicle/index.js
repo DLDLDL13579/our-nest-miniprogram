@@ -128,10 +128,35 @@ exports.main = async (event) => {
     /* ================= 统计：给"已攒 N 条"这类数字 ================= */
     if (action === 'stats') {
       const total = await moments.where({ pairId: pair._id }).count()
-      const r = await moments.where({ pairId: pair._id }).field({ date: true }).limit(1000).get()
-      const set = {}
-      r.data.forEach(m => { set[m.date] = 1 })
-      return { ok: true, totalAnswers: total.total, fullDays: Object.keys(set).length }
+
+      /**
+       * 天数用聚合在数据库端去重，不再把记录拉到云函数里数。
+       *
+       * 旧写法是 field({date:true}).limit(1000) 然后本地 Set 去重 —— 两个问题：
+       *   ① 性能：每条记录都要从数据库传一遍，1000 条就是 1000 次传输
+       *   ② ★ 正确性：limit(1000) 是硬上限，记录超过 1000 条后天数会**算少**，
+       *      而且不会报错，只是数字悄悄不对（这类静默错误最难发现）
+       *
+       * 聚合只回一个数字，多少条记录都一样快。
+       * 聚合失败时回退到旧算法，保证功能不因数据库能力差异而挂掉。
+       */
+      let fullDays = 0
+      try {
+        const agg = await moments.aggregate()
+          .match({ pairId: pair._id })
+          .group({ _id: '$date' })
+          .count('n')
+          .end()
+        fullDays = (agg.list && agg.list[0] && agg.list[0].n) || 0
+      } catch (e) {
+        console.warn('[chronicle] 聚合不可用，回退本地去重：', e.errMsg || e.message)
+        const r = await moments.where({ pairId: pair._id }).field({ date: true }).limit(1000).get()
+        const set = {}
+        r.data.forEach(m => { set[m.date] = 1 })
+        fullDays = Object.keys(set).length
+      }
+
+      return { ok: true, totalAnswers: total.total, fullDays: fullDays }
     }
 
     return { ok: false, msg: '不认识的操作：' + action }

@@ -1,0 +1,173 @@
+/* 命运转盘 */
+
+.gamepage {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 35%, #3A2B24 0%, #241A16 72%);
+  padding: 0 32rpx calc(50rpx + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column;
+}
+
+.gbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20rpx 0 10rpx;
+}
+.gbar-l { display: flex; align-items: center; gap: 10rpx; padding: 10rpx 6rpx }
+.gbar-back { font-size: 44rpx; color: rgba(255,255,255,.7); line-height: 1 }
+.gbar-t { font-size: 30rpx; color: rgba(255,255,255,.85); font-weight: 600 }
+.gbar-r { padding: 10rpx 14rpx }
+.gbar-mute { font-size: 34rpx }
+
+/* ---------- 转盘 ---------- */
+.wheelwrap {
+  position: relative;
+  width: 620rpx; height: 620rpx;
+  margin: 20rpx auto 0;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 指针：从顶部向下指进转盘 */
+.pointer {
+  position: absolute; top: -8rpx; left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+.pointer-tri {
+  width: 0; height: 0;
+  border-left: 22rpx solid transparent;
+  border-right: 22rpx solid transparent;
+  border-top: 40rpx solid #F6E7C3;
+  filter: drop-shadow(0 3rpx 8rpx rgba(0,0,0,.5));
+  /* 指针轻微呼吸，暗示"我在等" */
+  animation: pointerIdle 2s ease-in-out infinite;
+}
+@keyframes pointerIdle {
+  0%, 100% { transform: translateY(0) }
+  50%      { transform: translateY(-4rpx) }
+}
+
+/* 转盘本体：conic-gradient 画扇区（纯 CSS，不用 canvas）
+   ★ 注意：这里**不能**加入场 animation ——
+     .wheel 的 transform 是 inline 动态写的（rotate({{rotation}}deg)），
+     而 animation 也会写 transform，两者冲突时 animation 优先，
+     结果就是转盘根本转不起来（只是入场动画放一遍）。
+     所以入场动画放在外层 .wheel-enter 上，各管各的 transform。 */
+.wheel {
+  position: relative;
+  width: 560rpx; height: 560rpx;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 10rpx #4A3A30,
+    0 0 0 14rpx #2E211C,
+    0 16rpx 48rpx rgba(0,0,0,.55),
+    inset 0 0 60rpx rgba(0,0,0,.25);
+  /* transition 的 property 在这里写死，duration 由 style 动态给 */
+  transition-property: transform;
+  transition-timing-function: cubic-bezier(.15, .85, .2, 1);
+  will-change: transform;
+}
+
+/* 入场：整块转盘"被摆上桌" */
+.wheel-enter {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  animation: wheelIn .6s cubic-bezier(.34, 1.3, .64, 1) backwards;
+  pointer-events: none;
+}
+@keyframes wheelIn {
+  0%   { opacity: 0; transform: scale(.6) rotate(-120deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0deg) }
+}
+
+/* 扇区标签：绝对定位在扇区中线，跟着转盘一起转 */
+.sector-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2rpx; pointer-events: none;
+}
+.sl-icon { font-size: 30rpx; line-height: 1.1 }
+.sl-t {
+  font-size: 19rpx; color: #fff; font-weight: 600;
+  text-shadow: 0 1rpx 4rpx rgba(0,0,0,.55);
+  white-space: nowrap;
+}
+
+/* 中心轴 */
+.hub {
+  position: absolute;
+  width: 130rpx; height: 130rpx; border-radius: 50%;
+  background: linear-gradient(145deg, #F6E7C3, #D9A441);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 20rpx rgba(0,0,0,.5), inset 0 -3rpx 8rpx rgba(0,0,0,.15);
+  z-index: 4;
+}
+.hub-in {
+  font-size: 26rpx; font-weight: 700; color: #6B4A18;
+  letter-spacing: 2rpx;
+}
+.hub.spin { animation: hubPulse .5s ease-in-out infinite alternate }
+@keyframes hubPulse {
+  0%   { transform: scale(1) }
+  100% { transform: scale(1.08) }
+}
+
+/* ---------- 操作 ---------- */
+.ops { padding: 46rpx 0 10rpx }
+.bigbtn {
+  height: 100rpx; font-size: 34rpx; letter-spacing: 6rpx;
+  background: linear-gradient(135deg, #E88060, #CE5738);
+  box-shadow: 0 8rpx 24rpx rgba(206,87,56,.4);
+}
+.bigbtn.disabled { opacity: .45 }
+
+/* ---------- 历史 ---------- */
+.hist { margin-top: 26rpx }
+.hist-t {
+  font-size: 21rpx; color: rgba(255,255,255,.35);
+  letter-spacing: 2rpx; margin-bottom: 14rpx;
+}
+.hist-list { display: flex; flex-wrap: wrap; gap: 12rpx }
+.hist-item {
+  display: flex; align-items: center; gap: 6rpx;
+  padding: 8rpx 18rpx; border-radius: 999rpx;
+  background: rgba(255,255,255,.08);
+}
+.hi-icon { font-size: 22rpx }
+.hi-t { font-size: 21rpx; font-weight: 600 }
+
+/* ---------- 结果弹层 ---------- */
+.mask {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(20,14,11,.82);
+  display: flex; align-items: center; justify-content: center;
+  padding: 60rpx;
+}
+.rescard {
+  width: 100%; max-width: 560rpx;
+  background: linear-gradient(160deg, #FFFDF9, #F7F0E6);
+  border-radius: var(--r-3);
+  padding: 52rpx 44rpx 40rpx;
+  text-align: center;
+  box-shadow: 0 20rpx 60rpx rgba(0,0,0,.5);
+  animation: cardIn .42s cubic-bezier(.34, 1.56, .64, 1);
+}
+@keyframes cardIn {
+  0%   { opacity: 0; transform: scale(.75) translateY(40rpx) }
+  100% { opacity: 1; transform: scale(1) translateY(0) }
+}
+.rc-icon { font-size: 88rpx; line-height: 1.2 }
+.rc-t {
+  font-size: 44rpx; font-weight: 700; margin-top: 10rpx;
+  letter-spacing: 3rpx;
+}
+.rc-detail {
+  font-size: 27rpx; color: var(--ink2); line-height: 1.8;
+  margin-top: 22rpx; padding-top: 22rpx;
+  border-top: 2rpx dashed var(--line);
+}
+.rc-btn {
+  margin-top: 34rpx; height: 84rpx;
+  display: flex; align-items: center; justify-content: center;
+  background: #F0EAE1; border-radius: 22rpx;
+  font-size: 28rpx; color: var(--ink2); font-weight: 600;
+}

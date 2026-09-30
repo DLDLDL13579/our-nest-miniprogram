@@ -40,7 +40,33 @@ function collection(name){
         return {stats:{updated:1}}},
       async remove(){const i=rows().findIndex(x=>x._id===id);if(i>=0)rows().splice(i,1);return{stats:{removed:1}}}}},
     async add({data}){const d=Object.assign({_id:nextId()},data);rows().push(d);return {_id:d._id}},
-    async count(){return {total:rows().length}}
+    async count(){return {total:rows().length}},
+    /* 聚合链：只实现 chronicle.stats 用到的三个阶段（match/group/count）。
+       真聚合在数据库端跑，这里等价地在内存里做同样的事 ——
+       目的是让「天数不再受 limit(1000) 限制」这条改动能被断言覆盖。 */
+    aggregate(){
+      const stages=[]
+      const api={
+        match(c){stages.push(['match',c]);return api},
+        group(g){stages.push(['group',g]);return api},
+        count(f){stages.push(['count',f]);return api},
+        async end(){
+          let cur=rows().slice()
+          for(const [op,arg] of stages){
+            if(op==='match')cur=cur.filter(d=>match(d,arg))
+            else if(op==='group'){
+              const key=String(arg._id||'').replace(/^\$/,'')
+              const seen=new Set()
+              cur=cur.filter(d=>{const v=d[key]
+                if(seen.has(v))return false;seen.add(v);return true})
+            }
+            else if(op==='count'){cur=[{[arg||'n']:cur.length}]}
+          }
+          return {list:cur}
+        }
+      }
+      return api
+    }
   }
 }
 let OPENID=''
@@ -104,6 +130,30 @@ let n=0; const ok=m=>{n++;console.log('  ✓ '+m)}
   const s=await chronicle.main({action:'stats'})
   assert.strictEqual(s.fullDays,3); assert.strictEqual(s.totalAnswers,5)
   ok(`统计：记录了 ${s.fullDays} 天 / 总条数 ${s.totalAnswers}`)
+
+  /* ★ 回归：记录超过 1000 条时，天数不能算少。
+     旧实现是 field({date:true}).limit(1000) 然后本地去重 ——
+     limit 是硬上限，第 1001 条之后的天数会被静默丢掉，
+     不报错、只是数字不对。改成数据库端聚合后与条数无关。 */
+  console.log('\n=== ★ 超过 1000 条记录时天数仍然准确（旧实现的静默 bug）===')
+  const pid0 = store.pairs[0]._id
+  const before = store.moments.length
+  for (let i = 0; i < 1200; i++) {
+    /* 造 1200 条，其中每 100 条换一个新日期 —— 共 12 个新日期 */
+    const day = '2027-' + String(1 + Math.floor(i / 100)).padStart(2, '0') + '-15'
+    store.moments.push({
+      _id: 'bulk' + i, pairId: pid0, by: D, text: '批量' + i,
+      photos: [], thumbs: [], mood: 'daily', date: day,
+      at: day + ' 10:00', createdAt: day + ' 10:00'
+    })
+  }
+  const s2 = await chronicle.main({ action: 'stats' })
+  assert.strictEqual(s2.totalAnswers, before + 1200, '总条数应统计到全部 1200 条')
+  assert.strictEqual(s2.fullDays, 3 + 12, '★ 天数应含 12 个新日期（旧实现会因 limit(1000) 算少）')
+  ok(`★ 1213 条记录 / ${s2.fullDays} 天 —— 聚合不受 limit(1000) 影响（旧实现只能数到 1000 条）`)
+
+  /* 清掉批量数据，不影响后续用例 */
+  store.moments = store.moments.filter(m => String(m._id).indexOf('bulk') !== 0)
 
   console.log('\n=== 某天详情 ===')
   const dd=await chronicle.main({action:'day',date:'2026-09-21'})

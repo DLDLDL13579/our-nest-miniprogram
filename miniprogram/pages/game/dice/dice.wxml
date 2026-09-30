@@ -1,0 +1,60 @@
+<view class="gamepage">
+  <!-- 顶部：返回 + 静音 -->
+  <view class="gbar">
+    <view class="gbar-l" bindtap="goLobby">
+      <text class="gbar-back">‹</text>
+      <text class="gbar-t">摇骰子</text>
+    </view>
+    <view class="gbar-r" bindtap="toggleMute">
+      <text class="gbar-mute">{{muted ? '🔇' : '🔊'}}</text>
+    </view>
+  </view>
+
+  <!-- 骰子区 -->
+  <view class="table {{phase === 'shaking' ? 'shaking' : ''}}">
+    <!-- 摇动时的动态光晕 -->
+    <view class="table-glow {{phase === 'shaking' ? 'on' : ''}}"></view>
+
+    <view class="dicebox">
+      <view wx:for="{{dice}}" wx:key="index"
+            class="die {{item.settled ? 'settled' : ''}} {{phase === 'shaking' ? 'tumbling' : ''}}"
+            style="animation-delay: {{index * 0.06}}s">
+        <view wx:for="{{item.cells}}" wx:for-item="on" wx:for-index="ci" wx:key="ci"
+              class="pip {{on ? 'on' : ''}}"></view>
+      </view>
+    </view>
+
+    <!-- 力度条：只在摇动时出现 -->
+    <view wx:if="{{shakeEnabled && phase === 'idle'}}" class="powerhint">
+      <view class="powerbar"><view class="powerfill" style="width:{{shakePower}}%"></view></view>
+      <text class="powertxt">摇一摇手机</text>
+    </view>
+  </view>
+
+  <!-- 结果 -->
+  <view class="result {{phase === 'done' ? 'show' : ''}}">
+    <view wx:if="{{phase === 'done'}}" class="res-inner">
+      <view class="res-total">{{total}}</view>
+      <view class="res-text {{lastResult}}">{{resultText}}</view>
+    </view>
+    <view wx:elif="{{phase === 'settling'}}" class="res-hint">落定中…</view>
+    <view wx:elif="{{phase === 'shaking'}}" class="res-hint">摇动中…</view>
+    <view wx:else class="res-hint">{{shakeEnabled ? '摇一摇手机开始' : '点下面按钮开始'}}</view>
+  </view>
+
+  <!-- 操作区 -->
+  <view class="ops">
+    <view class="countrow">
+      <view wx:for="{{[1,2,3,4,5]}}" wx:for-item="n" wx:key="*this"
+            class="pill {{count === n ? '' : 'ghost'}}"
+            data-n="{{n}}" bindtap="setCount">{{n}} 颗</view>
+    </view>
+    <view class="btn main bigbtn {{phase === 'shaking' || phase === 'settling' ? 'disabled' : ''}}"
+          bindtap="tapShake">
+      {{phase === 'done' ? '再摇一次' : '摇！'}}
+    </view>
+    <view class="optip">
+      {{shakeEnabled ? '也可以直接点上面的按钮' : '这台设备没有重力感应，点按钮摇'}}
+    </view>
+  </view>
+</view>

@@ -130,5 +130,6 @@ Page({
   goSettings() { wx.navigateTo({ url: '/pages/settings/settings' }) },
   goChronicle() { wx.switchTab({ url: '/pages/chronicle/chronicle' }) },
   goCapsule() { wx.navigateTo({ url: '/pages/capsule/capsule' }) },
-  goReminds() { wx.navigateTo({ url: '/pages/reminds/reminds' }) }
+  goReminds() { wx.navigateTo({ url: '/pages/reminds/reminds' }) },
+  goGame() { wx.navigateTo({ url: '/pages/game/game' }) }
 })

@@ -86,6 +86,18 @@
       <text class="cb-r">▸</text>
     </view>
 
+    <!-- 酒桌游戏：一起玩的东西，放在功能入口最后一格 -->
+    <view class="gamebar" bindtap="goGame">
+      <view class="cb-l">
+        <text class="cb-e">🎲</text>
+        <view>
+          <view class="cb-t">酒桌游戏</view>
+          <view class="cb-s">摇骰子 · 大话骰 · 命运转盘</view>
+        </view>
+      </view>
+      <text class="cb-r">▸</text>
+    </view>
+
     <!-- ② 随手记：核心动作，做得最显眼 -->
     <view class="writecard" bindtap="goWrite">
       <view class="wc-left">

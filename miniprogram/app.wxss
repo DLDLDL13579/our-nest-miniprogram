@@ -1,6 +1,11 @@
 /**
  * 设计令牌 —— 和 prototype/styles.css 同一套值。
  * 改颜色只改这里，不要到各页面里散着写。
+ *
+ * 2026-09-30 补齐间距与阴影两层令牌：
+ *   之前间距是 20/24/28rpx 随手写的、阴影只有一档，
+ *   结果是「每块都差不多，看不出主次」——不是难看，是没有层次。
+ *   层次靠对比做出来：同样大小的元素，阴影深的是主体、浅的是陪衬。
  */
 page {
   --brand: #E0714F;        /* 陶土红：主色，暖而不艳 */
@@ -18,6 +23,25 @@ page {
   --ink2: #6E675E;
   --ink3: #A39B90;
   --line: #E7DFD3;
+
+  /* ---- 间距：4 的倍数，只有三档 ----
+     gap-1 组内元素 / gap-2 卡片之间 / gap-3 区块之间。
+     以前混用 20/22/24/28 是"看不出差别但确实不齐"。 */
+  --gap-1: 16rpx;
+  --gap-2: 24rpx;
+  --gap-3: 32rpx;
+
+  /* ---- 阴影：三档层次，对应"贴近/浮起/突出" ----
+     底色是暖米白，所以阴影用暖棕而不是灰，否则会显脏。 */
+  --sh-1: 0 2rpx 8rpx rgba(88, 68, 48, .045);   /* 陪衬：列表卡、次级信息 */
+  --sh-2: 0 6rpx 20rpx rgba(88, 68, 48, .075);  /* 主体：主要卡片 */
+  --sh-3: 0 12rpx 32rpx rgba(88, 68, 48, .11);  /* 突出：hero、浮层 */
+
+  /* ---- 圆角：三档，和阴影配套 ---- */
+  --r-1: 16rpx;   /* 小元素：标签、输入框内件 */
+  --r-2: 24rpx;   /* 卡片 */
+  --r-3: 32rpx;   /* 大块：hero、面板 */
+
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
@@ -30,12 +54,12 @@ view, text, button, input, textarea { box-sizing: border-box }
 /* ---------- 卡片 ---------- */
 .card {
   background: var(--card);
-  border-radius: 28rpx;
+  border-radius: var(--r-2);
   padding: 28rpx;
-  margin-bottom: 24rpx;
-  box-shadow: 0 2rpx 6rpx rgba(70, 55, 40, .05);
+  margin-bottom: var(--gap-2);
+  box-shadow: var(--sh-1);
 }
-.card.hl { border: 3rpx solid var(--brand) }
+.card.hl { border: 3rpx solid var(--brand); box-shadow: var(--sh-2) }
 .card.flat { background: #F5F1EB; box-shadow: none }
 
 .lbl {

@@ -1,42 +1,46 @@
 /* ---------- 在一起：暖色渐变 + 内光，不用纯色块 ---------- */
 .hero {
   position: relative; overflow: hidden;
-  border-radius: 36rpx; margin-bottom: 28rpx;
+  border-radius: var(--r-3); margin-bottom: var(--gap-3);
   background: linear-gradient(135deg, #E88060 0%, #D9603E 55%, #C24E2F 100%);
-  box-shadow: 0 10rpx 34rpx rgba(196, 78, 47, .28);
+  box-shadow: var(--sh-3);
 }
 .hero-glow {
   position: absolute; width: 420rpx; height: 420rpx; border-radius: 50%;
   right: -140rpx; top: -180rpx;
   background: radial-gradient(circle, rgba(255,225,200,.42) 0%, rgba(255,225,200,0) 68%);
 }
-.hero-inner { position: relative; padding: 40rpx 36rpx 36rpx; }
+/* 内边距收紧：原来 40/36 让天数下方留白过多，整块显得空 */
+.hero-inner { position: relative; padding: 34rpx 34rpx 30rpx; }
 .hero-label { font-size: 23rpx; color: rgba(255,255,255,.82); letter-spacing: 3rpx }
-.hero-num { display: flex; align-items: baseline; margin: 8rpx 0 14rpx }
+.hero-num { display: flex; align-items: baseline; margin: 6rpx 0 10rpx }
 .hero-big { font-size: 100rpx; font-weight: 700; color: #fff; line-height: 1; letter-spacing: -3rpx }
 .hero-unit { font-size: 30rpx; color: rgba(255,255,255,.9); margin-left: 10rpx }
 .hero-line { font-size: 24rpx; color: rgba(255,255,255,.86); line-height: 1.6 }
 .hero-next {
-  display: inline-block; margin-top: 18rpx; padding: 10rpx 22rpx;
+  display: inline-block; margin-top: 16rpx; padding: 10rpx 22rpx;
   background: rgba(255,255,255,.2); border-radius: 999rpx;
   font-size: 22rpx; color: #fff;
 }
 
 /* ---------- 记一笔：整页最显眼的东西 ---------- */
+/* ★ 2026-09-30 改：笔按钮原本是红渐变，和上面的 hero 撞色 ——
+   两个大红色块直接相邻，视觉重心打架，整页"糊成一片红"。
+   改成金色之后主次分明：hero 是情感锚点（红），记一笔是行动入口（金）。 */
 .writecard {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 34rpx 36rpx; margin-bottom: 28rpx;
-  border-radius: 32rpx;
+  padding: 30rpx 32rpx; margin-bottom: var(--gap-3);
+  border-radius: var(--r-3);
   background: linear-gradient(135deg, #FFFBF4, #FDF1E4);
   border: 3rpx solid #F2D9C4;
-  box-shadow: 0 6rpx 22rpx rgba(200,140,100,.13);
+  box-shadow: var(--sh-2);
 }
 .writecard:active { transform: scale(.985) }
 .wc-title { font-size: 36rpx; font-weight: 700; color: var(--brand2); letter-spacing: 1rpx }
 .wc-sub { font-size: 23rpx; color: #B08066; margin-top: 8rpx }
 .wc-pen {
   width: 86rpx; height: 86rpx; border-radius: 50%; flex: none;
-  background: linear-gradient(135deg, #E88060, #CE5738);
+  background: linear-gradient(135deg, #F0C25A, #DDA22C);
   color: #fff; font-size: 40rpx;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6rpx 18rpx rgba(206,87,56,.34);
@@ -118,6 +122,20 @@
 .coolbar.need .cb-s { color: #A8845E }
 .coolbar.need .cb-r { color: #C9A98A }
 .coolbar:active { opacity: .85 }
+
+/* 酒桌游戏入口：用深色，和上面几个浅色入口区分开 ——
+   它是"玩"的入口，不是"记录"的入口，视觉上该有区别。 */
+.gamebar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24rpx 30rpx; margin-bottom: var(--gap-2);
+  background: linear-gradient(135deg, #3E2E28, #2E211C);
+  border-radius: var(--r-2);
+  box-shadow: var(--sh-2);
+}
+.gamebar:active { opacity: .9 }
+.gamebar .cb-t { color: #F6E7C3 }
+.gamebar .cb-s { color: rgba(246,231,195,.55) }
+.gamebar .cb-r { color: rgba(246,231,195,.5) }
 
 /* 时间胶囊入口：一行，不抢「记一笔」的焦点 */
 .capsulebar {
