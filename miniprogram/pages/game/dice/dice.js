@@ -16,21 +16,19 @@
 const sfx = require('../../../utils/sfx.js')
 const feedback = require('../../../utils/feedback.js')
 
-/* 骰子点数用点阵画，不用字体符号 —— 字体符号在不同机型上大小/样式不一 */
-const PIPS = {
-  1: [4],
-  2: [0, 8],
-  3: [0, 4, 8],
-  4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8],
-  6: [0, 2, 3, 5, 6, 8]
-}
-
+/**
+ * 生成一颗骰子。
+ *
+ * ★ 2.5.0 起骰子改成**离线渲染的图片**（scripts/render-dice.py 生成，
+ *   miniprogram/images/dice/dice-1..6.png），所以这里只需要点数 v，
+ *   模板直接用它拼图片路径。
+ *
+ *   原来这里要算 9 宫格点数矩阵（cells / topCells / rightCells）给 CSS 画，
+ *   现在那些都不需要了 —— 图片本身就是照片级的真实骰子，
+ *   三个面的点数关系由渲染时的立方体几何决定（对面和为 7，天然正确）。
+ */
 function makeDice(v) {
-  const pips = PIPS[v] || PIPS[1]
-  const cells = []
-  for (let i = 0; i < 9; i++) cells.push(pips.indexOf(i) >= 0)
-  return { v: v, cells: cells }
+  return { v: v }
 }
 
 function rollOne() {
@@ -44,6 +42,8 @@ Page({
     count: 2,                    // 骰子颗数
     dice: [],                    // 每颗 { v, cells, settled }
     total: 0,
+    /* 显示用的数字（滚动过程中的中间值）—— 它的存在让点数「滚」出来而不是跳出来 */
+    displayTotal: 0,
     resultText: '',
     /* 摇一摇 */
     shakeEnabled: false,         // 加速度计是否已启动
@@ -62,11 +62,29 @@ Page({
       muted: sfx.isMuted(),
       dice: this.buildDice(2)
     })
+    this.preloadDice()
     this.checkShake()
+  },
+
+  /**
+   * 预热 6 张骰子图。
+   *
+   * 为什么必须做：摇动时每 45~90ms 换一次图（这就是"在翻滚"的视觉信号）。
+   * 第一次摇的时候若某张图还没下载完，`<image>` 会**短暂显示空白** ——
+   * 表现成"骰子闪了一下不见了"，而控制台没有任何报错。
+   *
+   * wx.getImageInfo 会走同一个图片缓存，预热之后换 src 是立即出图的。
+   * 失败不处理：最坏情况就是第一次摇动略有闪烁，不影响玩法。
+   */
+  preloadDice() {
+    for (let v = 1; v <= 6; v++) {
+      wx.getImageInfo({ src: '/images/dice/dice-' + v + '.png', fail: () => {} })
+    }
   },
 
   onHide() {
     this.stopShake()
+    if (this._rollTimer) { clearInterval(this._rollTimer); this._rollTimer = null }
     sfx.stopAll()
     /* 清掉 feedback 的排期定时器 —— 否则页面隐藏后
        延迟的震动/音效还会触发（用户已经离开这个页面了） */
@@ -74,6 +92,7 @@ Page({
   },
   onUnload() {
     this.stopShake()
+    if (this._rollTimer) { clearInterval(this._rollTimer); this._rollTimer = null }
     feedback.clear()
     /* 必须销毁：不销毁会泄漏音频实例，微信对实例数有限制 */
     sfx.destroy()
@@ -237,17 +256,24 @@ Page({
     const max = n * 6
     const min = n
 
+    /*
+     * 结果文案。
+     * ★ 不要重复数字：上面的大字已经显示「7 点」了，
+     *   下面再写一遍「7 点」是冗余 —— 这里只给「评价」，
+     *   数字交给大字。之前两处都带数字，看起来像出了两次结果。
+     */
     let text = ''
     let lastResult = ''
-    if (total === max) { text = '豹子！满点 ' + total; lastResult = 'max' }
-    else if (total === min) { text = '全 1，最低点 ' + total; lastResult = 'min' }
-    else if (total >= max - n) { text = '大 ' + total; lastResult = 'big' }
-    else if (total <= min + n - 1) { text = '小 ' + total; lastResult = 'small' }
-    else { text = total + ' 点'; lastResult = 'mid' }
+    if (total === max) { text = '豹子！满点'; lastResult = 'max' }
+    else if (total === min) { text = '全 1，最低'; lastResult = 'min' }
+    else if (total >= max - n) { text = '大'; lastResult = 'big' }
+    else if (total <= min + n - 1) { text = '小'; lastResult = 'small' }
+    else { text = ''; lastResult = 'mid' }
 
     this.setData({
       phase: 'done',
       total: total,
+      displayTotal: 0,
       resultText: text,
       lastResult: lastResult,
       round: this.data.round + 1
@@ -282,7 +308,35 @@ Page({
       setTimeout(() => sfx.play('diceOpen'), IMPACT_OF_LABEL)
     }
 
+    this.rollNumber(total)
     this.savePlayed()
+  },
+
+  /**
+   * 数字滚动。
+   *
+   * 为什么要滚而不是直接显示：直接跳出「14 点」是「信息」，
+   * 滚上去的过程才是「反馈」—— 玩家会不自觉地盯着数字往上爬，
+   * 那两三秒的期待感就是它换来的。
+   *
+   * 节奏：先快后慢（easeOut），总共约 480ms，和结果标签的弹入同步收尾。
+   */
+  rollNumber(target) {
+    if (this._rollTimer) clearInterval(this._rollTimer)
+    if (!target) { this.setData({ displayTotal: 0 }); return }
+    const dur = 480
+    const t0 = Date.now()
+    this._rollTimer = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / dur)
+      const eased = 1 - Math.pow(1 - p, 3)          // easeOutCubic
+      const v = Math.round(target * eased)
+      this.setData({ displayTotal: v })
+      if (p >= 1) {
+        clearInterval(this._rollTimer)
+        this._rollTimer = null
+        this.setData({ displayTotal: target })
+      }
+    }, 32)
   },
 
   /* ---------------- 交互 ---------------- */

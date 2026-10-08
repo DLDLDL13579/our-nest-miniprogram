@@ -306,6 +306,78 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     missingCls.join('\n    '))
   ok('全部动态 class 都有 CSS 定义（动画不会白写）')
 
+  /* ============ ③d wxml 引用的图片必须真实存在 ============ */
+  console.log('\n=== ③d 模板引用的图片文件必须存在（骰子图那类）===')
+  /*
+   * 为什么加这条：2.5.0 把骰子从 CSS 拼装改成**离线渲染的图片**
+   * （miniprogram/images/dice/dice-1..6.png，由 scripts/render-dice.py 生成）。
+   *
+   * 这引入了一类全新的静默故障：图片没生成 / 被误删 / 路径写错时，
+   * `<image>` 只是**不显示**，不报错、不警告，页面照常渲染 ——
+   * 骰子直接消失，而 check.sh 与其它断言都发现不了。
+   *
+   * 这里静态解析 wxml 里所有以 / 开头的 src，验证文件真实存在。
+   */
+  const missingImg = []
+  function walkWxmlImg(dir, out) {
+    out = out || []
+    fs.readdirSync(dir).forEach(f => {
+      const p = path.join(dir, f)
+      if (fs.statSync(p).isDirectory()) walkWxmlImg(p, out)
+      else if (f.endsWith('.wxml')) out.push(p)
+    })
+    return out
+  }
+  walkWxmlImg(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+    const tpl = fs.readFileSync(wxml, 'utf8')
+    const re = /src\s*=\s*"(\/[^"]+)"/g
+    let m
+    while ((m = re.exec(tpl))) {
+      const raw = m[1]
+      if (raw.indexOf('{{') < 0) {
+        /* 纯静态路径：直接判断存在 */
+        if (!fs.existsSync(path.join(ROOT, 'miniprogram', raw))) {
+          missingImg.push(path.relative(ROOT, wxml) + ' → ' + raw)
+        }
+      } else {
+        /*
+         * 含动态片段：把 {{...}} 换成通配再匹配目录下的真实文件。
+         * 例：/images/dice/dice-{{item.v}}.png → 该目录下必须存在 dice-*.png。
+         *
+         * ★ 顺序不能反：必须**先替换 {{...}}、再转义正则元字符**。
+         * 反过来的话 `{` 会先被转义成 `\{`，后面就再也匹配不到 `{{` 了 ——
+         * 结果是这条断言对动态路径永远报"无匹配文件"（假失败）。
+         */
+        const dir = path.dirname(raw)
+        const base = path.basename(raw)
+        const esc = base.replace(/\{\{[^}]*\}\}/g, '\u0000')
+                        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        .replace(/\u0000/g, '.*')
+        const pat = new RegExp('^' + esc + '$')
+        const absDir = path.join(ROOT, 'miniprogram', dir)
+        const hit = fs.existsSync(absDir) &&
+          fs.readdirSync(absDir).some(f => pat.test(f))
+        if (!hit) {
+          missingImg.push(path.relative(ROOT, wxml) + ' → ' + raw + '（目录下无匹配文件）')
+        }
+      }
+    }
+  })
+  assert.deepStrictEqual(missingImg, [],
+    '模板引用了这些图片但文件不存在（image 组件静默不显示，页面不报错）：\n    ' +
+    missingImg.join('\n    '))
+  ok('模板引用的图片全部存在')
+
+  /* 骰子图必须 6 张齐全 —— 缺哪张，哪个点数就整颗骰子消失 */
+  const diceDir = path.join(ROOT, 'miniprogram', 'images', 'dice')
+  const diceMissing = []
+  for (let v = 1; v <= 6; v++) {
+    if (!fs.existsSync(path.join(diceDir, 'dice-' + v + '.png'))) diceMissing.push('dice-' + v + '.png')
+  }
+  assert.deepStrictEqual(diceMissing, [],
+    '骰子图不齐（缺哪个点数，哪颗骰子就不显示）：\n    ' + diceMissing.join('\n    '))
+  ok('骰子图 1~6 六张齐全')
+
   /* ============ ③b 音效键必须注册且文件存在 ============ */
   console.log('\n=== ③b 音效：调用的键必须已注册，注册的必须有文件 ===')
   /*
