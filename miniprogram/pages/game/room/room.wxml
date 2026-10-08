@@ -36,7 +36,17 @@
       <view class="chiprow">
         <view wx:for="{{games}}" wx:key="k"
               class="pill {{pickGame === item.k ? '' : 'ghost'}}"
-              data-k="{{item.k}}" bindtap="pickGame">{{item.icon}} {{item.name}}</view>
+              data-k="{{item.k}}" bindtap="pickGame">
+          <!--
+            ★ 图标必须是 <image src="{{ic[...]}}">，不能写 {{item.icon}}。
+            `item.icon` 存的是**图标 key**（'target' / 'dice' / 'wheel'），
+            直接渲染会把 key 当文字打印出来 —— 页面上出现
+            「target 大话骰」这种英文乱码（实测截图确认过）。
+            未选中态用 CSS opacity 压暗，不换第二张图。
+          -->
+          <image class="pill-icon" src="{{ic[item.icon]}}" mode="aspectFit" />
+          <text>{{item.name}}</text>
+        </view>
       </view>
       <view class="btn main" style="margin-top:24rpx" bindtap="doCreate">开房间，拿房间号</view>
     </view>
@@ -144,18 +154,34 @@
         <view class="cs-hint">{{cupHint}}</view>
       </view>
 
-      <!-- 叫骰选项（扣盅之前不给叫 —— 没看骰子怎么叫） -->
-      <block wx:if="{{liarReady}}">
-        <view class="sechead"><text>叫一个</text></view>
-        <view class="optgrid">
-          <view wx:for="{{room.options}}" wx:key="index" class="optbtn"
-                data-i="{{index}}" bindtap="doBid">{{item}}</view>
-        </view>
+      <!--
+        ★ 叫骰选项**永远显示**，不因"还没偷看骰子"而隐藏。
 
-        <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
-          开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
-        </view>
-      </block>
+        第一版用 wx:if="{{liarReady}}" 把整个区块藏起来 ——
+        liarReady 要**按住盅偷看过**才为真，于是新玩家进来看到的是：
+        一个盅 + 一句"该你了"，**连叫骰按钮都没有**，
+        完全不知道该干嘛，还以为功能坏了。
+        （实测：这就是「大话骰无法喊骰」的原因）
+
+        正确做法是**引导而不是上锁**：
+          · 没看过 → 区块显示，但提示"先按住盅偷看自己的骰子"
+          · 看过   → 正常可叫
+        入口始终可见，用户永远知道下一步该做什么。
+      -->
+      <view wx:if="{{!liarReady}}" class="liarnudge">
+        <text class="ln-t">先按住盅偷看自己的骰子，再叫</text>
+        <text class="ln-s">看完松手盖回去就行，你的骰子只有你能看到</text>
+      </view>
+
+      <view class="sechead"><text>叫一个</text></view>
+      <view class="optgrid">
+        <view wx:for="{{room.options}}" wx:key="index" class="optbtn {{liarReady ? '' : 'locked'}}"
+              data-i="{{index}}" bindtap="doBid">{{item}}</view>
+      </view>
+
+      <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
+        开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+      </view>
     </block>
 
     <!-- 摇骰子比大小 -->

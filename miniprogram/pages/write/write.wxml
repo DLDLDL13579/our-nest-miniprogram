@@ -1,10 +1,12 @@
 <view class="page write-page">
-  <!-- 心情：一排表情，点一下就好，不用打字 -->
+  <!-- 心情：一排图标，点一下就好，不用打字。
+       ★ 图标必须是 <image src="{{ic[...]}}">，不能写 {{item.e}} ——
+       e 存的是图标 key（'moodHappy' 等），直接渲染会把 key 当文字打印出来。 -->
   <view class="moodrow">
     <view wx:for="{{moods}}" wx:key="k"
           class="mood {{mood===item.k?'on':''}}"
           data-k="{{item.k}}" bindtap="pickMood">
-      <text class="me">{{item.e}}</text>
+      <image class="me" src="{{ic[item.e]}}" mode="aspectFit" />
       <text class="mt">{{item.t}}</text>
     </view>
   </view>

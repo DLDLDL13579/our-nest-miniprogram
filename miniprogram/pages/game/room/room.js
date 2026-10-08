@@ -86,9 +86,29 @@ function buildSectors() {
 }
 
 const icons = require('../../../utils/icons.js')
-/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+/*
+ * 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js）
+ *
+ * ★★ 这里漏注册过一次，代价是页面上直接显示英文 key。
+ *
+ * emoji→SVG 改造时，GAMES 里的 `icon` 从 '🎯' 改成了 'target'，
+ * 但**只改了数据源、没改渲染方式**：
+ *   · room.wxml 写的是 `{{item.icon}}` —— 它打印的是**字符串本身**，
+ *     于是页面上出现「target 大话骰 / dice 摇骰子比大小」这种英文乱码；
+ *   · 而且注册表里根本没有 'target'，就算改成 <image> 也是空白。
+ *
+ * 为什么断言没抓到：那条"模板里已无 emoji"只扫 **wxml**，
+ * 而 `icon: 'target'` 这个值写在 **js** 里 ——
+ * 它查的是"有没有 emoji 残留"，管不到"图标 key 被当成文字渲染"。
+ * 现在 scripts/test-contract.js 的 ③e 补了这条检查。
+ *
+ * 未选中态**不用第二种颜色**（不在 SVG 里塞 rgba）——
+ * 直接用 CSS opacity 压暗。少一条颜色编码路径就少一处渲染风险。
+ */
 const _IC = {}
-for (const _k of ['speakerOn', 'speakerOff', 'dice', 'wheel']) { _IC[_k] = icons.dataUri(_k, '#E8B33C') }
+for (const _k of ['speakerOn', 'speakerOff', 'target', 'dice', 'wheel']) {
+  _IC[_k] = icons.dataUri(_k, '#E8B33C')
+}
 
 Page({
   data: {
@@ -741,6 +761,17 @@ Page({
     if (!m) return
     const n = Number(m[1])
     const face = Number(m[2])
+
+    /*
+     * 还没偷看骰子 → 给一句人话。
+     * 第一版是直接 return（点了完全没反应），用户会以为界面坏了 ——
+     * 正确做法是明确告诉用户"下一步该做什么"。
+     */
+    if (!this.data.liarReady) {
+      sfx.play('tapSoft')
+      wx.showToast({ title: '先按住盅偷看自己的骰子', icon: 'none', duration: 1800 })
+      return
+    }
 
     sfx.play('tap')
     const r = await call('room', {

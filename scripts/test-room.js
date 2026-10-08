@@ -333,7 +333,17 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   const rolled = await room.main({ action: 'status', id: rid2 })
   assert.strictEqual(rolled.room.phase, 'playing', '倒计时过后 playing')
-  assert.ok(rolled.room.me.dice.length > 0, '开局后我有骰子')
+  /*
+   * ★ 摇骰子比大小：开局**不发**骰子，谁摇谁生成（2026-10-08 修）。
+   *   原来开局就给所有人预生成，导致「等其他人摇」形同虚设。
+   *   所以这里断言的是"开局时没有、摇完才有"。
+   */
+  assert.strictEqual((rolled.room.me.dice || []).length, 0,
+    '★ 摇骰子开局不该发骰子（必须等玩家自己摇）')
+  const afterRoll = await room.main({ action: 'roll', id: rid2 })
+  assert.ok(afterRoll.ok, '摇应成功：' + (afterRoll.msg || ''))
+  assert.ok((afterRoll.room.me.dice || []).length > 0, '摇完才有骰子')
+  ok('★ 摇骰子：开局无骰子 → 自己摇完才有（等别人摇是真的要等）')
 
   const again = await room.main({ action: 'again', id: rid2 })
   assert.ok(again.ok, '房主开新一局')
@@ -507,6 +517,170 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const wrongGame = await room.main({ action: 'spin', id: nwId })
   assert.ok(!wrongGame.ok, '★ 大话骰房间不该能转盘')
   ok('大话骰房间调 spin 被拒（游戏类型校验生效）')
+
+  /* ============================================================
+   * ⑬ ★★★ 双人完整流程（2026-10-08 用户实测报障后补）
+   * ============================================================ */
+  console.log('\n=== ⑬ ★★★ 双人完整流程：大话骰 / 转盘 / 摇骰子 ===')
+  /*
+   * 背景：用户实测报「骰盅拿开骰子看不全 / 大话骰无法喊骰 / 转盘无法转」。
+   * 这三条都不是云函数的问题（38 项断言全绿），而是**前端把入口藏起来了**：
+   *   · liarReady 初始 false → 整个叫骰区被 wx:if 藏掉 → 玩家看不到任何按钮
+   *   · 骰子横排 612rpx 而盅只有 300rpx → 盅一抬两端露在外面
+   *   · 转盘「转！」只在 playing 阶段出现，而 phase 推进靠轮询
+   *
+   * 这条断言锁的是「双人真的能把三个游戏各玩一遍」——
+   * 之前所有断言测的都是**单个 action**，没测过**连续流程**。
+   */
+
+  /* ---- ① 大话骰：双人开局 → 叫骰 → 开盅 ---- */
+  OPENID = A
+  const lr = await room.main({ action: 'create', name: 'L1', game: 'liar' })
+  const lrId = lr.room.id
+  OPENID = B
+  await room.main({ action: 'join', code: lr.room.code, name: 'L2' })
+  OPENID = A
+  const lrStart = await room.main({ action: 'start', id: lrId })
+  assert.ok(lrStart.ok, '双人开局应成功：' + (lrStart.msg || ''))
+  /* 跳过倒计时 */
+  store.rooms.filter(x => x._id === lrId)[0].countdownEnd = Date.now() - 100
+  const lrPlay = await room.main({ action: 'status', id: lrId })
+  assert.strictEqual(lrPlay.room.phase, 'playing', '★ 倒计时到点后必须自动进入 playing（否则什么都点不了）')
+  ok('★ 双人开局 → 倒计时 → 自动进入 playing')
+
+  /* 每个人都要拿到自己的 5 颗骰子 */
+  assert.strictEqual((lrPlay.room.me.dice || []).length, 5, '大话骰每人 5 颗骰子')
+  ok('每人拿到 5 颗自己的骰子')
+
+  /*
+   * ★ 关键：叫骰选项必须非空。
+   *
+   * ⚠️ options 是**前端算的**（room.js 的 buildOptions），
+   *    云函数响应里本来就没有这个字段 ——
+   *    第一版测试写成「云函数返回的 options 非空」，永远失败，
+   *    是我测错了对象。
+   *
+   * 这里改为**直接把前端真实代码抽出来测**，
+   * 这样测的才是"玩家实际会看到几个按钮"。
+   */
+  const rjs = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'miniprogram/pages/game/room/room.js'), 'utf8')
+  /* ⚠️ 必须匹配**函数定义** `  buildOptions(room) {`，
+   *   不能用 indexOf('buildOptions(room)') —— 那个串在 refresh()
+   *   里的调用处和注释里也出现，会匹配到调用那一行，抽出来的
+   *   其实是 refresh 的一大半（里面引用 room / this，全是 ReferenceError）。
+   *   症状就是「room is not defined」，看起来像 mock 的锅，其实是抽错了函数。 */
+  const boStart = rjs.search(/^\s*buildOptions\s*\(\s*room\s*\)\s*\{/m)
+  assert.ok(boStart > 0, '没找到 buildOptions 的定义')
+  let depth = 0, boEnd = -1
+  const boOpen = rjs.indexOf('{', boStart)
+  for (let k = boOpen; k < rjs.length; k++) {
+    if (rjs[k] === '{') depth++
+    else if (rjs[k] === '}') { depth--; if (depth === 0) { boEnd = k; break } }
+  }
+  /*
+   * ⚠️ buildOptions 内部没有 this 调用，但为了以后它万一用了也不能炸，
+   *    这里给它一个带 setData 的桩对象。
+   *    签名 `buildOptions(room)`：new Function 出来的匿名函数
+   *    第一个形参就是 room，用 call(thisArg, roomArg) 传。
+   */
+  /*
+   * ★ 关键：`new Function(body)` 生成的函数**形参列表是空的**，
+   *   所以 body 里的 `room` 是未定义标识符 → ReferenceError。
+   *   正确写法：`new Function('room', 'this', body去掉外层花括号)`，
+   *   把 room 和 this 都声明成形参。
+   */
+  const boBody = rjs.slice(boOpen + 1, boEnd)     // 去掉最外层的 { }
+  // 形参名用 _room 并把 body 里的 room 一起改名（this 是保留字，不能当形参名）
+  const buildOptions = new Function('_room', boBody.replace(/\broom\b/g, '_room'))
+  const opts = buildOptions({ count: 2, bid: null })
+  assert.ok(Array.isArray(opts) && opts.length > 0,
+    '★ 叫骰选项不能为空 —— 为空的话前端一个按钮都渲染不出来')
+  assert.ok(opts[0].indexOf('个') > 0, '选项格式应是「N个F」，否则 doBid 解析不出来')
+  ok(`★ 叫骰选项 ${opts.length} 个（首个「${opts[0]}」），前端能渲染出按钮`)
+
+  /* 上家叫过之后，选项必须只剩"更大的" —— 否则玩家能叫更小的，逻辑就崩了 */
+  const afterBid = buildOptions({ count: 2, bid: { n: 3, face: 4 } })
+  const illegal = afterBid.filter(x => {
+    const m = /^(\d+)个(\d)$/.exec(x)
+    return m && (Number(m[1]) < 3 || (Number(m[1]) === 3 && Number(m[2]) <= 4))
+  })
+  assert.deepStrictEqual(illegal, [],
+    '这些选项比上家叫的小（点了会被服务端拒绝，白白挨一次网络往返）：\n    ' +
+    illegal.join('\n    '))
+  ok(`上家叫「3个4」后，只剩更大的 ${afterBid.length} 个选项`)
+
+  /* 参与人数决定上限：2 人 × 5 颗 = 10，不该出现「11个3」 */
+  assert.ok(!opts.some(x => x.indexOf('11个') === 0),
+    '2 人局不该出现「11个N」这种超上限的叫法')
+  ok('叫骰上限跟着人数走（2 人局最高 10 个）')
+
+  /* 叫骰 → 开盅，走完整局 */
+  const bidOK = await room.main({ action: 'bid', id: lrId, n: 3, face: 4 })
+  assert.ok(bidOK.ok, 'seat1 叫「3个4」应成功：' + (bidOK.msg || ''))
+  OPENID = B
+  const bid2 = await room.main({ action: 'bid', id: lrId, n: 5, face: 4 })
+  assert.ok(bid2.ok, 'seat2 叫「5个4」应成功：' + (bid2.msg || ''))
+  /* 两人轮转一圈后 turn 回到 seat1（A），所以开盅要由 A 来做。
+     这也顺带验了一条规则：叫骰的回合是严格轮转的，不能自己连叫两次。 */
+  assert.strictEqual(bid2.room.turn, 1, '★ B 叫完后回合应回到 seat1（两人轮转）')
+  ok('★ 叫骰回合严格轮转（B 叫完回到 A）')
+  OPENID = A
+  const openOK = await room.main({ action: 'open', id: lrId })
+  assert.ok(openOK.ok, '开盅应成功：' + (openOK.msg || ''))
+  assert.ok(openOK.result && openOK.result.allDice.length === 2, '开盅后应亮出所有人的骰子')
+  ok('★ 大话骰：叫骰 → 叫骰 → 开盅，全流程走通')
+
+  /* ---- ② 转盘：双人开局 → 房主转 ---- */
+  OPENID = A
+  const wr = await room.main({ action: 'create', name: 'R1', game: 'wheel' })
+  const wrId = wr.room.id
+  OPENID = B
+  await room.main({ action: 'join', code: wr.room.code, name: 'R2' })
+  OPENID = A
+  await room.main({ action: 'start', id: wrId })
+  store.rooms.filter(x => x._id === wrId)[0].countdownEnd = Date.now() - 100
+  const wrPlay = await room.main({ action: 'status', id: wrId })
+  assert.strictEqual(wrPlay.room.phase, 'playing',
+    '★ 转盘房间也必须自动进入 playing（转盘按钮只在 playing 阶段出现）')
+  assert.strictEqual(wrPlay.room.host, true, '房主标记要正确（转盘按钮靠它显示）')
+  const wrSpin = await room.main({ action: 'spin', id: wrId })
+  assert.ok(wrSpin.ok, '★ 房主转盘必须成功：' + (wrSpin.msg || ''))
+  ok('★ 转盘：双人开局 → 进入 playing → 房主转，成功')
+
+  /* 非房主在 playing 阶段转，应被拒（前端也会隐藏按钮） */
+  OPENID = B
+  const notHostSpin = await room.main({ action: 'spin', id: wrId })
+  assert.ok(!notHostSpin.ok, '非房主不能转')
+  ok('非房主转不了（前端同步隐藏按钮）')
+
+  /* ---- ③ 摇骰子：双人各摇一次 → 自动出结果 ---- */
+  OPENID = A
+  const dr = await room.main({ action: 'create', name: 'D1', game: 'dice' })
+  const drId = dr.room.id
+  OPENID = B
+  await room.main({ action: 'join', code: dr.room.code, name: 'D2' })
+  OPENID = A
+  await room.main({ action: 'start', id: drId })
+  store.rooms.filter(x => x._id === drId)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: drId })
+  OPENID = A
+  const rollA = await room.main({ action: 'roll', id: drId })
+  assert.ok(rollA.ok, 'A 摇应成功：' + (rollA.msg || ''))
+  /* 只摇一个时还没到结算 —— 前端此时应显示「已摇，等其他人」 */
+  assert.ok(!rollA.result,
+    `只摇了一个时不该出结果（要等全员），实际: ${JSON.stringify(rollA.result)}`)
+  /* 自己的骰子要点数，且**别人的点数不能出现** */
+  assert.ok((rollA.room.me.dice || []).length === 2, '摇骰子每人 2 颗')
+  const leaked = (rollA.room.players || []).some(p => !p.isMe && Array.isArray(p.dice) && p.dice.length)
+  assert.ok(!leaked, '★ 不能把别人的骰子点数发到前端（抓到就等于作弊）')
+  ok('★ A 摇完：有自己的点数、别人的不可见、暂不出结果')
+  OPENID = B
+  const rollB = await room.main({ action: 'roll', id: drId })
+  assert.ok(rollB.ok, 'B 摇应成功：' + (rollB.msg || ''))
+  assert.ok(rollB.result, '★ 全员摇完必须自动出结果（这是「已摇完自动开结果」的入口）')
+  assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
+  ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)

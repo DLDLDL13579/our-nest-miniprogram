@@ -9,7 +9,13 @@
   transition: all .18s;
 }
 .mood.on { border-color: var(--brand); background: #FFF4EE; transform: translateY(-4rpx) }
-.me { font-size: 40rpx; line-height: 1.2 }
+/*
+ * 心情图标。
+ * ⚠️ <image> 不认 font-size —— 必须给 width/height，否则会撑满容器。
+ *    （原写法 `font-size: 40rpx` 对 <text> 有效，换成 <image> 后完全失效，
+ *      且不报错，只是图标尺寸失控。）
+ */
+.me { width: 44rpx; height: 44rpx; display: block }
 .mt { font-size: 19rpx; color: var(--ink3); margin-top: 8rpx }
 .mood.on .mt { color: var(--brand2); font-weight: 600 }
 

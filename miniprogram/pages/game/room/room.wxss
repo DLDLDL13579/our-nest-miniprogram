@@ -66,6 +66,25 @@
   background: transparent; color: rgba(255,255,255,.45);
   border-color: rgba(255,255,255,.18);
 }
+
+/*
+ * 选择器里的游戏图标（大话骰 / 摇骰子 / 转盘）。
+ *
+ * ⚠️ <image> 必须显式给 width/height —— font-size 对它完全无效。
+ *    这是 AGENTS.md 里记过的坑：漏写尺寸时 image 会撑满容器，
+ *    把文字挤成竖排，而且**不报错**。
+ *
+ * pill 是 inline 布局，所以图标要 inline-block + 垂直微调，
+ * 否则会掉到文字基线下面去。
+ */
+.pill-icon {
+  width: 30rpx; height: 30rpx;
+  display: inline-block;
+  vertical-align: -5rpx;
+  margin-right: 8rpx;
+}
+/* 未选中（ghost）时压暗，和灰掉的文字保持一致 —— 不换第二张图 */
+.pill.ghost .pill-icon { opacity: .55 }
 .gamepage .sechead { color: rgba(255,255,255,.4) }
 .gamepage .xs { color: rgba(255,255,255,.35) }
 
@@ -217,19 +236,31 @@
   pointer-events: none;
 }
 
-/* 骰子：压在盅底下（z-index 更低），只有揭盅/偷看时才露出来 */
+/*
+ * 骰子：压在盅底下（z-index 更低），只有揭盅/偷看时才露出来。
+ *
+ * ★ 布局必须和盅对齐 —— 第一版把 5 颗骰子横排（5×108 + 4×18 = 612rpx 宽），
+ *   而盅只有 300rpx 宽。盅一抬起来**两端就露在外面、中间还被压住**，
+ *   变成「看不全」。现在骰子按**盅底的宽度**紧凑排列，
+ *   保证盅盖住时完全看不见、抬起时全部露出。
+ */
 .cs-dice {
-  position: absolute; left: 0; right: 0;
-  bottom: 132rpx;
+  position: absolute; left: 50%;
+  bottom: 88rpx;
+  width: 300rpx;                       /* 与盅同宽 */
+  margin-left: -150rpx;
   display: flex; align-items: center; justify-content: center;
-  gap: 18rpx;
+  flex-wrap: nowrap;
+  gap: 6rpx;
   z-index: 1;
   opacity: 0;
   transition: opacity .18s ease;
 }
 .cs-dice.show { opacity: 1 }
 .cs-die {
-  width: 108rpx; height: 115rpx;
+  /* 5 颗必须挤进 300rpx：5×54 + 4×6 = 294rpx */
+  width: 54rpx; height: 58rpx;
+  flex: none;
   /* 逐个落位：每颗延迟一点，像真的骰子先后停住 */
   animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
   animation-delay: calc(var(--i) * 90ms);
@@ -299,9 +330,18 @@
   100% { transform: translateY(0) scale(1) }
 }
 
-/* 偷看（大话骰按住）：只抬一条缝 —— 复刻"偷偷瞄一眼"的动作 */
+/*
+ * 偷看（大话骰按住）：抬起盅看自己的骰子。
+ *
+ * ⚠️ 第一版只抬 64rpx，结果骰子仍在盅的覆盖范围内 ——
+ *    盅是 300×466，抬起 64rpx 后下方仍盖住骰子上半部分，
+ *    加上骰子横向比盅宽，于是「两端露在外面、中间被压住」。
+ *    现在抬 **-120rpx**（盅的下沿完全离开骰子所在的高度），
+ *    骰子才真正全部露出。
+ */
 .cs-cup.peek {
-  transform: translateY(-64rpx) rotate(-6deg) scale(.98);
+  transform: translateY(-120rpx) rotate(-7deg) scale(.96);
+  opacity: .35;
 }
 
 .cs-hint {
@@ -395,6 +435,25 @@
   animation: fadeIn .25s ease;
 }
 .optbtn:active { background: rgba(232,179,60,.3); transform: scale(.94) }
+
+/*
+ * 还没偷看骰子时的叫骰按钮：置灰但**仍可点**。
+ * 置灰是"提示还没准备好"，点击给一个说明 ——
+ * 做成完全不可点的话，用户会觉得界面坏了。
+ */
+.optbtn.locked { opacity: .45 }
+
+/* 引导卡：替代原来"把整个叫骰区藏起来"的做法 */
+.liarnudge {
+  background: rgba(232,179,60,.12);
+  border: 2rpx solid rgba(232,179,60,.32);
+  border-radius: var(--r-2);
+  padding: 22rpx 24rpx;
+  margin-bottom: 20rpx;
+  display: flex; flex-direction: column; gap: 6rpx;
+}
+.ln-t { font-size: 26rpx; color: #F6E7C3; font-weight: 600 }
+.ln-s { font-size: 21rpx; color: rgba(255,255,255,.5); line-height: 1.5 }
 
 .openbtn {
   height: 96rpx; margin-top: 10rpx;

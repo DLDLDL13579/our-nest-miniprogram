@@ -3,16 +3,31 @@ const { call } = require('../../utils/cloud.js')
 const privacy = require('../../utils/privacy.js')
 const media = require('../../utils/media.js')
 const icons = require('../../utils/icons.js')
-/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+/*
+ * 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js）
+ *
+ * ⚠️ 心情图标（moodHappy 等 5 个）当时在 icons.js 里**已经造好了**，
+ *    却一直没有任何页面引用它 —— 因为 write 页的 MOODS 存的是 emoji 字符，
+ *    wxml 直接 `{{item.e}}` 把它打印出来。
+ *    同一处 emoji 改造其实漏了两块：room 页的游戏图标、write 页的心情图标。
+ *    两块都是「值换成了图标 key，渲染方式还是当文字打印」。
+ *
+ * 心情是**用户选中的表单状态**，颜色取品牌红 #C4553F，和选中态一致。
+ */
 const _IC = {}
-for (const _k of ['bulb']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
+for (const _k of ['bulb', 'moodHappy', 'moodMiss', 'moodDaily', 'moodMoved', 'moodAnnoyed']) {
+  _IC[_k] = icons.dataUri(_k, '#C4553F')
+}
 
+/* ★ e 从 emoji 字符改成**图标 key** —— 渲染方变成了 <image src>。
+   这正是 room 页踩的坑：值换了、渲染方式没换，页面就打印出英文 key。
+   注意：提交给云函数的是 `mood`（即 k），e 只用于渲染，改它不影响数据。 */
 const MOODS = [
-  { k: 'happy',   e: '😊', t: '开心' },
-  { k: 'miss',    e: '💗', t: '想你' },
-  { k: 'daily',   e: '🍚', t: '日常' },
-  { k: 'moved',   e: '🥹', t: '感动' },
-  { k: 'annoyed', e: '😤', t: '生气' }
+  { k: 'happy',   e: 'moodHappy',   t: '开心' },
+  { k: 'miss',    e: 'moodMiss',    t: '想你' },
+  { k: 'daily',   e: 'moodDaily',   t: '日常' },
+  { k: 'moved',   e: 'moodMoved',   t: '感动' },
+  { k: 'annoyed', e: 'moodAnnoyed', t: '生气' }
 ]
 
 /* 没头绪时点一下，给个引子 —— 但不能变成"每天必须回答的问题"，

@@ -723,6 +723,79 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '模板引用了图标库里没有的键（会渲染成空白）：\n    ' + missingIcon.join('\n    '))
   ok(`图标库 ${iconNames.length} 个，模板用到的 ${usedKeys.size} 个全部存在`)
 
+  /* ============ ③e-2 ★ 图标 key 不能被当成文字渲染 ============
+   *
+   * 2026-10-08 真实事故（用户截图报障「改错了」）：
+   *   emoji→SVG 改造时，room 页把 GAMES 里的 icon 从 '🎯' 改成 'target'，
+   *   但 wxml 里还是 `{{item.icon}}` —— 它打印的是**字符串本身**，
+   *   于是页面上直接显示「target 大话骰 / dice 摇骰子比大小」英文乱码。
+   *   同一个改造里 write 页的心情也是同一处漏改（e: '😊' → key 后没改渲染）。
+   *
+   * ★ 为什么原来的断言抓不到：
+   *   上面那条「模板里已无 emoji」**只扫 wxml 文件**，
+   *   而 `icon: 'target'` 这个值写在 **js 里** ——
+   *   它查的是"还有没有 emoji 残留"，管不到"图标 key 被当文字渲染"。
+   *   这类漏检的共同特征是：**值在 js、渲染在 wxml，断言只看了一边**。
+   *
+   * 检查两条，缺一不可：
+   *   ① js 里作为图标用的字面量，必须在该页 _IC 注册表里 —— 否则是空白；
+   *   ② wxml 里不能直接渲染这些图标字段 —— 否则会打印英文 key。
+   */
+  const iconFieldPages = []
+  ;(function walkJ(d) {
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) walkJ(p)
+      else if (f.endsWith('.js')) iconFieldPages.push(p)
+    })
+  })(path.join(ROOT, 'miniprogram', 'pages'))
+
+  const iconUnregistered = []   // ① 数据里有 key 但没注册
+  const printedRaw = []     // ② wxml 直接渲染了图标字段
+
+  iconFieldPages.forEach(js => {
+    const src = fs.readFileSync(js, 'utf8')
+    const wxml = js.replace(/\.js$/, '.wxml')
+    if (!fs.existsSync(wxml)) return
+
+    /* 页面注册表：for (const _k of ['a','b']) { _IC[_k] = ... } */
+    const reg = new Set()
+    for (const m of src.matchAll(/for \(const _k of \[([^\]]*)\]\)/g)) {
+      for (const k of m[1].matchAll(/'([^']+)'/g)) reg.add(k[1])
+    }
+    /* 页面数据里"当作图标用"的字段：icon: 'xxx' / e: 'xxx' */
+    const used = new Set()
+    for (const m of src.matchAll(/\b(?:icon|e)\s*:\s*'([a-zA-Z][\w]*)'/g)) used.add(m[1])
+
+    /* ① 用到但没注册 —— 只报"确实是图标库里的名字"的，
+       避免把 `e: 'none'`（wx.showToast 的 icon 参数）这类误报。 */
+    for (const k of used) {
+      if (iconNames.includes(k) && !reg.has(k)) {
+        iconUnregistered.push(path.relative(ROOT, js) + ' → ' + k)
+      }
+    }
+
+    /* ② wxml 里 {{item.xxx}} / {{xxx}} 直接渲染图标字段 —— 必须是 ic[...] 包裹 */
+    const tpl = fs.readFileSync(wxml, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    tpl.split('\n').forEach((line, i) => {
+      /* 先剥掉合法的 ic[...] 用法，再看剩下的裸渲染 */
+      const stripped = line.replace(/ic\[[^\]]*\]/g, '')
+      for (const m of stripped.matchAll(/\{\{\s*(?:item\.)?(icon|e)\s*\}\}/g)) {
+        printedRaw.push(path.relative(ROOT, wxml) + ':' + (i + 1) + ' → {{' + m[1] + '}}')
+      }
+    })
+  })
+
+  assert.deepStrictEqual(iconUnregistered, [],
+    '这些图标 key 被数据引用，但页面没注册进 _IC（会渲染成空白）：\n    ' +
+    iconUnregistered.join('\n    '))
+  ok('数据里用到的图标 key 全部已注册（不会静默空白）')
+
+  assert.deepStrictEqual(printedRaw, [],
+    'wxml 直接渲染了图标字段（会把 key 当文字打印，页面显示英文乱码）：\n    ' +
+    printedRaw.join('\n    ') + '\n    改用 <image src="{{ic[item.xxx]}}" />')
+  ok('wxml 没有裸渲染图标字段（不会打印英文 key）')
+
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
   const pagesDir = path.join(ROOT, 'miniprogram', 'pages')
