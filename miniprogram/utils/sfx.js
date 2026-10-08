@@ -18,16 +18,12 @@ const MUTE_KEY = 'gameMute'
 const FILES = {
   // 骰子
   diceSettle: 'audio/dice-settle.wav',
-  diceOpen: 'audio/dice-open.wav',
   // 转盘
   tick: 'audio/tick.wav',
   wheelStart: 'audio/wheel-start.wav',
-  wheelLoop: 'audio/wheel-loop.wav',
   wheelStop: 'audio/wheel-stop.wav',
   // 情绪
   drink: 'audio/drink.wav',
-  clink: 'audio/clink.wav',
-  pour: 'audio/pour.wav',
   whoosh: 'audio/whoosh.wav',
   // UI
   tap: 'audio/tap.wav',

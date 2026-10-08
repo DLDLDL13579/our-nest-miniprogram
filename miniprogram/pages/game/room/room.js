@@ -200,6 +200,64 @@ Page({
     if (this._poll) { clearInterval(this._poll); this._poll = null }
   },
 
+  /**
+   * 判断「这次轮询拿到的房间状态，和上次相比有没有实质变化」。
+   *
+   * ★ 为什么必须有这个判断（性能第一原则）：
+   *   小程序的 `setData` 不是"赋值"，它是**跨线程的数据拷贝 + 视图 diff**。
+   *   即使值完全相同，setData 也要序列化、拷贝、走一遍 setData 回调。
+   *   房间页每 1.5 秒轮询一次，一场游戏十几分钟 → 上百次 setData，
+   *   而其中**绝大多数是"什么都没变"**（等别人的时候尤其明显）。
+   *   不做这个判断就是纯浪费 —— 用户看到的是掉帧、耗电、发热。
+   *
+   * 只比"会影响画面"的字段：phase / 人数 / 每人状态 / 叫骰 / 结果 / 转盘结果。
+   * updatedAt 每轮都在变，不能参与比较。
+   */
+  roomChanged(prev, room) {
+    if (!prev) return true
+    if (prev.phase !== room.phase) return true
+    if (prev.count !== room.count) return true
+    if (prev.turn !== room.turn) return true
+    if (prev.round !== room.round) return true
+    if (prev.game !== room.game) return true
+    if (prev.host !== room.host) return true
+    if (prev.countdownMs !== room.countdownMs) return true
+
+    /* 叫骰：整体比（at 是服务端时间戳，只有真的有人叫才会变） */
+    const a = prev.bid, b = room.bid
+    if (!!a !== !!b) return true
+    if (a && b && (a.n !== b.n || a.face !== b.face || a.zhai !== b.zhai || a.at !== b.at)) return true
+
+    /* 结算结果 */
+    const ra = prev.lastResult, rb = room.lastResult
+    if (!!ra !== !!rb) return true
+    if (ra && rb && JSON.stringify(ra) !== JSON.stringify(rb)) return true
+
+    /* 转盘这一转 */
+    const sa = prev.spin, sb = room.spin
+    if (!!sa !== !!sb) return true
+    if (sa && sb && sa.at !== sb.at) return true
+
+    /* 每个人的状态：在线状态、已摇、骰子（自己的） */
+    const pa = prev.players || [], pb = room.players || []
+    if (pa.length !== pb.length) return true
+    for (let i = 0; i < pa.length; i++) {
+      const x = pa[i], y = pb[i]
+      if (x.online !== y.online) return true
+      if (x.isHost !== y.isHost) return true
+      if (x.isMe !== y.isMe) return true
+      if ((x.diceCount || 0) !== (y.diceCount || 0)) return true
+      if (x.name !== y.name) return true
+      /* 自己的骰子在大话骰里是"隐藏"的，dice 字段才是关键 */
+      if (JSON.stringify(x.dice || null) !== JSON.stringify(y.dice || null)) return true
+    }
+
+    /* 叫骰选项（前端算的）可能随 bid 变化 */
+    if (JSON.stringify(prev.options || null) !== JSON.stringify(room.options || null)) return true
+
+    return false
+  },
+
   /** 拉一次房间状态 */
   async refresh() {
     const r = this.data.room
@@ -279,6 +337,21 @@ Page({
         this.playWheel(room.spin)
       }
     }
+
+    /* ──────────────────────────────────────────────
+       ★ 性能关键：什么都没变就**不要** setData
+       ──────────────────────────────────────────────
+       上面这些副作用（阶段音效、人数增减、叫骰、转盘）已经处理完了。
+       如果这一轮状态和上次**实质相同**，就不该再 setData：
+
+       setData 不是赋值，它是「序列化 → 跨线程拷贝 → 视图层 diff」。
+       即使值一模一样也要走完这一整套。一场游戏十几分钟、
+       每 1.5 秒一轮 → 上百次 setData，而等别人的时候**绝大多数都没变化**。
+       不做这个判断就是纯浪费：掉帧、耗电、发热。
+
+       提前 return 之前已经把 netTip 清掉了 —— 那是有意义的 UI 变化，
+       必须照常渲染。 */
+    if (!this.roomChanged(prev, room) && !this.data.netTip) return
 
     this.setData({
       room: room,

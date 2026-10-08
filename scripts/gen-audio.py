@@ -160,11 +160,24 @@ def normalize(sig, peak=0.92):
     return [x * k for x in sig]
 
 
-def fade_edges(sig, ms=4):
-    n = min(int(SR * ms / 1000), len(sig) // 2)
+def fade_edges(sig, ms=1.2):
+    """
+    首尾淡入淡出，消除采样端点的突变（突变 = 播放时"咔"的爆音）。
+
+    ⚠️ 这里踩过一个坑：淡入淡出的**长度必须极短**。
+       第一版是 4ms 线性淡入，而「骰子入盅」这类音效的**第一声撞击就在第 0ms** ——
+       4ms 淡入正好把最响的那一下削掉 27%（实测峰值 0.97 → 0.708），
+       撞击声变得"很轻"。这类音效（起音即峰值）整体都被削弱。
+
+    所以做了两件事：
+      ① 淡入淡出缩短到 1.2ms —— 只够消掉端点突变，不影响任何有效内容
+      ② 曲线改成**平方**（k²）而不是线性 —— 平方曲线在同样的 1.2ms 内
+         上升得更快，等于"几乎不削峰"
+    """
+    n = min(max(1, int(SR * ms / 1000)), len(sig) // 4)
     out = list(sig)
     for i in range(n):
-        k = i / n
+        k = (i / n) ** 2
         out[i] *= k
         out[-1 - i] *= k
     return out
@@ -334,6 +347,157 @@ def spatialize(sig, sr=SR, reflections=True, tail_ms=220, transient=True, seed=1
     return out
 
 
+def remove_dc(sig):
+    """
+    去掉直流偏置（一阶高通，20Hz 截止）。
+
+    ★ 为什么必须做：
+      直流偏置是整个信号的平均值不为 0。带偏置的音频播放时，
+      喇叭要做"多推/多拉一下"的位移去平衡这段偏移 ——
+      听感上就是**开头"噗"的一下低频冲击**，非常廉价。
+      高通滤波让信号从 0 开始、以 0 结束，不存在这种位移。
+
+    实测（修复前）：9 个音效直流偏置超标，最重 countdown-urgent
+    达 1.53% 满量程 —— 一开机就是一声闷响。
+
+    为什么放在 write_wav 里统一做：
+      合成时叠加噪声/正弦的过程中很容易累积偏置（尤其低通滤波之后），
+      逐个函数去修必然遗漏。**在最后出口统一阻断**是唯一可靠的做法。
+    """
+    if not sig:
+        return sig
+    n = len(sig)
+    # ① 减均值：让直流**严格为 0**（零延迟、零残留）。
+    #    只靠高通是不够的 —— 高通有建立时间，
+    #    实测 110ms 的短音效里还会残留一大片低频台阶（DC 仍有 0.51% 满量程）。
+    mean = sum(sig) / n
+    sig = [x - mean for x in sig]
+    # ② 一阶高通：去掉极低频的"台阶感"，让包络真正回到 0
+    #    y[n] = x[n] - x[n-1] + a*y[n-1]，a ≈ 0.9945 对应 20Hz@22.05k
+    a = 0.9945
+    y = [0.0] * n
+    prev_x = 0.0
+    prev_y = 0.0
+    for i, x in enumerate(sig):
+        cur = x - prev_x + a * prev_y
+        y[i] = cur
+        prev_x = x
+        prev_y = cur
+    # 高通会压低整体电平，重新定标回原来的峰值，避免"变轻"
+    m0 = max((abs(v) for v in sig), default=0.0)
+    m1 = max((abs(v) for v in y), default=0.0)
+    if m0 > 1e-9 and m1 > 1e-9:
+        k = m0 / m1
+        y = [v * k for v in y]
+    return y
+
+
+def _transient_peaks(sig, win_ms=10, top_n=3):
+    """
+    取「撞击峰值」：按 10ms 分窗，收集各窗峰值，返回最高的几个。
+
+    用来判断「零散撞击型」音效的**单次撞击**够不够响 ——
+    这类音效整体 RMS 天然偏低（大部分时间是静音），
+    只看 RMS 会误判成"本来就轻、不能动"。
+    """
+    win = max(1, int(SR * win_ms / 1000))
+    peaks = []
+    for i in range(0, len(sig) - win, win):
+        peaks.append(max(abs(x) for x in sig[i:i + win]))
+    if not peaks:
+        return []
+    peaks.sort(reverse=True)
+    return peaks[:top_n]
+
+
+def loudness_normalize(sig, peak_ceiling=0.97, target_rms=0.16, transient_peak=0.55):
+    """
+    ★ 响度归一化：**尽量推到目标响度，但不削顶**。
+
+    ============ 为什么不能只用峰值定标 ============
+    原来的 `normalize(peak=0.92)` 只管峰值。但实测发现 19 个音效的
+    峰均比高达 1000~1800（能量全压在极短的瞬态上），
+    结果是**峰值 92% 而 RMS 只有峰值的 1%~3%**。
+
+    在游戏里音效是混着播的（摇盅声 + 扣盅声 + 背景），
+    RMS 这么低 = "听着很薄、很轻、被盖过" —— 这是廉价感的一大来源。
+
+    ============ 为什么不能只用 RMS 定标 ============
+    直接把 RMS 拉到固定目标值，多数音效会**削顶**（超过满量程）→ 严重失真。
+
+    ============ 所以是"能推多高推多高" ============
+      ① 按目标响度放大
+      ② 如果峰值超了 ceiling（会有削顶失真），**按峰值回退**
+      ③ 回退后的实际响度 = min(目标响度, 不削顶所能达到的最大响度)
+
+    效果：
+      · 峰值有余量的短促音效（dice-into-cup / tap-soft 这类）
+        → 被推到接近满量程，响度显著提升且不失真
+      · 已经是高密度的长音效（cup-settle 这类）
+        → 保持原样，不会因为硬推而失真
+
+    之前留 0.92 的"安全余量"也是浪费：短音效的峰值本来就远低于满量程，
+    留那么多余量等于白白让它变轻。现在放宽到 0.97。
+    """
+    if not sig:
+        return sig
+    rms = math.sqrt(sum(x * x for x in sig) / len(sig))
+    if rms < 1e-9:
+        return sig
+    # ★ 只提升、不下调 —— 归一化最容易踩的坑
+    #   第一版是「把 RMS 拉到固定目标」，结果 tick 原始 RMS 0.16
+    #   已经高于我定的 0.085，公式算出 k=0.53 → **反而被调小一半**，
+    #   峰值从 50% 掉到 26%，音效变轻了。
+    #   归一化只能向上：本来就够响的一律不动。
+    if rms >= target_rms:
+        # ★ 整体 RMS 够响**不代表听得清**。
+        #   有一类音效是「零散几声撞击」——入盅的几声脆响、骰子在桌上滚两下。
+        #   它们大部分时间是静音，整体 RMS 天然就低（这是对的），
+        #   但如果**撞击本身**的峰值也很低，就会"听着很轻、很薄"，
+        #   混播时完全被盖过。
+        #   实测：dice-into-cup 的 RMS 有 1.6%（并不低），
+        #   但单次撞击峰值只有 28% —— 光看 RMS 会误判成"本来就轻"。
+        #
+        #   所以对这类音效补一道：**按撞击峰值定标**（分窗峰值近似）。
+        hits = _transient_peaks(sig)
+        if hits and max(hits) < transient_peak:
+            k = transient_peak / max(hits)
+            if max(abs(x) for x in sig) * k <= peak_ceiling:
+                sig = [x * k for x in sig]
+        return sig
+    scaled = [x * (target_rms / rms) for x in sig]
+    pk = max(abs(x) for x in scaled)
+    if pk > peak_ceiling:
+        # 推上去会削顶 → 回退到刚好不超 ceiling（宁可轻一点也不失真）
+        scaled = [x * (peak_ceiling / pk) for x in scaled]
+    return scaled
+
+
+def quantize(sig):
+    """
+    浮点 → int16，**并在整数域去直流**。
+
+    ★ 这里有个必须踩过一次的坑（数字音频的经典陷阱）：
+      浮点域已经把直流去干净了，但 `int(v * 32767)` 是**向零截断**，
+      它给每个样本引入约 -0.5 LSB 的系统性偏置。
+      实测：浮点 DC 只有 -0.009（可忽略），转成 int16 后 DC 变成 **-306**，
+      占满量程 0.94% —— 喇叭照样要"多推一下去平衡"，听感上就是开头"噗"的一声。
+
+      **四舍五入也救不了**：实测 `round()` 和 `int()` 得到的 DC 完全一样
+      （因为偏置来自量化的非线性，不是舍入方向）。
+
+      唯一可靠的办法：**量化之后再减一次整数均值**。
+      这必须在 int 域做（浮点域减均值对已经量化好的整数没有意义）。
+    """
+    ints = [max(-32768, min(32767, int(v * 32767))) for v in sig]
+    if not ints:
+        return ints
+    dc = int(round(sum(ints) / len(ints)))
+    if dc:
+        ints = [max(-32768, min(32767, x - dc)) for x in ints]
+    return ints
+
+
 def write_wav(name, sig, out_sr=None):
     """写 WAV。out_sr 给定时先降采样 —— 体积 = 采样率 × 时长，降一半省一半。"""
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -342,13 +506,19 @@ def write_wav(name, sig, out_sr=None):
         sig, sr_use = resample(sig, SR, out_sr)
     else:
         sr_use = SR
-    sig = fade_edges(normalize(sig))
+    # ★ 顺序很重要：先响度定标 → 去直流 → 淡入淡出 → **量化**
+    #   ① 响度要在最前：它决定整体电平，后面的高通会削掉一部分，
+    #      所以要在削之前就定到目标响度
+    #   ② 量化必须最后：整数域去均值只能在 int16 上做
+    sig = loudness_normalize(sig)
+    sig = remove_dc(sig)
+    sig = fade_edges(sig)
+    ints = quantize(sig)
     with wave.open(path, 'w') as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(sr_use)
-        w.writeframes(b''.join(
-            struct.pack('<h', max(-32768, min(32767, int(v * 32767)))) for v in sig))
+        w.writeframes(b''.join(struct.pack('<h', v) for v in ints))
     print(f'  ✓ {name+".wav":<22} {os.path.getsize(path)/1024:>6.1f} KB  '
           f'{len(sig)/sr_use:.2f}s  {sr_use}Hz')
 
@@ -693,26 +863,16 @@ ALL = [
     # (文件名, 生成函数, 输出采样率)
     # 采样率按各自最高有效频率定 —— 脆响/噪声用 HI，纯低频用 LO
     # 骰子
-    ('dice-hit',     lambda: dice_hit(1.0),  SR_HI),   # 脆响，高频到 5kHz
-    ('dice-shake',   lambda: dice_shake(1.2), SR_HI),  # 宽带噪声
-    ('dice-roll',    dice_roll,               SR_MID), # 摩擦声，中频为主
     ('dice-settle',  _sp(dice_settle, tail_ms=180, seed=45), SR_MID),
-    ('dice-open',    _sp(dice_open, tail_ms=280, seed=47), SR_MID),
-    ('dice-fanfare', dice_land_fanfare,       SR_LO),  # 最高 659Hz
     # 转盘
     ('tick',         lambda: tick(),          SR_HI),  # 机械咔哒，极高频
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
-    ('wheel-loop',   wheel_spin_loop,         SR_MID),
-    ('wheel-slow',   wheel_slowdown,          SR_HI),  # 一串咔哒
+    # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
+    # 这一串咔哒的本体是中频撞击，降采样率听感无损、体积减半（原 68.9 KB → 约 34 KB）
+    ('wheel-slow',   wheel_slowdown,          SR_MID),
     ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_MID),
     # 情绪
-    ('win',          win,                     SR_MID), # 最高 1047Hz
-    ('lose',         lose,                    SR_LO),  # 最高 440Hz
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
-    ('clink',        _sp(clink, tail_ms=260, seed=41), SR_HI),  # 玻璃，高频到 4.4kHz
-    ('pour',         _sp(pour, tail_ms=260, seed=43), SR_MID), # 液体，带宽较宽
-    ('suspense',     suspense,                SR_LO),  # 110/165Hz
-    ('reveal',       reveal,                  SR_MID), # 最高 1568Hz
     ('whoosh',       whoosh,                  SR_MID), # 风声，中高频
     # UI
     ('tap',          tap,                     SR_MID),

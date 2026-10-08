@@ -272,6 +272,109 @@ function extractBuildSectors(src) {
     '缺骰盅图（缺哪个，哪个动作就没有画面）：\n    ' + cupMissing.join('\n    '))
   ok('骰盅三态图齐全（扣着 / 摇动 / 提起）')
 
+  /* ============================================================
+   * ⑪ ★ 轮询的「变了才 setData」判断 —— 漏判 = 界面卡死不更新
+   * ============================================================ */
+  console.log('\n=== ⑪ ★ 轮询去重：状态没变就不能 setData ===')
+  /*
+   * 背景：room 页每 1.5 秒轮询一次。一次游戏十几分钟 = 上百次 setData，
+   * 而等别人的时候绝大多数轮询「什么都没变」。
+   * setData 是跨线程数据拷贝 + 视图 diff，即使值相同也要走完 ——
+   * 不去重就是纯浪费（掉帧 / 耗电 / 发热）。
+   *
+   * ★ 这条比"省性能"重要得多的是**安全**：
+   *   漏判任何一个字段 → 界面再也不更新 → 游戏直接卡死。
+   *   所以下面逐个字段做「改了必须被认出来」的反向验证。
+   */
+  const rcSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/game/room/room.js'), 'utf8')
+  const rcStart = rcSrc.indexOf('roomChanged(prev, room)')
+  const rcEnd = rcSrc.indexOf('/** 拉一次房间状态', rcStart)
+  assert.ok(rcStart >= 0 && rcEnd > rcStart, '没找到 roomChanged 函数')
+  /* 剥掉注释再抽函数体，避免文档里的示例代码混进来 */
+  const rcBody = rcSrc.slice(rcStart, rcEnd)
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+  const roomChanged = new Function('prev', 'room', rcBody.slice(rcBody.indexOf('{'), rcBody.lastIndexOf('}') + 1))
+
+  /* 基线：两个完全一样的房间 → 判定为「没变」 */
+  const base = {
+    phase: 'playing', count: 2, turn: 1, round: 1, game: 'liar', host: true,
+    countdownMs: 0, bid: null, lastResult: null, spin: null,
+    players: [
+      { seat: 1, name: 'A', isMe: true, isHost: true, online: true, diceCount: 5, dice: [1, 2, 3, 4, 5] },
+      { seat: 2, name: 'B', isMe: false, isHost: false, online: true, diceCount: 5 }
+    ],
+    options: ['1个1'], updatedAt: 111
+  }
+  const clone = (o) => JSON.parse(JSON.stringify(o))
+  assert.strictEqual(roomChanged(base, clone(base)), false,
+    '状态完全相同时应判定为「没变」，否则会白跑 setData')
+  ok('状态相同时 → 不 setData（每场省下上百次无效跨线程拷贝）')
+
+  /* ★ 逐个字段反向验证：改了必须被认出来（漏一个就是界面卡死）
+   *
+   * ⚠️ 这里踩过一个坑，写下来防止再犯：
+   *   第一版用例是 `prev.bid = null` → `next.bid = {n:3,...}`。
+   *   结果**删掉 `a.n/a.face` 那一行，测试照样通过** ——
+   *   因为「bid 从 null 变成对象」被上一行 `!!a !== !!b` 兜住了，
+   *   根本没测到我要测的那一行。断言是"通过"的，但测的不是那件事。
+   *
+   *   所以下面每个用例都必须**让被测的那一行成为唯一的差异来源**：
+   *   两侧都存在该对象，只改内部的某个字段。
+   */
+  const withBid = clone(base)
+  withBid.bid = { n: 3, face: 4, zhai: false, at: 999 }
+  const withSpin = clone(base)
+  withSpin.spin = { index: 1, k: 'dare', t: '大冒险', at: 777 }
+  const withResult = clone(base)
+  withResult.lastResult = { actual: 3, loserSeat: 2 }
+
+  const MUTATIONS = [
+    ['phase', (r) => { r.phase = 'over' }, base],
+    ['count（有人进来了）', (r) => { r.count = 3; r.players.push({ seat: 3, name: 'C', isMe: false, isHost: false, online: true, diceCount: 0 }) }, base],
+    ['turn（轮到谁了）', (r) => { r.turn = 2 }, base],
+    ['round（新一局）', (r) => { r.round = 2 }, base],
+    ['game', (r) => { r.game = 'dice' }, base],
+    ['host（房主转移了）', (r) => { r.host = false }, base],
+    ['countdownMs（倒计时在走）', (r) => { r.countdownMs = 1500 }, base],
+    ['bid 从无到有（有人第一次叫）', (r) => { r.bid = { n: 3, face: 4, zhai: false, at: 999 } }, base],
+    /* ↓ 下面三个：两侧都有对象，只改内部 —— 才能测到具体那一行 */
+    ['bid 的数量变了', (r) => { r.bid.n = 5 }, withBid],
+    ['bid 的点数变了', (r) => { r.bid.face = 6 }, withBid],
+    ['spin 从无到有（转盘转了）', (r) => { r.spin = { index: 1, k: 'dare', t: '大冒险', at: 777 } }, base],
+    ['spin 又转了一次（at 变了）', (r) => { r.spin.at = 888 }, withSpin],
+    ['lastResult 从无到有（出结果了）', (r) => { r.lastResult = { actual: 3, loserSeat: 2 } }, base],
+    ['lastResult 内容变了', (r) => { r.lastResult.actual = 9 }, withResult],
+    ['玩家在线状态', (r) => { r.players[1].online = false }, base],
+    ['玩家已摇（diceCount）', (r) => { r.players[1].diceCount = 2 }, base],
+    ['玩家改名了', (r) => { r.players[1].name = 'B2' }, base],
+    ['★ 自己的骰子变了（大话骰偷看）', (r) => { r.players[0].dice = [6, 6, 6, 6, 6] }, base],
+    ['options（可叫的选项变了）', (r) => { r.options = ['2个1'] }, base]
+  ]
+  const missed = []
+  MUTATIONS.forEach(m => {
+    const src = m[2]
+    const next = clone(src)
+    m[1](next)
+    if (roomChanged(src, next) !== true) missed.push(m[0])
+  })
+  assert.deepStrictEqual(missed, [],
+    '这些变化没被认出来 → 界面不会更新（游戏卡死）：\n    ' + missed.join('\n    '))
+  ok(MUTATIONS.length + ' 种状态变化全部能识别（漏一个就会卡死）')
+
+  /* updatedAt 每轮都在变，绝不能参与比较，否则优化完全失效 */
+  const onlyTs = clone(base)
+  onlyTs.updatedAt = 999999
+  assert.strictEqual(roomChanged(base, onlyTs), false,
+    'updatedAt 每轮都变，不能参与比较（否则等于没优化）')
+  ok('updatedAt 不参与比较（它每轮都变，算进去就等于没优化）')
+
+  /* 必须真的在 refresh 里用上了这个判断 */
+  assert.ok(/if \(!this\.roomChanged\(prev, room\)/.test(rcSrc),
+    'refresh 里没有用上 roomChanged —— 加了这个函数却不用，等于没优化')
+  ok('refresh 里确实调用了 roomChanged')
+
   console.log('\n========================================================')
   console.log('  游戏逻辑：全部 ' + n + ' 项断言通过')
   console.log('========================================================')

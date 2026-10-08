@@ -524,6 +524,101 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     'POOL_SIZE 里有已删除的音效（幽灵配置）：\n    ' + ghostPool.join('\n    '))
   ok(`池化配置 ${poolKeys.length} 条，无幽灵条目`)
 
+  /* ============ ③b-2 音频质量：直流偏置与响度 ============ */
+  console.log('\n=== ③b-2 音频质量：直流偏置必须为 0，且不能有「过轻」的音效 ===')
+  /*
+   * 2026-10-08 全面体检时用客观测量（不是听感）查出来的两个真问题：
+   *
+   * ① **直流偏置**：9 个音效的信号均值不为 0（最重达 1.53% 满量程）。
+   *    带偏置的音频播放时，喇叭要做"多推/多拉一下"的位移去平衡这段偏移，
+   *    听感上就是**开头"噗"的一声闷响** —— 这是很典型的廉价感。
+   *
+   *    ⚠️ 这里踩过一个反直觉的坑：浮点域把直流去干净了，
+   *    但 `int(v*32767)` 是**向零截断**，给每个样本引入 -0.5 LSB 的
+   *    系统性偏置 —— 浮点 DC 只有 -0.009（可忽略），转 int16 后变成 **-306**。
+   *    **四舍五入也救不了**（实测 DC 完全一样）。
+   *    唯一可靠的办法是量化之后再减一次整数均值（gen-audio.py 的 quantize()）。
+   *
+   * ② **过轻**：19 个音效 RMS 不到峰值的 3% —— 峰值高但能量极短，
+   *    在游戏里混着播会被盖过，听起来"薄、很轻"。
+   *
+   * 这两条都**不会让任何检查失败**，只能靠数值体检发现，所以写成断言。
+   */
+  const audioDir = path.join(ROOT, 'miniprogram', 'audio')
+  const audioFiles = fs.readdirSync(audioDir).filter(f => f.endsWith('.wav'))
+  const dcBad = []
+  const loudBad = []
+  let dcWorst = 0
+  audioFiles.forEach(f => {
+    const buf = fs.readFileSync(path.join(audioDir, f))
+    /* WAV: 44 字节头，找 fmt/data 块 */
+    let pos = 12, dataOff = -1, dataLen = 0
+    while (pos + 8 <= buf.length) {
+      const id = buf.toString('ascii', pos, pos + 4)
+      const sz = buf.readUInt32LE(pos + 4)
+      if (id === 'data') { dataOff = pos + 8; dataLen = sz; break }
+      pos += 8 + sz + (sz % 2)
+    }
+    if (dataOff < 0) return
+    let sum = 0, sumSq = 0, n = dataLen >> 1
+    for (let i = 0; i < n; i++) {
+      const v = buf.readInt16LE(dataOff + i * 2)
+      sum += v; sumSq += v * v
+    }
+    if (!n) return
+    const dc = Math.abs(sum / n)
+    const rms = Math.sqrt(sumSq / n)
+    if (dc > dcWorst) dcWorst = dc
+    if (dc > 50) dcBad.push(f + ' (DC=' + dc.toFixed(0) + ')')
+
+    /*
+     * 响度判据 ★ 必须区分两类音效，不能一刀切用 RMS：
+     *
+     *   · 连续型（摇盅声、倒数声）：整体 RMS 才有意义
+     *   · 零散撞击型（入盅的几声脆响、骰子在桌上滚两下）：
+     *     大部分时间是静音，**整体 RMS 天然就低**（这是对的，不是缺陷）。
+     *     这类要看**单次撞击的峰值** —— 实测 dice-into-cup 整体 RMS 只有 1.6%，
+     *     但撞击峰值有 76%，混播时完全听得见。
+     *     一刀切用 RMS 会把它误判成"过轻"，然后错误地把它推响 → 削顶失真。
+     *
+     * 所以判据是「两者取其一达标即可」：
+     *   整体 RMS ≥ 3.5%   （连续型够响）
+     *   或 撞击峰值 ≥ 55%  （撞击型够响）
+     */
+    const rmsRatio = rms / 32768
+    /* 撞击峰值：按 10ms 分窗（采样率未知，用 441 采样 ≈ 10ms@22.05k 的下界近似） */
+    const win = Math.max(1, Math.round(dataLen / Math.max(1, n / 441) * 0.01))
+    let hitPeak = 0
+    for (let i = 0; i + win < n; i += win) {
+      let mx = 0
+      for (let k = i; k < i + win; k++) {
+        const v = Math.abs(buf.readInt16LE(dataOff + k * 2))
+        if (v > mx) mx = v
+      }
+      if (mx > hitPeak) hitPeak = mx
+    }
+    const hitRatio = hitPeak / 32768
+    if (rmsRatio < 0.035 && hitRatio < 0.55) {
+      loudBad.push(f + ' (RMS=' + (rmsRatio * 100).toFixed(1) + '%' +
+        ' 撞击峰值=' + (hitRatio * 100).toFixed(0) + '%)')
+    }
+  })
+  assert.deepStrictEqual(dcBad, [],
+    '这些音效有直流偏置（播放时会有开头"噗"的一声闷响，典型廉价感）：\n    ' +
+    dcBad.join('\n    '))
+  ok(audioFiles.length + ' 个音效直流偏置全部为 0（最大 ' + dcWorst.toFixed(1) + '/32768）')
+
+  assert.deepStrictEqual(loudBad, [],
+    '这些音效过轻（RMS 低于 −32 dBFS，游戏里混播会被盖过）：\n    ' + loudBad.join('\n    '))
+  ok('没有过轻的音效（峰值有余量的都已推上去）')
+
+  /* 音效总量：超过 1.1MB 就该重新审视（小程序主包上限 2MB） */
+  let audioBytes = 0
+  audioFiles.forEach(f => { audioBytes += fs.statSync(path.join(audioDir, f)).size })
+  assert.ok(audioBytes < 1.15 * 1024 * 1024,
+    `音频总计 ${(audioBytes / 1024 / 1024).toFixed(2)} MB，超出预算（主包上限 2 MB）`)
+  ok(`音频总计 ${(audioBytes / 1024).toFixed(0)} KB（在 1.15 MB 预算内）`)
+
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
   const pagesDir = path.join(ROOT, 'miniprogram', 'pages')
