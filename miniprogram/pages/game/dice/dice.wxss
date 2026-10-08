@@ -85,11 +85,26 @@
 .die.settled {
   animation: landIn .42s cubic-bezier(.22, 1.4, .5, 1);
 }
+/*
+ * 落定动画 —— 四段式，关键是第 ③ 段那个「定格」。
+ *
+ * ① 0-18%   预备动作：先往上抬一点（直接砸下去会显得轻飘）
+ * ② 18-30%  砸下：带 squash（横撑 8% / 纵压 12%，体积守恒）
+ * ③ 30-42%  ★ 定格（hit-stop）：**完全静止** 约 50ms
+ *           这是整条动画里最重要的一段。商业游戏手感研究里
+ *           反复提到：40~80ms 的定格比任何花哨的动画都更能表现「重量」，
+ *           因为它模拟了真实撞击中物体瞬间停住的物理事实。
+ *           我第一版没有这段，所以骰子虽然会弹，但看起来是「飘」的。
+ * ④ 42-100% 回弹：小幅过冲后归位（跟随动作）
+ */
 @keyframes landIn {
-  0%   { transform: scale(1.24) translateY(-24rpx) rotate(-6deg) }
-  18%  { transform: scale(1.26) translateY(-30rpx) rotate(4deg) }  /* 预备：再抬高一点 */
-  55%  { transform: scale(.94) translateY(6rpx) rotate(-2deg) }    /* 砸下：压扁 */
-  78%  { transform: scale(1.03) translateY(-4rpx) rotate(1deg) }   /* 回弹 */
+  0%   { transform: scale(1.22) translateY(-24rpx) rotate(-6deg) }
+  18%  { transform: scale(1.26) translateY(-30rpx) rotate(4deg) }   /* 预备 */
+  30%  { transform: scale(1.08) translateY(7rpx) rotate(-3deg) }    /* 砸下（squash） */
+  /* ↓ 定格：18~42% 之间保持完全一致 = hit-stop */
+  42%  { transform: scale(1.08) translateY(7rpx) rotate(-3deg) }
+  62%  { transform: scale(.97) translateY(-5rpx) rotate(1.5deg) }   /* 回弹 */
+  80%  { transform: scale(1.02) translateY(2rpx) rotate(-.5deg) }
   100% { transform: scale(1) translateY(0) rotate(0deg) }
 }
 

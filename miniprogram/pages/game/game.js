@@ -14,6 +14,7 @@
  */
 const app = getApp()
 const sfx = require('../../utils/sfx.js')
+const feedback = require('../../utils/feedback.js')
 
 const GAMES = [
   {
@@ -59,7 +60,7 @@ Page({
 
   onLoad() {
     this.loadPlayed()
-    this.setData({ muted: sfx.isMuted() })
+    this.setData({ muted: sfx.isMuted(), hapticOn: feedback.isHapticOn() })
   },
 
   onHide() { sfx.stopAll() },
@@ -79,6 +80,13 @@ Page({
   toggleMute() {
     const m = sfx.setMuted(!this.data.muted)
     this.setData({ muted: m })
+  },
+
+  /* 震动开关 —— 和静音分开。
+     公共场合（酒桌旁边有人）可能想留声音但不震，反之亦然。 */
+  toggleHaptic() {
+    const h = feedback.setHapticOn(!this.data.hapticOn)
+    this.setData({ hapticOn: h })
   },
 
   go(e) {

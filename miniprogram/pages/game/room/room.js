@@ -19,6 +19,7 @@
 const app = getApp()
 const { call } = require('../../../utils/cloud.js')
 const sfx = require('../../../utils/sfx.js')
+const feedback = require('../../../utils/feedback.js')
 
 const POLL_MS = 1500
 
@@ -73,6 +74,7 @@ Page({
   onHide() {
     this.stopPoll()
     sfx.stopAll()
+    feedback.clear()
   },
 
   /** 清掉倒计时定时器（页面卸载时不能留） */
@@ -83,6 +85,7 @@ Page({
   onUnload() {
     this.stopPoll()
     this.clearCountdown()
+    feedback.clear()
     sfx.destroy()
     /* 主动离开房间 —— 不然会一直占着座位，
        而且别人会看到"永远在线"的幽灵玩家 */
@@ -145,10 +148,11 @@ Page({
         /* 开局倒计时开始：读秒声（最后一声更急促） */
         this.startCountdown(room.countdownMs)
       } else if (room.phase === 'playing') {
-        sfx.play('countdownGo')
-        setTimeout(() => sfx.play('shakerMetal'), 180)
+        /* 开局：「开始！」+ 摇盅。震动跟着走 —— 这是全场最该震的一刻 */
+        feedback.fire('countdownGo')
+        setTimeout(() => feedback.fire('shaker'), 200)
       } else if (room.phase === 'over') {
-        sfx.play('revealHit')
+        feedback.fire('cupOpen')
       }
     }
     /* 人数变化：有人进来/走了。
@@ -321,7 +325,7 @@ Page({
   /* ================= 摇骰子（比大小） ================= */
 
   async doRoll() {
-    sfx.play('diceTumbleWood', { restart: true })
+    feedback.fire('tumble')
     this.setData({ rolling: true })
     const r = await call('room', { action: 'roll', id: this.data.room.id }, { silent: true })
       .catch(() => null)
@@ -331,10 +335,10 @@ Page({
       if (r.result) {
         /* 全员摇完 → 出结果。
            分层：停稳 → 揭晓重击 → 撒花（自己赢）/ 下坠（没赢） */
-        sfx.play('diceSettle')
-        sfx.play('impactLow', { volume: 0.5 })
+        feedback.fire('diceSettle')
+        setTimeout(() => sfx.play('impactLow', { volume: 0.5 }), 60)
         this.bump()
-        setTimeout(() => sfx.play('revealHit'), 200)
+        setTimeout(() => sfx.play('revealHit'), 260)
         const mySeat = (r.room.me || {}).seat
         const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
         setTimeout(() => sfx.play(iWon ? 'confetti' : 'failDrop'), 520)
@@ -394,10 +398,12 @@ Page({
       this.setData({ room: r.room, result: r.result, stage: 'over' })
       sfx.play('revealHit')
       this.bump()
+      feedback.vibrate('heavy')
       setTimeout(() => {
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
         sfx.play(iLost ? 'failDrop' : 'confetti')
+        feedback.vibrate(iLost ? 'long' : 'double')
       }, 340)
       setTimeout(() => sfx.play('gulp'), 900)
     } else if (r && !r.ok) {

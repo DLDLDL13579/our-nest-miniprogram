@@ -14,6 +14,7 @@
  * 酒桌游戏当着你俩的面摇，作弊没有意义，联网反而增加延迟和失败点。
  */
 const sfx = require('../../../utils/sfx.js')
+const feedback = require('../../../utils/feedback.js')
 
 /* 骰子点数用点阵画，不用字体符号 —— 字体符号在不同机型上大小/样式不一 */
 const PIPS = {
@@ -64,9 +65,16 @@ Page({
     this.checkShake()
   },
 
-  onHide() { this.stopShake(); sfx.stopAll() },
+  onHide() {
+    this.stopShake()
+    sfx.stopAll()
+    /* 清掉 feedback 的排期定时器 —— 否则页面隐藏后
+       延迟的震动/音效还会触发（用户已经离开这个页面了） */
+    feedback.clear()
+  },
   onUnload() {
     this.stopShake()
+    feedback.clear()
     /* 必须销毁：不销毁会泄漏音频实例，微信对实例数有限制 */
     sfx.destroy()
   },
@@ -183,11 +191,25 @@ Page({
       dice[i] = makeDice(final[i])
       dice[i].settled = true
       this.setData({ dice: dice })
-      /* 分层音效：骰子撞击 + 低频冲击（叠出"重量"）。
-         单层撞击声听起来是"嗒"，加低频层才像"咚"—— 这是商业游戏的做法。 */
-      sfx.play('diceSettle')
-      sfx.play('impactLow', { volume: 0.5 })
-      this.shakeScreen()
+
+      /*
+       * ★ 音画同步的关键改动。
+       *
+       * 原来：setData（动画开始）+ sfx.play（音效同时响）。
+       * 问题：动画的「冲击帧」在 60ms 处（骰子真正砸到桌面），
+       *       但音效在动画第一帧就响了 —— 听起来音效「抢拍」，
+       *       而且人脑处理声音比视觉快（13ms vs 50ms），
+       *       同时触发时声音在感知上更早，反差更明显。
+       *
+       * 现在：交给 feedback 统一排期 ——
+       *       视觉先动 → 音效延迟 90ms（落在冲击帧）→ 震动再晚 20ms。
+       */
+      feedback.fire('diceSettle')
+      /* 低频冲击层单独补（叠出"重量"，feedback 表里没这层） */
+      setTimeout(() => sfx.play('impactLow', { volume: 0.45 }), 100)
+
+      /* 屏幕震动跟着冲击帧走，不和动画同时起 */
+      setTimeout(() => this.shakeScreen(), 60)
       i++
       setTimeout(step, 180)
     }
@@ -231,24 +253,33 @@ Page({
       round: this.data.round + 1
     })
 
-    /* 结果音按"情绪强度"分层 —— 不同结果给不同的反馈力度：
-         满点  → 撒花 + 重击（最爽）
-         最低  → 下坠（最惨）
-         大/小 → 揭晓重击
-         中间  → 普通开盅
-       这样"摇出豹子"和"摇出 7 点"的体感差别是明显的。 */
+    /*
+     * 结果反馈按「情绪强度」分层，并且**全部走 feedback 的冲击帧对齐**。
+     *
+     * 为什么不再直接 sfx.play：结果标签的 CSS 是 .42s 过冲弹入，
+     * 它的「落定」在约 180ms 处。音效必须等到那一刻，
+     * 否则字还没弹出来声音就响了 —— 这才是"没匹配上"的真正含义。
+     *
+     * 四档强度：
+     *   满点  → 撒花 + 重击 + 连击音（最爽，三层）
+     *   最低  → 下坠（最惨，单层重）
+     *   大/小 → 揭晓重击
+     *   中间  → 普通开盅（轻）
+     */
+    const IMPACT_OF_LABEL = 180        // 结果标签过冲弹入的落定时刻
+
     if (lastResult === 'max') {
-      sfx.play('confetti')
-      setTimeout(() => sfx.play('revealHit'), 120)
-      /* 连击音固定音高（pitch:false）—— 它的音高是设计的一部分，
+      feedback.fire('luckyHit', { sfxDelay: IMPACT_OF_LABEL })
+      setTimeout(() => sfx.play('revealHit'), IMPACT_OF_LABEL + 60)
+      /* 连击音固定音高（pitch:false）—— 音高是设计的一部分，
          抖了就听不出"第几连"了 */
-      setTimeout(() => sfx.play('combo4', { pitch: false }), 340)
+      setTimeout(() => sfx.play('combo4', { pitch: false }), IMPACT_OF_LABEL + 320)
     } else if (lastResult === 'min') {
-      sfx.play('failDrop')
+      feedback.fire('penalized', { sfxDelay: IMPACT_OF_LABEL })
     } else if (lastResult === 'big' || lastResult === 'small') {
-      sfx.play('revealHit')
+      feedback.fire('cupOpen', { sfxDelay: IMPACT_OF_LABEL })
     } else {
-      sfx.play('diceOpen')
+      setTimeout(() => sfx.play('diceOpen'), IMPACT_OF_LABEL)
     }
 
     this.savePlayed()

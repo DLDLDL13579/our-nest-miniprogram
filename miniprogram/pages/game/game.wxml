@@ -6,7 +6,10 @@
       <view class="lh-toprow">
         <view class="lh-lbl">一起玩</view>
         <!-- 静音开关：酒桌上可能不方便出声 -->
-        <view class="lh-mute" catchtap="toggleMute">{{muted ? '🔇' : '🔊'}}</view>
+        <view class="lh-switches">
+          <view class="lh-mute" catchtap="toggleMute">{{muted ? '🔇' : '🔊'}}</view>
+          <view class="lh-mute {{hapticOn ? '' : 'off'}}" catchtap="toggleHaptic">{{hapticOn ? '📳' : '📴'}}</view>
+        </view>
       </view>
       <view class="lh-t">酒桌游戏</view>
       <view class="lh-s">联网各自用手机，或一部手机传着玩</view>

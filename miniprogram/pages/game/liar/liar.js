@@ -17,6 +17,7 @@
  *   这个交接动作不做，游戏就废了（等于把牌摊在桌上）。
  */
 const sfx = require('../../../utils/sfx.js')
+const feedback = require('../../../utils/feedback.js')
 
 const DICE_PER_PLAYER = 5
 
@@ -93,8 +94,8 @@ Page({
   onLoad() {
     this.setData({ muted: sfx.isMuted() })
   },
-  onHide() { sfx.stopAll() },
-  onUnload() { sfx.destroy() },
+  onHide() { sfx.stopAll(); feedback.clear() },
+  onUnload() { feedback.clear(); sfx.destroy() },
 
   /* ---------------- 开局：摇骰 ---------------- */
 
@@ -125,8 +126,9 @@ Page({
     setTimeout(() => {
       /* 开局：先交接给玩家1 看骰 */
       this.setData({ phase: 'handoff', handoffTo: 'peek', turn: 1, shaking: false })
-      sfx.play('diceSettle')
-      sfx.play('impactLow', { volume: 0.45 })
+      /* 骰盅落桌：音效延迟到「盅落定」的冲击帧 + 轻震 */
+      feedback.fire('diceSettle')
+      setTimeout(() => sfx.play('impactLow', { volume: 0.45 }), 95)
     }, 780)
   },
 
@@ -298,13 +300,27 @@ Page({
       if (this._shakeTimer) clearTimeout(this._shakeTimer)
       this._shakeTimer = setTimeout(() => this.setData({ impact: false }), 300)
 
+      /*
+       * 开盅结算 —— 三段式，全部对齐「骰子墙摊开」的视觉节奏。
+       * 骰子墙是逐行摊开的（每行延迟 100ms），所以重击要等它摊完。
+       */
+      const REVEAL_IMPACT = 700      // 骰子墙摊开约需 600ms，留一点余量
+
       /* 开盅重击（明亮 + 低频冲击 + 金属尾音，三层叠出来的分量） */
-      sfx.play('revealHit')
-      /* 结果音：赢是撒花、输是下坠 —— 情绪强度不同 */
+      setTimeout(() => sfx.play('revealHit'), REVEAL_IMPACT)
+      /* 震动：跟着重击，但再晚一点（触觉感知最快，最后到才「同时」） */
+      setTimeout(() => feedback.vibrate('heavy'), REVEAL_IMPACT + 60)
+      /* 结果音：赢是撒花双震、输是下坠长震 —— 情绪强度不同 */
       setTimeout(() => {
-        sfx.play(bidderWins ? 'confetti' : 'failDrop')
-      }, 320)
-      setTimeout(() => sfx.play('drink'), 900)
+        if (bidderWins) {
+          sfx.play('confetti')
+          feedback.vibrate('double')
+        } else {
+          sfx.play('failDrop')
+          feedback.vibrate('long')
+        }
+      }, REVEAL_IMPACT + 320)
+      setTimeout(() => sfx.play('gulp'), REVEAL_IMPACT + 900)
 
       this.savePlayed()
     }, 1100)

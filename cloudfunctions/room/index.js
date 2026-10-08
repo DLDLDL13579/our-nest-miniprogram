@@ -74,8 +74,24 @@ async function safe(text, openid) {
     if (s && s !== 'pass') return { pass: false, msg: '这里有系统判断为风险的内容，改一改' }
     return { pass: true }
   } catch (err) {
-    console.error('[room] msgSecCheck 调用失败，按发布策略拒绝：', err.errCode)
-    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试' }
+    /*
+     * 把真实错误码带回前端 —— 否则只能看到「服务不可用」这句笼统的话，
+     * 没法区分是「接口挂了」「权限没绑」还是「调用参数不对」。
+     * 开发阶段带 errCode，上线后可以按需收紧。
+     */
+    const code = (err && (err.errCode || err.code)) || 'unknown'
+    const detail = (err && (err.errMsg || err.message)) || ''
+    console.error('[room] msgSecCheck 调用失败：', code, detail)
+    return {
+      pass: false,
+      code: 'SEC_UNAVAILABLE',
+      msg: '内容检查服务暂时不可用，稍后再试',
+      /* 带上错误码 —— 否则日志里只有「服务不可用」这句笼统的话，
+         没法区分是接口挂了、权限没绑、还是调用参数不对。
+         实测踩过：新函数部署后 openapi 权限需要几次部署才绑定生效，
+         没有错误码时完全看不出是这个原因。 */
+      _code: code
+    }
   }
 }
 
@@ -155,7 +171,7 @@ exports.main = async (event) => {
       const game = ['dice', 'liar', 'wheel'].indexOf(event.game) >= 0 ? event.game : 'dice'
 
       const sec = await safe(name, OPENID)
-      if (!sec.pass) return { ok: false, msg: sec.msg }
+      if (!sec.pass) return { ok: false, msg: sec.msg, _debug: sec._debug }
 
       /* 房间码撞车重试（6 位 32 字符集，撞车概率极低，但重试 5 次更稳） */
       let code = ''

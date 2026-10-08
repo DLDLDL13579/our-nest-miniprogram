@@ -157,3 +157,7 @@
   animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .4s backwards;
 }
 .lh-mute:active { opacity: 1; transform: scale(1.15) }
+
+/* 开关组：声音 + 震动 */
+.lh-switches { display: flex; align-items: center; gap: 8rpx }
+.lh-mute.off { opacity: .38 }

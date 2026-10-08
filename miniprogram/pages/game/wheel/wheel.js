@@ -16,6 +16,7 @@
  * 概率可以调 —— 免罚很少见，这样转到的时候才够爽。
  */
 const sfx = require('../../../utils/sfx.js')
+const feedback = require('../../../utils/feedback.js')
 
 /* 扇区定义：weight 是权重（不是等分），颜色按酒桌氛围配 */
 const SECTORS = [
@@ -92,8 +93,8 @@ Page({
     this.buildSectors()
   },
 
-  onHide() { sfx.stopAll() },
-  onUnload() { sfx.destroy() },
+  onHide() { sfx.stopAll(); feedback.clear() },
+  onUnload() { feedback.clear(); sfx.destroy() },
 
   /**
    * 把权重转成角度，并生成 conic-gradient 的色带。
@@ -228,31 +229,43 @@ Page({
     sfx.stop('wheelLoop')
     this.stopTicks()
 
-    /* 停稳的机械声（咔哒收尾）—— 在重击之前，先把"停住"这件事说出来 */
+    /*
+     * ★ 停稳这一刻的反馈编排。
+     *
+     * 全部改用 feedback 排期，原因是「结果弹层」的 CSS 是 .75s 的光条扫过
+     * + 图标过冲弹入，它的视觉落定在约 150ms 处。
+     * 原来音效立刻响 —— 弹层还没出来声音已经响了，这就是"没匹配上"。
+     *
+     * 时序：停稳瞬间（机械声）→ 弹层出现 → 冲击帧音效 → 震动
+     */
+    const RESULT_IMPACT = 150        // 结果弹层的视觉落定点
+
+    /* 停稳的机械声：立刻响 —— 它是「转盘停住」这件事本身的声音 */
     sfx.play('wheelStop')
 
-    /* 分层音效（按结果的情绪强度给不同力度）：
-         免罚  → 撒花 + 重击（惊喜，最爽）
-         真心话/大冒险 → 揭晓重击（期待感）
-         喝酒类 → 咽酒声 + 低频冲击（"认命"的具象化） */
+    /* 结果音按情绪强度分层，统一延迟到弹层落定 */
     if (hit.k === 'pass') {
-      sfx.play('confetti')
-      setTimeout(() => sfx.play('revealHit'), 140)
+      /* 免罚 = 惊喜，最爽的一档：撒花 + 重击 + 双震 */
+      feedback.fire('luckyHit', { sfxDelay: RESULT_IMPACT })
+      setTimeout(() => sfx.play('revealHit'), RESULT_IMPACT + 70)
     } else if (hit.k === 'truth' || hit.k === 'dare') {
-      setTimeout(() => sfx.play('revealHit'), 100)
+      setTimeout(() => sfx.play('revealHit'), RESULT_IMPACT)
+      feedback.vibrate('medium')
     } else {
-      /* 喝酒类：倒酒 → 碰杯 → 咽下 —— 三个声音把动作演一遍，
-         比一声"叮"更有画面感（这是"声音丰富"的真正含义：
-         不是音效多，是**动作被声音拆解成步骤**）。 */
-      sfx.play('pour')
-      setTimeout(() => sfx.play('clink'), 260)
-      setTimeout(() => sfx.play('gulp'), 520)
+      /* 喝酒类：倒酒 → 碰杯 → 咽下 —— 把动作拆成三步声音，
+         比一声"叮"更有画面感。这才是"声音丰富"的真正含义：
+         不是音效多，是**一个动作被声音拆解成步骤**。 */
+      setTimeout(() => sfx.play('pour'), RESULT_IMPACT)
+      setTimeout(() => sfx.play('clink'), RESULT_IMPACT + 280)
+      setTimeout(() => sfx.play('gulp'), RESULT_IMPACT + 560)
+      setTimeout(() => feedback.vibrate('long'), RESULT_IMPACT + 60)
     }
 
-    /* 停稳时整块屏幕震一下 —— 停在哪个扇区要有"砸下来"的分量 */
+    /* 停稳时整块屏幕震一下 —— 停在哪个扇区要有"砸下来"的分量。
+       震动跟着冲击帧走（比音效再晚一点，因为触觉感知最快） */
     this.setData({ impact: true })
     if (this._shakeTimer) clearTimeout(this._shakeTimer)
-    this._shakeTimer = setTimeout(() => this.setData({ impact: false }), 260)
+    this._shakeTimer = setTimeout(() => this.setData({ impact: false }), 300)
 
     /* 取题目/任务 */
     let detail = ''

@@ -170,6 +170,170 @@ def fade_edges(sig, ms=4):
     return out
 
 
+def early_reflections(sig, sr=SR, count=4, first_ms=18, decay=0.55, spread_ms=11, seed=31):
+    """
+    早期反射 —— 让声音「发生在房间里」而不是「贴在脸上」。
+
+    原理：真实房间里，直达声之后 20~60ms 会到达几次墙面反射。
+    人脑靠这些反射判断「这个声音在多远、多大的空间」。
+    合成音效之所以显得廉价，最主要的原因就是**只有直达声**——
+    听起来像「在耳朵里响」，而不是「在桌子上响」。
+
+    实测参考：声音反射需要延迟 20~30ms 才被大脑感知为**独立**的声源；
+    更短的间隔会融合成「音色」的一部分（这正是我们要的——
+    让它变成空间感而不是回声）。
+
+    count     反射次数（3~5 次够用，再多只增加体积）
+    first_ms  第一次反射的延迟（太短会糊，太长会变成回声）
+    decay     每次反射的衰减系数
+    spread_ms 反射之间的间隔增量（模拟房间不规则）
+    """
+    rnd = random.Random(seed)
+    n = len(sig)
+    out = list(sig)
+    delay = first_ms / 1000.0
+    g = 1.0
+    for i in range(count):
+        g *= decay * rnd.uniform(0.85, 1.15)
+        off = int(delay * sr)
+        if off >= n:
+            break
+        # 反射比直达声更「闷」（高频被墙面吸收）—— 这是空间感的关键细节
+        # ★ 同时压低幅度：最初版本反射增益接近直達声，实测把包络峰值
+        #   从 4.6ms 推到 31.8ms —— 听感上变成「呼」而不是「咔」，
+        #   空间感没换来，反而把瞬态毁了。
+        #   真实房间的早期反射比直达声低 6~12dB（约 0.25~0.5 倍），
+        #   而且必须保持这条「反射永远弱于直达声」的纪律。
+        refl = lowpass(sig, 0.35 + 0.1 * i)
+        for j in range(n - off):
+            out[j + off] += refl[j] * g * 0.34
+        delay += spread_ms / 1000.0 * rnd.uniform(0.7, 1.3)
+    return out
+
+
+def room_tail(sig, sr=SR, ms=260, decay=3.2, seed=37, hp=0.25):
+    """
+    混响尾巴 —— 声音「消散在空间里」的那一段。
+
+    这是「高级感」最直接的来源：真实物理事件里，
+    声音总是比视觉动作**多留一会儿**。动画 200ms 就结束了，
+    但撞击的余韵还在房间墙上反射几百毫秒。
+
+    做法：把声音本身当作激励，过一遍近似指数的衰减噪声卷积。
+    比真正做卷积混响便宜得多，听感上足够。
+    """
+    rnd = random.Random(seed)
+    n_tail = int(sr * ms / 1000.0)
+    if n_tail <= 0:
+        return list(sig)
+    n = len(sig)
+    total = n + n_tail
+    out = [0.0] * total
+
+    # 尾巴：从原信号尾端抽一段做激励源，避免尾巴是「凭空的噪声」
+    tap_len = min(n, int(sr * 0.05))
+    src = sig[n - tap_len:] if tap_len > 0 else [1.0]
+
+    for j in range(n_tail):
+        t = j / n_tail
+        # 指数衰减
+        g = math.exp(-decay * t)
+        # 每 3~9ms 抽一个「反射颗粒」
+        k = rnd.randrange(tap_len)
+        out[n + j] += src[k] * g * 0.45
+    # 尾巴要闷（高频先衰减完）
+    tail = lowpass(out[n:], 0.22)
+    # 去掉低频嗡鸣，避免尾巴听起来像「隆隆」
+    tail = highpass(tail, hp)
+    for j in range(n_tail):
+        out[n + j] = tail[j]
+    # 直达声原样保留
+    for j in range(n):
+        out[j] = sig[j]
+    return out
+
+
+def sharpen_transient(sig, sr=SR, ms=1.2, boost=1.0):
+    """
+    锐化瞬态 —— 起音那一下要「扎」。
+
+    实测参考：锐利的瞬态听起来「近」，柔化的瞬态听起来「远」。
+    合成音效常见毛病是起音太软（我原来用 1.5~4ms），
+    听起来像「呼」而不是「啪」。
+
+    做法：找出起音位置，在极短窗口内加一层高频脉冲。
+    """
+    n = len(sig)
+    k = max(1, int(sr * ms / 1000.0))
+    if k >= n:
+        return list(sig)
+    out = list(sig)
+    # 找能量最大点作为起音位置。
+    # ★ 搜索范围必须够宽：原本只看前 20ms，但空间化（反射+尾巴）
+    #   会把包络峰值推后 —— 实测轮盘停稳的峰值被推到 31.7ms，
+    #   超出搜索窗口，于是「末道瞬态」完全没生效（改了却没变化）。
+    #   现在搜到 80ms，覆盖空间处理后的位移。
+    search_win = min(n, int(sr * 0.08))
+    peak = 0
+    best = -1
+    for i in range(search_win):
+        if abs(sig[i]) > best:
+            best = abs(sig[i]); peak = i
+    if best <= 1e-9:
+        return out
+    # 在起音处叠一层衰减极快的高频
+    for j in range(k):
+        if peak + j >= n: break
+        env = math.exp(-6.5 * j / k)
+        # 高频脉冲用交替符号模拟（近似宽带）
+        pulse = (1.0 if j % 2 == 0 else -1.0) * env * boost * best
+        out[peak + j] += pulse * 0.5
+    return out
+
+
+def air_layer(sig, sr=SR, mix=0.16, seed=53):
+    """
+    空气层 —— 极轻的高频「沙」，给声音一点「在场感」。
+    只在起音附近，太长会变成噪声。
+    """
+    n = len(sig)
+    k = min(n, int(sr * 0.05))
+    if k <= 0:
+        return list(sig)
+    out = list(sig)
+    a = highpass(noise(k, seed), 0.62)
+    for j in range(k):
+        env = math.exp(-4.0 * j / k)
+        out[j] += a[j] * env * mix
+    return out
+
+
+def spatialize(sig, sr=SR, reflections=True, tail_ms=220, transient=True, seed=11):
+    """
+    一站式「空间化」：瞬态 → 反射 → 尾巴 → **再锐化一次**。
+
+    顺序有讲究：
+      ① 先锐化起音（声音的「本体」）
+      ② 叠反射（空间）
+      ③ 加尾巴（消散）
+      ④ **最后再锐化一次** —— 这一步是实测补上的：
+         反射和尾巴会抬高信号的"平均电平"，把包络峰值往后推，
+         实测轮盘停稳的起音被拖到 31.7ms（听起来是"呼"不是"咔"）。
+         在最后补一道瞬态，能把峰值重新拉回前几毫秒。
+    """
+    out = list(sig)
+    if transient:
+        out = sharpen_transient(out, sr)
+    if reflections:
+        out = early_reflections(out, sr, seed=seed)
+    if tail_ms and tail_ms > 0:
+        out = room_tail(out, sr, ms=tail_ms, seed=seed + 7)
+    if transient:
+        # 末道瞬态：把被空间处理拖慢的起音重新拉回来
+        out = sharpen_transient(out, sr, ms=1.6, boost=1.4)
+    return out
+
+
 def write_wav(name, sig, out_sr=None):
     """写 WAV。out_sr 给定时先降采样 —— 体积 = 采样率 × 时长，降一半省一半。"""
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -247,12 +411,35 @@ def dice_roll():
 
 
 def dice_settle():
-    """落定：骰子停下的"定音"。"""
-    n = int(SR * 0.18)
-    s = sine(n, 660)
-    e = env_ad(n, int(SR * 0.003), SR * 0.045)
-    base = [s[i] * e[i] for i in range(n)]
-    return mix(place(dice_hit(0.6, seed=42), 0, n), base)
+    """
+    落定：骰子停下的"定音"。
+
+    重写过一次。原来是一根 660Hz 纯正弦 + 3ms 起音，实测起音 21ms ——
+    听起来是"哔"而不是"嗒"，这是"廉价感"的直接来源。
+
+    问题在于：**纯正弦没有宽带成分**。
+    真实的撞击声之所以"扎"，是因为它有极短的宽带瞬态（木质碰撞的
+    "咔"来自 1~3ms 内跨越很宽频率的能量爆发）。
+
+    现在：宽带噪声做瞬态（0.5ms 起音）+ 木质腔体做音色 + 低频垫重量。
+    """
+    n = int(SR * 0.20)
+    # ① 宽带瞬态：这是"扎"的来源，起音压到 0.5ms
+    click = lowpass(noise(n, 42), 0.72)
+    ce = env_ad(n, max(1, int(SR * 0.0005)), SR * 0.006)
+    # ② 木质腔体：低频为主（木头的音色在中低频，不是 660Hz 那种"铃"）
+    body = sine(n, 320)
+    body2 = sine(n, 470)          # 非整数倍 → 木头的钝感
+    be = env_ad(n, int(SR * 0.001), SR * 0.038)
+    # ③ 低频垫一点重量
+    thud = lowpass(noise(n, 43), 0.05)
+    te = env_decay(n, SR * 0.018)
+
+    out = [click[i] * ce[i] * 0.95
+           + (body[i] * 0.6 + body2[i] * 0.35) * be[i] * 0.7
+           + thud[i] * te[i] * 0.5
+           for i in range(n)]
+    return out
 
 
 def dice_open():
@@ -490,6 +677,14 @@ def countdown_go():
     s = sine(n, 1800)
     e = env_ad(n, int(SR * 0.001), SR * 0.06)
     return [s[i] * e[i] * 0.6 for i in range(n)]
+# _sp 包装器必须定义在 ALL / ALL_V3 之前（它们引用它）
+def _sp(fn, tail_ms=220, seed=11):
+    """把合成函数包一层空间化（保持采样率契约不变）"""
+    def wrapped():
+        return spatialize(fn(), SR, tail_ms=tail_ms, seed=seed)
+    return wrapped
+
+
 
 
 # ============================================================
@@ -501,21 +696,21 @@ ALL = [
     ('dice-hit',     lambda: dice_hit(1.0),  SR_HI),   # 脆响，高频到 5kHz
     ('dice-shake',   lambda: dice_shake(1.2), SR_HI),  # 宽带噪声
     ('dice-roll',    dice_roll,               SR_MID), # 摩擦声，中频为主
-    ('dice-settle',  dice_settle,             SR_MID),
-    ('dice-open',    dice_open,               SR_MID),
+    ('dice-settle',  _sp(dice_settle, tail_ms=180, seed=45), SR_MID),
+    ('dice-open',    _sp(dice_open, tail_ms=280, seed=47), SR_MID),
     ('dice-fanfare', dice_land_fanfare,       SR_LO),  # 最高 659Hz
     # 转盘
     ('tick',         lambda: tick(),          SR_HI),  # 机械咔哒，极高频
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
     ('wheel-loop',   wheel_spin_loop,         SR_MID),
     ('wheel-slow',   wheel_slowdown,          SR_HI),  # 一串咔哒
-    ('wheel-stop',   wheel_stop,              SR_MID),
+    ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_MID),
     # 情绪
     ('win',          win,                     SR_MID), # 最高 1047Hz
     ('lose',         lose,                    SR_LO),  # 最高 440Hz
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
-    ('clink',        clink,                   SR_HI),  # 玻璃，高频到 4.4kHz
-    ('pour',         pour,                    SR_MID), # 液体，带宽较宽
+    ('clink',        _sp(clink, tail_ms=260, seed=41), SR_HI),  # 玻璃，高频到 4.4kHz
+    ('pour',         _sp(pour, tail_ms=260, seed=43), SR_MID), # 液体，带宽较宽
     ('suspense',     suspense,                SR_LO),  # 110/165Hz
     ('reveal',       reveal,                  SR_MID), # 最高 1568Hz
     ('whoosh',       whoosh,                  SR_MID), # 风声，中高频
@@ -561,26 +756,30 @@ def shaker_metal():
     total = int(SR * 1.3)
     rnd = random.Random(911)
     out = [0.0] * total
-    t, i = 0, 0
+    t = 0
+    # 碰撞间隔必须**大于**单次衰减时间，否则每次撞击的尾巴糊在一起，
+    # 能量叠加成平缓的"呼" —— 实测这样合成出来检测到 0 个碰撞峰值，
+    # 听起来完全不像在摇盅（"廉价感"的典型症状）。
+    #   · 衰减 14ms → 7ms（撞击要脆，余响别拖）
+    #   · 间隔 22~60ms → 28~85ms（两次撞击之间回到接近静音）
+    #   · 每次响度有起伏（真实摇晃不是每下一样响）
     while t < total:
-        gap = int(SR * rnd.uniform(0.022, 0.06))
-        # 金属碰撞：高频正弦 + 快速衰减
-        n = int(SR * 0.09)
-        f = rnd.uniform(2400, 4200)
+        gap = int(SR * rnd.uniform(0.028, 0.085))
+        n = int(SR * 0.06)
+        f = rnd.uniform(2600, 4400)
         ring = sine(n, f)
         ring2 = sine(n, f * 1.47)      # 非整数倍 → 金属的不谐和感
-        e = env_ad(n, int(SR * 0.0008), SR * 0.014)
-        hit = [(ring[j] * 0.6 + ring2[j] * 0.4) * e[j] * (0.4 + 0.6 * (1 - t / total))
-               for j in range(n)]
+        e = env_ad(n, max(1, int(SR * 0.0004)), SR * 0.007)
+        amp = (0.45 + 0.55 * (1 - t / total)) * rnd.uniform(0.75, 1.15)
+        hit = [(ring[j] * 0.6 + ring2[j] * 0.4) * e[j] * amp for j in range(n)]
         for j, v in enumerate(hit):
             if t + j < total:
                 out[t + j] += v
         t += max(1, gap)
-        i += 1
-    # 低频"盅体共鸣"
-    body = lowpass(noise(total, 912), 0.04)
+    # 低频"盅体共鸣"（压低，别盖过撞击的颗粒感）
+    body = lowpass(noise(total, 912), 0.035)
     be = [1.0 - 0.4 * (k / total) for k in range(total)]
-    return [out[k] + body[k] * be[k] * 0.22 for k in range(total)]
+    return [out[k] + body[k] * be[k] * 0.16 for k in range(total)]
 
 
 def combo_up(step=0):
@@ -744,21 +943,30 @@ def confetti():
 
 
 # ==== v3 音效清单（必须放在所有函数定义之后）====
+# ============================================================
+# 空间化包装：把 v3 的关键音效过一遍「瞬态 → 反射 → 尾巴」
+#
+# 为什么只处理这几个：它们是「有物理实体」的声音
+# （骰子撞桌子、转盘停住、开盅），本来就该有房间感。
+# UI 音（tap/toggle）不该有尾巴 —— 界面点击没有物理空间，
+# 加了反而显得拖沓。
+# ============================================================
+
 ALL_V3 = [
-    ('impact-low',        impact_low,        SR_LO),
-    ('shaker-metal',      shaker_metal,      SR_HI),
-    ('dice-tumble-wood',  dice_tumble_wood,  SR_HI),
+    ('impact-low',        _sp(impact_low, tail_ms=120, seed=27), SR_LO),
+    ('shaker-metal',      _sp(shaker_metal, tail_ms=260, seed=23), SR_HI),
+    ('dice-tumble-wood',  _sp(dice_tumble_wood, tail_ms=200, seed=25), SR_HI),
     ('combo-1',           lambda: combo_up(0), SR_MID),
     ('combo-2',           lambda: combo_up(1), SR_MID),
     ('combo-3',           lambda: combo_up(2), SR_MID),
     ('combo-4',           lambda: combo_up(3), SR_MID),
-    ('fail-drop',         fail_drop,         SR_MID),
+    ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_MID),
     ('charge-up',         charge_up,         SR_LO),
-    ('reveal-hit',        reveal_hit,        SR_HI),
+    ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21), SR_HI),
     ('countdown-urgent',  countdown_urgent,  SR_MID),
-    ('chip-bet',          chip_bet,          SR_HI),
+    ('chip-bet',          _sp(chip_bet, tail_ms=160, seed=33), SR_HI),
     ('gulp',              gulp,              SR_MID),
-    ('confetti',          confetti,          SR_MID),
+    ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_MID),
 ]
 
 
