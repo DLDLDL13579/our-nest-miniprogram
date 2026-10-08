@@ -1,0 +1,211 @@
+<view class="gamepage">
+  <view class="gbar">
+    <view class="gbar-l" bindtap="goBack">
+      <text class="gbar-back">‹</text>
+      <text class="gbar-t">多人游戏</text>
+    </view>
+    <view class="gbar-r" bindtap="toggleMute">
+      <text class="gbar-mute">{{muted ? '🔇' : '🔊'}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{netTip}}" class="nettip">{{netTip}}</view>
+
+  <!-- ============ 入口：建房 / 加入 ============ -->
+  <block wx:if="{{stage === 'entry'}}">
+    <view class="entry-hero">
+      <view class="eh-glow"></view>
+      <view class="eh-in">
+        <view class="eh-lbl">各自用自己手机</view>
+        <view class="eh-t">联网一起玩</view>
+        <view class="eh-s">一个人开房间拿到 6 位房间号，其他人输号进来</view>
+      </view>
+    </view>
+
+    <!-- 昵称 -->
+    <view class="card">
+      <view class="lbl">你叫什么</view>
+      <input class="tin" value="{{myName}}" maxlength="12"
+             placeholder="比如：邓林" placeholder-class="ph" bindinput="onName" />
+      <view class="hint">别人在房间里看到的就是这个名字</view>
+    </view>
+
+    <!-- 建房 -->
+    <view class="card hl">
+      <view class="lbl">开一个房间</view>
+      <view class="chiprow">
+        <view wx:for="{{games}}" wx:key="k"
+              class="pill {{pickGame === item.k ? '' : 'ghost'}}"
+              data-k="{{item.k}}" bindtap="pickGame">{{item.icon}} {{item.name}}</view>
+      </view>
+      <view class="btn main" style="margin-top:24rpx" bindtap="doCreate">开房间，拿房间号</view>
+    </view>
+
+    <!-- 加入 -->
+    <view class="card">
+      <view class="lbl">进别人的房间</view>
+      <input class="tin code" value="{{joinCode}}" maxlength="6"
+             placeholder="输入 6 位房间号" placeholder-class="ph" bindinput="onCode" />
+      <view class="btn ghostb" style="margin-top:22rpx" bindtap="doJoin">进去</view>
+    </view>
+
+    <view wx:if="{{err}}" class="errbox">{{err}}</view>
+
+    <view class="entry-tip">
+      房间 2 小时后自动过期，不用手动清理。
+      <view style="height:8rpx"></view>
+      骰子由服务器摇，别人的点数在你这边根本拿不到。
+    </view>
+  </block>
+
+  <!-- ============ 大厅：等人齐 ============ -->
+  <block wx:elif="{{stage === 'lobby'}}">
+    <view class="codecard" bindtap="copyCode">
+      <view class="cc-lbl">房间号 · 点一下复制</view>
+      <view class="cc-code">{{room.code}}</view>
+      <view class="cc-hint">把这个号发给要一起玩的人</view>
+    </view>
+
+    <view class="sechead">
+      <text>已经进来的人</text>
+      <text class="xs">{{room.count}} 人</text>
+    </view>
+
+    <view class="plist">
+      <view wx:for="{{room.players}}" wx:key="openid" class="pitem {{item.isMe ? 'me' : ''}}">
+        <view class="pseat">{{item.seat}}</view>
+        <view class="pname">
+          {{item.name}}
+          <text wx:if="{{item.isMe}}" class="ptag">我</text>
+          <text wx:if="{{item.isHost}}" class="ptag host">房主</text>
+        </view>
+        <view class="pdot {{item.online ? 'on' : ''}}"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
+      开始（{{room.count}} 人）
+    </view>
+    <view wx:else class="waiting">
+      等房主开始 · 房主是 {{room.players[0].name}}
+    </view>
+
+    <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
+  </block>
+
+  <!-- ============ 游戏中 ============ -->
+  <block wx:elif="{{stage === 'playing'}}">
+    <!-- 大话骰 -->
+    <block wx:if="{{room.game === 'liar'}}">
+      <view class="bidbar">
+        <block wx:if="{{room.bid}}">
+          <view class="bid-lbl">现在叫到</view>
+          <view class="bid-val">{{room.bid.n}} 个 {{room.bid.face}}{{room.bid.zhai ? ' 斋' : ''}}</view>
+          <view class="bid-by">{{room.bid.byName}} 叫的</view>
+        </block>
+        <block wx:else>
+          <view class="bid-lbl">还没人叫</view>
+          <view class="bid-val hint">等 {{room.players[0].name}} 先叫</view>
+        </block>
+      </view>
+
+      <!-- 我的骰子（只有我能看到） -->
+      <view class="minebox">
+        <view class="mb-lbl">我的骰子（只有你能看到）</view>
+        <view class="dicebox">
+          <view wx:for="{{room.me.dice}}" wx:key="index" class="die">
+            <text class="diev">{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 叫骰选项 -->
+      <view class="sechead"><text>叫一个</text></view>
+      <view class="optgrid">
+        <view wx:for="{{room.options}}" wx:key="index" class="optbtn"
+              data-i="{{index}}" bindtap="doBid">{{item}}</view>
+      </view>
+
+      <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
+        开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+      </view>
+    </block>
+
+    <!-- 摇骰子比大小 -->
+    <block wx:elif="{{room.game === 'dice'}}">
+      <view class="center-box">
+        <view class="bigicon">🎲</view>
+        <view class="ct-t">一起摇，点数大的赢</view>
+        <view class="ct-s">每个人摇自己的，全员摇完自动开结果</view>
+      </view>
+
+      <view class="plist">
+        <view wx:for="{{room.players}}" wx:key="openid" class="pitem {{item.isMe ? 'me' : ''}}">
+          <view class="pseat">{{item.seat}}</view>
+          <view class="pname">{{item.name}}<text wx:if="{{item.isMe}}" class="ptag">我</text></view>
+          <view class="pstat">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
+        </view>
+      </view>
+
+      <view class="btn main bigbtn" bindtap="doRoll">摇！</view>
+    </block>
+
+    <!-- 命运转盘 -->
+    <block wx:else>
+      <view class="center-box">
+        <view class="bigicon">🎡</view>
+        <view class="ct-t">转盘在房主手机上</view>
+        <view class="ct-s">这一版转盘是单机的，联网版先做大话骰和摇骰子</view>
+      </view>
+    </block>
+
+    <view class="btn ghostb" style="margin-top:24rpx" bindtap="leave">离开房间</view>
+  </block>
+
+  <!-- ============ 结算 ============ -->
+  <block wx:elif="{{stage === 'over'}}">
+    <view wx:if="{{room.game === 'liar' && result}}" class="center-box">
+      <view class="over-tag {{result.bidderWins ? 'ok' : 'no'}}">
+        {{result.bidderWins ? '叫骰成立' : '吹牛被抓'}}
+      </view>
+      <view class="over-num">
+        <text class="on-big">{{result.actual}}</text>
+        <text class="on-unit">个 {{result.face}}</text>
+      </view>
+      <view class="over-need">叫的是 {{result.need}} 个{{result.zhai ? '（斋）' : ''}}</view>
+
+      <view class="revealbox">
+        <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
+          <text class="rv-name">{{item.name}}</text>
+          <view class="dicebox mini">
+            <view wx:for="{{item.dice}}" wx:for-item="d" wx:key="index" class="die tiny">
+              <text class="diev">{{d}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="loserbox">{{result.loserName}} 喝一杯 🍺</view>
+    </view>
+
+    <view wx:elif="{{result}}" class="center-box">
+      <view class="over-tag ok">结果出来了</view>
+      <view class="revealbox">
+        <view wx:for="{{result.ranked}}" wx:key="seat" class="rv-row">
+          <text class="rv-name">{{item.name}}</text>
+          <view class="dicebox mini">
+            <view wx:for="{{item.dice}}" wx:for-item="d" wx:key="index" class="die tiny">
+              <text class="diev">{{d}}</text>
+            </view>
+          </view>
+          <text class="rv-total">{{item.total}} 点</text>
+        </view>
+      </view>
+      <view class="loserbox">赢的是 {{result.winners}}</view>
+    </view>
+
+    <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>
+    <view wx:else class="waiting">等房主开下一局</view>
+    <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
+  </block>
+</view>

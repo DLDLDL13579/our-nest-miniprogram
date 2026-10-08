@@ -13,7 +13,7 @@
  * 随机数用 Math.random —— 不做"服务端判定"。
  * 酒桌游戏当着你俩的面摇，作弊没有意义，联网反而增加延迟和失败点。
  */
-const sfx = require('../../utils/sfx.js')
+const sfx = require('../../../utils/sfx.js')
 
 /* 骰子点数用点阵画，不用字体符号 —— 字体符号在不同机型上大小/样式不一 */
 const PIPS = {

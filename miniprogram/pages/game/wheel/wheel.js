@@ -15,7 +15,7 @@
  * 内容偏向酒桌：真心话 / 大冒险 / 喝一杯 / 指定人喝 / 免罚。
  * 概率可以调 —— 免罚很少见，这样转到的时候才够爽。
  */
-const sfx = require('../../utils/sfx.js')
+const sfx = require('../../../utils/sfx.js')
 
 /* 扇区定义：weight 是权重（不是等分），颜色按酒桌氛围配 */
 const SECTORS = [
@@ -163,29 +163,37 @@ Page({
    * 按缓动曲线排期咔哒声。
    * 关键：间隔越来越长 —— 声音和视觉一起"慢下来"，
    * 这是转盘最爽的部分，少了它就像在等一个进度条。
+   *
+   * 实现上用**单个递归定时器**，不是一次性排 100 多个 setTimeout：
+   *   ① 省内存与定时器句柄（原来一次排 120 个，还要在结束时逐个 clear）
+   *   ② 好取消 —— 只 clear 一个
+   *   ③ 能自适应：每一拍根据**真实流逝时间**算下一拍间隔，
+   *      即使某一拍被 JS 线程阻塞延迟了，后续也能自动追上，
+   *      而一次性排期的版本一旦卡住，后面的拍子会全部挤在一起响。
    */
   scheduleTicks(duration) {
-    if (this._tickTimers) this._tickTimers.forEach(t => clearTimeout(t))
-    this._tickTimers = []
-
+    this.stopTicks()
+    const t0 = Date.now()
     /* 缓动：cubic-bezier(.15,.85,.2,1) 近似为 easeOutQuart */
     const easeOut = (t) => 1 - Math.pow(1 - t, 4)
 
-    let elapsed = 0
-    let gap = 34                      // 起始间隔 34ms（快）
-    let count = 0
-    while (elapsed < duration - 120 && count < 120) {
-      const t = elapsed / duration
+    const step = () => {
+      if (!this.data.spinning) return
+      const elapsed = Date.now() - t0
+      if (elapsed >= duration - 120) return
+
+      sfx.play('tick')
+
       /* 间隔随进度拉长：开始时 34ms，结束时约 300ms */
-      gap = 34 + easeOut(t) * 266
-      const at = elapsed
-      this._tickTimers.push(setTimeout(() => {
-        if (!this.data.spinning) return
-        sfx.play('tick', { restart: true })
-      }, at))
-      elapsed += gap
-      count++
+      const t = elapsed / duration
+      const gap = 34 + easeOut(t) * 266
+      this._tickTimer = setTimeout(step, gap)
     }
+    step()
+  },
+
+  stopTicks() {
+    if (this._tickTimer) { clearTimeout(this._tickTimer); this._tickTimer = null }
   },
 
   /** 停稳：判定落在哪个扇区 */

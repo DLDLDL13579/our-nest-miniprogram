@@ -195,6 +195,52 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(oldItem && Array.isArray(oldItem.thumbs), '★ 编年史里老记录同样要回退成空数组')
   ok('编年史里老记录 thumbs 也是 []')
 
+  /* ============ ③a require 的相对路径必须指到真实文件 ============ */
+  console.log('\n=== ③a require 路径必须真实存在（白屏杀手）===')
+  /*
+   * 为什么加这条：2026-09-30 踩过一次 —— 游戏页在 pages/game/dice/ 下（两层深），
+   * 我写了 require('../../utils/sfx.js')，实际应该是 '../../../utils/'。
+   * 后果不是报个错就算了，而是**整个页面白屏**，控制台只有一句
+   *   module 'pages/utils/sfx.js' is not defined
+   * 更糟的是：check.sh（语法）和契约测试（死绑定）都发现不了它 ——
+   * 语法是对的、绑定也是对的，只有真跑起来才炸。
+   * 所以在这里静态解析 require 路径，直接验证文件存在。
+   */
+  const badRequire = []
+  function walkJs(dir, out) {
+    out = out || []
+    fs.readdirSync(dir).forEach(f => {
+      const p = path.join(dir, f)
+      if (fs.statSync(p).isDirectory()) walkJs(p, out)
+      else if (f.endsWith('.js')) out.push(p)
+    })
+    return out
+  }
+  walkJs(path.join(ROOT, 'miniprogram')).forEach(jsFile => {
+    let src = fs.readFileSync(jsFile, 'utf8')
+    /* 先剥掉注释再解析 —— 否则会把文档里举例的 require 当成真代码
+       （derive.js 头部就有个示例，第一次跑就误报了） */
+    src = src
+      .replace(/\/\*[\s\S]*?\*\//g, '')      // 块注释
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')  // 行注释（不误伤 http://）
+    /* 匹配 require('...') 里的相对路径（跳过 wx.cloud / 绝对模块名） */
+    const re = /require\(\s*['"](\.[^'"]+)['"]\s*\)/g
+    let m
+    while ((m = re.exec(src))) {
+      const rel = m[1]
+      const target = path.resolve(path.dirname(jsFile), rel)
+      /* 允许省略 .js 后缀 */
+      const candidates = [target, target + '.js', path.join(target, 'index.js')]
+      if (!candidates.some(c => fs.existsSync(c) && fs.statSync(c).isFile())) {
+        badRequire.push(path.relative(ROOT, jsFile) + " → require('" + rel + "') 解析到 " +
+          path.relative(ROOT, target) + '（不存在）')
+      }
+    }
+  })
+  assert.deepStrictEqual(badRequire, [],
+    '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
+  ok('全部 require 相对路径都能解析到真实文件')
+
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
   const pagesDir = path.join(ROOT, 'miniprogram', 'pages')

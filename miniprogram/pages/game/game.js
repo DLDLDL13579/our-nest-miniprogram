@@ -16,11 +16,19 @@ const app = getApp()
 
 const GAMES = [
   {
+    k: 'room',
+    name: '联网一起玩',
+    icon: '📡',
+    desc: '各自用自己手机，输房间号进来',
+    tag: '多人 · 需联网',
+    color: '#5E7FA6'
+  },
+  {
     k: 'dice',
     name: '摇骰子',
     icon: '🎲',
     desc: '摇一摇手机，比大小',
-    tag: '摇一摇',
+    tag: '一部手机',
     color: '#E0714F'
   },
   {
@@ -28,15 +36,15 @@ const GAMES = [
     name: '大话骰',
     icon: '🎯',
     desc: '酒桌经典，一人一个盅',
-    tag: '双人传手机',
-    color: '#5E7FA6'
+    tag: '一部手机',
+    color: '#C4573A'
   },
   {
     k: 'wheel',
     name: '命运转盘',
     icon: '🎡',
     desc: '真心话 / 大冒险 / 喝一杯',
-    tag: '转盘',
+    tag: '一部手机',
     color: '#E8B33C'
   }
 ]

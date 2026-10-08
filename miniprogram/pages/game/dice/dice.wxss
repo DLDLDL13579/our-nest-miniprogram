@@ -18,12 +18,16 @@
 .gbar-r { padding: 10rpx 14rpx }
 .gbar-mute { font-size: 34rpx }
 
-/* ---------- 桌面 ---------- */
+/* ---------- 桌面 ----------
+   看截图发现的真问题：骰子在垂直居中，但操作区固定在底部，
+   中间空出 300px 的空白，整页显得"上重下轻"。
+   修法：桌面不占满剩余空间，改成固定高度 + 靠上，把空间还给操作区。 */
 .table {
-  position: relative; flex: 1;
+  position: relative;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 520rpx;
+  min-height: 420rpx;      /* 原来 520 + flex:1 撑得过高 */
+  padding: 30rpx 0 20rpx;
 }
 .table-glow {
   position: absolute; width: 520rpx; height: 520rpx; border-radius: 50%;

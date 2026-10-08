@@ -62,6 +62,25 @@ function init() {
 }
 
 /**
+ * 高频音效需要多个实例轮转。
+ *
+ * 为什么：转盘的咔哒最快 34ms 一次，而 InnerAudioContext 的 stop() + play()
+ * 要跨线程走一趟，实测在高频下会互相打断（听起来"卡壳"）。
+ * 给它准备 3 个实例轮流用，前一个还在响就换下一个，声音就连续了。
+ *
+ * 只有这几个高频短音效需要 —— 其他音效（开盅、中奖）间隔都在百毫秒以上，
+ * 单个实例足够。不做成"全部 3 个"是为了省实例：微信对同时存在的
+ * InnerAudioContext 数量有限制。
+ */
+const POOL_SIZE = {
+  tick: 3,
+  diceHit: 2,
+  tap: 2,
+  tapSoft: 2
+}
+const poolIdx = {}
+
+/**
  * 播放。
  * @param {string} key   FILES 里的键
  * @param {object} opt   { loop: 循环, volume: 0~1, restart: 重头播 }
@@ -78,15 +97,32 @@ function play(key, opt) {
   opt = opt || {}
 
   try {
-    let a = pool[key]
-    if (!a) {
-      a = wx.createInnerAudioContext()
-      a.src = src
-      /* 音效不参与系统静音开关以外的音频焦点争夺：
-         obeyMuteSwitch=false 让 iOS 静音键下仍能出声 —— 酒桌游戏需要这个，
-         否则用户开了静音就完全没声音，会以为坏了。 */
-      a.obeyMuteSwitch = false
-      pool[key] = a
+    const size = POOL_SIZE[key] || 1
+    let a
+
+    if (size > 1) {
+      /* 轮转：每次取下一个实例，避免打断正在播的那个 */
+      const i = (poolIdx[key] || 0) % size
+      poolIdx[key] = i + 1
+      const slot = key + '#' + i
+      a = pool[slot]
+      if (!a) {
+        a = wx.createInnerAudioContext()
+        a.src = src
+        a.obeyMuteSwitch = false
+        pool[slot] = a
+      }
+    } else {
+      a = pool[key]
+      if (!a) {
+        a = wx.createInnerAudioContext()
+        a.src = src
+        /* 音效不参与系统静音开关以外的音频焦点争夺：
+           obeyMuteSwitch=false 让 iOS 静音键下仍能出声 —— 酒桌游戏需要这个，
+           否则用户开了静音就完全没声音，会以为坏了。 */
+        a.obeyMuteSwitch = false
+        pool[key] = a
+      }
     }
 
     a.loop = !!opt.loop
@@ -97,8 +133,9 @@ function play(key, opt) {
       a.play()
     } else {
       /* restart：同一个音效连续触发时（比如快速点转盘），
-         不 stop 会排队等前一次播完，听感上"慢半拍" */
-      if (opt.restart !== false) {
+         不 stop 会排队等前一次播完，听感上"慢半拍"。
+         多实例轮转的情况下不需要 stop（换了个实例），省一次跨线程调用。 */
+      if (size === 1 && opt.restart !== false) {
         try { a.stop() } catch (e) {}
       }
       a.play()

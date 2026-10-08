@@ -18,6 +18,7 @@ module.exports = {
     moments: 'moments',  // 随手记
     capsule: 'capsule',  // 时间胶囊：写给未来的信
     reminds: 'reminds',  // 要记得的事：纪念日与提醒
-    mood: 'mood'         // 情绪·冷静期（v2）
+    mood: 'mood',        // 情绪·冷静期（v2）
+    room: 'room'         // 多人游戏房间
   }
 }

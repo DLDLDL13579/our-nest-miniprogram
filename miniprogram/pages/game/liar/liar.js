@@ -16,7 +16,7 @@
  *   屏幕盖住，再递给对方 —— 保证对方看不到你的点数。
  *   这个交接动作不做，游戏就废了（等于把牌摊在桌上）。
  */
-const sfx = require('../../utils/sfx.js')
+const sfx = require('../../../utils/sfx.js')
 
 const DICE_PER_PLAYER = 5
 

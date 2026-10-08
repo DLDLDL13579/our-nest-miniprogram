@@ -17,7 +17,8 @@ const COLLECTIONS = [
   'wishes',        // 想去·去过
   'capsules',      // 时间胶囊
   'reminds',       // 要记得的事
-  'cools'          // 情绪·冷静期（v2）
+  'cools',         // 情绪·冷静期（v2）
+  'rooms'          // 多人游戏房间（临时数据，2 小时过期）
 ]
 
 exports.main = async () => {
