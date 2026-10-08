@@ -51,6 +51,22 @@ const MAX_PLAYERS = 8
 /* 开局倒计时：3 秒。太短来不及反应，太长会等得烦 */
 const COUNTDOWN_MS = 3200
 
+/*
+ * 转盘扇区 —— ★ 必须与前端 miniprogram/pages/game/room/room.js 的
+ * SECTORS 完全一致（键、权重、文案）。不一致会导致
+ * 「指针指着喝一杯、判出来是真心话」，最伤信任。
+ * scripts/test-wheel.js 会断言两边一致。
+ */
+const WHEEL_SECTORS = [
+  { k: 'truth', t: '真心话', weight: 22 },
+  { k: 'dare',  t: '大冒险', weight: 20 },
+  { k: 'drink', t: '喝一杯', weight: 18 },
+  { k: 'you',   t: '你喝',   weight: 14 },
+  { k: 'me',    t: '我喝',   weight: 12 },
+  { k: 'both',  t: '一起喝', weight: 8 },
+  { k: 'pass',  t: '免罚一次', weight: 6 }
+]
+
 function genCode() {
   let s = ''
   for (let i = 0; i < CODE_LEN; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)]
@@ -138,6 +154,8 @@ function shape(room, openid) {
     bid: room.bid || null,          // 大话骰：当前叫骰
     lastResult: room.lastResult || null,
     streaks: room.streaks || {},
+    /* 转盘：当前这一转的结果（所有人靠它同步看到同一个扇区） */
+    spin: room.spin || null,
     updatedAt: room.updatedAt || 0
   }
 }
@@ -287,8 +305,15 @@ exports.main = async (event) => {
       if (room.phase === 'playing') return { ok: false, msg: '已经开始了' }
 
       /* 骰子由**服务端**生成 —— 前端只拿自己的。
-         这和"前端摇完上报"有本质区别：那样抓包就能看到别人的点数。 */
+         这和"前端摇完上报"有本质区别：那样抓包就能看到别人的点数。
+
+         ★ 转盘不需要骰子（它靠 spin 抽扇区），所以 wheel 房间跳过 ——
+           给转盘房间发骰子会白白增加响应体积，
+           而且前端如果误用了这些骰子会画出不存在的东西。 */
       const players = (room.players || []).map(p => {
+        if (room.game === 'wheel') {
+          return Object.assign({}, p, { dice: [], ready: false })
+        }
         const n = room.game === 'liar' ? 5 : 2
         const dice = []
         for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
@@ -307,6 +332,9 @@ exports.main = async (event) => {
           round: (room.round || 0) + 1,
           turn: 1,
           bid: null,
+          /* ★ 新一局必须清掉上一转的结果，否则前端一进 playing
+             就会看到"上一局转出来的扇区"，误以为这局已经转过了 */
+          spin: null,
           lastResult: null,
           updatedAt: ts
         }
@@ -393,6 +421,54 @@ exports.main = async (event) => {
       })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID), result: result }
+    }
+
+    /* ================= 命运转盘（联机） =================
+     *
+     * 房主点"转"，服务端抽结果，全场同步。
+     *
+     * ★ 结果必须在这里定，不能让房主前端定 ——
+     *   单机版可以本地随机（大家看同一块屏幕），
+     *   联机版如果让房主前端算，房主就能改结果（"我要真心话"）。
+     *   这是"联网游戏"和"传着玩"的根本区别。
+     *
+     * 扇区权重必须和前端 buildSectors() 完全一致，
+     * 否则会出现「指针指着喝一杯、判出来是真心话」——
+     * 这类不一致最伤信任（玩家不会觉得是 bug，会觉得游戏在骗人）。
+     * scripts/test-wheel.js 会断言两边权重一致。
+     */
+    if (action === 'spin') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.game !== 'wheel') return { ok: false, msg: '这个房间玩的不是转盘' }
+      if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能转' }
+
+      /* 权重抽样 */
+      const total = WHEEL_SECTORS.reduce((a, s) => a + s.weight, 0)
+      let roll = Math.random() * total
+      let index = 0
+      for (let i = 0; i < WHEEL_SECTORS.length; i++) {
+        roll -= WHEEL_SECTORS[i].weight
+        if (roll <= 0) { index = i; break }
+        index = i
+      }
+      const sec = WHEEL_SECTORS[index]
+
+      const spin = {
+        index: index,
+        k: sec.k,
+        t: sec.t,
+        turns: 4 + Math.floor(Math.random() * 3),   // 4~6 圈，每次不一样
+        jitter: (Math.random() - 0.5) * 0.6,        // 扇区内随机偏移（前端会夹紧）
+        at: ts
+      }
+
+      await rooms.doc(room._id).update({
+        data: { spin: spin, lastResult: null, updatedAt: ts }
+      })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID), spin: spin }
     }
 
     /* ================= 摇骰子：比大小（多人版） ================= */

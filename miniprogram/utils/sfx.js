@@ -50,7 +50,15 @@ const FILES = {
   countdownUrgent: 'audio/countdown-urgent.wav', // 最后三秒的急促
   chipBet: 'audio/chip-bet.wav',            // 筹码声（酒桌氛围）
   gulp: 'audio/gulp.wav',                   // 咽酒声
-  confetti: 'audio/confetti.wav'            // 撒花（赢了）
+  confetti: 'audio/confetti.wav',           // 撒花（赢了）
+  /* v4 骰盅组：一个完整的摇盅流程，按现实顺序拆成五声。
+     改造前只有"摇"这一声，且是一次性播放 —— 缺的正是扣盅那一下，
+     而它恰恰是"真实现场"和"电子游戏"差别最大的地方。 */
+  diceIntoCup: 'audio/dice-into-cup.wav',   // ① 骰子入盅（弹跳声，间隔递减）
+  cupShake: 'audio/cup-shake.wav',          // ② 摇盅（带 3.5Hz 手摇起伏）
+  cupSlam: 'audio/cup-slam.wav',            // ③ ★ 扣盅闷响（含盅内骰子被震跳）
+  cupLift: 'audio/cup-lift.wav',            // ④ 揭盅（口沿离桌的摩擦）
+  diceOnTable: 'audio/dice-on-table.wav'    // ⑤ 骰子在桌上滚两下才停
 }
 
 /* 每个音效一个可复用实例 */
@@ -85,7 +93,10 @@ const POOL_SIZE = {
   /* v3：金属盅碰撞极密（22ms 一次），必须多实例 */
   shakerMetal: 3,
   chipBet: 3,
-  countdownUrgent: 2
+  countdownUrgent: 2,
+  /* v4：扣盅那一下要和盅内骰子的跳动叠在一起播，单实例会互相打断 */
+  cupSlam: 2,
+  diceOnTable: 2
 }
 const poolIdx = {}
 

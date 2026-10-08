@@ -121,54 +121,97 @@
         </block>
       </view>
 
-      <!-- 我的骰子（只有我能看到） -->
-      <view class="minebox">
-        <view class="mb-lbl">我的骰子（只有你能看到）</view>
-        <view class="dicebox">
-          <view wx:for="{{room.me.dice}}" wx:key="index" class="die">
-            <text class="diev">{{item}}</text>
-          </view>
+      <!-- ============ 骰盅 ============
+           现实流程：骰子入盅 → 摇盅 → 扣盅 → 按住盅偷看自己的骰子。
+           ★ 「扣盅后才能看」不是装饰 —— 真实的大话骰必须先扣稳盅再抬一条缝看，
+             否则骰子会被看到。这一步的仪式感正是这个游戏的一半。 -->
+      <view class="cupscene">
+        <view class="cs-felt"></view>
+        <view class="cs-spot"></view>
+
+        <!-- 骰子：压在盅底下（z-index 更低），只有偷看/揭盅时才露出来 -->
+        <view class="cs-dice {{diceShown ? 'show' : ''}}">
+          <image wx:for="{{myDice}}" wx:key="index"
+                 src="/images/dice/dice-{{item}}.png"
+                 class="cs-die" style="--i:{{index}}" mode="aspectFit" />
         </view>
+
+        <!-- 盅本体。按住 = 抬起来偷看，松手 = 扣回去 -->
+        <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png"
+               bindtouchstart="onCupPress" bindtouchend="onCupRelease"
+               bindtouchcancel="onCupRelease" mode="aspectFit" />
+
+        <view class="cs-hint">{{cupHint}}</view>
       </view>
 
-      <!-- 叫骰选项 -->
-      <view class="sechead"><text>叫一个</text></view>
-      <view class="optgrid">
-        <view wx:for="{{room.options}}" wx:key="index" class="optbtn"
-              data-i="{{index}}" bindtap="doBid">{{item}}</view>
-      </view>
+      <!-- 叫骰选项（扣盅之前不给叫 —— 没看骰子怎么叫） -->
+      <block wx:if="{{liarReady}}">
+        <view class="sechead"><text>叫一个</text></view>
+        <view class="optgrid">
+          <view wx:for="{{room.options}}" wx:key="index" class="optbtn"
+                data-i="{{index}}" bindtap="doBid">{{item}}</view>
+        </view>
 
-      <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
-        开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
-      </view>
+        <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
+          开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+        </view>
+      </block>
     </block>
 
     <!-- 摇骰子比大小 -->
     <block wx:elif="{{room.game === 'dice'}}">
-      <view class="center-box">
-        <view class="bigicon">🎲</view>
-        <view class="ct-t">一起摇，点数大的赢</view>
-        <view class="ct-s">每个人摇自己的，全员摇完自动开结果</view>
+      <!-- 自己的盅：摇 → 扣 → 揭，全流程和现实一致 -->
+      <view class="cupscene">
+        <view class="cs-felt"></view>
+        <view class="cs-spot"></view>
+
+        <view class="cs-dice {{diceShown ? 'show' : ''}}">
+          <image wx:for="{{myDice}}" wx:key="index"
+                 src="/images/dice/dice-{{item}}.png"
+                 class="cs-die" style="--i:{{index}}" mode="aspectFit" />
+        </view>
+
+        <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png" mode="aspectFit" />
+
+        <view class="cs-hint">{{cupHint}}</view>
       </view>
 
-      <view class="plist">
-        <view wx:for="{{room.players}}" wx:key="openid" class="pitem {{item.isMe ? 'me' : ''}}">
-          <view class="pseat">{{item.seat}}</view>
-          <view class="pname">{{item.name}}<text wx:if="{{item.isMe}}" class="ptag">我</text></view>
-          <view class="pstat">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
+      <!-- 其他玩家的状态：每人一个盅，摇完的盅会"扣下" -->
+      <view class="othercups">
+        <view wx:for="{{room.players}}" wx:key="openid" class="oc-item {{item.isMe ? 'me' : ''}}">
+          <image class="oc-cup {{item.diceCount > 0 ? 'done' : ''}}"
+                 src="/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png"
+                 mode="aspectFit" />
+          <view class="oc-name">{{item.name}}</view>
+          <view class="oc-stat">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
         </view>
       </view>
 
-      <view class="btn main bigbtn" bindtap="doRoll">摇！</view>
+      <view class="btn main bigbtn {{rolling ? 'disabled' : ''}}" bindtap="doRoll">
+        {{rolling ? '摇盅中…' : (myRolled ? '已扣盅，等其他人' : '摇盅！')}}
+      </view>
     </block>
 
-    <!-- 命运转盘 -->
+    <!-- 命运转盘（联机） -->
     <block wx:else>
-      <view class="center-box">
-        <view class="bigicon">🎡</view>
-        <view class="ct-t">转盘在房主手机上</view>
-        <view class="ct-s">这一版转盘是单机的，联网版先做大话骰和摇骰子</view>
+      <view class="wheelscene">
+        <view class="ws-pointer"></view>
+        <view class="ws-disc"
+              style="background: {{wheelGradient}}; transform: rotate({{wheelDeg}}deg); transition-duration: {{wheelDur}}ms;">
+          <view wx:for="{{wheelSectors}}" wx:key="k" class="ws-lbl"
+                style="left:{{item.lx}}%; top:{{item.ly}}%;">{{item.t}}</view>
+        </view>
+        <view class="ws-hub">转</view>
       </view>
+
+      <view class="ws-result">{{wheelText}}</view>
+
+      <block wx:if="{{room.host}}">
+        <view class="btn main bigbtn {{wheelSpinning ? 'disabled' : ''}}" bindtap="doSpin">
+          {{wheelSpinning ? '转着呢…' : '转！'}}
+        </view>
+      </block>
+      <view wx:else class="waiting">等房主转</view>
     </block>
 
     <view class="btn ghostb" style="margin-top:24rpx" bindtap="leave">离开房间</view>
@@ -190,9 +233,8 @@
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
-            <view wx:for="{{item.dice}}" wx:for-item="d" wx:key="index" class="die tiny">
-              <text class="diev">{{d}}</text>
-            </view>
+            <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
+                   src="/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />
           </view>
         </view>
       </view>
@@ -206,9 +248,8 @@
         <view wx:for="{{result.ranked}}" wx:key="seat" class="rv-row">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
-            <view wx:for="{{item.dice}}" wx:for-item="d" wx:key="index" class="die tiny">
-              <text class="diev">{{d}}</text>
-            </view>
+            <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
+                   src="/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />
           </view>
           <text class="rv-total">{{item.total}} 点</text>
         </view>

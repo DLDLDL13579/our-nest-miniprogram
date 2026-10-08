@@ -271,40 +271,115 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     let css = appCss
     if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
     const tpl = fs.readFileSync(wxml, 'utf8')
-    const re = /\{\{([^}]*)\}\}/g
-    let m
-    while ((m = re.exec(tpl))) {
-      const expr = m[1]
-      if (expr.indexOf('?') < 0) continue
-      /*
-       * ★ 先剥掉"比较部分"再提取类名。
-       *
-       * 为什么不能"按字符串值排除"：`phase === 'shaking' ? 'shaking' : ''` 里
-       * 同一个 `shaking` 既是比较值**又是**类名。第一版按值排除，
-       * 结果两个都被跳过 —— 反向验证时故意删掉 .shaking 的定义，
-       * 测试照样通过，等于这条检查根本没工作。
-       *
-       * 用"先删除 === '...' 片段"就没这个问题：
-       * 删完剩下 `phase  ? 'shaking' : ''`，再提取就只剩类名。
-       */
-      const stripped = expr.replace(/===?\s*'[^']*'/g, '')
-      const lits = stripped.match(/'[a-zA-Z][\w-]*'/g) || []
-      lits.forEach(q => {
-        const lit = q.slice(1, -1)
-        /* 词边界匹配，不用 indexOf 子串 ——
-           `.table.shakingX` 里包含 `.table.shaking` 这个前缀，
-           子串检查会误判成"存在"。CSS 类名后面不能跟 [\w-]。 */
-        const re2 = new RegExp('\\.' + lit + '(?![\\w-])')
-        if (!re2.test(css)) {
-          missingCls.push(path.relative(ROOT, wxml) + ' → .' + lit)
-        }
-      })
+
+    /*
+     * ★ 只扫 class 属性里的表达式 —— 这一点踩过坑。
+     *
+     * 2.6.0 加了骰盅之后，模板里有这么一段：
+     *     <image src="/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png" />
+     * 这里的 'cup-down' / 'cup-shake' 是**图片文件名**，不是 CSS 类。
+     * 但旧版断言扫的是"所有 {{...}} 里的字符串字面量"，于是把它当类名去 CSS 里找，
+     * 报了两条**假失败**。
+     *
+     * 修法：先用正则把 `class="..."` 属性整体抓出来，只在这些片段里找表达式。
+     * 这样 src / data-* / style 里的字符串都不会被误判。
+     */
+    const classRe = /class\s*=\s*"([^"]*)"/g
+    let cm
+    while ((cm = classRe.exec(tpl))) {
+      const clsAttr = cm[1]
+      const re = /\{\{([^}]*)\}\}/g
+      let m
+      while ((m = re.exec(clsAttr))) {
+        const expr = m[1]
+        if (expr.indexOf('?') < 0) continue
+        /*
+         * ★ 先剥掉"比较部分"再提取类名。
+         *
+         * 为什么不能"按字符串值排除"：`phase === 'shaking' ? 'shaking' : ''` 里
+         * 同一个 `shaking` 既是比较值**又是**类名。第一版按值排除，
+         * 结果两个都被跳过 —— 反向验证时故意删掉 .shaking 的定义，
+         * 测试照样通过，等于这条检查根本没工作。
+         *
+         * 用"先删除 === '...' 片段"就没这个问题：
+         * 删完剩下 `phase  ? 'shaking' : ''`，再提取就只剩类名。
+         */
+        const stripped = expr.replace(/===?\s*'[^']*'/g, '')
+        const lits = stripped.match(/'[a-zA-Z][\w-]*'/g) || []
+        lits.forEach(q => {
+          const lit = q.slice(1, -1)
+          /* 词边界匹配，不用 indexOf 子串 ——
+             `.table.shakingX` 里包含 `.table.shaking` 这个前缀，
+             子串检查会误判成"存在"。CSS 类名后面不能跟 [\w-]。 */
+          const re2 = new RegExp('\\.' + lit + '(?![\\w-])')
+          if (!re2.test(css)) {
+            missingCls.push(path.relative(ROOT, wxml) + ' → .' + lit)
+          }
+        })
+      }
     }
   })
   assert.deepStrictEqual(missingCls, [],
     '模板用了这些动态 class 但 CSS 里没定义（动画不会生效，且不报错）：\n    ' +
     missingCls.join('\n    '))
   ok('全部动态 class 都有 CSS 定义（动画不会白写）')
+
+  /* ============ ③c-2 变量插值的 class 也要有定义 ============ */
+  /*
+   * ★ 这条是 2.6.0 加骰盅时才发现的**真正盲区**（比 ③c 那个误报严重得多）。
+   *
+   * 骰盅的模板是这么写的：
+   *     <image class="cs-cup {{cupCls}}" ... />
+   * 而 `cupCls` 的值在 **js** 里：
+   *     this.setData({ cupCls: 'shaking' })
+   *
+   * ③c 只扫 wxml，所以这种写法它**永远看不到** ——
+   * 我把 .cs-cup.shaking 的 CSS 改名做反向验证，断言照样通过（= 废的）。
+   * 而这类拼错的后果和 ③c 一样：动画不生效，页面不报错，
+   * 只是"摇盅的时候盅不晃"，要靠肉眼才能发现。
+   *
+   * 修法：扫同名 js 里所有 `xxxCls: '字面量'` 形式的赋值，
+   * 把值当类名去 CSS 里找。（变量名以 Cls/class 结尾是约定，
+   * 本项目的动态 class 全部走这个约定。）
+   */
+  const missingVarCls = []
+  walkWxml(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+    const js = wxml.replace(/\.wxml$/, '.js')
+    if (!fs.existsSync(js)) return
+    const wxss = wxml.replace(/\.wxml$/, '.wxss')
+    let css = appCss
+    if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
+
+    const tpl = fs.readFileSync(wxml, 'utf8')
+    const src = fs.readFileSync(js, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+
+    /* 找出模板里所有 {{xxxCls}} 形式的插值 */
+    const varRe = /\{\{\s*([a-zA-Z_$][\w$]*[Cc]ls)\s*\}\}/g
+    let vm
+    const vars = []
+    while ((vm = varRe.exec(tpl))) vars.push(vm[1])
+    if (!vars.length) return
+
+    vars.forEach(v => {
+      /* 抓 js 里所有 `v: 'a b c'` 的赋值，拆成单个类名 */
+      const setRe = new RegExp(v + '\\s*:\\s*\'([^\']*)\'', 'g')
+      let sm
+      while ((sm = setRe.exec(src))) {
+        sm[1].split(/\s+/).filter(Boolean).forEach(lit => {
+          const re2 = new RegExp('\\.' + lit + '(?![\\w-])')
+          if (!re2.test(css)) {
+            missingVarCls.push(path.relative(ROOT, wxml) + ' → ' + v + " = '" + lit + "'")
+          }
+        })
+      }
+    })
+  })
+  assert.deepStrictEqual(missingVarCls, [],
+    'js 里赋给 class 变量的这些值在 CSS 里没定义（动画不生效且不报错）：\n    ' +
+    missingVarCls.join('\n    '))
+  ok('js 里变量插值的动态 class 也都有 CSS 定义')
 
   /* ============ ③d wxml 引用的图片必须真实存在 ============ */
   console.log('\n=== ③d 模板引用的图片文件必须存在（骰子图那类）===')

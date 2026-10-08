@@ -11,9 +11,6 @@
     "pages/capsule/capsule",
     "pages/reminds/reminds",
     "pages/game/game",
-    "pages/game/dice/dice",
-    "pages/game/liar/liar",
-    "pages/game/wheel/wheel",
     "pages/game/room/room"
   ],
   "window": {

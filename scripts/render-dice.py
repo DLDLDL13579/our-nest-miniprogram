@@ -171,6 +171,56 @@ def ao_at(p, n, half, faces, samples=6):
     return occ
 
 
+def march_ortho(sdf_world, size, ss, extent=0.95, cam_z=3.0, t_max=4.5,
+                eps_hit=1.2e-3, eps_step=8e-4, max_iter=96):
+    """
+    正交投影下的光线步进（相机在 +Z 远处，光线沿 -Z）。
+
+    抽成通用函数是为了让骰盅（render-cup.py）复用同一套求交逻辑 ——
+    这段代码里有两次踩坑修出来的东西（活跃像素集合、命中判定的容差），
+    复制一份必然会分叉，到时候两个物体的边缘行为就不一致了。
+
+    sdf_world(p) 接收 (N,3) 的世界坐标点，返回 (N,) 距离。
+
+    返回 (ox, oy, t, hit, W, H)：
+      ox/oy  每个像素的射线起点 x/y（世界坐标，一维长度 W*H）
+      t      命中参数（相机到交点沿 -Z 的距离）
+      hit    是否命中（一维布尔）
+    """
+    W = H = size * ss
+    xs = np.linspace(-extent, extent, W)
+    ys = np.linspace(extent, -extent, H)
+    gx, gy = np.meshgrid(xs, ys)
+    ox = gx.ravel()
+    oy = gy.ravel()
+
+    # ★ 性能要点（这两条原来是 bug，单面渲染要 229 秒）：
+    #   ① 原退出条件是 hit.all() —— 但物体只占画面一部分，
+    #      背景像素永远不会命中，这个条件**永远为假**，于是循环一次不落地全跑完；
+    #   ② 已命中 / 已逃逸的像素之后每轮还在重复求值。
+    # 现在每轮只对「仍活跃」的像素求值，活跃集合空掉就退出。
+    t = np.zeros(H * W)
+    hit = np.zeros(H * W, dtype=bool)
+    active = np.ones(H * W, dtype=bool)
+
+    for _ in range(max_iter):
+        if not active.any():
+            break
+        idx = np.flatnonzero(active)
+        p_w = np.stack([ox[idx], oy[idx], cam_z - t[idx]], axis=-1)
+        d = sdf_world(p_w)
+
+        landed = d < eps_hit
+        if landed.any():
+            hit[idx[landed]] = True
+        step = np.maximum(d, eps_step)
+        step[landed] = 0.0            # 已落定的不再前进，保住交点 t
+        t[idx] += step
+        active[idx] = ~landed & (t[idx] <= t_max)
+
+    return ox, oy, t, hit, W, H
+
+
 def render_dice(value, size=512, ss=2):
     """
     渲染骰子的一个朝向：正面朝上的是 value。
@@ -178,7 +228,7 @@ def render_dice(value, size=512, ss=2):
     返回 RGBA 的 numpy 数组。
     """
     # 让 value 转到 +Z（正面）
-    # 每个值的旋转：把该值所在的轴转到 +Z
+    # 每个值的旋转：把该值的轴转到 +Z
     AXIS_OF_VALUE = {v: n for n, v in FACE_VALUE.items()}
     target = np.array(AXIS_OF_VALUE[value], dtype=np.float64)
 
@@ -232,49 +282,15 @@ def render_dice(value, size=512, ss=2):
         if n_world[2] > 0.05:            # 世界坐标下法线朝向相机（+Z）
             vis_faces.append((n_local, val))
 
-    # 相机：正交投影（骰子在画面里是固定大小，不做透视变形）
-    W = H = size * ss
-    xs = np.linspace(-0.95, 0.95, W)
-    ys = np.linspace(0.95, -0.95, H)
-    gx, gy = np.meshgrid(xs, ys)
-    ox = gx.ravel()
-    oy = gy.ravel()
-
     # 把采样点变换到骰子的本地坐标系
     Rinv = Rtotal.T
     def to_local(p_world):
         return p_world @ Rinv.T
 
-    # ---- 光线步进 ----
-    #
-    # ⚠️ 这里原来有两个性能缺陷，合起来让单面渲染要 229 秒：
-    #   ① 退出条件是 hit.all() —— 但骰子只占画面一部分，背景像素永远不会命中，
-    #      这个条件**永远为假**，于是 80 轮循环一次不落地全跑完；
-    #   ② 已命中 / 已逃逸的像素之后每轮还在重复求值。
-    # 改成：每轮只对「仍活跃」（未命中且未逃逸）的像素求值，活跃集合空掉就退出。
-    # 骰子外的像素第 1~2 轮就逃逸，真正需要迭代的只剩轮廓附近。
-    T_MAX = 4.5          # 相机在 z=3，骰子最远到 z≈-0.87，留足余量
-    EPS_HIT = 1.2e-3     # 距离小于它就认为打到表面
-    EPS_STEP = 8e-4      # 最小步长，防止在表面附近卡死
+    def sdf_world(p_world):
+        return sdf_dice_smooth(to_local(p_world), half, vis_faces)
 
-    t = np.zeros(H * W)
-    hit = np.zeros(H * W, dtype=bool)
-    active = np.ones(H * W, dtype=bool)
-
-    for _ in range(96):
-        if not active.any():
-            break
-        idx = np.flatnonzero(active)
-        p_w = np.stack([ox[idx], oy[idx], 3.0 - t[idx]], axis=-1)
-        d = sdf_dice_smooth(to_local(p_w), half, vis_faces)
-
-        landed = d < EPS_HIT
-        if landed.any():
-            hit[idx[landed]] = True
-        step = np.maximum(d, EPS_STEP)
-        step[landed] = 0.0            # 已落定的不再前进，保住交点 t
-        t[idx] += step
-        active[idx] = ~landed & (t[idx] <= T_MAX)
+    ox, oy, t, hit, W, H = march_ortho(sdf_world, size, ss)
 
     # ---- 着色 ----
     #

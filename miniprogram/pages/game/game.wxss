@@ -95,6 +95,34 @@
 }
 
 /* ============================================================
+   2.6.0：只剩联网入口 —— 大厅从"游戏列表"变成"玩法一览"
+   ============================================================ */
+
+/* 唯一的主入口：比原来的卡片更突出 */
+.gcard.big {
+  padding: 34rpx 30rpx;
+}
+.gcard.big .gc-icon { font-size: 62rpx }
+.gcard.big .gc-name { font-size: 36rpx }
+
+.sechead {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 34rpx 4rpx 16rpx;
+  font-size: 24rpx; color: var(--ink3); letter-spacing: 2rpx;
+}
+
+.modelist { display: flex; flex-direction: column; gap: 12rpx }
+.modeitem {
+  display: flex; align-items: flex-start; gap: 18rpx;
+  padding: 22rpx 24rpx;
+  background: #F7F4EF; border-radius: var(--r-2);
+}
+.mi-icon { font-size: 38rpx; line-height: 1.2 }
+.mi-main { display: flex; flex-direction: column; gap: 6rpx; flex: 1 }
+.mi-name { font-size: 27rpx; color: var(--ink); font-weight: 600 }
+.mi-desc { font-size: 21rpx; color: var(--ink3); line-height: 1.6 }
+
+/* ============================================================
    v3 动效升级：大厅入场编排 + 交互反馈
    商业游戏的大厅不是"静态列表"，而是有节奏的开场：
    标题 → 卡片逐张滑入 → 提示浮现，形成层次。

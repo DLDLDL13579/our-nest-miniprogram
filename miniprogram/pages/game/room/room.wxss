@@ -168,22 +168,224 @@
 }
 .mb-lbl { font-size: 21rpx; color: rgba(246,231,195,.6); margin-bottom: 16rpx }
 
-.dicebox { display: flex; flex-wrap: wrap; gap: 14rpx }
-.dicebox.mini { gap: 10rpx }
-.die {
-  width: 84rpx; height: 84rpx; border-radius: 16rpx;
-  background: linear-gradient(145deg, #FFFFFF, #EDE7DE);
+/* ---------- 骰子（结算页用，游戏中的骰子见 .cs-die）---------- */
+.dicebox { display: flex; flex-wrap: wrap; gap: 10rpx; align-items: center }
+.dicebox.mini { gap: 8rpx }
+.die-img { width: 62rpx; height: 66rpx }
+.dicebox.mini .die-img { width: 50rpx; height: 53rpx }
+
+/* ============================================================
+   骰盅场景 —— 摇骰子 / 大话骰的核心
+   ------------------------------------------------------------
+   用户反馈「动画和真实场景差很多」。对着现实拆解后补上了盅。
+
+   关键认识：现实里摇盅时**根本看不见骰子**（盅不透明），
+   悬念恰恰来自"看不见"。改造前让骰子在空中翻，所以看着假。
+
+   层次（从下到上）：
+     绒布桌面 → 聚光 → 骰子 → 盅 → 提示文字
+   ============================================================ */
+.cupscene {
+  position: relative;
+  height: 520rpx;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,.35);
-  animation: dieIn .3s cubic-bezier(.34,1.56,.64,1) backwards;
+  margin-bottom: 24rpx;
+  border-radius: var(--r-2);
+  overflow: hidden;
 }
-.die.tiny { width: 56rpx; height: 56rpx; border-radius: 12rpx }
-@keyframes dieIn {
-  from { opacity: 0; transform: rotate(-70deg) scale(.6) }
-  to   { opacity: 1; transform: rotate(0) scale(1) }
+
+/* 绒布桌面 */
+.cs-felt {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  background:
+    repeating-linear-gradient(45deg,
+      rgba(255,255,255,.014) 0 2rpx, rgba(0,0,0,.014) 2rpx 4rpx),
+    repeating-linear-gradient(-45deg,
+      rgba(255,255,255,.014) 0 2rpx, rgba(0,0,0,.014) 2rpx 4rpx),
+    radial-gradient(ellipse 80% 60% at 50% 45%,
+      #3A2E24 0%, #2A211A 45%, #1F1713 100%);
 }
-.diev { font-size: 40rpx; font-weight: 700; color: #2C2822 }
-.die.tiny .diev { font-size: 28rpx }
+/* 顶部聚光 */
+.cs-spot {
+  position: absolute; left: 50%; top: -30%;
+  width: 150%; height: 130%;
+  margin-left: -75%;
+  background: radial-gradient(ellipse 42% 52% at 50% 40%,
+    rgba(255, 228, 170, .15) 0%,
+    rgba(255, 220, 150, .07) 38%,
+    rgba(255, 210, 140, 0) 68%);
+  pointer-events: none;
+}
+
+/* 骰子：压在盅底下（z-index 更低），只有揭盅/偷看时才露出来 */
+.cs-dice {
+  position: absolute; left: 0; right: 0;
+  bottom: 132rpx;
+  display: flex; align-items: center; justify-content: center;
+  gap: 18rpx;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity .18s ease;
+}
+.cs-dice.show { opacity: 1 }
+.cs-die {
+  width: 108rpx; height: 115rpx;
+  /* 逐个落位：每颗延迟一点，像真的骰子先后停住 */
+  animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
+  animation-delay: calc(var(--i) * 90ms);
+}
+@keyframes dieDrop {
+  0%   { opacity: 0; transform: translateY(-46rpx) rotate(-24deg) scale(.8) }
+  60%  { opacity: 1; transform: translateY(6rpx) rotate(4deg) scale(1.05) }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
+}
+
+/* 盅本体 */
+.cs-cup {
+  position: relative;
+  width: 300rpx; height: 466rpx;
+  z-index: 3;
+  transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
+              opacity .3s ease;
+}
+
+/*
+ * 摇动中：盅上下抛动 + 左右摇摆。
+ * 幅度比骰子小 —— 盅是握在手里摇的，不是撒出去的。
+ */
+.cs-cup.shaking {
+  animation: cupShake .34s ease-in-out infinite;
+}
+@keyframes cupShake {
+  0%   { transform: translate(0, 0) rotate(-4deg) }
+  25%  { transform: translate(-8rpx, -18rpx) rotate(5deg) }
+  50%  { transform: translate(6rpx, -3rpx) rotate(-3deg) }
+  75%  { transform: translate(-5rpx, -13rpx) rotate(3deg) }
+  100% { transform: translate(0, 0) rotate(-4deg) }
+}
+
+/* 扣盅：抬起来一点，然后**砸下去**（预备动作 + 冲击） */
+.cs-cup.slam {
+  animation: cupSlam .38s cubic-bezier(.36, .07, .19, .97);
+}
+@keyframes cupSlam {
+  0%   { transform: translateY(-40rpx) scale(1.04) }
+  35%  { transform: translateY(-52rpx) scale(1.05) }   /* 预备：先提一下 */
+  70%  { transform: translateY(8rpx) scale(.97) }      /* 砸住 */
+  100% { transform: translateY(0) scale(1) }
+}
+
+/* 揭盅：盅提起来并淡出（骰子露出来） */
+.cs-cup.lift {
+  transform: translateY(-120rpx) rotate(-9deg) scale(.94);
+}
+.cs-cup.gone { opacity: 0; transform: translateY(-200rpx) rotate(-14deg) scale(.88) }
+
+/*
+ * 入盅：骰子掉进盅里，盅被轻轻撞一下。
+ * 幅度很小 —— 这是"骰子进盅"不是"摇盅"，只是盅被碰了一下的反馈。
+ *
+ * ★ 这个样式是被断言逼出来的：我写了 cupCls:'into' 却忘了定义 .cs-cup.into，
+ *   结果是"入盅"这一步完全没有视觉，页面也不报错。
+ *   新增的 ③c-2 断言（扫 js 里赋给 class 变量的字面量）直接把它抓了出来。
+ */
+.cs-cup.into {
+  animation: cupInto .42s cubic-bezier(.22, 1.3, .45, 1);
+}
+@keyframes cupInto {
+  0%   { transform: translateY(0) scale(1) }
+  30%  { transform: translateY(-7rpx) scale(1.015) }
+  60%  { transform: translateY(3rpx) scale(.995) }
+  100% { transform: translateY(0) scale(1) }
+}
+
+/* 偷看（大话骰按住）：只抬一条缝 —— 复刻"偷偷瞄一眼"的动作 */
+.cs-cup.peek {
+  transform: translateY(-64rpx) rotate(-6deg) scale(.98);
+}
+
+.cs-hint {
+  position: absolute; left: 0; right: 0; bottom: 22rpx;
+  text-align: center;
+  font-size: 23rpx; color: rgba(246,231,195,.55);
+  z-index: 4;
+}
+
+/* ---------- 其他玩家的盅（摇骰子比大小）---------- */
+.othercups {
+  display: flex; flex-wrap: wrap; gap: 18rpx;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+.oc-item {
+  width: 150rpx;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16rpx 8rpx; border-radius: var(--r-2);
+  background: rgba(255,255,255,.05);
+  border: 2rpx solid rgba(255,255,255,.08);
+}
+.oc-item.me { border-color: rgba(232,179,60,.4); background: rgba(232,179,60,.09) }
+.oc-cup { width: 84rpx; height: 130rpx; opacity: .55; transition: opacity .3s ease }
+.oc-cup.done { opacity: 1 }
+.oc-name {
+  font-size: 22rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
+  max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+.oc-stat { font-size: 19rpx; color: rgba(255,255,255,.4); margin-top: 4rpx }
+
+/* ============================================================
+   命运转盘（联机）
+   ============================================================ */
+.wheelscene {
+  position: relative;
+  width: 560rpx; height: 560rpx;
+  margin: 20rpx auto 0;
+}
+/* 指针：在正上方，朝下 */
+.ws-pointer {
+  position: absolute; left: 50%; top: -6rpx;
+  margin-left: -18rpx;
+  width: 0; height: 0;
+  border-left: 18rpx solid transparent;
+  border-right: 18rpx solid transparent;
+  border-top: 34rpx solid #E8B33C;
+  z-index: 5;
+  filter: drop-shadow(0 3rpx 6rpx rgba(0,0,0,.6));
+}
+.ws-disc {
+  position: absolute; left: 0; top: 0;
+  width: 560rpx; height: 560rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 0 8rpx rgba(232,179,60,.35), 0 14rpx 40rpx rgba(0,0,0,.5);
+  /* 转 2.7 秒，先快后慢 —— 这是转盘最爽的部分。
+     background 由 js 生成单条 conic-gradient（见 buildSectors 的说明）。 */
+  transition: transform 2.7s cubic-bezier(.15, .62, .1, 1);
+}
+.ws-lbl {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: 21rpx; color: #fff; font-weight: 600;
+  white-space: nowrap;
+  text-shadow: 0 2rpx 6rpx rgba(0,0,0,.7);
+  pointer-events: none;
+}
+.ws-hub {
+  position: absolute; left: 50%; top: 50%;
+  width: 96rpx; height: 96rpx; margin: -48rpx 0 0 -48rpx;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #F6E7C3, #D9B96A);
+  color: #4A3630; font-size: 30rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 18rpx rgba(0,0,0,.5);
+  z-index: 4;
+}
+.ws-result {
+  text-align: center;
+  font-size: 40rpx; font-weight: 700; color: #F6E7C3;
+  min-height: 56rpx; margin: 20rpx 0 8rpx;
+  letter-spacing: 2rpx;
+}
 
 .optgrid { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 20rpx }
 .optbtn {

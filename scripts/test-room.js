@@ -409,6 +409,105 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     `★ 退出者在回合之前时，turn 也要合法，实际 ${afterLeave.turn}（剩 ${afterLeave.players.length} 人）`)
   ok(`★ 退出者在当前回合之前时，turn 前移修正为 ${afterLeave.turn}（剩 ${afterLeave.players.length} 人）`)
 
+  /* ============================================================
+   * ⑫ 命运转盘（联机）—— 2.6.0 新增
+   * ============================================================ */
+  console.log('\n=== ⑫ ★ 转盘：只有房主能转，结果由服务端定 ===')
+  OPENID = A
+  const wh = await room.main({ action: 'create', name: 'W1', game: 'wheel' })
+  const whId = wh.room.id
+  const whCode = wh.room.code
+  OPENID = B
+  await room.main({ action: 'join', code: whCode, name: 'W2' })
+
+  OPENID = A
+  await room.main({ action: 'start', id: whId })
+  store.rooms.filter(x => x._id === whId)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: whId })
+
+  /*
+   * ★ 命门：只有房主能转。
+   *
+   * 为什么结果必须服务端定：单机版可以本地随机（大家看同一块屏幕），
+   * 联机版如果让房主前端算，房主就能改结果（"我要真心话"）。
+   * 这条锁的是"房主独占"这个权限边界 ——
+   * 漏了它，非房主也能点，或者房主能直接指定扇区。
+   */
+  OPENID = B
+  const spinByOther = await room.main({ action: 'spin', id: whId })
+  assert.ok(!spinByOther.ok, '★ 非房主不能转 —— 否则谁都能改结果')
+  ok('非房主转不了（' + (spinByOther.msg || '') + '）')
+
+  OPENID = A
+  const spin1 = await room.main({ action: 'spin', id: whId })
+  assert.ok(spin1.ok, '房主应该能转')
+  assert.ok(spin1.spin, '必须返回 spin 结果')
+  assert.ok(typeof spin1.spin.index === 'number', 'spin.index 必须是数字（前端要用它算角度）')
+  assert.ok(spin1.spin.t, 'spin.t 是扇区文案（前端显示用）')
+  assert.ok(spin1.spin.at > 0, 'spin.at 是时间戳（前端靠它判断"这一转是新的"）')
+  assert.ok(spin1.spin.turns >= 4, '转的圈数至少 4 圈，否则不够爽')
+  ok(`房主转出「${spin1.spin.t}」（第 ${spin1.spin.index} 个扇区，转 ${spin1.spin.turns} 圈）`)
+
+  /* 从云函数源码里抽出扇区表，用来核对下标和文案自洽 */
+  const backSecs = (function () {
+    const src = require('fs').readFileSync(
+      require('path').join(__dirname, '..', 'cloudfunctions/room/index.js'), 'utf8')
+    const i = src.indexOf('const WHEEL_SECTORS = [')
+    const s = src.indexOf('[', i)
+    let d = 0, e = -1
+    for (let k = s; k < src.length; k++) {
+      if (src[k] === '[') d++
+      else if (src[k] === ']') { d--; if (d === 0) { e = k; break } }
+    }
+    return eval('(' + src.slice(s, e + 1) + ')')
+  })()
+  assert.ok(spin1.spin.index >= 0 && spin1.spin.index < backSecs.length,
+    `★ 扇区下标越界：${spin1.spin.index} 不在 [0, ${backSecs.length - 1}] 内`)
+  ok('扇区下标在合法范围内（越界会让前端拿不到扇区、转盘乱停）')
+
+  /* 转出来的文案必须和下标对得上（防止 index 和 t 对不上） */
+  assert.strictEqual(spin1.spin.t, backSecs[spin1.spin.index].t,
+    '★ spin.t 必须与 spin.index 指向的扇区一致')
+  assert.strictEqual(spin1.spin.k, backSecs[spin1.spin.index].k,
+    '★ spin.k 必须与 spin.index 指向的扇区一致')
+  ok('spin 的 index / k / t 三者自洽（不会出现"指着 A 说是 B"）')
+
+  /* 别人（非房主）也要能在 status 里看到这一转 —— 否则其他人不知道转了 */
+  OPENID = B
+  const seen = await room.main({ action: 'status', id: whId })
+  assert.ok(seen.ok && seen.room.spin, '★ 非房主必须能在 status 里看到这一转')
+  assert.strictEqual(seen.room.spin.at, spin1.spin.at,
+    '★ 别人看到的必须是同一转（at 相同），否则各自转各自的')
+  ok('非房主能看到同一转（at 一致）—— 全场同步')
+
+  /* 转盘房间不该发骰子（发了会白白增加响应体积，前端也可能误用） */
+  const whPlayers = seen.room.players || []
+  const anyDice = whPlayers.some(p => (p.diceCount || 0) > 0)
+  assert.ok(!anyDice, '★ 转盘房间不该给任何人发骰子')
+  ok('转盘房间没有发骰子（不浪费响应体积）')
+
+  /* 重开一局必须清掉上一转 —— 否则前端一进 playing 就以为已经转过了 */
+  OPENID = A
+  await room.main({ action: 'again', id: whId })
+  await room.main({ action: 'start', id: whId })
+  const fresh = store.rooms.filter(x => x._id === whId)[0]
+  assert.ok(!fresh.spin, '★ 新一局必须清空 spin（否则一进 playing 就显示上一转的结果）')
+  ok('新一局清空了 spin（不会把上一转的结果带进来）')
+
+  /* 非转盘房间不能调 spin */
+  OPENID = A
+  const notWheel = await room.main({ action: 'create', name: 'L1', game: 'liar' })
+  const nwId = notWheel.room.id
+  OPENID = B
+  await room.main({ action: 'join', code: notWheel.room.code, name: 'L2' })
+  OPENID = A
+  await room.main({ action: 'start', id: nwId })
+  store.rooms.filter(x => x._id === nwId)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: nwId })
+  const wrongGame = await room.main({ action: 'spin', id: nwId })
+  assert.ok(!wrongGame.ok, '★ 大话骰房间不该能转盘')
+  ok('大话骰房间调 spin 被拒（游戏类型校验生效）')
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

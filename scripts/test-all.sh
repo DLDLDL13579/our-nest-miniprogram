@@ -12,7 +12,7 @@ echo "═══ 4/9 要记得的事（日期滚动与提前量）═══"
 node scripts/test-reminds.js
 echo "═══ 5/9 情绪·冷静期（双盲 / deadline / 不锁人）═══"
 node scripts/test-mood.js
-echo "═══ 6/9 游戏逻辑（转盘判定 / 大话骰计数）═══"
+echo "═══ 6/9 游戏逻辑（转盘前后端一致 / 摇盅五步流程）═══"
 node scripts/test-game.js
 echo "═══ 7/9 多人房间（房间码 / 骰子隔离 / 房主转移）═══"
 node scripts/test-room.js

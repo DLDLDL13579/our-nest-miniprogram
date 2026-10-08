@@ -140,6 +140,70 @@ const FEEDBACK = {
     sfxDelay: 0,
     haptic: 'light',
     hapticDelay: 60
+  },
+
+  /* ============================================================
+     v4 摇盅流程（按现实顺序，一声对一步）
+     ------------------------------------------------------------
+     真实现场：骰子入盅 → 摇盅 → **扣盅** → 揭盅 → 骰子在桌上滚两下才停。
+     改造前只有"摇"这一声，扣盅那一下完全没有 ——
+     而它恰恰是整条流程里最有仪式感的一下。
+     ============================================================ */
+
+  /* ① 骰子入盅（骰子掉进盅里弹几下） */
+  diceIn: {
+    animMs: 620,
+    impactAt: 40,
+    sfx: 'diceIntoCup',
+    sfxDelay: 40,
+    haptic: 'light',
+    hapticDelay: 70
+  },
+
+  /* ② 摇盅（持续音，覆盖整个摇动过程）
+     ★ 摇动本身**不震** —— 持续 1 秒的震动会让整局嗡嗡响，用户会直接关掉。
+       这个决定有断言锁着（test-game.js ⑦）：摇盅的 haptic 必须是 null。
+       手感靠声音和画面给，震动留给"扣盅"那个重音。 */
+  cupShake: {
+    animMs: 1050,
+    impactAt: 0,
+    sfx: 'cupShake',
+    sfxDelay: 0,
+    haptic: null,
+    hapticDelay: 0
+  },
+
+  /* ③ ★ 扣盅 —— 整个流程的重音。
+     视觉是盅砸到桌面（impactAt 70ms 是砸住的那一刻），
+     音效 +40ms 落在冲击帧上，震动再 +20ms（触觉最快，要最后到）。
+     震动给 medium 而不是 heavy：一局要扣好几次，heavy 会腻。 */
+  cupSlam: {
+    animMs: 380,
+    impactAt: 70,
+    sfx: 'cupSlam',
+    sfxDelay: 110,
+    haptic: 'medium',
+    hapticDelay: 130
+  },
+
+  /* ④ 揭盅（盅提起，骰子露出来）—— 轻，主角是骰子 */
+  cupLift: {
+    animMs: 420,
+    impactAt: 0,
+    sfx: 'cupLift',
+    sfxDelay: 20,
+    haptic: null,
+    hapticDelay: 0
+  },
+
+  /* ⑤ 骰子在桌上滚两下才停（揭盅之后） */
+  diceTable: {
+    animMs: 750,
+    impactAt: 0,
+    sfx: 'diceOnTable',
+    sfxDelay: 0,
+    haptic: 'light',
+    hapticDelay: 40
   }
 }
 

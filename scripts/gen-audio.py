@@ -942,6 +942,185 @@ def confetti():
     return [out[i] + sh[i] * se[i] * 0.22 for i in range(total)]
 
 
+# ============================================================
+# v4 骰盅组 —— 让摇骰子"像现实"
+#
+# 用户反馈：「摇骰子的动画效果和真实场景差很多」。
+# 对着真实场景拆解，一个完整的摇盅流程是这样的：
+#
+#     ① 骰子入盅      几声散乱的脆响（骰子掉进盅里，弹几下）
+#     ② 摇盅          骰子在盅内壁乱撞 —— **持续、不规则、有起伏**
+#     ③ 扣盅  ← ★      "咚"一声闷响，盅砸在桌上。整条流程最有仪式感的一下
+#     ④ 揭盅          提起盅时的一声轻响 + 骰子在桌上再滚两下
+#
+# 改造前只有 ②（dice-tumble-wood，且是一次性播放），③ 完全没有。
+# 而 ③ 恰恰是"真实现场"和"电子游戏"差别最大的地方。
+# ============================================================
+
+def dice_into_cup():
+    """
+    ① 骰子入盅：骰子掉进盅里，弹几下。
+    特征：3~4 声**间隔逐渐变短、响度逐渐变小**的脆响
+    （第一次掉得最高最响，之后每次弹起高度递减 —— 这是真实物理）。
+    """
+    total = int(SR * 0.62)
+    out = [0.0] * total
+    rnd = random.Random(3301)
+    t = 0.0
+    # 弹跳高度按几何级数衰减：0.55 → 0.33 → 0.20 → 0.12
+    amp = 0.95
+    gap = 0.115
+    k = 0
+    while t < total / SR and amp > 0.06:
+        hit = dice_hit(amp, seed=3300 + k)
+        off = int(SR * t)
+        for j, v in enumerate(hit):
+            if off + j < total:
+                out[off + j] += v
+        amp *= 0.58
+        gap *= 0.72          # 间隔越来越短
+        t += gap
+        k += 1
+    # 盅体的低频共鸣（骰子落在木盅里，盅会"嗡"一下）
+    body = lowpass(noise(total, 3302), 0.03)
+    be = env_decay(total, SR * 0.10)
+    return [out[i] + body[i] * be[i] * 0.22 for i in range(total)]
+
+
+def cup_shake(seconds=1.05):
+    """
+    ② 摇盅：骰子在盅内壁乱撞。
+
+    和 shaker-metal 的区别（这是刻意的，不是重复）：
+      · 木盅的声音**闷**、没有金属的不谐和泛音 → 用低通把高频压掉
+      · 摇动是**手的往复动作**，所以响度有周期性起伏（约 3.5Hz，即手摇的频率）
+      · 撞的是盅壁不是桌面，衰减更快、没有桌面共鸣
+
+    ★ 关键：响度起伏必须叠上去。第一版做成了"均匀的密集撞击"，
+    听起来像下雨而不像摇盅 —— 因为真实的摇动是**有节奏的往复**。
+    """
+    total = int(SR * seconds)
+    rnd = random.Random(771)
+    out = [0.0] * total
+    t = 0
+    # 碰撞间隔必须大于衰减时间，否则尾巴糊成一片（踩过的坑，见 shaker_metal）
+    while t < total:
+        gap = int(SR * rnd.uniform(0.024, 0.062))
+        n = int(SR * 0.05)
+        # 木盅：低沉的"叩"，主频 380~760Hz（比金属盅低一个八度多）
+        f = rnd.uniform(380, 760)
+        ring = sine(n, f)
+        ring2 = sine(n, f * 1.63)
+        e = env_ad(n, max(1, int(SR * 0.0006)), SR * 0.009)
+        amp = rnd.uniform(0.7, 1.1)
+        hit = [(ring[j] * 0.7 + ring2[j] * 0.3) * e[j] * amp for j in range(n)]
+        for j, v in enumerate(hit):
+            if t + j < total:
+                out[t + j] += v
+        t += max(1, gap)
+
+    # ★ 手摇的周期起伏：3.5Hz 正弦，谷值压到 0.45
+    # 没有这一层，"摇"就变成了"倒" —— 这是最像/最不像的分界线
+    for i in range(total):
+        ph = i / SR
+        swing = 0.45 + 0.55 * (0.5 + 0.5 * math.sin(2 * math.pi * 3.5 * ph))
+        out[i] *= swing
+
+    # 木盅内腔的低频共鸣
+    body = lowpass(noise(total, 772), 0.028)
+    return [out[i] + body[i] * 0.14 for i in range(total)]
+
+
+def cup_slam():
+    """
+    ③ 扣盅 —— ★ 整个流程最有仪式感的一下。
+
+    真实扣盅的声音构成（拆开看）：
+      · 盅口沿撞桌面：**宽而闷**的一击，能量集中在 120~300Hz
+        （不是骰子那种"脆"，因为木盅口径大、接触面大）
+      · 桌面被砸的"咚"：60~90Hz 的极低频，这一层给"重"
+      · 盅内骰子被震得跳一下：紧随其后的一两声轻响（★★ 细节）
+      · 尾音：木头的短共鸣，很快消失
+
+    ★ 最后那条"骰子在盅里被震得跳一下"是真实的物理，
+    加上它立刻就有了"里面有东西"的实感 —— 空盅扣下去是没有这一下的。
+    """
+    n = int(SR * 0.55)
+    # ① 口沿撞桌面：宽带噪声 + 快速衰减（"啪"的木质感）
+    knock = lowpass(highpass(noise(n, 881), 0.25), 0.45)
+    ke = env_ad(n, max(1, int(SR * 0.0008)), SR * 0.020)
+    # ② 桌面的低频"咚"：起音稍慢（桌面是弹性体，不是硬碰硬）
+    thud = sine(n, 72)
+    thud2 = sine(n, 108)          # 非整数倍 → 木桌的钝
+    te = env_ad(n, int(SR * 0.0025), SR * 0.045)
+    # ③ 木盅腔体共鸣
+    body = sine(n, 196)
+    be = env_decay(n, SR * 0.030)
+
+    out = [knock[i] * ke[i] * 1.0
+           + (thud[i] * 0.75 + thud2[i] * 0.4) * te[i] * 0.85
+           + body[i] * be[i] * 0.30
+           for i in range(n)]
+
+    # ④ 盅内骰子被震得跳一下（延迟 55ms，两声轻响）
+    for k, (delay_ms, amp) in enumerate([(55, 0.34), (108, 0.18)]):
+        off = int(SR * delay_ms / 1000.0)
+        hit = dice_hit(amp, seed=882 + k)
+        for j, v in enumerate(hit):
+            if off + j < n:
+                out[off + j] += v
+    return out
+
+
+def cup_lift():
+    """
+    ④ 揭盅：把盅提起来。
+    特征：一个**上扬的摩擦声**（盅口沿离开桌面时的轻微吸附感）
+    + 木盅离开桌面后腔体变空、尾音变亮。
+    这一声要轻 —— 主角是马上要露出来的骰子，不是盅本身。
+    """
+    n = int(SR * 0.42)
+    # 摩擦/吸附：带通噪声，音高略上扬
+    fric = bandpass(noise(n, 991), 0.18, 0.62)
+    fe = env_ad(n, int(SR * 0.006), SR * 0.075)
+    # 上扬的气声（"提起来"的方向感）
+    air = highpass(noise(n, 992), 0.55)
+    ae = env_ad(n, int(SR * 0.012), SR * 0.055)
+    out = [fric[i] * fe[i] * 0.55 + air[i] * ae[i] * 0.20 for i in range(n)]
+    return out
+
+
+def dice_on_table():
+    """
+    ⑤ 骰子落在桌面上滚两下才停。
+
+    为什么单独做一个：揭盅之后骰子是"已经停好"的，
+    但现实里它们会**再滚一小段**才停住 —— 缺这一下，
+    揭盅就显得"太干脆"，像贴图切换而不是物理。
+    间隔按 1.35 倍递增（越滚越慢），响度递减。
+    """
+    total = int(SR * 0.75)
+    out = [0.0] * total
+    t = 0.0
+    amp = 0.85
+    gap = 0.055
+    k = 0
+    while t < total / SR and amp > 0.08:
+        hit = dice_hit(amp, seed=5500 + k)
+        off = int(SR * t)
+        for j, v in enumerate(hit):
+            if off + j < total:
+                out[off + j] += v
+        amp *= 0.62
+        gap *= 1.35          # 越滚越慢 —— 这是"停下来"的听感来源
+        t += gap
+        k += 1
+    # 极轻的桌面摩擦底噪
+    rub = lowpass(noise(total, 5501), 0.05)
+    re_ = [1.0 - 0.6 * (i / total) for i in range(total)]
+    return [out[i] + rub[i] * re_[i] * 0.16 for i in range(total)]
+
+
 # ==== v3 音效清单（必须放在所有函数定义之后）====
 # ============================================================
 # 空间化包装：把 v3 的关键音效过一遍「瞬态 → 反射 → 尾巴」
@@ -967,6 +1146,12 @@ ALL_V3 = [
     ('chip-bet',          _sp(chip_bet, tail_ms=160, seed=33), SR_HI),
     ('gulp',              gulp,              SR_MID),
     ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_MID),
+    # v4 骰盅组：让摇骰子像现实 —— 入盅 / 摇盅 / 扣盅 / 揭盅 / 桌上滚动
+    ('dice-into-cup',     _sp(dice_into_cup, tail_ms=160, seed=61), SR_HI),
+    ('cup-shake',         _sp(cup_shake, tail_ms=200, seed=63), SR_HI),
+    ('cup-slam',          _sp(cup_slam, tail_ms=260, seed=65), SR_HI),
+    ('cup-lift',          _sp(cup_lift, tail_ms=140, seed=67), SR_MID),
+    ('dice-on-table',     _sp(dice_on_table, tail_ms=180, seed=69), SR_HI),
 ]
 
 
