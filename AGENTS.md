@@ -82,6 +82,41 @@
 ③ 模板引用的字段必须由云函数真实响应提供（幽灵字段检测）。
 三条都做过**反向验证**（故意改坏 → 测试确实报错 → 恢复），不是摆设。
 
+## ⚠️ 最隐蔽的一类故障：本地新版 + 云端旧版（2026-10-08 真实踩过）
+
+**症状**：用户点「开房间」报 `Error: no baseresponse`（云函数整体没返回），
+或某个功能"点了没反应"。
+
+**根因**：本地代码改好了、也提交了，**但云函数没部署**。
+云端跑的还是旧版本，前端调新 action → 云端 `return { ok:false, msg:'不认识的操作：spin' }`
+（旧版函数的兜底分支）。
+
+**为什么这类问题最难查**：
+- 本地**怎么检查都发现不了** —— 语法对、绑定对、159 项断言全绿，
+  因为本地前后端是自洽的
+- 报错信息有误导性：`no baseresponse` 听起来像"云函数崩了/超时"，
+  实际是"云端版本落后"
+- 不报"没部署"，因为函数**确实存在**，只是内容是旧的
+
+**排查三步**（`node .tooling/probe-room.js` 已封装）：
+1. **先问云端**，不要看本地代码猜。探针会跑一遍 create/status/spin，
+   响应里有 `spin` 字段 = 新版；报「不认识的操作」= 旧版
+2. 对比各云函数最后一次 git 改动时间 —— 只有今天改过的才需要重新部署
+3. 部署：`--names <fn> --paths <绝对路径> --remote-npm-install true`
+
+**已加两道防线**：
+- `scripts/deploy.sh` 的函数清单**改成自动扫描 `cloudfunctions/*/`** ——
+  原来是硬编码的，缺 `mood`/`room`、还留着已删的 `daily`/`answer`，
+  等于新功能永远部署不上去
+- `scripts/check.sh` 第 5 项：**前端调用的 action 必须在云函数里真实存在** ——
+  能抓「前端拼错 action 名」和「云函数漏写 action」（都做过反向验证）
+
+⚠️ **探针脚本的两个必须**（automator 的坑）：
+- **必须先 `navigateTo` 到页面**再 evaluate —— 直接调会报
+  `Cloud API isn't enabled, please call wx.cloud.init first`（`app.onLaunch` 没跑）
+- **所有云调用放进一次 evaluate** —— 多次跨进程往返容易触发
+  `timeout waiting for automator response`（偶发，重试即可）
+
 ## 部署状态（2026-09-22 已上线）
 
 - 正式 AppID：`wx657601ccf8fd6e12`

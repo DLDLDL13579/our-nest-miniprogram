@@ -44,7 +44,14 @@ echo "═══ 3/5 同步 derive.js（三处必须一致）═══"
 bash scripts/sync-derive.sh
 
 echo "═══ 4/5 部署云函数（云端安装依赖）═══"
-for fn in pair daily moments chronicle wishes initdb bootstrap answer home capsule reminds; do
+# ★ 清单必须与 cloudfunctions/ 目录一致，且**自动扫描** ——
+#   这里曾经是硬编码的，结果缺了 mood 和 room、还留着已删的 daily/answer。
+#   后果很隐蔽：新功能的前端上了，云函数却还是旧版，
+#   表现是「开不了房间 / 某个 action 不认识」，而不是报"没部署"。
+#   2026-10-08 真实踩过：room 的 spin action 云端不认识，前端转盘用不了。
+for dir in cloudfunctions/*/; do
+  fn="$(basename "$dir")"
+  [ -f "$dir/index.js" ] || continue
   echo "  → $fn"
   "$CLI" cloud functions deploy \
     --project "$P" --env "$ENV" \

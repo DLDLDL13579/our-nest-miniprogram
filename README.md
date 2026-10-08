@@ -543,13 +543,42 @@ pair(status) → moments(list) → moments(stats) → chronicle(list) → daily
 ### 部署前先跑检查
 
 ```bash
-./scripts/check.sh      # 语法 + WXML 标签 + 页面齐全 + derive 一致（校验全部 5 处拷贝）
-./scripts/test-all.sh   # 134 项断言（8 组：核心 / 编年史 / 胶囊 / 提醒 / 情绪 / 游戏 / 房间 / 契约）
+./scripts/check.sh      # 语法 + WXML 标签 + 页面齐全 + derive 一致 + 云函数 action 齐全
+./scripts/test-all.sh   # 159 项断言（9 组：核心 / 编年史 / 胶囊 / 提醒 / 情绪 / 游戏 / 房间 / 反馈时间轴 / 契约）
 ```
 
 > **部署云函数时 `--names` 和 `--paths` 必须一一对应**。写成
 > `--names home,initdb,bootstrap --paths .../cloudfunctions/home` 只会成功部署 `home`，
 > 另外两个报 `cloudfunction path not found`。要传多个就得给多个 `--paths`，或干脆一次一个。
+
+### ⚠️ 改完代码一定要部署云函数（2026-10-08 踩坑）
+
+**症状**：点「开房间」报 `Error: no baseresponse`，或某个功能"点了没反应"。
+
+**根因**：本地代码改好了、也提交了，**但云函数没部署**。云端还是旧版，
+前端调新 action → 旧版函数走兜底分支返回 `{ ok:false, msg:'不认识的操作：spin' }`。
+
+**这类问题本地怎么检查都发现不了** —— 语法对、绑定对、159 项断言全绿，
+因为本地前后端是自洽的。而 `no baseresponse` 这个报错又极具误导性
+（听起来像"云函数崩了/超时"，实际是"云端版本落后"）。
+
+**排查**：`node .tooling/probe-room.js` —— 直接问云端，不要看本地代码猜。
+响应里有 `spin` 字段 = 新版；报「不认识的操作」= 旧版，需要部署。
+
+**只需部署改动过的函数**：
+
+```bash
+# 看哪个云函数今天改过
+git log -1 --format='%h %ad' --date=short -- cloudfunctions/room/index.js
+
+# 部署它（一次一个最稳）
+/Applications/wechatwebdevtools.app/Contents/MacOS/cli cloud functions deploy \
+  --project "$(pwd)" --env cloudbase-d4goh1zdtc8eb9708 \
+  --names room --paths "$(pwd)/cloudfunctions/room" --remote-npm-install true
+```
+
+或者一把梭：`./scripts/deploy.sh <AppID> <环境ID>`（函数清单**自动扫描**
+`cloudfunctions/*/`，不会再漏）。
 
 ### 发布一次新版本（两条命令）
 
