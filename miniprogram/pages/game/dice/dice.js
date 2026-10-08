@@ -50,7 +50,10 @@ Page({
     muted: false,
     /* 输赢判定 */
     lastResult: '',
-    round: 0
+    round: 0,
+    /* 屏幕震动开关：骰子落定时整块桌面抖一下。
+       只有骰子动、背景不动是飘的 —— 打击感一半来自这个。 */
+    impact: false
   },
 
   onLoad() {
@@ -133,15 +136,17 @@ Page({
     if (this.data.phase === 'shaking') return
     this.setData({ phase: 'shaking', resultText: '', lastResult: '' })
 
-    /* ① 声音：连续的哗啦声 */
-    sfx.play('diceShake', { restart: true })
+    /* ① 声音：木质骰子翻滚（和"大话骰"的金属盅形成质感区分） */
+    sfx.play('diceTumbleWood', { restart: true })
 
-    /* ② 视觉：骰子快速变换点数（每 60ms 换一次） */
+    /* ② 视觉：骰子快速变换点数。
+       间隔带随机抖动 —— 固定 60ms 会显得机械，
+       真实摇骰子的碰撞间隔本来就是不规则的。 */
     const n = this.data.count
     let ticks = 0
-    const maxTicks = 14
-    if (this._spin) clearInterval(this._spin)
-    this._spin = setInterval(() => {
+    const maxTicks = 16
+    if (this._spin) clearTimeout(this._spin)
+    const tick = () => {
       const dice = []
       for (let i = 0; i < n; i++) {
         const d = makeDice(rollOne())
@@ -151,16 +156,18 @@ Page({
       this.setData({ dice: dice })
       ticks++
       if (ticks >= maxTicks) {
-        clearInterval(this._spin)
         this._spin = null
         this.settle()
+      } else {
+        this._spin = setTimeout(tick, 45 + Math.random() * 45)
       }
-    }, 60)
+    }
+    tick()
   },
 
   /**
    * 逐个落定。
-   * 刻意让每颗骰子错开 180ms 停 —— 一起停像动画，
+   * 刻意让每颗骰子错开停 —— 一起停像动画，
    * 有先后才像真的骰子撞在桌上依次停住。
    */
   settle() {
@@ -176,11 +183,29 @@ Page({
       dice[i] = makeDice(final[i])
       dice[i].settled = true
       this.setData({ dice: dice })
+      /* 分层音效：骰子撞击 + 低频冲击（叠出"重量"）。
+         单层撞击声听起来是"嗒"，加低频层才像"咚"—— 这是商业游戏的做法。 */
       sfx.play('diceSettle')
+      sfx.play('impactLow', { volume: 0.5 })
+      this.shakeScreen()
       i++
       setTimeout(step, 180)
     }
     step()
+  },
+
+  /**
+   * 屏幕震动。
+   * 商业游戏的"打击感"一半来自这个 —— 只有骰子动、背景不动是飘的。
+   * 用 class 开关触发 CSS 动画，动画结束后移除 class 以便下次能再触发
+   * （同一个 class 连续加是不会重放动画的）。
+   */
+  shakeScreen() {
+    this.setData({ impact: true })
+    if (this._shakeTimer) clearTimeout(this._shakeTimer)
+    this._shakeTimer = setTimeout(() => {
+      this.setData({ impact: false })
+    }, 240)
   },
 
   /** 揭晓：算点数、播开盅音、判定输赢 */
@@ -206,10 +231,25 @@ Page({
       round: this.data.round + 1
     })
 
-    /* 满点/最低点用不同的音 —— 情绪反馈 */
-    if (lastResult === 'max') sfx.play('win')
-    else if (lastResult === 'min') sfx.play('lose')
-    else sfx.play('diceOpen')
+    /* 结果音按"情绪强度"分层 —— 不同结果给不同的反馈力度：
+         满点  → 撒花 + 重击（最爽）
+         最低  → 下坠（最惨）
+         大/小 → 揭晓重击
+         中间  → 普通开盅
+       这样"摇出豹子"和"摇出 7 点"的体感差别是明显的。 */
+    if (lastResult === 'max') {
+      sfx.play('confetti')
+      setTimeout(() => sfx.play('revealHit'), 120)
+      /* 连击音固定音高（pitch:false）—— 它的音高是设计的一部分，
+         抖了就听不出"第几连"了 */
+      setTimeout(() => sfx.play('combo4', { pitch: false }), 340)
+    } else if (lastResult === 'min') {
+      sfx.play('failDrop')
+    } else if (lastResult === 'big' || lastResult === 'small') {
+      sfx.play('revealHit')
+    } else {
+      sfx.play('diceOpen')
+    }
 
     this.savePlayed()
   },

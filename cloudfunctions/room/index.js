@@ -48,6 +48,9 @@ const TTL_MS = 2 * 3600 * 1000
 /* 单房间人数上限 —— 一部手机传着玩，人太多轮不过来 */
 const MAX_PLAYERS = 8
 
+/* 开局倒计时：3 秒。太短来不及反应，太长会等得烦 */
+const COUNTDOWN_MS = 3200
+
 function genCode() {
   let s = ''
   for (let i = 0; i < CODE_LEN; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)]
@@ -106,16 +109,19 @@ function shape(room, openid) {
     id: room._id,
     code: room.code,
     game: room.game || '',          // 'dice' | 'liar' | 'wheel'
-    phase: room.phase || 'lobby',   // lobby | playing | over
+    phase: room.phase || 'lobby',   // lobby | countdown | playing | over
     host: room.hostOpenid === openid,
     me: me ? { seat: me.seat, name: me.name, dice: me.dice || [] } : null,
     players: players,
     count: players.length,
     /* 游戏相关的公共状态（不含任何人的私密骰子） */
+    /* 倒计时剩余毫秒（前端本地算更准，这里给基准） */
+    countdownMs: room.phase === 'countdown' ? Math.max(0, (room.countdownEnd || 0) - now()) : 0,
     turn: room.turn || 0,           // 轮到第几号座位
     round: room.round || 0,
     bid: room.bid || null,          // 大话骰：当前叫骰
     lastResult: room.lastResult || null,
+    streaks: room.streaks || {},
     updatedAt: room.updatedAt || 0
   }
 }
@@ -227,8 +233,20 @@ exports.main = async (event) => {
 
     /* ================= 房间状态（轮询用） ================= */
     if (action === 'status') {
-      const { room, err } = await loadRoom(event, OPENID, false)
+      let { room, err } = await loadRoom(event, OPENID, false)
       if (err) return { ok: false, code: 'NO_ROOM', msg: err }
+
+      /* ★ 倒计时到点 → 自动进入 playing。
+         为什么放在 status 里做：云函数没有定时器，必须靠"有人来问"这个时机推进。
+         轮询正好提供了这个时机（每 1.5 秒有人问一次）。
+         谁先问到谁触发，其他人下一次轮询就看到新状态 —— 不需要锁，
+         因为这一步是幂等的（重复推进结果一样）。 */
+      if (room.phase === 'countdown' && ts >= (room.countdownEnd || 0)) {
+        await rooms.doc(room._id).update({
+          data: { phase: 'playing', updatedAt: ts }
+        }).catch(() => {})
+        room = Object.assign({}, room, { phase: 'playing' })
+      }
 
       /* 顺手刷新心跳 —— 前端轮询的同时就把"我还活着"告诉服务端，
          省一次专门的请求 */
@@ -261,10 +279,15 @@ exports.main = async (event) => {
         return Object.assign({}, p, { dice: dice, ready: false })
       })
 
+      /* ★ 进入"开局倒计时"而不是直接开始 —— 商业多人游戏的标配。
+         为什么必须有：骰子在这一刻已经生成好了，但玩家还在看别人的名字、
+         还没把手机放好。直接开局 = 有人错过第一轮叫骰。
+         3 秒倒计时给所有人一个"要开始了"的缓冲。 */
       await rooms.doc(room._id).update({
         data: {
           players: players,
-          phase: 'playing',
+          phase: 'countdown',
+          countdownEnd: ts + COUNTDOWN_MS,
           round: (room.round || 0) + 1,
           turn: 1,
           bid: null,
@@ -381,10 +404,27 @@ exports.main = async (event) => {
           total: (p.dice || []).reduce((a, b) => a + b, 0)
         })).sort((a, b) => b.total - a.total)
         const top = ranked[0].total
+        const winnerSeats = ranked.filter(r => r.total === top).map(r => r.seat)
+
+        /* ★ 连庄（streak）：记录每个人连续赢了几局。
+           这是酒桌游戏的真实机制 —— "你又赢了？连庄两把了，加倍喝"。
+           不是为了让音效有用才加的：连赢本来就该被说出来。 */
+        const prevStreaks = room.streaks || {}
+        const streaks = {}
+        players.forEach(p => {
+          const won = winnerSeats.indexOf(p.seat) >= 0
+          streaks[p.seat] = won ? ((prevStreaks[p.seat] || 0) + 1) : 0
+        })
+        const maxStreak = Math.max(0, ...Object.keys(streaks).map(k => streaks[k]))
+
         result = {
           ranked: ranked,
           winners: ranked.filter(r => r.total === top).map(r => r.name),
-          top: top
+          top: top,
+          streaks: streaks,
+          /* 连庄次数（1 = 刚赢一局，2 = 连庄，3+ = 连庄多次） */
+          maxStreak: maxStreak,
+          winnerSeats: winnerSeats
         }
       }
 
@@ -393,6 +433,8 @@ exports.main = async (event) => {
           players: players,
           phase: allRolled ? 'over' : 'playing',
           lastResult: result,
+          /* 连庄要跨局保留，所以存在房间上而不是 result 里 */
+          streaks: result ? result.streaks : (room.streaks || {}),
           updatedAt: ts
         }
       })

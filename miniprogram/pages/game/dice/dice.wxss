@@ -62,26 +62,63 @@
   transition: transform .16s;
 }
 
-/* 摇动中：快速抖动 + 轻微旋转 */
+/* 摇动中：快速抖动 + 旋转。
+   升级点（对齐商业游戏动效规范）：
+     · 加 rotate 让骰子真的在"翻"，不只是上下抖
+     · 三轴位移（X/Y/rotate）一起动，比单纯 translateY 有重量
+     · 用 steps 感的线性节奏，符合"被摇晃"的物理直觉 */
 .die.tumbling {
-  animation: tumble .3s linear infinite;
+  animation: tumble .26s linear infinite;
 }
 @keyframes tumble {
-  0%   { transform: translateY(0) rotate(0deg) scale(1) }
-  25%  { transform: translateY(-14rpx) rotate(-8deg) scale(1.04) }
-  50%  { transform: translateY(4rpx) rotate(6deg) scale(.97) }
-  75%  { transform: translateY(-8rpx) rotate(-4deg) scale(1.02) }
-  100% { transform: translateY(0) rotate(0deg) scale(1) }
+  0%   { transform: translate(0, 0) rotate(0deg) scale(1) }
+  20%  { transform: translate(-6rpx, -16rpx) rotate(-14deg) scale(1.05) }
+  40%  { transform: translate(8rpx, 2rpx) rotate(9deg) scale(.96) }
+  60%  { transform: translate(-5rpx, -10rpx) rotate(-7deg) scale(1.03) }
+  80%  { transform: translate(6rpx, 4rpx) rotate(5deg) scale(.98) }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1) }
 }
 
-/* 落定：一个短促的"砸下"回弹 */
+/* 落定：预备动作（anticipation）→ 砸下 → 回弹 → 静止。
+   商业动效的"预备动作"：先微微上提再砸下来，
+   直接砸下去会显得轻飘。这里 0~18% 就是那个上提。 */
 .die.settled {
-  animation: landIn .32s cubic-bezier(.34, 1.56, .64, 1);
+  animation: landIn .42s cubic-bezier(.22, 1.4, .5, 1);
 }
 @keyframes landIn {
-  0%   { transform: scale(1.22) translateY(-18rpx) }
-  60%  { transform: scale(.96) translateY(3rpx) }
-  100% { transform: scale(1) translateY(0) }
+  0%   { transform: scale(1.24) translateY(-24rpx) rotate(-6deg) }
+  18%  { transform: scale(1.26) translateY(-30rpx) rotate(4deg) }  /* 预备：再抬高一点 */
+  55%  { transform: scale(.94) translateY(6rpx) rotate(-2deg) }    /* 砸下：压扁 */
+  78%  { transform: scale(1.03) translateY(-4rpx) rotate(1deg) }   /* 回弹 */
+  100% { transform: scale(1) translateY(0) rotate(0deg) }
+}
+
+/* 摇动时的桌面：整体有轻微起伏。
+   注意不是抖 —— 抖是骰子自己的事（.tumbling），
+   桌面这一层要"呼吸"，两者叠加才有层次（商业动效的多层原则）。 */
+.table.shaking {
+  animation: tableBreathe .6s ease-in-out infinite;
+}
+@keyframes tableBreathe {
+  0%, 100% { transform: scale(1) }
+  50%      { transform: scale(1.012) }
+}
+
+/* 落地的冲击波：骰子砸到桌面时向外扩散的圈 */
+.die.settled::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: 100%;
+  width: 40rpx; height: 12rpx;
+  margin-left: -20rpx; margin-top: -6rpx;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255,255,255,.5) 0%, rgba(255,255,255,0) 70%);
+  animation: shockwave .45s ease-out;
+  pointer-events: none;
+}
+@keyframes shockwave {
+  0%   { opacity: .9; transform: scale(.4) }
+  100% { opacity: 0;  transform: scale(3.2) }
 }
 
 /* 点数 */
@@ -90,10 +127,31 @@
   background: transparent;
   align-self: center; justify-self: center;
   width: 22rpx; height: 22rpx;
+  /* 点数出现时逐个"亮起" —— 比整块闪现精致 */
+  transition: background .12s, transform .12s;
 }
 .pip.on {
   background: radial-gradient(circle at 35% 32%, #4A4038 0%, #211B16 75%);
   box-shadow: inset 0 1rpx 2rpx rgba(255,255,255,.25);
+  animation: pipPop .22s cubic-bezier(.34, 1.56, .64, 1) backwards;
+}
+@keyframes pipPop {
+  0%   { transform: scale(0); opacity: 0 }
+  100% { transform: scale(1); opacity: 1 }
+}
+
+/* 屏幕震动：骰子落定时整块桌面抖一下。
+   商业游戏的"打击感"一半来自这个 —— 只有骰子动、背景不动是飘的。 */
+.table.impact {
+  animation: screenShake .22s cubic-bezier(.36, .07, .19, .97);
+}
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0) }
+  15%      { transform: translate(-6rpx, 4rpx) }
+  30%      { transform: translate(5rpx, -5rpx) }
+  45%      { transform: translate(-4rpx, -3rpx) }
+  60%      { transform: translate(3rpx, 4rpx) }
+  75%      { transform: translate(-2rpx, 2rpx) }
 }
 
 /* ---------- 力度提示 ---------- */
@@ -117,6 +175,14 @@
   min-height: 190rpx;
   display: flex; align-items: center; justify-content: center;
   text-align: center;
+  transition: transform .2s;
+}
+/* 出结果时整块轻微放大 —— 让"结果出来了"这件事有分量 */
+.result.show { animation: resultEmphasis .45s cubic-bezier(.22, 1.4, .5, 1) }
+@keyframes resultEmphasis {
+  0%   { transform: scale(.94); opacity: .6 }
+  55%  { transform: scale(1.03); opacity: 1 }
+  100% { transform: scale(1); opacity: 1 }
 }
 .res-inner { animation: resultIn .4s cubic-bezier(.34, 1.56, .64, 1) }
 @keyframes resultIn {

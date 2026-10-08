@@ -528,6 +528,240 @@ ALL = [
     ('countdown-go', countdown_go,            SR_MID),
 ]
 
+
+# ============================================================
+# v3 补充：腾讯工作室级音效设计
+#
+# 之前的音效都是"单个声音"，但商业游戏的音效是**分层**的：
+# 一个事件由 2~4 层叠出来 —— 主体 + 质感层 + 低频冲击 + 空间尾音。
+# 单独听每一层都很单薄，叠起来才有"分量"。
+#
+# 另外补几个真实游戏必备但之前漏掉的声音：
+#   · 倒计时最后三秒的急促感
+#   · 连击（连续成功时的音高递增）
+#   · 失败的下坠感（不是简单下行两音）
+#   · 揭晓前的"蓄力"（呼吸声 + 心跳）
+# ============================================================
+
+def impact_low():
+    """低频冲击层：给"重"的动作垫底（骰盅砸桌、转盘停稳）。
+    纯低频正弦 + 极快衰减，只有 60ms，但少了它就"没重量"。"""
+    n = int(SR * 0.12)
+    base = sine_sweep(n, 90, 45)
+    e = env_ad(n, int(SR * 0.002), SR * 0.028)
+    # 叠一点噪声做"撞击质感"
+    grit = lowpass(noise(n, 401), 0.08)
+    ge = env_decay(n, SR * 0.012)
+    return [base[i] * e[i] * 0.9 + grit[i] * ge[i] * 0.35 for i in range(n)]
+
+
+def shaker_metal():
+    """金属骰盅摇动 —— 比木头骰子更亮、带金属共振。
+    真实酒桌常用不锈钢盅，声音比骰子本身更响。"""
+    total = int(SR * 1.3)
+    rnd = random.Random(911)
+    out = [0.0] * total
+    t, i = 0, 0
+    while t < total:
+        gap = int(SR * rnd.uniform(0.022, 0.06))
+        # 金属碰撞：高频正弦 + 快速衰减
+        n = int(SR * 0.09)
+        f = rnd.uniform(2400, 4200)
+        ring = sine(n, f)
+        ring2 = sine(n, f * 1.47)      # 非整数倍 → 金属的不谐和感
+        e = env_ad(n, int(SR * 0.0008), SR * 0.014)
+        hit = [(ring[j] * 0.6 + ring2[j] * 0.4) * e[j] * (0.4 + 0.6 * (1 - t / total))
+               for j in range(n)]
+        for j, v in enumerate(hit):
+            if t + j < total:
+                out[t + j] += v
+        t += max(1, gap)
+        i += 1
+    # 低频"盅体共鸣"
+    body = lowpass(noise(total, 912), 0.04)
+    be = [1.0 - 0.4 * (k / total) for k in range(total)]
+    return [out[k] + body[k] * be[k] * 0.22 for k in range(total)]
+
+
+def combo_up(step=0):
+    """连击音：每次音高更高 —— 连续成功时的正反馈。
+    step 0/1/2/3 对应第 1/2/3/4 连击。"""
+    base_freqs = [659.25, 783.99, 987.77, 1174.66]   # E5 G5 B5 D6
+    f = base_freqs[min(step, len(base_freqs) - 1)]
+    n = int(SR * 0.28)
+    a = sine(n, f)
+    b = sine(n, f * 2)          # 八度泛音，更"亮"
+    e = env_ad(n, int(SR * 0.003), SR * 0.075)
+    return [(a[i] * 0.7 + b[i] * 0.3) * e[i] for i in range(n)]
+
+
+def fail_drop():
+    """失败下坠：比 lose 更重 —— 音高快速下滑 + 低频冲击。
+    不是简单的"下行两音"，而是有坠落感的连续滑音。"""
+    n = int(SR * 0.65)
+    drop = sine_sweep(n, 440, 110)          # 从 A4 滑到 A2
+    e = env_ad(n, int(SR * 0.006), SR * 0.22)
+    body = [drop[i] * e[i] * 0.8 for i in range(n)]
+    # 落地冲击（后半段）
+    imp = impact_low()
+    off = int(SR * 0.42)
+    return mix(place(imp, off, n), body)
+
+
+def charge_up():
+    """蓄力：揭晓前的紧张感 —— 音高渐升 + 音量渐强 + 颤音。
+    比 suspense 更有"要出事了"的压迫感。"""
+    n = int(SR * 1.2)
+    base = sine_sweep(n, 130, 260)
+    fifth = sine_sweep(n, 195, 390)
+    rise = [(i / n) ** 1.8 for i in range(n)]
+    # 颤音：频率 8Hz 的振幅调制，模拟紧张
+    tremolo = [0.75 + 0.25 * math.sin(2 * math.pi * 8 * i / SR) for i in range(n)]
+    return [(base[i] * 0.55 + fifth[i] * 0.35) * rise[i] * tremolo[i] for i in range(n)]
+
+
+def reveal_hit():
+    """揭晓重击：一记"当"+ 低频冲击 + 金属尾音。
+    商业游戏里"结果出现"的那一下必须有分量。"""
+    n = int(SR * 0.75)
+    # 高频明亮层
+    a = sine(n, 1046.50)
+    b = sine(n, 1567.98)
+    e1 = env_ad(n, int(SR * 0.0015), SR * 0.16)
+    bright = [(a[i] * 0.5 + b[i] * 0.3) * e1[i] for i in range(n)]
+    # 低频冲击
+    imp = impact_low()
+    # 金属尾音（不谐和泛音 → 像铜锣）
+    ring = sine(n, 2093)
+    ring2 = sine(n, 3140)
+    e2 = env_decay(n, SR * 0.09)
+    metal = [(ring[i] * 0.18 + ring2[i] * 0.1) * e2[i] for i in range(n)]
+    return mix(bright, place(imp, 0, n), metal)
+
+
+def countdown_urgent():
+    """倒计时最后三秒：比普通读秒更急促、音更高。
+    心理上制造"来不及了"的紧迫。"""
+    n = int(SR * 0.11)
+    a = sine(n, 1600)
+    b = square(n, 1600, duty=0.3)
+    e = env_ad(n, int(SR * 0.0006), SR * 0.018)
+    return [(a[i] * 0.6 + b[i] * 0.25) * e[i] for i in range(n)]
+
+
+def dice_tumble_wood():
+    """木质骰子翻滚 —— 和 shaker_metal 形成质感对比。
+
+    两者必须听感明显不同，否则"摇骰子"和"大话骰"听起来是同一个游戏：
+      · 金属盅：高频正弦 + 不谐和泛音（清脆、有余响）
+      · 木质骰：宽带噪声重低通 + 低频腔体共鸣（闷、短促、无余响）
+
+    第一版只是给 dice_hit 加了道低通，结果和金属只差 400Hz，区分不出来。
+    现在从合成方式上就分开：不用 dice_hit，直接用重低通的噪声做主体。
+    """
+    total = int(SR * 1.0)
+    rnd = random.Random(313)
+    out = [0.0] * total
+    t = 0
+    while t < total:
+        gap = int(SR * rnd.uniform(0.035, 0.085))
+        n = int(SR * 0.05)
+        # 主体：宽带噪声**两次**低通 → 木头的"钝"撞击。
+        # 单次低通不够：极短起音（1.5ms）自己就会产生高频冲击，
+        # 实测谱重心仍有 2800Hz，和金属分不开。二阶低通 + 放缓起音才压得住。
+        base = lowpass(lowpass(noise(n, 500 + t % 97), 0.06), 0.06)
+        e = env_ad(n, int(SR * 0.004), SR * 0.010)
+        # 腔体共鸣：低频，给一点"咚"
+        body = sine(n, 140 + rnd.uniform(-20, 20), phase=0.4)
+        be = env_decay(n, SR * 0.007)
+        amp = 0.5 + 0.5 * (1 - t / total)
+        for j in range(n):
+            if t + j < total:
+                out[t + j] += (base[j] * e[j] * 0.9 + body[j] * be[j] * 0.3) * amp
+        t += max(1, gap)
+    # 桌面摩擦：极低频
+    roll = lowpass(noise(total, 314), 0.05)
+    re_ = [1.0 - 0.5 * (k / total) for k in range(total)]
+    return [out[k] + roll[k] * re_[k] * 0.3 for k in range(total)]
+
+
+def chip_bet():
+    """筹码/下注声 —— 酒桌游戏的氛围音。
+    多个短促高频点击叠在一起（像把筹码推上桌）。"""
+    total = int(SR * 0.35)
+    out = [0.0] * total
+    rnd = random.Random(777)
+    t = 0
+    while t < total - int(SR * 0.04):
+        n = int(SR * 0.04)
+        f = rnd.uniform(2800, 3600)
+        s = sine(n, f)
+        e = env_ad(n, int(SR * 0.0005), SR * 0.007)
+        for j in range(n):
+            if t + j < total:
+                out[t + j] += s[j] * e[j] * 0.45
+        t += int(SR * rnd.uniform(0.03, 0.06))
+    return out
+
+
+def gulp():
+    """咽酒声 —— "喝一杯"的具象化。
+    用带通噪声 + 音高起伏模拟吞咽。"""
+    n = int(SR * 0.5)
+    # 咽酒是低频事件：带通下移到 0.06~0.22（原来 0.14~0.4 太亮，像"嘶嘶"不像"咕咚"）
+    base = bandpass(noise(n, 555), 0.06, 0.22)
+    # 再叠一层低频"喉音"，让它有厚度
+    throat = lowpass(noise(n, 556), 0.035)
+    # 三次"咕咚"起伏
+    gulp_env = []
+    for i in range(n):
+        t = i / n
+        v = 0.5 + 0.5 * abs(math.sin(2 * math.pi * 2.5 * t))
+        gulp_env.append(v * math.sin(math.pi * t) ** 0.5)
+    return [base[i] * gulp_env[i] * 0.6 + throat[i] * gulp_env[i] * 0.5 for i in range(n)]
+
+
+def confetti():
+    """撒花/庆祝：一串快速上行的小音符 + 噪声"沙沙"。
+    用在"赢了"的瞬间，比纯琶音更有画面感。"""
+    total = int(SR * 0.9)
+    out = [0.0] * total
+    rnd = random.Random(2024)
+    # 快速上行的短音（像彩色纸屑炸开）
+    for k in range(9):
+        f = 523.25 * (1.12 ** k)
+        n = int(SR * 0.1)
+        s = sine(n, f)
+        e = env_ad(n, int(SR * 0.001), SR * 0.02)
+        off = int(SR * 0.045 * k)
+        for j in range(n):
+            if off + j < total:
+                out[off + j] += s[j] * e[j] * 0.4
+    # 沙沙噪声（纸屑飘落）
+    sh = highpass(noise(total, 2025), 0.5)
+    se = [math.sin(math.pi * i / total) ** 0.7 for i in range(total)]
+    return [out[i] + sh[i] * se[i] * 0.22 for i in range(total)]
+
+
+# ==== v3 音效清单（必须放在所有函数定义之后）====
+ALL_V3 = [
+    ('impact-low',        impact_low,        SR_LO),
+    ('shaker-metal',      shaker_metal,      SR_HI),
+    ('dice-tumble-wood',  dice_tumble_wood,  SR_HI),
+    ('combo-1',           lambda: combo_up(0), SR_MID),
+    ('combo-2',           lambda: combo_up(1), SR_MID),
+    ('combo-3',           lambda: combo_up(2), SR_MID),
+    ('combo-4',           lambda: combo_up(3), SR_MID),
+    ('fail-drop',         fail_drop,         SR_MID),
+    ('charge-up',         charge_up,         SR_LO),
+    ('reveal-hit',        reveal_hit,        SR_HI),
+    ('countdown-urgent',  countdown_urgent,  SR_MID),
+    ('chip-bet',          chip_bet,          SR_HI),
+    ('gulp',              gulp,              SR_MID),
+    ('confetti',          confetti,          SR_MID),
+]
+
+
 if __name__ == '__main__':
     print(f'输出: {os.path.normpath(OUT_DIR)}')
     print('按奈奎斯特定理为每个音效挑采样率（体积 = 采样率 × 时长）\n')
@@ -536,8 +770,10 @@ if __name__ == '__main__':
         for f in os.listdir(OUT_DIR):
             if f.endswith('.wav'):
                 os.remove(os.path.join(OUT_DIR, f))
-    for name, fn, sr in ALL:
+    all_specs = ALL + ALL_V3
+    for name, fn, sr in all_specs:
         write_wav(name, fn(), sr)
     files = [f for f in os.listdir(OUT_DIR) if f.endswith('.wav')]
     tot = sum(os.path.getsize(os.path.join(OUT_DIR, f)) for f in files)
     print(f'\n共 {len(files)} 个音效，合计 {tot/1024:.1f} KB')
+

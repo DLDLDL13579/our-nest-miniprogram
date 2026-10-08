@@ -241,6 +241,142 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ③c 模板里的动态 class 必须有 CSS 定义 ============ */
+  console.log('\n=== ③c 动态 class 必须有样式定义（否则动画白写） ===')
+  /*
+   * 为什么加这条：模板里写 {{cond ? 'shaking' : ''}} 但 wxss 忘了定义 .shaking 时，
+   * 小程序**不会报错**，只是那个状态没有任何视觉变化 ——
+   * "动画写了却没生效"这种事靠肉眼很难发现（尤其状态是瞬时的）。
+   *
+   * 实测抓到两个真的：.table.shaking 和 .result.show 都没定义。
+   *
+   * 扫描注意：必须排除两类误报 ——
+   *   ① {{cond ? '中文文案' : ''}} 里的中文（不是类名）
+   *   ② {{x === 'shaking' ? ...}} 里作为**比较值**出现的字符串
+   * 第一版没排除，报了 24 条全是误报。
+   */
+  const missingCls = []
+  function walkWxml(dir, out) {
+    out = out || []
+    fs.readdirSync(dir).forEach(f => {
+      const p = path.join(dir, f)
+      if (fs.statSync(p).isDirectory()) walkWxml(p, out)
+      else if (f.endsWith('.wxml')) out.push(p)
+    })
+    return out
+  }
+  const appCss = fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8')
+  walkWxml(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+    const wxss = wxml.replace(/\.wxml$/, '.wxss')
+    let css = appCss
+    if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
+    const tpl = fs.readFileSync(wxml, 'utf8')
+    const re = /\{\{([^}]*)\}\}/g
+    let m
+    while ((m = re.exec(tpl))) {
+      const expr = m[1]
+      if (expr.indexOf('?') < 0) continue
+      /*
+       * ★ 先剥掉"比较部分"再提取类名。
+       *
+       * 为什么不能"按字符串值排除"：`phase === 'shaking' ? 'shaking' : ''` 里
+       * 同一个 `shaking` 既是比较值**又是**类名。第一版按值排除，
+       * 结果两个都被跳过 —— 反向验证时故意删掉 .shaking 的定义，
+       * 测试照样通过，等于这条检查根本没工作。
+       *
+       * 用"先删除 === '...' 片段"就没这个问题：
+       * 删完剩下 `phase  ? 'shaking' : ''`，再提取就只剩类名。
+       */
+      const stripped = expr.replace(/===?\s*'[^']*'/g, '')
+      const lits = stripped.match(/'[a-zA-Z][\w-]*'/g) || []
+      lits.forEach(q => {
+        const lit = q.slice(1, -1)
+        /* 词边界匹配，不用 indexOf 子串 ——
+           `.table.shakingX` 里包含 `.table.shaking` 这个前缀，
+           子串检查会误判成"存在"。CSS 类名后面不能跟 [\w-]。 */
+        const re2 = new RegExp('\\.' + lit + '(?![\\w-])')
+        if (!re2.test(css)) {
+          missingCls.push(path.relative(ROOT, wxml) + ' → .' + lit)
+        }
+      })
+    }
+  })
+  assert.deepStrictEqual(missingCls, [],
+    '模板用了这些动态 class 但 CSS 里没定义（动画不会生效，且不报错）：\n    ' +
+    missingCls.join('\n    '))
+  ok('全部动态 class 都有 CSS 定义（动画不会白写）')
+
+  /* ============ ③b 音效键必须注册且文件存在 ============ */
+  console.log('\n=== ③b 音效：调用的键必须已注册，注册的必须有文件 ===')
+  /*
+   * 为什么加这条：音效是这个项目里最容易"静默失效"的东西 ——
+   *   · 页面调 sfx.play('foo') 但 foo 没注册 → 只在控制台 warn，玩家听不到声
+   *   · 注册了但 wav 文件没生成 → 同样静默，只是"这个音不出"
+   * 两者都不会让页面报错，所以必须静态检查。
+   *
+   * 注意扫描方式：只认 `sfx.play('xxx')` 这种**直接传字符串**的调用。
+   * 第一版扫描把三元表达式里的所有字符串都抓了（`play(k === 'room' ? 'whoosh' : 'tap')`
+   * 里的 'room' 被当成音效名），产生误报。宁可少查也不要误报。
+   */
+  const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'utils', 'sfx.js'), 'utf8')
+  const filesBlock = sfxSrc.slice(sfxSrc.indexOf('const FILES = {'), sfxSrc.indexOf('\n}', sfxSrc.indexOf('const FILES = {')))
+  const soundKeys = {}
+  {
+    const re = /^\s*([\w]+):\s*'(audio\/[\w-]+\.wav)'/gm
+    let m
+    while ((m = re.exec(filesBlock))) soundKeys[m[1]] = m[2]
+  }
+
+  /* ① 注册的音效必须有对应文件 */
+  const noFile = Object.keys(soundKeys).filter(k =>
+    !fs.existsSync(path.join(ROOT, 'miniprogram', soundKeys[k])))
+  assert.deepStrictEqual(noFile, [],
+    '这些音效注册了但文件不存在（播放时静默失败）：\n    ' + noFile.join('\n    '))
+  ok(`${Object.keys(soundKeys).length} 个音效全部有对应文件`)
+
+  /* ② 页面直接传字符串的调用必须已注册 */
+  const unregistered = []
+  function walkPages(dir, out) {
+    out = out || []
+    fs.readdirSync(dir).forEach(f => {
+      const p = path.join(dir, f)
+      if (fs.statSync(p).isDirectory()) walkPages(p, out)
+      else if (f.endsWith('.js')) out.push(p)
+    })
+    return out
+  }
+  walkPages(path.join(ROOT, 'miniprogram', 'pages')).forEach(jsFile => {
+    const lines = fs.readFileSync(jsFile, 'utf8').split('\n')
+    lines.forEach((line, i) => {
+      const re = /sfx\.play\(\s*'([\w]+)'/g
+      let m
+      while ((m = re.exec(line))) {
+        if (!(m[1] in soundKeys)) {
+          unregistered.push(path.relative(ROOT, jsFile) + ':' + (i + 1) + '  → ' + m[1])
+        }
+      }
+    })
+  })
+  assert.deepStrictEqual(unregistered, [],
+    '这些音效调用没有注册（不会报错，只是没声音）：\n    ' + unregistered.join('\n    '))
+  ok('全部音效调用都已注册')
+
+  /* ③ 池化列表（POOL_SIZE）不能有幽灵条目 ——
+     删音效时很容易忘了它还在池化表里，虽然不报错，
+     但那份配置就成了误导（下一个人会以为这个音效还在用）。 */
+  const poolBlock = sfxSrc.slice(sfxSrc.indexOf('const POOL_SIZE = {'),
+    sfxSrc.indexOf('\n}', sfxSrc.indexOf('const POOL_SIZE = {')))
+  const poolKeys = []
+  {
+    const re = /^\s*([\w]+):\s*\d/gm
+    let m
+    while ((m = re.exec(poolBlock))) poolKeys.push(m[1])
+  }
+  const ghostPool = poolKeys.filter(k => !(k in soundKeys))
+  assert.deepStrictEqual(ghostPool, [],
+    'POOL_SIZE 里有已删除的音效（幽灵配置）：\n    ' + ghostPool.join('\n    '))
+  ok(`池化配置 ${poolKeys.length} 条，无幽灵条目`)
+
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
   const pagesDir = path.join(ROOT, 'miniprogram', 'pages')

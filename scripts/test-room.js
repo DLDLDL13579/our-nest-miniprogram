@@ -140,6 +140,16 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   OPENID = A
   const notHost = await room.main({ action: 'start', id: roomId })
   assert.ok(notHost.ok, '房主开局应成功')
+  /* ★ 开局先进倒计时阶段（3 秒缓冲），不是直接 playing ——
+     骰子已经生成好，但玩家还在看别人的名字、还没把手机放好。
+     直接开局 = 有人错过第一轮叫骰。 */
+  assert.strictEqual(notHost.room.phase, 'countdown', '★ 开局应进入 countdown 缓冲阶段')
+  ok(`★ 开局先进倒计时（剩 ${Math.round(notHost.room.countdownMs)}ms）—— 不是直接开始`)
+  /* 把倒计时拨到过去，模拟"3 秒已过" */
+  store.rooms.filter(x => x._id === roomId)[0].countdownEnd = Date.now() - 100
+  const advance = await room.main({ action: 'status', id: roomId })
+  assert.strictEqual(advance.room.phase, 'playing', '★ 倒计时到点后应自动进入 playing')
+  ok('★ 倒计时到点 → status 自动推进到 playing（云函数没定时器，靠轮询触发）')
 
   /* 每个人视角：只能看到自己的 dice，别人的只有 diceCount */
   OPENID = B
@@ -317,9 +327,12 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   OPENID = A
   const started = await room.main({ action: 'start', id: rid2 })
   assert.ok(started.ok, '两人后房主开局应成功：' + (started.msg || ''))
+  /* 开局先进倒计时；拨到过去再读状态，触发自动推进 */
+  store.rooms.filter(x => x._id === rid2)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: rid2 })
 
   const rolled = await room.main({ action: 'status', id: rid2 })
-  assert.strictEqual(rolled.room.phase, 'playing', '开局后 playing')
+  assert.strictEqual(rolled.room.phase, 'playing', '倒计时过后 playing')
   assert.ok(rolled.room.me.dice.length > 0, '开局后我有骰子')
 
   const again = await room.main({ action: 'again', id: rid2 })
@@ -341,6 +354,9 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   OPENID = A
   await room.main({ action: 'start', id: midId })
+  /* 跳过倒计时（拨到过去，下次 status 会自动推进） */
+  store.rooms.filter(x => x._id === midId)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: midId })
   /* A(seat1) → B(seat2) 各叫一次 → turn 变 3（轮到 C） */
   await room.main({ action: 'bid', id: midId, n: 2, face: 3 })
   OPENID = B

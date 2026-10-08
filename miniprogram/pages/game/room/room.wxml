@@ -1,4 +1,4 @@
-<view class="gamepage">
+<view class="gamepage {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}}">
   <view class="gbar">
     <view class="gbar-l" bindtap="goBack">
       <text class="gbar-back">‹</text>
@@ -91,6 +91,18 @@
     </view>
 
     <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
+  </block>
+
+  <!-- ============ 开局倒计时 ============ -->
+  <block wx:elif="{{stage === 'countdown'}}">
+    <view class="cdbox">
+      <view class="cd-glow"></view>
+      <view class="cd-in">
+        <view class="cd-lbl">游戏要开始了</view>
+        <view class="cd-num">{{cdText}}</view>
+        <view class="cd-sub">把手机拿好，别错过第一轮</view>
+      </view>
+    </view>
   </block>
 
   <!-- ============ 游戏中 ============ -->

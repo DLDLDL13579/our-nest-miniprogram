@@ -171,3 +171,106 @@
   background: #F0EAE1; border-radius: 22rpx;
   font-size: 28rpx; color: var(--ink2); font-weight: 600;
 }
+
+/* ============================================================
+   v3 动效升级：蓄力 / 震动 / 结果弹层增强
+   对齐商业游戏动效的三个要素：
+     · 预备动作（蓄力时的抖动 —— 让"要转了"这件事被感觉到）
+     · 打击感（停稳时整屏震动）
+     · 跟随动作（结果弹层的过冲回弹）
+   ============================================================ */
+
+/* 蓄力：转盘先小幅抖动，像"上膛" */
+.wheelwrap.charging {
+  animation: chargeShake .28s ease-in-out infinite;
+}
+@keyframes chargeShake {
+  0%, 100% { transform: translate(0, 0) }
+  25%      { transform: translate(-3rpx, 2rpx) }
+  50%      { transform: translate(3rpx, -2rpx) }
+  75%      { transform: translate(-2rpx, -1rpx) }
+}
+
+/* 指针在蓄力时跟着抖（它是"要扎进去"的那个） */
+.wheelwrap.charging .pointer-tri {
+  animation: pointerCharge .28s ease-in-out infinite;
+}
+@keyframes pointerCharge {
+  0%, 100% { transform: translateY(0) scale(1) }
+  50%      { transform: translateY(5rpx) scale(1.08) }
+}
+
+/* 停稳震动：整块屏幕抖一下，幅度比蓄力大 */
+.wheelwrap.impact {
+  animation: wheelImpact .28s cubic-bezier(.36, .07, .19, .97);
+}
+@keyframes wheelImpact {
+  0%, 100% { transform: translate(0, 0) }
+  12%      { transform: translate(-8rpx, 5rpx) }
+  28%      { transform: translate(7rpx, -6rpx) }
+  44%      { transform: translate(-5rpx, -4rpx) }
+  62%      { transform: translate(4rpx, 5rpx) }
+  80%      { transform: translate(-2rpx, 2rpx) }
+}
+
+/* 结果弹层：过冲回弹 + 光晕扫过（跟随动作） */
+.rescard {
+  position: relative;
+  overflow: hidden;
+}
+.rescard::before {
+  content: '';
+  position: absolute; top: 0; left: -60%;
+  width: 45%; height: 100%;
+  will-change: transform, opacity;
+  background: linear-gradient(100deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.55) 50%,
+    rgba(255,255,255,0) 100%);
+  animation: shineSweep .75s ease-out .18s;
+  pointer-events: none;
+}
+@keyframes shineSweep {
+  0%   { transform: translateX(0);     opacity: 0 }
+  20%  { opacity: 1 }
+  100% { transform: translateX(360%);  opacity: 0 }
+}
+/* 说明：这里刻意用 transform 而不是动画 left ——
+   left 每帧都会触发 layout + paint，低端机上直接掉帧；
+   transform 走合成层，不重排。这是动效性能的基本纪律，
+   光条扫过这种"每次都播"的效果尤其不能踩。 */
+
+/* 图标弹入：从大到小的过冲 */
+.rc-icon {
+  animation: iconPop .5s cubic-bezier(.22, 1.5, .5, 1) backwards;
+}
+@keyframes iconPop {
+  0%   { opacity: 0; transform: scale(.3) rotate(-25deg) }
+  60%  { opacity: 1; transform: scale(1.14) rotate(6deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0deg) }
+}
+
+/* 结果文字：轻微上浮，比整块闪现精致 */
+.rc-t {
+  animation: textRise .42s cubic-bezier(.22, 1, .36, 1) .1s backwards;
+}
+@keyframes textRise {
+  0%   { opacity: 0; transform: translateY(16rpx) }
+  100% { opacity: 1; transform: translateY(0) }
+}
+
+.rc-detail {
+  animation: textRise .42s cubic-bezier(.22, 1, .36, 1) .2s backwards;
+}
+.rc-btn {
+  animation: textRise .42s cubic-bezier(.22, 1, .36, 1) .3s backwards;
+}
+
+/* 历史条目逐条滑入 */
+.hist-item {
+  animation: histIn .3s cubic-bezier(.22, 1, .36, 1) backwards;
+}
+@keyframes histIn {
+  0%   { opacity: 0; transform: translateX(-18rpx) scale(.9) }
+  100% { opacity: 1; transform: translateX(0) scale(1) }
+}

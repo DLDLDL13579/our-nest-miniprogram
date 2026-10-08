@@ -11,7 +11,7 @@
   </view>
 
   <!-- 骰子区 -->
-  <view class="table {{phase === 'shaking' ? 'shaking' : ''}}">
+  <view class="table {{phase === 'shaking' ? 'shaking' : ''}} {{impact ? 'impact' : ''}}">
     <!-- 摇动时的动态光晕 -->
     <view class="table-glow {{phase === 'shaking' ? 'on' : ''}}"></view>
 

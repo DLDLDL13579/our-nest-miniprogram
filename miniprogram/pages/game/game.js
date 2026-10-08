@@ -13,6 +13,7 @@
  *      不是点一下假装摇。手感差别很大。
  */
 const app = getApp()
+const sfx = require('../../utils/sfx.js')
 
 const GAMES = [
   {
@@ -58,7 +59,11 @@ Page({
 
   onLoad() {
     this.loadPlayed()
+    this.setData({ muted: sfx.isMuted() })
   },
+
+  onHide() { sfx.stopAll() },
+  onUnload() { sfx.destroy() },
 
   onShow() {
     this.loadPlayed()
@@ -70,8 +75,16 @@ Page({
     this.setData({ played: p })
   },
 
+  /* 静音：酒桌上可能不方便出声，一键关掉且记得住 */
+  toggleMute() {
+    const m = sfx.setMuted(!this.data.muted)
+    this.setData({ muted: m })
+  },
+
   go(e) {
     const k = e.currentTarget.dataset.k
+    /* 进游戏的"开场音"：从列表点进去是该有点仪式感的 */
+    sfx.play(k === 'room' ? 'whoosh' : 'tap')
     wx.navigateTo({ url: '/pages/game/' + k + '/' + k })
   },
 

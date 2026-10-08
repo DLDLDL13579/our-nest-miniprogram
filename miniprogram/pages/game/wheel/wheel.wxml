@@ -10,7 +10,7 @@
   </view>
 
   <!-- 转盘 -->
-  <view class="wheelwrap">
+  <view class="wheelwrap {{charging ? 'charging' : ''}} {{impact ? 'impact' : ''}}">
     <!-- 入场动画放在这层：它只管自己的 transform，
          内层 .wheel 的 rotate 是动态的，两者不能挤在同一个元素上 -->
     <view class="wheel-enter">

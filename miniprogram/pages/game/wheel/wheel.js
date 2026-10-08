@@ -80,7 +80,11 @@ Page({
     muted: false,
     round: 0,
     /* 历史（本地，只给本次会话看） */
-    history: []
+    history: [],
+    /* 蓄力：转的前 0.9 秒是"要转了"的紧张期，转盘会先抖一下 */
+    charging: false,
+    /* 屏幕震动：停稳时整块屏幕震一下，让"停在哪个扇区"有分量 */
+    impact: false
   },
 
   onLoad() {
@@ -145,11 +149,22 @@ Page({
       spinning: true,
       showResult: false,
       rotation: target,
-      duration: duration
+      duration: duration,
+      /* 蓄力状态：前 1 秒是"要转了"的紧张期，转盘会先抖一下 */
+      charging: true
     })
+    if (this._chargeTimer) clearTimeout(this._chargeTimer)
+    this._chargeTimer = setTimeout(() => {
+      this.setData({ charging: false })
+    }, 900)
 
-    /* ③ 声音分三段：启动嗡 → 持续咔哒（跟着减速）→ 停稳叮 */
-    sfx.play('wheelStart')
+    /* ③ 声音分五层（商业游戏做法：一个事件多轨叠出来）
+         蓄力 → 启动嗡 → 旋转底噪 → 逐拍咔哒 → 停稳重击
+       每层都有明确职责，单独删掉任何一层都会"少点东西"。 */
+    sfx.play('chargeUp', { volume: 0.55 })
+    setTimeout(() => sfx.play('wheelStart'), 380)
+    /* 旋转底噪：持续的低频嗡鸣，让"转盘在转"这件事有声音托底 */
+    setTimeout(() => sfx.play('wheelLoop', { loop: true, volume: 0.35 }), 700)
     this.scheduleTicks(duration)
 
     /* ④ 结束 */
@@ -208,10 +223,36 @@ Page({
     }
     if (!hit) hit = this.data.sectors[0]
 
-    /* 按结果类型给不同的音 —— 免罚是惊喜，喝酒是"认命" */
-    if (hit.k === 'pass') sfx.play('win')
-    else if (hit.k === 'truth' || hit.k === 'dare') sfx.play('reveal')
-    else sfx.play('drink')
+    /* ★ 先关掉旋转底噪和逐拍定时器 —— 忘了这步的话，
+       转盘停了但嗡鸣还在响，而且它是 loop 的，会一直响到离开页面。 */
+    sfx.stop('wheelLoop')
+    this.stopTicks()
+
+    /* 停稳的机械声（咔哒收尾）—— 在重击之前，先把"停住"这件事说出来 */
+    sfx.play('wheelStop')
+
+    /* 分层音效（按结果的情绪强度给不同力度）：
+         免罚  → 撒花 + 重击（惊喜，最爽）
+         真心话/大冒险 → 揭晓重击（期待感）
+         喝酒类 → 咽酒声 + 低频冲击（"认命"的具象化） */
+    if (hit.k === 'pass') {
+      sfx.play('confetti')
+      setTimeout(() => sfx.play('revealHit'), 140)
+    } else if (hit.k === 'truth' || hit.k === 'dare') {
+      setTimeout(() => sfx.play('revealHit'), 100)
+    } else {
+      /* 喝酒类：倒酒 → 碰杯 → 咽下 —— 三个声音把动作演一遍，
+         比一声"叮"更有画面感（这是"声音丰富"的真正含义：
+         不是音效多，是**动作被声音拆解成步骤**）。 */
+      sfx.play('pour')
+      setTimeout(() => sfx.play('clink'), 260)
+      setTimeout(() => sfx.play('gulp'), 520)
+    }
+
+    /* 停稳时整块屏幕震一下 —— 停在哪个扇区要有"砸下来"的分量 */
+    this.setData({ impact: true })
+    if (this._shakeTimer) clearTimeout(this._shakeTimer)
+    this._shakeTimer = setTimeout(() => this.setData({ impact: false }), 260)
 
     /* 取题目/任务 */
     let detail = ''

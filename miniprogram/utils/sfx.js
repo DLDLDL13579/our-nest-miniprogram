@@ -17,26 +17,17 @@ const MUTE_KEY = 'gameMute'
 /* 所有音效清单。集中在这里，避免各页面写错文件名。 */
 const FILES = {
   // 骰子
-  diceHit: 'audio/dice-hit.wav',
-  diceShake: 'audio/dice-shake.wav',
-  diceRoll: 'audio/dice-roll.wav',
   diceSettle: 'audio/dice-settle.wav',
   diceOpen: 'audio/dice-open.wav',
-  diceFanfare: 'audio/dice-fanfare.wav',
   // 转盘
   tick: 'audio/tick.wav',
   wheelStart: 'audio/wheel-start.wav',
   wheelLoop: 'audio/wheel-loop.wav',
-  wheelSlow: 'audio/wheel-slow.wav',
   wheelStop: 'audio/wheel-stop.wav',
   // 情绪
-  win: 'audio/win.wav',
-  lose: 'audio/lose.wav',
   drink: 'audio/drink.wav',
   clink: 'audio/clink.wav',
   pour: 'audio/pour.wav',
-  suspense: 'audio/suspense.wav',
-  reveal: 'audio/reveal.wav',
   whoosh: 'audio/whoosh.wav',
   // UI
   tap: 'audio/tap.wav',
@@ -44,7 +35,22 @@ const FILES = {
   toggleOn: 'audio/toggle-on.wav',
   toggleOff: 'audio/toggle-off.wav',
   countdown: 'audio/countdown.wav',
-  countdownGo: 'audio/countdown-go.wav'
+  countdownGo: 'audio/countdown-go.wav',
+  /* v3 补充：分层质感与情绪音（腾讯工作室级的那一层） */
+  impactLow: 'audio/impact-low.wav',        // 低频冲击层，给"重"的动作垫底
+  shakerMetal: 'audio/shaker-metal.wav',    // 金属骰盅（大话骰用）
+  diceTumbleWood: 'audio/dice-tumble-wood.wav', // 木质骰子（摇骰子用）
+  combo1: 'audio/combo-1.wav',              // 连击（音高逐级递增）
+  combo2: 'audio/combo-2.wav',
+  combo3: 'audio/combo-3.wav',
+  combo4: 'audio/combo-4.wav',
+  failDrop: 'audio/fail-drop.wav',          // 失败下坠（比 lose 更重）
+  chargeUp: 'audio/charge-up.wav',          // 蓄力（揭晓前的紧张）
+  revealHit: 'audio/reveal-hit.wav',        // 揭晓重击（明亮+冲击+金属尾音）
+  countdownUrgent: 'audio/countdown-urgent.wav', // 最后三秒的急促
+  chipBet: 'audio/chip-bet.wav',            // 筹码声（酒桌氛围）
+  gulp: 'audio/gulp.wav',                   // 咽酒声
+  confetti: 'audio/confetti.wav'            // 撒花（赢了）
 }
 
 /* 每个音效一个可复用实例 */
@@ -74,9 +80,12 @@ function init() {
  */
 const POOL_SIZE = {
   tick: 3,
-  diceHit: 2,
   tap: 2,
-  tapSoft: 2
+  tapSoft: 2,
+  /* v3：金属盅碰撞极密（22ms 一次），必须多实例 */
+  shakerMetal: 3,
+  chipBet: 3,
+  countdownUrgent: 2
 }
 const poolIdx = {}
 
@@ -127,6 +136,18 @@ function play(key, opt) {
 
     a.loop = !!opt.loop
     a.volume = typeof opt.volume === 'number' ? opt.volume : 1
+
+    /* ★ 音高随机化 —— 商业游戏音效的标配细节。
+       同一个音效连续播多次（比如骰子连撞 10 下、转盘咔哒 40 次），
+       如果每次都一模一样，耳朵立刻会听出"这是循环播放的采样"。
+       每次给 ±4% 的播放速率抖动，听感上就是"每次都不一样"。
+       幅度不能大：超过 8% 会明显变调，像坏了。 */
+    const jitter = opt.pitch === false ? 1 : (1 + (Math.random() - 0.5) * 0.08)
+    try {
+      if (typeof a.playbackRate === 'number' || a.playbackRate === undefined) {
+        a.playbackRate = jitter
+      }
+    } catch (e) { /* 个别机型不支持，忽略 */ }
 
     if (opt.loop) {
       looping[key] = a

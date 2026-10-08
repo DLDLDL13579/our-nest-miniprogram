@@ -93,3 +93,67 @@
   font-size: 22rpx; color: var(--ink3); line-height: 1.8;
   text-align: center;
 }
+
+/* ============================================================
+   v3 动效升级：大厅入场编排 + 交互反馈
+   商业游戏的大厅不是"静态列表"，而是有节奏的开场：
+   标题 → 卡片逐张滑入 → 提示浮现，形成层次。
+   ============================================================ */
+
+/* 顶部标题：整块从上方落定（带过冲） */
+.lobby-hero {
+  animation: heroDrop .62s cubic-bezier(.22, 1.4, .5, 1) backwards;
+}
+@keyframes heroDrop {
+  0%   { opacity: 0; transform: translateY(-34rpx) scale(.96) }
+  62%  { opacity: 1; transform: translateY(5rpx) scale(1.01) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
+}
+
+/* 标题文字：逐行浮现，比整块出现有仪式感 */
+.lh-lbl { animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .16s backwards }
+.lh-t   { animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .24s backwards }
+.lh-s   { animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .32s backwards }
+@keyframes lineRise {
+  0%   { opacity: 0; transform: translateY(14rpx) }
+  100% { opacity: 1; transform: translateY(0) }
+}
+
+/* 卡片：错开更明显，形成"逐张出现"的节奏 */
+.gcard { animation: cardSlideIn .5s cubic-bezier(.22, 1, .36, 1) backwards }
+.gcard:nth-of-type(1) { animation-delay: .30s }
+.gcard:nth-of-type(2) { animation-delay: .40s }
+.gcard:nth-of-type(3) { animation-delay: .50s }
+.gcard:nth-of-type(4) { animation-delay: .60s }
+
+/* 卡片按下：图标转一下 + 箭头右移（微交互） */
+.gcard:active .gc-icon { transform: scale(1.12) rotate(-8deg) }
+.gcard:active .gc-arrow { transform: translateX(8rpx) }
+
+/* 标签：轻微弹入 */
+.gc-tag { animation: tagSoftIn .34s cubic-bezier(.34, 1.5, .64, 1) .5s backwards }
+@keyframes tagSoftIn {
+  0%   { opacity: 0; transform: scale(.7) }
+  100% { opacity: 1; transform: scale(1) }
+}
+
+/* 底部提示：最后浮现（收尾） */
+.lobby-tip { animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .72s backwards }
+
+/* 玩过次数：数字轻微跳动，暗示"玩过"这件事 */
+.gc-played { animation: playedPulse 2.6s ease-in-out 1.2s infinite }
+@keyframes playedPulse {
+  0%, 100% { opacity: .8 }
+  50%      { opacity: 1 }
+}
+
+/* 顶栏：标签 + 静音开关 */
+.lh-toprow {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.lh-mute {
+  font-size: 34rpx; opacity: .75;
+  padding: 6rpx 10rpx;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .4s backwards;
+}
+.lh-mute:active { opacity: 1; transform: scale(1.15) }

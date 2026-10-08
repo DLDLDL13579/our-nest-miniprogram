@@ -3,9 +3,13 @@
   <view class="lobby-hero">
     <view class="lh-glow"></view>
     <view class="lh-in">
-      <view class="lh-lbl">两个人玩</view>
+      <view class="lh-toprow">
+        <view class="lh-lbl">一起玩</view>
+        <!-- 静音开关：酒桌上可能不方便出声 -->
+        <view class="lh-mute" catchtap="toggleMute">{{muted ? '🔇' : '🔊'}}</view>
+      </view>
       <view class="lh-t">酒桌游戏</view>
-      <view class="lh-s">一部手机传着玩 · 不用联网</view>
+      <view class="lh-s">联网各自用手机，或一部手机传着玩</view>
     </view>
   </view>
 
@@ -27,6 +31,6 @@
   <view class="lobby-tip" bindlongpress="clearPlayed">
     玩游戏的时候把手机放在桌上，声音开大一点。
     <view style="height:8rpx"></view>
-    不用联网，也不会记录你们说了什么。
+    骰子由服务器摇，别人的点数在你这边根本拿不到。
   </view>
 </view>

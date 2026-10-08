@@ -48,7 +48,12 @@ Page({
     /* 结算 */
     result: null,
     /* 网络状态提示 */
-    netTip: ''
+    netTip: '',
+    /* v3 动效状态 */
+    rolling: false,      // 摇骰中
+    suspense: false,     // 开骰蓄力（全场最紧张的一刻）
+    impact: false,       // 屏幕震动
+    cdText: ''           // 倒计时显示（3 / 2 / 1 / 开始）
   },
 
   onLoad() {
@@ -70,8 +75,14 @@ Page({
     sfx.stopAll()
   },
 
+  /** 清掉倒计时定时器（页面卸载时不能留） */
+  clearCountdown() {
+    if (this._cdTimers) { this._cdTimers.forEach(t => clearTimeout(t)); this._cdTimers = [] }
+  },
+
   onUnload() {
     this.stopPoll()
+    this.clearCountdown()
     sfx.destroy()
     /* 主动离开房间 —— 不然会一直占着座位，
        而且别人会看到"永远在线"的幽灵玩家 */
@@ -126,26 +137,75 @@ Page({
        真点下去服务端还会再校验一次，前端算错也骗不过去。 */
     room.options = this.buildOptions(room)
 
-    /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见 */
+    /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见。
+       多人游戏的音效有个特殊职责：**提示"不在这部手机上的事发生了"**。
+       单机版不需要，因为一切都是自己点的。 */
     if (prev && prev.phase !== room.phase) {
-      if (room.phase === 'playing') sfx.play('diceOpen')
-      else if (room.phase === 'over') sfx.play('reveal')
+      if (room.phase === 'countdown') {
+        /* 开局倒计时开始：读秒声（最后一声更急促） */
+        this.startCountdown(room.countdownMs)
+      } else if (room.phase === 'playing') {
+        sfx.play('countdownGo')
+        setTimeout(() => sfx.play('shakerMetal'), 180)
+      } else if (room.phase === 'over') {
+        sfx.play('revealHit')
+      }
     }
-    /* 人数变化：有人进来/走了 */
+    /* 人数变化：有人进来/走了。
+       进来的音更"亮"（用 combo 上行），走的音更"闷" */
     if (prev && prev.count !== room.count) {
-      sfx.play(room.count > prev.count ? 'toggleOn' : 'toggleOff')
+      const joined = room.count > prev.count
+      sfx.play(joined ? 'combo1' : 'toggleOff')
     }
-    /* 有人叫骰了 */
+    /* 有人叫骰了 —— 用筹码声，像"下注" */
     if (prev && room.bid && (!prev.bid || prev.bid.at !== room.bid.at)) {
-      sfx.play('tap')
+      sfx.play('chipBet')
+      /* 不是自己叫的 → 额外提示一下（多人游戏的"轮到你了"感） */
+      const mineCalled = prev.turn === (room.players.filter(p => p.isMe)[0] || {}).seat
+      if (!mineCalled && room.turn) {
+        setTimeout(() => sfx.play('tapSoft'), 260)
+      }
     }
 
     this.setData({
       room: room,
-      stage: room.phase === 'lobby' ? 'lobby' : (room.phase === 'playing' ? 'playing' : 'over'),
+      stage: room.phase === 'lobby' ? 'lobby'
+        : (room.phase === 'countdown' ? 'countdown'
+        : (room.phase === 'playing' ? 'playing' : 'over')),
       result: room.lastResult || null,
       netTip: ''
     })
+  },
+
+  /**
+   * 开局倒计时读秒。
+   *
+   * 为什么要它：骰子在服务端已经生成好了，但玩家还在看别人的名字、
+   * 还没把手机放好。直接开局 = 有人错过第一轮叫骰。
+   * 3 秒倒计时给所有人一个"要开始了"的缓冲 —— 这是商业多人游戏的标配。
+   *
+   * 声音设计：前两声是普通读秒，最后一声换更急促的音（制造紧迫）。
+   */
+  startCountdown(remainMs) {
+    const total = Math.max(0, Number(remainMs) || 0)
+    if (!total) return
+    if (this._cdTimers) this._cdTimers.forEach(t => clearTimeout(t))
+    this._cdTimers = []
+
+    /* 每 1 秒一声，最后一声用 countdownUrgent */
+    let left = total
+    const tick = () => {
+      if (!this.data.room || this.data.room.phase !== 'countdown') return
+      const sec = Math.max(1, Math.ceil(left / 1000))
+      const isLast = left <= 1000
+      sfx.play(isLast ? 'countdownUrgent' : 'countdown')
+      this.setData({ cdText: isLast ? '开始！' : String(sec) })
+      left -= 1000
+      if (left > -200) {
+        this._cdTimers.push(setTimeout(tick, 1000))
+      }
+    }
+    tick()
   },
 
   /**
@@ -188,7 +248,7 @@ Page({
 
     this.setData({ creating: false })
     if (r && r.ok) {
-      sfx.play('win')
+      sfx.play('confetti')
       this.setData({ room: r.room, stage: 'lobby' })
       this.startPoll()
     }
@@ -216,7 +276,7 @@ Page({
 
     this.setData({ joining: false })
     if (r && r.ok) {
-      sfx.play('win')
+      sfx.play('confetti')
       this.setData({ room: r.room, stage: 'lobby', joinCode: '' })
       this.startPoll()
     } else if (r && !r.ok) {
@@ -240,7 +300,7 @@ Page({
     const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
       .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
     if (r && r.ok) {
-      sfx.play('diceShake')
+      sfx.play('shakerMetal')
       this.setData({ room: r.room, stage: 'playing' })
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg || '开不了', icon: 'none', duration: 2500 })
@@ -261,19 +321,43 @@ Page({
   /* ================= 摇骰子（比大小） ================= */
 
   async doRoll() {
-    sfx.play('diceShake')
+    sfx.play('diceTumbleWood', { restart: true })
+    this.setData({ rolling: true })
     const r = await call('room', { action: 'roll', id: this.data.room.id }, { silent: true })
       .catch(() => null)
+    this.setData({ rolling: false })
     if (r && r.ok) {
       this.setData({ room: r.room })
       if (r.result) {
-        /* 全员摇完 → 出结果 */
-        sfx.play('diceFanfare')
+        /* 全员摇完 → 出结果。
+           分层：停稳 → 揭晓重击 → 撒花（自己赢）/ 下坠（没赢） */
+        sfx.play('diceSettle')
+        sfx.play('impactLow', { volume: 0.5 })
+        this.bump()
+        setTimeout(() => sfx.play('revealHit'), 200)
+        const mySeat = (r.room.me || {}).seat
+        const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
+        setTimeout(() => sfx.play(iWon ? 'confetti' : 'failDrop'), 520)
+        /* ★ 连庄音：连赢的音高逐级升高（combo-1 → combo-4）。
+           这是"连庄"这件事的声音表达 —— 连赢两把和赢一把听感不同，
+           而且越连越高会形成"还想再来一把"的拉力。 */
+        const myStreak = (r.result.streaks || {})[mySeat] || 0
+        if (myStreak >= 1) {
+          const comboKey = 'combo' + Math.min(4, myStreak)
+          setTimeout(() => sfx.play(comboKey, { pitch: false }), 780)
+        }
         this.setData({ result: r.result, stage: 'over' })
       } else {
         sfx.play('diceSettle')
       }
     }
+  },
+
+  /** 屏幕震一下（关键结果时的打击感） */
+  bump() {
+    this.setData({ impact: true })
+    if (this._bumpTimer) clearTimeout(this._bumpTimer)
+    this._bumpTimer = setTimeout(() => this.setData({ impact: false }), 320)
   },
 
   /* ================= 大话骰 ================= */
@@ -299,13 +383,23 @@ Page({
   },
 
   async doOpen() {
-    sfx.play('suspense')
-    const r = await call('room', { action: 'open', id: this.data.room.id }, { loading: '开盅' })
+    /* 开骰是全场最紧张的一刻 —— 三段式：
+         蓄力（自己手机上）→ 开盅重击（全场都会轮询到）→ 结果音 */
+    sfx.play('chargeUp', { volume: 0.6 })
+    this.setData({ suspense: true })
+    const r = await call('room', { action: 'open', id: this.data.room.id }, { silent: true })
       .catch(() => null)
+    this.setData({ suspense: false })
     if (r && r.ok) {
       this.setData({ room: r.room, result: r.result, stage: 'over' })
-      sfx.play(r.result.bidderWins ? 'reveal' : 'lose')
-      setTimeout(() => sfx.play('drink'), 600)
+      sfx.play('revealHit')
+      this.bump()
+      setTimeout(() => {
+        const mySeat = (r.room.me || {}).seat
+        const iLost = r.result.loserSeat === mySeat
+        sfx.play(iLost ? 'failDrop' : 'confetti')
+      }, 340)
+      setTimeout(() => sfx.play('gulp'), 900)
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
     }

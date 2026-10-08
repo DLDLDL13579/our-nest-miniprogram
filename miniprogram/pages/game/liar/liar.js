@@ -79,6 +79,12 @@ Page({
     loser: '',
     resultText: '',
     round: 0,
+    /* 摇骰中：金属盅摇晃的视觉阶段 */
+    shaking: false,
+    /* 开骰悬念：蓄力期间整块屏轻微抖动 */
+    suspense: false,
+    /* 开盅震动：亮出全部骰子时整屏抖一下 */
+    impact: false,
     muted: false,
     /* 历史叫骰（展示用） */
     trail: []
@@ -93,7 +99,9 @@ Page({
   /* ---------------- 开局：摇骰 ---------------- */
 
   newRound() {
-    sfx.play('diceShake')
+    /* 金属骰盅摇动 —— 和大话骰的"酒桌金属盅"场景对应
+       （摇骰子游戏用的是木质骰子，两者质感必须区分开） */
+    sfx.play('shakerMetal', { restart: true })
     /* 存成对象数组（带点阵），模板直接用 —— 不用在 wxml 里做转换 */
     const wrap = (arr) => arr.map((v) => ({ v: v, cells: cells(v) }))
     const p1 = wrap(rollDice(DICE_PER_PLAYER))
@@ -110,14 +118,16 @@ Page({
       loser: '',
       resultText: '',
       trail: [],
-      round: this.data.round + 1
+      round: this.data.round + 1,
+      shaking: true
     })
 
     setTimeout(() => {
       /* 开局：先交接给玩家1 看骰 */
-      this.setData({ phase: 'handoff', handoffTo: 'peek', turn: 1 })
+      this.setData({ phase: 'handoff', handoffTo: 'peek', turn: 1, shaking: false })
       sfx.play('diceSettle')
-    }, 500)
+      sfx.play('impactLow', { volume: 0.45 })
+    }, 780)
   },
 
   /* ---------------- 交接与看骰 ---------------- */
@@ -257,7 +267,12 @@ Page({
   open() {
     const bid = this.data.bid
     if (!bid) return
-    sfx.play('suspense')
+
+    /* ★ 开骰是大话骰最爽的一刻，声音要做成"三段式悬念"：
+         蓄力（紧张）→ 开盅重击（揭晓）→ 结果音（赢/输）
+       只播一个音就浪费了这个瞬间。 */
+    sfx.play('chargeUp', { volume: 0.6 })
+    this.setData({ suspense: true })
 
     setTimeout(() => {
       const all = this.data.p1.concat(this.data.p2)
@@ -273,16 +288,26 @@ Page({
 
       this.setData({
         phase: 'over',
+        suspense: false,
         reveal: { actual: actual, need: bid.n, face: bid.face, zhai: bid.zhai, ok: bidderWins },
         loser: loser === 1 ? '玩家1' : '玩家2',
-        resultText: text
+        resultText: text,
+        /* 开盅震动：亮出全部骰子时整屏抖一下 */
+        impact: true
       })
+      if (this._shakeTimer) clearTimeout(this._shakeTimer)
+      this._shakeTimer = setTimeout(() => this.setData({ impact: false }), 300)
 
-      sfx.play(bidderWins ? 'reveal' : 'lose')
-      setTimeout(() => sfx.play('drink'), 700)
+      /* 开盅重击（明亮 + 低频冲击 + 金属尾音，三层叠出来的分量） */
+      sfx.play('revealHit')
+      /* 结果音：赢是撒花、输是下坠 —— 情绪强度不同 */
+      setTimeout(() => {
+        sfx.play(bidderWins ? 'confetti' : 'failDrop')
+      }, 320)
+      setTimeout(() => sfx.play('drink'), 900)
 
       this.savePlayed()
-    }, 900)
+    }, 1100)
   },
 
   savePlayed() {
