@@ -24,7 +24,7 @@
         <block wx:else>
           <!-- 我是被发起方：看到她的请求 -->
           <view class="card hl">
-            <view class="lbl">💬 {{cool.byName}}说</view>
+            <view class="lbl"><image class="mi" src="{{ic.speech}}" mode="aspectFit" />{{cool.byName}}说</view>
             <view class="big-t">需要缓一缓 {{cool.minutes}} 分钟</view>
             <view wx:if="{{cool.reason}}" class="reason-box">「{{cool.reason}}」</view>
             <view class="note" style="margin-top:16rpx">
@@ -59,7 +59,7 @@
               <view class="gt">{{cool.iReady ? '我缓好了' : '我在缓'}}</view>
               <view class="xs">{{cool.iReady ? '等她一起' : '慢慢来，不着急'}}</view>
             </view>
-            <text wx:if="{{cool.iReady}}" class="pill green">✓</text>
+            <view wx:if="{{cool.iReady}}" class="pill green"><image class="tick" src="{{ic.check}}" mode="aspectFit" /></view>
           </view>
           <view class="row2">
             <view class="ico" style="background:var(--bluesoft);color:var(--blue)">她</view>
@@ -67,7 +67,7 @@
               <view class="gt">{{cool.partnerReady ? (partnerName + ' 缓好了') : (partnerName + ' 还在缓')}}</view>
               <view class="xs">{{cool.partnerReady ? '可以开始聊了' : '给她一点时间'}}</view>
             </view>
-            <text wx:if="{{cool.partnerReady}}" class="pill green">✓</text>
+            <view wx:if="{{cool.partnerReady}}" class="pill green"><image class="tick" src="{{ic.check}}" mode="aspectFit" /></view>
           </view>
         </view>
 
@@ -86,7 +86,7 @@
            不能要求 iReady，因为时间自然走完时用户可能压根没点过「我缓好了」。 -->
       <block wx:if="{{cool.status === 'feeling' && !cool.iWroteFeeling}}">
         <view class="timeup">
-          <view class="tu-icon">🕊️</view>
+          <image class="tu-icon" src="{{ic.dove}}" mode="aspectFit" />
           <view class="tu-t">{{timeUp ? '时间到了，可以聊聊了' : '你们都缓好了'}}</view>
           <view class="tu-s">先各自写下当时的感受，写完之后你们会同时看到对方的</view>
         </view>
@@ -99,7 +99,7 @@
           <view class="steptip">{{stepTip}}</view>
 
           <block wx:if="{{cool.iWroteFeeling}}">
-            <view class="done-row">✓ 你已经写好了，等她写完就能互相看到</view>
+            <view class="done-row"><image class="tick" src="{{ic.check}}" mode="aspectFit" /> 你已经写好了，等她写完就能互相看到</view>
           </block>
           <block wx:else>
             <textarea class="ta" value="{{feelingText}}" maxlength="600"
@@ -129,7 +129,7 @@
           <view class="lbl">第二步 · 我这边可以更好的地方</view>
           <view class="steptip">{{stepTip}}</view>
           <block wx:if="{{cool.iWroteOwn}}">
-            <view class="done-row">✓ 你写好了，等她写完</view>
+            <view class="done-row"><image class="tick" src="{{ic.check}}" mode="aspectFit" /> 你写好了，等她写完</view>
           </block>
           <block wx:else>
             <textarea class="ta" value="{{ownText}}" maxlength="600"
@@ -151,7 +151,7 @@
           <view class="lbl">第三步 · 下次我们可以怎么更好</view>
           <view class="steptip">{{stepTip}}</view>
           <block wx:if="{{cool.iWrotePlan}}">
-            <view class="done-row">✓ 你写好了，等她写完就进规矩本</view>
+            <view class="done-row"><image class="tick" src="{{ic.check}}" mode="aspectFit" /> 你写好了，等她写完就进规矩本</view>
           </block>
           <block wx:else>
             <textarea class="ta" value="{{planText}}" maxlength="600"
@@ -170,7 +170,7 @@
       <!-- ⑦ 走完了 -->
       <block wx:if="{{cool.status === 'done'}}">
         <view class="timeup">
-          <view class="tu-icon">🌿</view>
+          <image class="tu-icon" src="{{ic.leaf}}" mode="aspectFit" />
           <view class="tu-t">这次过去了</view>
           <view class="tu-s">你们各自写了感受、认了自己那部分，也定下了下次怎么办</view>
         </view>
@@ -249,7 +249,8 @@
         </view>
         <view class="card">
           <view wx:for="{{list}}" wx:key="id" class="row2">
-            <view class="ico">{{item.dropped ? '·' : (item.done ? '🌿' : '…')}}</view>
+            <image wx:if="{{!item.dropped && item.done}}" class="ico" src="{{ic.leaf}}" mode="aspectFit" />
+            <view wx:else class="ico-dots">{{item.dropped ? '' : '···'}}</view>
             <view style="flex:1">
               <view class="gt">{{item.at}}</view>
               <view class="xs">
@@ -265,7 +266,7 @@
 
       <!-- 空态 -->
       <view wx:if="{{!list.length && !rules.length}}" class="gentle">
-        <view class="gentle-icon">🌤️</view>
+        <image class="gentle-icon" src="{{ic.sunCloud}}" mode="aspectFit" />
         <view class="gentle-t">这里现在是空的</view>
         <view class="gentle-s">
           挺好的。<view style="height:8rpx"></view>

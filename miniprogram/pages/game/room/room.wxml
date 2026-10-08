@@ -5,7 +5,7 @@
       <text class="gbar-t">多人游戏</text>
     </view>
     <view class="gbar-r" bindtap="toggleMute">
-      <text class="gbar-mute">{{muted ? '🔇' : '🔊'}}</text>
+      <image class="gbar-mute" src="{{ic[muted ? 'speakerOff' : 'speakerOn']}}" mode="aspectFit" />
     </view>
   </view>
 
@@ -239,7 +239,7 @@
         </view>
       </view>
 
-      <view class="loserbox">{{result.loserName}} 喝一杯 🍺</view>
+      <view class="loserbox">{{result.loserName}} 喝一杯</view>
     </view>
 
     <view wx:elif="{{result}}" class="center-box">

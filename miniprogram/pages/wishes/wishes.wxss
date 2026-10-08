@@ -12,3 +12,5 @@
   background: #FDFBF8; padding: 0 24rpx; font-size: 27rpx; color: var(--ink);
 }
 .ph { color: var(--ink3); font-size: 26rpx }
+
+.bigicon { width: 68rpx; height: 68rpx; }

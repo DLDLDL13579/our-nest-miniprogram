@@ -2,9 +2,14 @@ const app = getApp()
 const { call } = require('../../utils/cloud.js')
 const privacy = require('../../utils/privacy.js')
 const media = require('../../utils/media.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['pin', 'sparkle', 'camera', 'check']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 Page({
   data: {
+    ic: _IC,
     loading: true, noPair: false,
     list: [], total: 0, doneCount: 0, todoCount: 0,
     tab: 'todo',                 // todo | done

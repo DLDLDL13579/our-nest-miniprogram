@@ -2,6 +2,10 @@ const app = getApp()
 const { call } = require('../../utils/cloud.js')
 const privacy = require('../../utils/privacy.js')
 const media = require('../../utils/media.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['bulb']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 const MOODS = [
   { k: 'happy',   e: '😊', t: '开心' },
@@ -26,6 +30,7 @@ const SPARKS = [
 
 Page({
   data: {
+    ic: _IC,
     text: '', photos: [], thumbs: [], mood: 'daily',
     moods: MOODS, uploading: false, saving: false,
     left: 500, solo: false, spark: '', partnerName: 'TA'

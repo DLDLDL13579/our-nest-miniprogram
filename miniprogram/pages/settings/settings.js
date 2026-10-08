@@ -1,6 +1,10 @@
 const app = getApp()
 const { call } = require('../../utils/cloud.js')
 const { derive } = require('../../utils/derive.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['pencilLine', 'calendar', 'arrowDown', 'arrowRight']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 /* wxml 里不能 filter，"下一个里程碑"必须在 js 里挑出来 */
 function nextMilestone(D) {
@@ -11,6 +15,7 @@ function nextMilestone(D) {
 
 Page({
   data: {
+    ic: _IC,
     loading: true, first: false, pair: null,
     anniv: '', D: null, nextMs: '—', myName: '', saving: false,
     today: new Date().toISOString().slice(0, 10)

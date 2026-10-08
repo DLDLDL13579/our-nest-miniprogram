@@ -61,7 +61,7 @@
   font-size: 21rpx; color: var(--ink3) }
 
 .gentle { text-align: center; padding: 70rpx 50rpx }
-.gentle-icon { font-size: 76rpx; line-height: 1.4 }
+.gentle-icon { width: 76rpx; height: 76rpx; }
 .gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
 .gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }
 
@@ -73,7 +73,7 @@
   display: flex; flex-direction: column }
 .sheet-hd { display: flex; align-items: center; justify-content: space-between }
 .sheet-title { font-size: 34rpx; font-weight: 700 }
-.sheet-close { font-size: 34rpx; color: var(--ink3); padding: 0 10rpx }
+.sheet-close { width: 44rpx; height: 44rpx; }
 .sheet-at { font-size: 21rpx; color: var(--ink3); margin-top: 8rpx }
 .sheet-body { flex: 1; margin: 24rpx 0; max-height: 46vh }
 .sheet-text { font-size: 30rpx; line-height: 1.95; color: var(--ink); white-space: pre-wrap }

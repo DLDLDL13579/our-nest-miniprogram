@@ -1,6 +1,6 @@
 <view class="page" style="padding-top:60rpx">
   <view style="text-align:center;margin-bottom:40rpx">
-    <view style="font-size:88rpx;line-height:1.2">🏠</view>
+    <image class="bigicon" src="{{ic.home}}" mode="aspectFit" />
     <view style="font-size:40rpx;font-weight:700;margin-top:12rpx">我们的小窝</view>
     <view class="xs" style="margin-top:8rpx">只属于我们两个人的地方</view>
   </view>

@@ -619,6 +619,110 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     `音频总计 ${(audioBytes / 1024 / 1024).toFixed(2)} MB，超出预算（主包上限 2 MB）`)
   ok(`音频总计 ${(audioBytes / 1024).toFixed(0)} KB（在 1.15 MB 预算内）`)
 
+  /* ============ ③e 图标系统：禁止 emoji 回潮 + image 必须有尺寸 ============ */
+  console.log('\n=== ③e 图标：必须用内联 SVG，且 <image> 图标必须有尺寸 ===')
+  /*
+   * 2026-10-08 全面审查实测：项目里有 **31 种 emoji、56 个使用点**（18 个文件）。
+   * emoji 是小程序专业度最大的破绽：
+   *   ① 跨机型完全不一致（iOS 彩色立体 / Android 黑白单色）
+   *   ② 颜色不可控，放进设计好的配色体系里会显得很脏
+   *   ③ 视觉大小基线不齐，排列时对不准
+   *
+   * 换成 miniprogram/utils/icons.js 的内联 SVG 后，这两条会防止回潮。
+   */
+  const wxmlFiles = []
+  ;(function walkW(d) {
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) walkW(p)
+      else if (f.endsWith('.wxml')) wxmlFiles.push(p)
+    })
+  })(path.join(ROOT, 'miniprogram', 'pages'))
+
+  /* ① 模板里不该再有 emoji（★ 只扫 text 节点与属性值，跳过注释） */
+  const emojiRe = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2190}-\u{21FF}]/u
+  const emojiHits = []
+  wxmlFiles.forEach(f => {
+    /* 先剥掉注释 —— 注释里写「这里用 📅」不该报错 */
+    const raw = fs.readFileSync(f, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    raw.split('\n').forEach((line, i) => {
+      const ms = line.match(emojiRe)
+      if (ms) {
+        emojiHits.push(path.relative(ROOT, f) + ':' + (i + 1) + ' → ' +
+          Array.from(new Set(ms)).join(''))
+      }
+    })
+  })
+  assert.deepStrictEqual(emojiHits, [],
+    '模板里还有 emoji（跨机型渲染不一致，应换成 utils/icons.js 的内联 SVG）：\n    ' +
+    emojiHits.join('\n    '))
+  ok('模板里已无 emoji（全部换成内联 SVG 图标）')
+
+  /* ② <image class="X"> 的 X 必须在 wxss 里有 width/height。
+   *    ⚠️ 这条是实测踩出来的：图标改成 <image> 后，
+   *    原来只写了 font-size 的类（比如 .lh-mute { font-size:34rpx }）
+   *    对 <image> **完全无效** —— image 会撑满容器，
+   *    实测把游戏大厅的喇叭放大到占半屏，把文字挤成竖排。
+   *    而且它**不报错**，只是"看起来很奇怪"。
+   */
+  const appCss2 = fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8')
+  const noSize = []
+  wxmlFiles.forEach(f => {
+    const wxss = f.replace(/\.wxml$/, '.wxss')
+    let css = appCss2
+    if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
+    const raw = fs.readFileSync(f, 'utf8')
+    const re = /<image[^>]*class="([^"]+)"[^>]*>/g
+    let m
+    while ((m = re.exec(raw))) {
+      /* class 可能是**组合类**（如 class="bigicon sm"）——
+         真正生效的规则是 `.bigicon.sm`。
+         ⚠️ 第一版按单词逐个查 `.sm`，结果匹配到了 app.wxss 里给文字用的
+         `.sm { font-size }`，把一个根本没问题的图标误报成缺尺寸。
+         所以要把整串 class 当成一个选择器来查。 */
+      const sel = '.' + m[1].trim().split(/\s+/)
+        .map(c => c.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')).join('.')
+      const rule = new RegExp(sel + '\\s*\\{([^}]*)\\}')
+      const hit = rule.exec(css)
+      /*
+       * ⚠️ 这里必须用 `continue` 而不是 `return`。
+       *    外面是 `while (re.exec(...))` 循环 —— `return` 会**退出整个文件**的扫描，
+       *    后面所有的 <image> 都不再检查。
+       *
+       *    实测踩到过：index.wxml 里第一个 <image class="hero-glow">（无 CSS 定义）
+       *    触发 return，后面 4 个真缺尺寸的图标全被跳过，断言报"通过"。
+       *    —— 又一次「测试通过但测试根本没在工作」。
+       */
+      if (!hit) continue                       // 类没定义，不管
+      if (/width\s*:/.test(hit[1])) continue   // 有尺寸，OK
+      if (/font-size\s*:/.test(hit[1])) {
+        noSize.push(path.relative(ROOT, f) + ' → ' + sel +
+          '（只有 font-size，对 <image> 无效 → 图标会撑满容器）')
+      }
+    }
+  })
+  assert.deepStrictEqual(noSize, [],
+    '这些图标只定义了 font-size（对 <image> 完全无效，会撑满容器挤爆布局）：\n    ' +
+    noSize.join('\n    '))
+  ok('<image> 图标全部有显式尺寸')
+
+  /* ③ 图标库本身要健康：每个条目都能生成合法的 data URI */
+  const iconsJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/icons.js'), 'utf8')
+  const iconNames = [...iconsJs.matchAll(/^\s{2}([a-zA-Z][\w]*):\s*'/gm)].map(m => m[1])
+  assert.ok(iconNames.length >= 30,
+    `图标库只有 ${iconNames.length} 个，覆盖的种类太少`)
+  /* 模板里用到的图标键必须在库里存在 —— 拼错的话 icon 返回空串、界面直接少个图标 */
+  const usedKeys = new Set()
+  wxmlFiles.forEach(f => {
+    const raw = fs.readFileSync(f, 'utf8')
+    for (const m of raw.matchAll(/ic\[['"]?([a-zA-Z][\w]*)['"]?\]/g)) usedKeys.add(m[1])
+    for (const m of raw.matchAll(/\bic\.([a-zA-Z][\w]*)/g)) usedKeys.add(m[1])
+  })
+  const missingIcon = [...usedKeys].filter(k => !iconNames.includes(k))
+  assert.deepStrictEqual(missingIcon, [],
+    '模板引用了图标库里没有的键（会渲染成空白）：\n    ' + missingIcon.join('\n    '))
+  ok(`图标库 ${iconNames.length} 个，模板用到的 ${usedKeys.size} 个全部存在`)
+
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
   const pagesDir = path.join(ROOT, 'miniprogram', 'pages')

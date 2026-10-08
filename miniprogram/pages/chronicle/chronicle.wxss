@@ -29,3 +29,5 @@
 .mc-photos { display: flex; gap: 10rpx; margin-top: 16rpx }
 .mc-photo { flex: 1; min-width: 0; height: 220rpx; border-radius: 18rpx; background: #EFE8DE }
 .mc-photos.single .mc-photo { height: 340rpx }
+
+.bigicon { width: 72rpx; height: 72rpx; }

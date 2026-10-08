@@ -1,11 +1,22 @@
 const app = getApp()
 const { call, todayISO } = require('../../utils/cloud.js')
 const { derive } = require('../../utils/derive.js')
+const icons = require('../../utils/icons.js')
+
+
+/* 图标：内联 SVG（替代 emoji —— emoji 跨机型渲染不一致，见 icons.js） */
+const _IC = {}
+for (const _k of ['heart', 'home', 'balloon', 'speech', 'dove', 'mail', 'calendarAlt', 'dice', 'pencilLine', 'candle']) {
+  /* 描边色固定（image 是独立文档，currentColor 不生效）；
+     颜色跟随主题靠 .cb-e 等容器的 filter 或直接用同色系的值 */
+  _IC[_k] = icons.dataUri(_k, '#C4553F')
+}
 
 const CACHE_KEY = 'homeCache'
 
 Page({
   data: {
+    ic: _IC,
     loading: true, noPair: false, solo: false,
     D: null, pair: null, myName: '我', partnerName: '',
     moments: [], total: 0, todayCount: 0, onThisDay: null,

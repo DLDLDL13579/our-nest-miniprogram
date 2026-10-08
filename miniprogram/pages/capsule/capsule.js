@@ -2,6 +2,10 @@ const app = getApp()
 const { call, todayISO } = require('../../utils/cloud.js')
 const privacy = require('../../utils/privacy.js')
 const media = require('../../utils/media.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['calendar', 'lock', 'mail', 'close']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 /* 给几个常用的未来日子，省得每次翻日历 */
 function quickPicks() {
@@ -22,6 +26,7 @@ function quickPicks() {
 
 Page({
   data: {
+    ic: _IC,
     loading: true, noPair: false,
     list: [], locked: 0, ready: 0, total: 0,
     /* 写信面板 */

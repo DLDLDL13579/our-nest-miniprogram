@@ -95,12 +95,16 @@
 
 /* ---------- 空态：温柔，别像报错 ---------- */
 .gentle { text-align: center; padding: 70rpx 50rpx 60rpx }
-.gentle-icon { font-size: 76rpx; line-height: 1.4; opacity: .85 }
+.gentle-icon { width: 76rpx; height: 76rpx; opacity: .8 }
 .gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
 .gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }
 
 /* ---------- 加载心跳 ---------- */
-.loadheart { font-size: 80rpx; color: var(--brand); animation: beat 1s infinite }
+.loadheart {
+  /* 图标化后必须给尺寸：<image> 会撑满容器，font-size 对它无效 */
+  width: 80rpx; height: 80rpx;
+  animation: beat 1s infinite
+}
 @keyframes beat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
 
 /* 冷静期提示条：复用 cb-* 的骨架，换成情绪页那套温和的暖绿色调。
@@ -146,7 +150,7 @@
 }
 .capsulebar:active { background: #E9EDF6 }
 .cb-l { display: flex; align-items: center; gap: 16rpx }
-.cb-e { font-size: 40rpx }
+.cb-e { width: 40rpx; height: 40rpx; flex-shrink: 0 }
 .cb-t { font-size: 27rpx; font-weight: 600; color: #4E5B7A }
 .cb-s { font-size: 21rpx; color: #8492AD; margin-top: 4rpx }
 .cb-r { font-size: 28rpx; color: #A8B4CC }

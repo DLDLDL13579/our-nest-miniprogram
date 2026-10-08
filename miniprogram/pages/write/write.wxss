@@ -49,7 +49,7 @@
   padding: 24rpx 28rpx; border-radius: 26rpx;
   background: #F5F1EB; margin-bottom: 30rpx;
 }
-.spark-i { font-size: 30rpx }
+.spark-i { width: 30rpx; height: 30rpx; display: inline-block; vertical-align: -6rpx }
 .spark-t { flex: 1; font-size: 24rpx; color: var(--ink2); line-height: 1.6 }
 .spark-r { font-size: 21rpx; color: var(--brand2) }
 

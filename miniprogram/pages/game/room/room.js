@@ -31,9 +31,9 @@ const POLL_MS = 1500
 
 /* 游戏选项 */
 const GAMES = [
-  { k: 'liar', name: '大话骰', icon: '🎯', desc: '轮流往上叫，不信就开' },
-  { k: 'dice', name: '摇骰子比大小', icon: '🎲', desc: '一起摇，点数大的赢' },
-  { k: 'wheel', name: '命运转盘', icon: '🎡', desc: '房主转，结果全场同步' }
+  { k: 'liar', name: '大话骰', icon: 'target', desc: '轮流往上叫，不信就开' },
+  { k: 'dice', name: '摇骰子比大小', icon: 'dice', desc: '一起摇，点数大的赢' },
+  { k: 'wheel', name: '命运转盘', icon: 'wheel', desc: '房主转，结果全场同步' }
 ]
 
 /* 转盘扇区。权重决定扇区角度 —— 概率和视觉必须一致，
@@ -85,8 +85,14 @@ function buildSectors() {
   return { list: list, gradient: gradient }
 }
 
+const icons = require('../../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['speakerOn', 'speakerOff', 'dice', 'wheel']) { _IC[_k] = icons.dataUri(_k, '#E8B33C') }
+
 Page({
   data: {
+    ic: _IC,
     loading: true,
     /* 阶段：entry（选建/加入）→ lobby（等人齐）→ playing → over */
     stage: 'entry',

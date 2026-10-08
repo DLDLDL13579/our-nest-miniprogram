@@ -52,6 +52,6 @@
 .ia.del { color: var(--ink3) }
 
 .gentle { text-align: center; padding: 70rpx 50rpx }
-.gentle-icon { font-size: 76rpx; line-height: 1.4 }
+.gentle-icon { width: 76rpx; height: 76rpx; }
 .gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
 .gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }

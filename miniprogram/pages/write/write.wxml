@@ -34,7 +34,7 @@
 
   <!-- 引子：没头绪时看一眼，点一下换一条 -->
   <view wx:if="{{!text}}" class="spark" bindtap="nextSpark">
-    <text class="spark-i">💡</text>
+    <image class="spark-i" src="{{ic.bulb}}" mode="aspectFit" />
     <text class="spark-t">{{spark}}</text>
     <text class="spark-r">换一个</text>
   </view>

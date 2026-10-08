@@ -7,8 +7,10 @@
         <view class="lh-lbl">一起玩</view>
         <!-- 静音开关：酒桌上可能不方便出声 -->
         <view class="lh-switches">
-          <view class="lh-mute" catchtap="toggleMute">{{muted ? '🔇' : '🔊'}}</view>
-          <view class="lh-mute {{hapticOn ? '' : 'off'}}" catchtap="toggleHaptic">{{hapticOn ? '📳' : '📴'}}</view>
+          <image class="lh-mute" src="{{ic[muted ? 'speakerOff' : 'speakerOn']}}" mode="aspectFit"
+                 catchtap="toggleMute" />
+          <image class="lh-mute {{hapticOn ? '' : 'off'}}" src="{{ic[hapticOn ? 'hapticOn' : 'hapticOff']}}" mode="aspectFit"
+                 catchtap="toggleHaptic" />
         </view>
       </view>
       <view class="lh-t">酒桌游戏</view>
@@ -19,7 +21,7 @@
   <!-- 入口：只有一个（联网） -->
   <view wx:for="{{games}}" wx:key="k" class="gcard big"
         data-k="{{item.k}}" bindtap="go" style="--accent:{{item.color}}">
-    <view class="gc-icon">{{item.icon}}</view>
+    <image class="gc-icon" src="{{ic[item.icon]}}" mode="aspectFit" />
     <view class="gc-main">
       <view class="gc-top">
         <text class="gc-name">{{item.name}}</text>
@@ -34,7 +36,7 @@
   <view class="sechead"><text>能玩什么</text></view>
   <view class="modelist">
     <view wx:for="{{modes}}" wx:key="name" class="modeitem">
-      <text class="mi-icon">{{item.icon}}</text>
+      <image class="mi-icon" src="{{ic[item.icon]}}" mode="aspectFit" />
       <view class="mi-main">
         <text class="mi-name">{{item.name}}</text>
         <text class="mi-desc">{{item.desc}}</text>

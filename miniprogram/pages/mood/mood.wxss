@@ -31,7 +31,7 @@
 
 /* ---------- 时间到 ---------- */
 .timeup { text-align: center; padding: 52rpx 36rpx; margin-bottom: 24rpx; border-radius: 30rpx; background: var(--greensoft) }
-.tu-icon { font-size: 76rpx; line-height: 1.3 }
+.tu-icon { width: 56rpx; height: 56rpx; }
 .tu-t { font-size: 34rpx; font-weight: 700; color: #4C6B49; margin-top: 14rpx }
 .tu-s { font-size: 24rpx; color: #5F7A5C; margin-top: 14rpx; line-height: 1.75 }
 
@@ -81,6 +81,14 @@
 
 /* ---------- 空态 ---------- */
 .gentle { text-align: center; padding: 60rpx 44rpx 50rpx }
-.gentle-icon { font-size: 76rpx; line-height: 1.4; opacity: .85 }
+.gentle-icon { width: 76rpx; height: 76rpx; }
 .gentle-t { font-size: 30rpx; font-weight: 600; color: var(--ink2); margin-top: 16rpx }
 .gentle-s { font-size: 24rpx; color: var(--ink3); line-height: 1.8; margin-top: 12rpx }
+
+.mi { width: 26rpx; height: 26rpx; }
+
+.tick { width: 24rpx; height: 24rpx; }
+
+.ico { width: 30rpx; height: 30rpx; }
+
+.ico-dots { font-size: 28rpx; color: var(--ink3); line-height: 1; }

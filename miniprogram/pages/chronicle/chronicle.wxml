@@ -28,7 +28,7 @@
     <!-- 那年今日。原来这里有一行 {{onThisDay.q}}（今日一题的题干），
          随手记没有题干、云函数恒返回空串，渲染出来就是一条空行。已去掉。 -->
     <view wx:if="{{onThisDay}}" class="card hl">
-      <view class="lbl">📅 那年今日 · {{onThisDay.date}}</view>
+      <view class="lbl"><image class="mi" src="{{ic.calendar}}" mode="aspectFit" />那年今日 · {{onThisDay.date}}</view>
       <view class="side ta" style="margin-bottom:12rpx">
         <view class="n"><text class="rd b"></text>{{onThisDay.partnerName}}说</view>
         <view>{{onThisDay.partner}}</view>
@@ -41,7 +41,7 @@
 
     <!-- 里程碑：全部现算 -->
     <view wx:if="{{ms.length}}" class="card">
-      <view class="lbl">🏁 里程碑 · 由在一起那天算出</view>
+      <view class="lbl"><image class="mi" src="{{ic.flag}}" mode="aspectFit" />里程碑 · 由在一起那天算出</view>
       <view class="mile">
         <view wx:for="{{ms}}" wx:key="label" class="m {{item.done?'done':(item.isNext?'now':'')}}">
           <view class="dot"></view>
@@ -87,7 +87,7 @@
     </block>
 
     <view wx:elif="{{empty}}" class="card flat" style="text-align:center;padding:60rpx 40rpx">
-      <view style="font-size:72rpx;line-height:1.4">📖</view>
+      <image class="bigicon" src="{{ic.book}}" mode="aspectFit" />
       <view class="note" style="margin-top:12rpx">
         编年史现在是空的。
         <view style="height:6rpx"></view>

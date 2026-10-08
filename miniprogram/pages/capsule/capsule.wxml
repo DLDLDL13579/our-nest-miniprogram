@@ -23,7 +23,7 @@
       </view>
     </view>
 
-    <view wx:if="{{!writing}}" class="btn main writebtn" bindtap="startWrite">✉️ 写一封给未来</view>
+    <view wx:if="{{!writing}}" class="btn main writebtn" bindtap="startWrite"><image class="mi" src="{{ic.mail}}" mode="aspectFit" />写一封给未来</view>
 
     <!-- 写信面板 -->
     <view wx:if="{{writing}}" class="card hl">
@@ -31,7 +31,7 @@
       <picker mode="date" value="{{unlockAt}}" bindchange="onDate">
         <view class="datebox">
           <text class="dv">{{unlockAt || '点我选日期'}}</text>
-          <text class="xs">📅 改 ▾</text>
+          <text class="xs"><image class="mi" src="{{ic.calendar}}" mode="aspectFit" />改 ▾</text>
         </view>
       </picker>
       <view class="quick">
@@ -58,7 +58,7 @@
         </view>
       </view>
 
-      <view class="locknote">🔒 封存之后，在 {{unlockAt}} 之前谁都看不到这些字 —— 包括你自己</view>
+      <view class="locknote"><image class="mi" src="{{ic.lock}}" mode="aspectFit" />封存之后，在 {{unlockAt}} 之前谁都看不到这些字 —— 包括你自己</view>
       <view class="btnrow">
         <view class="btn" style="flex:1" bindtap="cancelWrite">算了</view>
         <view class="btn main" style="flex:2" bindtap="save">{{saving ? '封存中…' : '封存它'}}</view>
@@ -97,7 +97,7 @@
 
     <!-- 空态 -->
     <view wx:if="{{!list.length && !writing}}" class="gentle">
-      <view class="gentle-icon">📮</view>
+      <image class="gentle-icon" src="{{ic.mail}}" mode="aspectFit" />
       <view class="gentle-t">信箱还是空的</view>
       <view class="gentle-s">
         写给一年后的自己，或者三年后的你们。
@@ -111,7 +111,7 @@
       <view class="sheet" catchtap="">
         <view class="sheet-hd">
           <text class="sheet-title">{{reading.title}}</text>
-          <text class="sheet-close" bindtap="closeReading">✕</text>
+          <image class="sheet-close" src="{{ic.close}}" mode="aspectFit" bindtap="closeReading" />
         </view>
         <view class="sheet-at">写于 {{reading.at}}</view>
         <scroll-view scroll-y class="sheet-body">

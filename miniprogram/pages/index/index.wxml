@@ -1,11 +1,11 @@
 <view class="page">
   <view wx:if="{{loading}}" class="empty">
-    <view class="loadheart">♡</view>
+    <image class="loadheart" src="{{ic.heart}}" mode="aspectFit" />
     <view style="margin-top:12rpx">正在打开我们的小窝…</view>
   </view>
 
   <view wx:elif="{{noPair}}" class="empty">
-    <view style="font-size:96rpx;line-height:1.4">🏠</view>
+    <image class="bigicon" src="{{ic.home}}" mode="aspectFit" />
     <view style="margin:16rpx 0 28rpx">还没有小窝，先把倩萍拉进来</view>
     <view class="btn main" style="max-width:320rpx;margin:0 auto" bindtap="goPair">去配对</view>
   </view>
@@ -25,10 +25,10 @@
           </view>
           <view class="hero-line">{{D.anniversaryLabel}} 那天起 · 第 {{D.headNoCn}} 个年头</view>
           <view class="hero-next" wx:if="{{D.next.daysUntil <= 60}}">
-            🎈 {{D.next.daysUntil}} 天后是我们的纪念日
+            <image class="hn-ic" src="{{ic.balloon}}" mode="aspectFit" />{{D.next.daysUntil}} 天后是我们的纪念日
           </view>
           <view class="hero-next" wx:else>
-            🎈 下次纪念日 {{D.next.label}}，还有 {{D.next.daysUntil}} 天
+            <image class="hn-ic" src="{{ic.balloon}}" mode="aspectFit" />下次纪念日 {{D.next.label}}，还有 {{D.next.daysUntil}} 天
           </view>
         </block>
         <block wx:else>
@@ -45,7 +45,7 @@
     <!-- 冷静中：有时效性，打开第一眼就该知道，所以放在最上面 -->
     <view wx:if="{{cooling}}" class="coolbar {{cooling.needsMe ? 'need' : ''}}" bindtap="goMood">
       <view class="cb-l">
-        <text class="cb-e">{{cooling.needsMe ? '💬' : '🕊️'}}</text>
+        <image class="cb-e" src="{{cooling.needsMe ? ic.speech : ic.dove}}" mode="aspectFit" />
         <view>
           <view class="cb-t">
             {{cooling.needsMe ? (partnerName || '她') + ' 想缓一缓' :
@@ -65,7 +65,7 @@
     <!-- 时间胶囊入口：低频但高价值，放在记一笔下面不抢焦点 -->
     <view class="capsulebar" bindtap="goCapsule">
       <view class="cb-l">
-        <text class="cb-e">✉️</text>
+        <image class="cb-e" src="{{ic.mail}}" mode="aspectFit" />
         <view>
           <view class="cb-t">时间胶囊</view>
           <view class="cb-s">{{capsuleTip}}</view>
@@ -77,7 +77,7 @@
     <!-- 要记得的事：只有快到期时才显眼，平时安静待着 -->
     <view class="remindbar {{remindUrgent ? 'hot' : ''}}" bindtap="goReminds">
       <view class="cb-l">
-        <text class="cb-e">🗓️</text>
+        <image class="cb-e" src="{{ic.calendarAlt}}" mode="aspectFit" />
         <view>
           <view class="cb-t">要记得的事</view>
           <view class="cb-s">{{remindTip}}</view>
@@ -89,7 +89,7 @@
     <!-- 酒桌游戏：一起玩的东西，放在功能入口最后一格 -->
     <view class="gamebar" bindtap="goGame">
       <view class="cb-l">
-        <text class="cb-e">🎲</text>
+        <image class="cb-e" src="{{ic.dice}}" mode="aspectFit" />
         <view>
           <view class="cb-t">酒桌游戏</view>
           <view class="cb-s">摇骰子 · 大话骰 · 命运转盘</view>
@@ -104,7 +104,7 @@
         <view class="wc-title">记一笔</view>
         <view class="wc-sub">今天想留下点什么</view>
       </view>
-      <view class="wc-pen">✎</view>
+      <image class="wc-pen" src="{{ic.pencilLine}}" mode="aspectFit" />
     </view>
 
     <!-- ③ 最近记的：回来了能立刻看到东西，不是空页面 -->
@@ -143,7 +143,7 @@
 
     <!-- ⑤ 空态：什么都没记的时候，温柔一点，别说"暂无数据" -->
     <view wx:if="{{!moments.length}}" class="gentle">
-      <view class="gentle-icon">🕯️</view>
+      <image class="gentle-icon" src="{{ic.candle}}" mode="aspectFit" />
       <view class="gentle-t">这里还是空的</view>
       <view class="gentle-s">
         {{solo ? '等她进来之后，你们记的东西会一起出现在这里' : '不用每天写。什么时候有话想说，点上面「记一笔」就好'}}

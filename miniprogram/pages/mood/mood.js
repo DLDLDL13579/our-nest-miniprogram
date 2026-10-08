@@ -16,6 +16,10 @@
  */
 const app = getApp()
 const { call } = require('../../utils/cloud.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['speech', 'dove', 'leaf', 'sunCloud', 'check']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 /* 时长档位。20 是推荐值 —— 情绪淹没后身体平复至少要 20 分钟 */
 const MINUTES = [
@@ -34,6 +38,7 @@ const STEP_TIP = {
 
 Page({
   data: {
+    ic: _IC,
     loading: true, noPair: false,
     cool: null,                      // 进行中的冷静
     list: [], rules: [],

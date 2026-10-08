@@ -1,9 +1,14 @@
 const app = getApp()
 const { call } = require('../../utils/cloud.js')
 const { derive } = require('../../utils/derive.js')
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['calendar', 'flag', 'book']) { _IC[_k] = icons.dataUri(_k, '#C4553F') }
 
 Page({
   data: {
+    ic: _IC,
     loading: true, noPair: false,
     list: [], onThisDay: null, ms: [], stats: null,
     D: null, filter: 'all', empty: false

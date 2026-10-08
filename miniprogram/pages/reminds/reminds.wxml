@@ -29,7 +29,7 @@
       <picker mode="date" value="{{f.date}}" bindchange="onDate">
         <view class="datebox">
           <text class="dv">{{f.date || '点我选日期'}}</text>
-          <text class="xs">📅 ▾</text>
+          <text class="xs"><image class="mi" src="{{ic.calendar}}" mode="aspectFit" />▾</text>
         </view>
       </picker>
 
@@ -113,7 +113,7 @@
     </block>
 
     <view wx:if="{{!list.length && !adding}}" class="gentle">
-      <view class="gentle-icon">🗓️</view>
+      <image class="gentle-icon" src="{{ic.calendarAlt}}" mode="aspectFit" />
       <view class="gentle-t">还没有记下什么</view>
       <view class="gentle-s">
         她妈生日、我爸生日、还款日、下次体检……

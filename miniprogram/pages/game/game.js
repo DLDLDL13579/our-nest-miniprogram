@@ -29,7 +29,7 @@ const GAMES = [
   {
     k: 'room',
     name: '一起玩',
-    icon: '🎲',
+    icon: 'dice',
     desc: '开个房间，把房间号发给他们',
     tag: '多人 · 需联网',
     color: '#5E7FA6'
@@ -38,13 +38,19 @@ const GAMES = [
 
 /* 玩法一览（只是展示，点任何一个都进同一个房间页） */
 const MODES = [
-  { icon: '🎯', name: '大话骰', desc: '轮流往上叫，不信就开。扣盅后按住盅偷看自己的骰子' },
-  { icon: '🎲', name: '摇骰子比大小', desc: '一起摇盅，点数大的赢' },
-  { icon: '🎡', name: '命运转盘', desc: '房主转，真心话 / 大冒险 / 喝一杯，全场同步' }
+  { icon: 'target', name: '大话骰', desc: '轮流往上叫，不信就开。扣盅后按住盅偷看自己的骰子' },
+  { icon: 'dice', name: '摇骰子比大小', desc: '一起摇盅，点数大的赢' },
+  { icon: 'wheel', name: '命运转盘', desc: '房主转，真心话 / 大冒险 / 喝一杯，全场同步' }
 ]
+
+const icons = require('../../utils/icons.js')
+/* 图标：内联 SVG 替代 emoji（跨机型渲染不一致，见 utils/icons.js） */
+const _IC = {}
+for (const _k of ['speakerOn', 'speakerOff', 'hapticOn', 'hapticOff', 'dice', 'target', 'wheel', 'signal']) { _IC[_k] = icons.dataUri(_k, '#E8B33C') }
 
 Page({
   data: {
+    ic: _IC,
     games: GAMES,
     modes: MODES,
     muted: false,

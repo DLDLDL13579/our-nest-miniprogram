@@ -8,21 +8,21 @@
     </view>
 
     <view class="card hl">
-      <view class="lbl">✏️ 在一起的那天 · 全 App 唯一要你填的时间</view>
+      <view class="lbl"><image class="mi" src="{{ic.pencilLine}}" mode="aspectFit" />在一起的那天 · 全 App 唯一要你填的时间</view>
       <picker mode="date" value="{{anniv}}" start="1970-01-01" end="{{today}}" bindchange="onDate">
         <view class="datebox">
           <text class="dv">{{anniv || '点我选日期'}}</text>
-          <text class="xs">📅 修改 ▾</text>
+          <text class="xs"><image class="mi" src="{{ic.calendar}}" mode="aspectFit" />修改 ▾</text>
         </view>
       </picker>
       <view class="xs" style="margin-top:14rpx">用原生 picker，不给手输框 —— 免得 2024.3.26 / 24-3-26 三种格式打架。</view>
     </view>
 
     <view wx:if="{{D}}" class="card">
-      <view class="lbl">↓ 它自动算出来的东西，一处都不写死</view>
+      <view class="lbl"><image class="mi" src="{{ic.arrowDown}}" mode="aspectFit" />它自动算出来的东西，一处都不写死</view>
       <view class="plist">
         <view>在一起 <text class="em">{{D.days}}</text> 天</view>
-        <view>{{D.yearsLine}} → 第 <text class="em">{{D.headNo}}</text> 个年头</view>
+        <view>{{D.yearsLine}}<image class="mi" src="{{ic.arrowRight}}" mode="aspectFit" />第 <text class="em">{{D.headNo}}</text> 个年头</view>
         <view>下次纪念日 <text class="em">{{D.next.label}}</text> · 还有 <text class="em">{{D.next.daysUntil}}</text> 天（第 {{D.next.which}} 个周年）</view>
         <view>下一个里程碑 <text class="em">{{nextMs}}</text></view>
         <view>题干会自动说人话：「<text class="em">{{D.spanText}}</text>里，你最想谢谢我什么？」</view>

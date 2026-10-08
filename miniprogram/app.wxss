@@ -185,3 +185,25 @@ view, text, button, input, textarea { box-sizing: border-box }
 .page { padding: 28rpx 28rpx calc(140rpx + env(safe-area-inset-bottom)) }
 .empty { text-align: center; padding: 80rpx 40rpx; color: var(--ink3); font-size: 25rpx; line-height: 1.8 }
 .divider { height: 2rpx; background: var(--line); margin: 24rpx 0 }
+
+
+/* ============================================================
+   内联 SVG 图标（替代 emoji）
+   ------------------------------------------------------------
+   emoji 跨机型渲染完全不一致（iOS 彩色立体 / Android 黑白单色），
+   且颜色不可控、大小基线不齐 —— 这是小程序专业度最大的破绽。
+   详见 miniprogram/utils/icons.js。
+
+   ★ 用 <image> 承载 SVG，所以**尺寸必须用 width/height**，
+     font-size 对它无效（图标默认撑满容器会变形）。
+   ============================================================ */
+
+/* 行内小图标：跟着文字走 */
+.mi { width: 1em; height: 1em; vertical-align: -0.14em; margin-right: 6rpx; }
+
+/* 大图标：空态 / 无数据 */
+.bigicon { width: 96rpx; height: 96rpx; }
+.bigicon.sm { width: 68rpx; height: 68rpx; }
+
+/* 对勾（代替 ✓ 字符） */
+.tick { width: 26rpx; height: 26rpx; }
