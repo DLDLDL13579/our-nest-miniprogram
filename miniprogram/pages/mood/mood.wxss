@@ -89,6 +89,12 @@
 
 .tick { width: 24rpx; height: 24rpx; }
 
-.ico { width: 30rpx; height: 30rpx; }
+/*
+ * ★ 这个类原来叫 `.ico` —— 与 app.wxss 的 `.ico`（64rpx 圆底头像位）**撞名**，
+ *   于是"复盘列表里的小叶子图标"被套上了 64rpx 灰底圆圈，
+ *   又小又脏（本意只是 30rpx 的纯图标）。
+ *   改名隔离：`.ico` 归 app.wxss 的头像位，`.ico-leaf` 归这里的图标。
+ */
+.ico-leaf { width: 30rpx; height: 30rpx; }
 
 .ico-dots { font-size: 28rpx; color: var(--ink3); line-height: 1; }

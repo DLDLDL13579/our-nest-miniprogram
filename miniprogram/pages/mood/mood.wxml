@@ -249,7 +249,15 @@
         </view>
         <view class="card">
           <view wx:for="{{list}}" wx:key="id" class="row2">
-            <image wx:if="{{!item.dropped && item.done}}" class="ico" src="{{ic.leaf}}" mode="aspectFit" />
+            <!--
+              ★ 这里原来写的是 class="ico" —— 和 app.wxss 里的 `.ico`
+              （64rpx 圆底头像位，给"我/她"文字用的）**类名撞车**：
+              app.wxss 的 64rpx 圆底 + 背景也套到了这个图标上，
+              而 mood.wxss 里想给它的 30rpx 被覆盖，结果图标被塞进一个
+              64rpx 的灰底圆圈里、还顶满 —— 又小又脏。
+              改成独立类名，两边互不干扰。
+            -->
+            <image wx:if="{{!item.dropped && item.done}}" class="ico-leaf" src="{{ic.leaf}}" mode="aspectFit" />
             <view wx:else class="ico-dots">{{item.dropped ? '' : '···'}}</view>
             <view style="flex:1">
               <view class="gt">{{item.at}}</view>

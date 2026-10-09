@@ -766,6 +766,84 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     undefinedCss.join('\n    '))
   ok('<image> 的 class 全部有 CSS 定义（不会撑满容器）')
 
+  /*
+   * ★★ ③e-4 图标不能**撑满它自己的容器**
+   *
+   * 2026-10-08 用户截图报「记一笔的那个笔也太大了」。
+   * 根因和 hero 的气球**同源、方向相反**：
+   *   · 气球是「class 没定义 → 撑满」
+   *   · 笔是「class 有定义、也有尺寸，但**尺寸给满了整个圆**」——
+   *     `.wc-pen` 是 86rpx 的金色圆底，而 <image> 也是 86rpx，
+   *     图标直接顶到圆的边缘，显得又大又笨。
+   *
+   * 正确做法（参考 game 页的 .gc-icon）：**容器定尺寸，图标靠 padding 内缩**。
+   *
+   * ★ 判据：一个 class 如果**同时**是
+   *     ① 有 `background` 或 `border-radius: 50%`（说明它是"底"）
+   *     ② 被 `<image>` 直接使用
+   *   那它就应该有 padding（或给内部留出内缩），否则图标会顶满。
+   *
+   * ⚠️ 例外：**照片容器**（`mode="aspectFill"` 的图）本来就该撑满，
+   *    它们同样"有背景 + 被 image 用"。所以按 `mode` 区分：
+   *    aspectFill = 照片，跳过；aspectFit = 图标，要求内缩。
+   *    （首页 .mc-photo、编年史 .photo、wishes .shot、capsule .pimg 都是这类）
+   */
+  /*
+   * ⚠️ 两个必须处理的误报（否则这条断言会天天喊狼来了）：
+   *
+   *   ① **组合类**：`class="mk on"` 里的 `.on` 单独查会命中 `.mk.on` 之外的规则，
+   *      或者查不到正确规则。→ 用**整串 class 拼成选择器**来查（和 ③e 一样）。
+   *   ② **底色来自父级**：write 页的 `.me`（心情图标）自己没背景，
+   *      但它在 `.mood.on` 选中态里会被父级给底色 —— 那不是它的容器。
+   *      → 只认"这个类**自己**有 background/border-radius:50%"。
+   *
+   * 另外：`mode="aspectFill"` 的图一律跳过 —— 那是照片容器，本来就该撑满。
+   */
+  const filledIcon = []
+  wxmlFiles.forEach(f => {
+    const wxss = f.replace(/\.wxml$/, '.wxss')
+    let css = appCss2
+    if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
+    const raw = fs.readFileSync(f, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    /* 只取 aspectFit 的 <image>（图标），排除照片容器 */
+    const re = /<image(?![^>]*mode="aspectFill")[^>]*class="([^"]+)"[^>]*>/g
+    let m
+    while ((m = re.exec(raw))) {
+      const noTpl = m[1].replace(/\{\{[\s\S]*?\}\}/g, ' ')
+      const classes = noTpl.trim().split(/\s+/).filter(Boolean)
+      for (const cls of classes) {
+        /*
+         * 只认**这个类独占选择器**的规则 —— 组合类（`.mk.on`、`.side.me`、
+         * `.btn.on`）不算它自己的定义，否则会把"父级给的底色"误判成
+         * "这个图标自己的容器"，天天误报。
+         *
+         * ⚠️ 前后都要挡：
+         *   前面 `(^|[^.\w-])` —— 挡 `.mk.on` 里的 `on`（前面是点）
+         *   后面 `(?!\.)(?![\w-])` —— 挡 `.on.xxx` 这种（后面是点）
+         *   实测：只挡后面会漏掉 `.mk.on`（我就是这么误报了两条）。
+         */
+        const esc = cls.replace(/[-]/g, '\\-')
+        const ruleRe = new RegExp(
+          '(?:^|[^.\\w-])\\.' + esc + '(?!\\.)(?![\\w-])\\s*\\{([^}]*)\\}')
+        const rule = ruleRe.exec(css)
+        if (!rule) continue
+        const body = rule[1]
+        const isBase = /background\s*:/.test(body) || /border-radius\s*:\s*50%/.test(body)
+        if (!isBase) continue
+        if (!/padding\s*:/.test(body)) {
+          filledIcon.push(path.relative(ROOT, f) + ' → .' + cls)
+        }
+      }
+    }
+  })
+  assert.deepStrictEqual(filledIcon, [],
+    '★ 这些图标直接撑满了自己的容器（有底色/圆底、但没给图标留内缩）：\n    ' +
+    filledIcon.join('\n    ') +
+    '\n    图标会顶到容器边缘，显得又大又笨（实测：首页「记一笔」的笔）。\n' +
+    '    修法：容器定尺寸 + `box-sizing: border-box` + `padding` 内缩\n' +
+    '    （参考 game 页 .gc-icon 的 padding: 18rpx）。')
+  ok('带底色的图标都留了内缩（不会顶满容器）')
+
   /* ③ 图标库本身要健康：每个条目都能生成合法的 data URI */
   const iconsJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/icons.js'), 'utf8')
   const iconNames = [...iconsJs.matchAll(/^\s{2}([a-zA-Z][\w]*):\s*'/gm)].map(m => m[1])

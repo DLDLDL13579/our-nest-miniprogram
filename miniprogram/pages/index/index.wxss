@@ -61,11 +61,30 @@
 .writecard:active { transform: scale(.985) }
 .wc-title { font-size: 36rpx; font-weight: 700; color: var(--brand2); letter-spacing: 1rpx }
 .wc-sub { font-size: 23rpx; color: #B08066; margin-top: 8rpx }
+/*
+ * 「记一笔」右侧的金色圆形笔按钮。
+ *
+ * ★★ 这里踩的坑和 hero 的气球**同源、方向相反**：
+ *    气球是「class 没定义 → 撑满容器」；
+ *    这个是「class 有定义、也有尺寸，但**尺寸给满了整个圆**」——
+ *    86rpx 的圆里放 86rpx 的图标，笔直接顶到圆的边缘，显得又大又笨。
+ *
+ * 正确做法：**容器定尺寸，图标靠 padding 内缩**
+ *   （参考 game 页的 .gc-icon，那里就是这么写的）。
+ *   padding 20rpx → 图标实际 46rpx，在 86rpx 的圆里留出呼吸感。
+ *
+ * ⚠️ `<image>` 的 width/height 是**内容盒**，padding 会额外撑大元素 ——
+ *    必须配 box-sizing: border-box，让 86rpx 是"含 padding 的总尺寸"，
+ *    否则会变成 86+40=126rpx，把整张卡片撑高。
+ *    另外原来那几行（color / font-size / flex 居中）是给文字用的，
+ *    对 <image> 完全无效，一并去掉。
+ */
 .wc-pen {
-  width: 86rpx; height: 86rpx; border-radius: 50%; flex: none;
+  width: 86rpx; height: 86rpx; flex: none;
+  box-sizing: border-box;
+  padding: 20rpx;
+  border-radius: 50%;
   background: linear-gradient(135deg, #F0C25A, #DDA22C);
-  color: #fff; font-size: 40rpx;
-  display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6rpx 18rpx rgba(206,87,56,.34);
 }
 
