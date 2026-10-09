@@ -195,11 +195,26 @@
       </view>
 
       <view class="sechead"><text>叫一个</text></view>
-      <view class="optgrid">
-        <view wx:for="{{room.options}}" wx:key="index"
-              class="optbtn {{liarReady && room.myTurn ? '' : 'locked'}}"
-              data-i="{{index}}" bindtap="doBid">{{item}}</view>
-      </view>
+      <!--
+        ★ 叫骰选项改成**横向滚动一行**（原来 flex-wrap 排 6 行 = 516rpx）。
+
+        为什么这么改（2026-10-09 用户报「排版有问题」）：
+          整页原来 1786rpx ≈ 893px，而视口只有 ~667px ——
+          要往下滚 226px 才看得到「开！」按钮，而叫骰恰恰是最常点的东西。
+          横向滚动把它压到一行，整页一屏放得下。
+
+        而且横向滑动更贴合「叫骰」的心智：
+          叫法本来就是一条**递增序列**（1个1 → 1个2 → … → 4个6），
+          横着滑就像"往上加码"，比在一堆方格里翻找更顺。
+          所以是"保留全部选项、让它可滑"，不是"砍掉选项"。
+      -->
+      <scroll-view class="optscroll" scroll-x enable-flex show-scrollbar="{{false}}">
+        <view class="optrow">
+          <view wx:for="{{room.options}}" wx:key="index"
+                class="optbtn {{liarReady && room.myTurn ? '' : 'locked'}}"
+                data-i="{{index}}" bindtap="doBid">{{item}}</view>
+        </view>
+      </scroll-view>
 
       <view wx:if="{{room.bid && room.myTurn}}" class="btn openbtn" bindtap="doOpen">
         开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）

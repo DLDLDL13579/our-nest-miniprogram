@@ -220,8 +220,8 @@
  *   实测算下来：盅最低点 378.5rpx，骰子顶边 374.0rpx —— **还压着 4.5rpx**。
  *
  * 现在按下面这组参数（scripts/test-cup-geometry.js 会断言）：
- *   场景 640 / 盅 380（高 591）/ 骰子 62×66 / 偷看抬 90 + scale .78
- *   → 揭盅余量 107rpx、横向余量 12rpx，横竖都真的露得出来。
+ *   场景 560 / 盅 360（高 560）/ 骰子 58×62 / 偷看抬 55 + scale .72
+ *   → 揭盅余量 55rpx、横向余量 15rpx，横竖都真的露得出来。
  *
  * ⚠️ 还有一个**只能靠真机量**才发现的坑：盅抬起来后会被本场景的
  *    `overflow:hidden` **裁掉顶部**（实测超出上沿 34px，盅顶被切平，一眼假）。
@@ -231,7 +231,7 @@
  */
 .cupscene {
   position: relative;
-  height: 640rpx;
+  height: 560rpx;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 24rpx;
   border-radius: var(--r-2);
@@ -270,9 +270,9 @@
  */
 .cs-dice {
   position: absolute; left: 50%;
-  bottom: 38rpx;
-  width: 326rpx;                       /* 5×62 + 4×4，塞得进盅的内容宽 338.6 */
-  margin-left: -163rpx;
+  bottom: 32rpx;
+  width: 306rpx;                       /* 5×62 + 4×4，塞得进盅的内容宽 338.6 */
+  margin-left: -153rpx;
   display: flex; align-items: center; justify-content: center;
   flex-wrap: nowrap;
   gap: 4rpx;
@@ -282,7 +282,7 @@
 }
 .cs-dice.show { opacity: 1 }
 .cs-die {
-  width: 62rpx; height: 66rpx;
+  width: 58rpx; height: 62rpx;
   flex: none;
   /* 逐个落位：每颗延迟一点，像真的骰子先后停住 */
   animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
@@ -305,8 +305,8 @@
 .cs-cup {
   position: absolute; left: 50%;
   bottom: 0;
-  width: 380rpx; height: 591rpx;
-  margin-left: -190rpx;
+  width: 360rpx; height: 560rpx;
+  margin-left: -180rpx;
   z-index: 3;
   transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
               opacity .3s ease;
@@ -342,7 +342,7 @@
  * 揭盅：盅被提走，骰子完全露出来。
  *
  * ★ 和"偷看"必须拉开差距 —— 两个动作幅度太近，玩家分不清是偷看还是揭盅：
- *     偷看 = 抬 90 + scale .78（盅**还在画面里**，按住才抬、松手扣回）
+ *     偷看 = 抬 55 + scale .72（盅**还在画面里**，按住才抬、松手扣回）
  *     揭盅 = 抬 300 + scale .72 + **淡出到 0**（盅离开画面）
  *
  * ⚠️ 揭盅时盅必然超出场景上沿，会被 overflow:hidden 切平。
@@ -352,7 +352,7 @@
  *    （偷看则相反：那时盅还在画面里，必须实心且不能被裁。）
  */
 .cs-cup.lift {
-  transform: translateY(-240rpx) rotate(-9deg) scale(.72);
+  transform: translateY(-200rpx) rotate(-9deg) scale(.70);
   opacity: 0;
 }
 .cs-cup.gone { opacity: 0; transform: translateY(-360rpx) rotate(-14deg) scale(.66) }
@@ -391,7 +391,7 @@
  *    半透明会让骰子隔着盅若隐若现，反而更"看不全"。
  */
 .cs-cup.peek {
-  transform: translateY(-90rpx) rotate(-7deg) scale(.78);
+  transform: translateY(-55rpx) rotate(-7deg) scale(.72);
 }
 
 /*
@@ -501,11 +501,37 @@
   letter-spacing: 2rpx;
 }
 
+/*
+ * 叫骰选项：**横向滚动一行**。
+ *
+ * ★ 从 flex-wrap 网格改过来的（原来 24 个按钮排 6 行 = 516rpx，
+ *   整页 1786rpx 要滚 226px 才看得到「开！」）。
+ *   现在压到一行，整页一屏放得下 —— 叫骰是最常点的东西，不该要滚动才够得着。
+ *
+ * 两个必须写对的点：
+ *  ① `enable-flex` 要写在 wxml 的 scroll-view 上，
+ *     否则子元素不参与 flex 布局（会竖着排）。
+ *  ② 内部容器必须 `display:inline-flex` + `white-space:nowrap` —— 
+ *     scroll-view 横向滚动靠的是"内容比容器宽"，
+ *     用 block 容器会被压回容器宽度，滚不动。
+ */
+.optscroll {
+  width: 100%;
+  white-space: nowrap;
+  margin-bottom: 20rpx;
+}
+.optrow {
+  display: inline-flex;
+  gap: 12rpx;
+  padding-bottom: 4rpx;   /* 给按下时的缩放留一点余量，避免被裁 */
+}
 .optgrid { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 20rpx }
 .optbtn {
-  padding: 16rpx 22rpx; border-radius: 16rpx;
+  /* flex: none 必须写 —— 在 inline-flex 容器里，按钮默认可能被压缩 */
+  flex: none;
+  padding: 16rpx 24rpx; border-radius: 16rpx;
   background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
-  font-size: 24rpx; font-weight: 600; min-width: 140rpx; text-align: center;
+  font-size: 24rpx; font-weight: 600; min-width: 118rpx; text-align: center;
   animation: fadeIn .25s ease;
 }
 .optbtn:active { background: rgba(232,179,60,.3); transform: scale(.94) }

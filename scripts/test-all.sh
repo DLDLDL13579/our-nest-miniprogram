@@ -16,11 +16,13 @@ echo "═══ 6/10 游戏逻辑（转盘前后端一致 / 摇盅五步流程�
 node scripts/test-game.js
 echo "═══ 7/10 多人房间（房间码 / 骰子隔离 / 房主转移）═══"
 node scripts/test-room.js
-echo "═══ 8/11 骰盅几何（偷看时骰子必须真的露得出来）═══"
+echo "═══ 8/12 骰盅几何（偷看时骰子必须真的露得出来）═══"
 node scripts/test-cup-geometry.js
-echo "═══ 9/11 房间页状态机（phase→stage 唯一出口 / 新一局重置）═══"
+echo "═══ 9/12 房间页状态机（phase→stage 唯一出口 / 新一局重置）═══"
 node scripts/test-room-ui.js
-echo "═══ 10/11 反馈时间轴（音画同步 / 震动分级 / 降级）═══"
+echo "═══ 10/12 反馈时间轴（音画同步 / 震动分级 / 降级）═══"
 node scripts/test-feedback.js
-echo "═══ 11/11 字段契约（require 路径 / 缩略图 / 死绑定 / 幽灵字段）═══"
+echo "═══ 11/12 错误反馈（用户操作失败必须有提示，不许静默吞）═══"
+node scripts/test-error-feedback.js
+echo "═══ 12/12 字段契约（require 路径 / 缩略图 / 死绑定 / 幽灵字段）═══"
 node scripts/test-contract.js

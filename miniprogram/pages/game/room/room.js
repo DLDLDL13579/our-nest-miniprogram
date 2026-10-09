@@ -676,8 +676,15 @@ Page({
   },
 
   async doAgain() {
+    /* ★ 同 doBid：call() 失败会 throw，`.catch(() => null)` 会吞掉原因 → 点了没反应 */
     const r = await call('room', { action: 'again', id: this.data.room.id }, { loading: '重开' })
-      .catch(() => null)
+      .catch((e) => {
+        wx.showToast({
+          title: (e && (e.friendly || e.message)) || '开不了新一局',
+          icon: 'none', duration: 2200
+        })
+        return null
+      })
     if (r && r.ok) {
       sfx.play('tap')
       /* 再来一局 → 服务端回到 lobby；同样从 phase 推导，不写死 */
@@ -710,7 +717,14 @@ Page({
     /* 请求和摇动动画并行 —— 网络快时动画还没演完就拿到结果了，
        所以下面的扣盅要等动画走完（否则"摇"到一半突然扣下，很突兀）。 */
     const req = call('room', { action: 'roll', id: this.data.room.id }, { silent: true })
-      .catch(() => null)
+      .catch((e) => {
+        /* ★ 摇失败必须说 —— 原来吞成 null，动画照演一遍却什么都没发生 */
+        wx.showToast({
+          title: (e && (e.friendly || e.message)) || '摇不了，再试一次',
+          icon: 'none', duration: 2200
+        })
+        return null
+      })
 
     await this.wait(1050)
 
@@ -887,13 +901,27 @@ Page({
     }
 
     sfx.play('tap')
+    /*
+     * ★★ `call()` 在**业务失败时会 throw**（见 utils/cloud.js：`ok !== true` 就 throw），
+     *    而不是返回 `{ ok:false }`。所以 `.catch(() => null)` 会把
+     *    「只能往上叫」这类真实原因**吞成 null**，
+     *    后面两个分支（`r.ok` / `r && !r.ok`）**一个都进不去** ——
+     *    用户看到的就是「点了完全没反应」。
+     *
+     *    这是 2026-10-09 用户实测报「点击叫骰没有反应」的根因。
+     *    正确做法：catch 里把 `e.friendly`（cloud.js 已经整理好的人话）提示出来。
+     */
     const r = await call('room', {
       action: 'bid', id: this.data.room.id, n: n, face: face, zhai: false
-    }, { silent: true }).catch(() => null)
+    }, { silent: true }).catch((e) => {
+      wx.showToast({
+        title: (e && (e.friendly || e.message)) || '这一叫不行，换一个',
+        icon: 'none', duration: 2200
+      })
+      return null
+    })
     if (r && r.ok) {
       this.setData({ room: r.room })
-    } else if (r && !r.ok) {
-      wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
     }
   },
 
@@ -912,7 +940,14 @@ Page({
     sfx.play('chargeUp', { volume: 0.6 })
     this.setData({ suspense: true })
     const r = await call('room', { action: 'open', id: this.data.room.id }, { silent: true })
-      .catch(() => null)
+      .catch((e) => {
+        /* 同 doBid：吞掉错误 = 点了没反应。把真实原因说出来 */
+        wx.showToast({
+          title: (e && (e.friendly || e.message)) || '开不了，再试一次',
+          icon: 'none', duration: 2200
+        })
+        return null
+      })
     this.setData({ suspense: false })
     if (r && r.ok) {
       this.setData({ room: r.room, result: r.result, stage: 'over' })
@@ -943,12 +978,20 @@ Page({
     if (this.data.wheelSpinning) return
     if (!this.data.room || !this.data.room.host) return
 
+    /*
+     * ★ 和 doBid 同样的坑：`call()` 业务失败时 throw，
+     *   `.catch(() => null)` 把「这局还没开始」吞掉 → 点转盘**毫无反应**。
+     *   必须把 e.friendly 显示出来。
+     */
     const r = await call('room', { action: 'spin', id: this.data.room.id }, { silent: true })
-      .catch(() => null)
-    if (!r || !r.ok) {
-      if (r && !r.ok) wx.showToast({ title: r.msg || '转不了', icon: 'none' })
-      return
-    }
+      .catch((e) => {
+        wx.showToast({
+          title: (e && (e.friendly || e.message)) || '转不了，再试一次',
+          icon: 'none', duration: 2200
+        })
+        return null
+      })
+    if (!r || !r.ok) return
     this.playWheel(r.spin)
   },
 
@@ -1021,7 +1064,18 @@ Page({
       success: async (m) => {
         if (!m.confirm) return
         this.stopPoll()
-        await call('room', { action: 'leave', id: this.data.room.id }, { silent: true }).catch(() => {})
+        /*
+         * ★ 离开失败也要说 —— 原来 `.catch(() => {})` 静默吞掉，
+         *   后果是"你的座位还占着、别人那边看到幽灵玩家"，而你毫不知情。
+         *   成功时不会有任何提示（这是正常流程，不该打扰）。
+         */
+        await call('room', { action: 'leave', id: this.data.room.id }, { silent: true })
+          .catch((e) => {
+            wx.showToast({
+              title: (e && (e.friendly || e.message)) || '退出没同步上，位置可能还占着',
+              icon: 'none', duration: 2600
+            })
+          })
         sfx.play('toggleOff')
         this.setData({ room: null, stage: 'entry', result: null, err: '' })
       }
