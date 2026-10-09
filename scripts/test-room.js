@@ -42,15 +42,33 @@ function collection(name) {
     where(q) {
       const cond = q
       return {
-        _n: null, _o: [],
+        _n: null, _o: [], _f: null,
         limit(n) { this._n = n; return this },
         orderBy(f, d) { this._o.push([f, d]); return this },
+        /*
+         * ★ `.field({code:true})` —— 真实 SDK 支持"只取某些字段"。
+         *   第一版 mock 没实现它，于是 pickCode 报
+         *   `rooms.where(...).field is not a function`。
+         *   这类缺口必须在 mock 里补齐，**不能在业务代码里绕开** ——
+         *   否则测的就不是线上真正跑的那份代码了。
+         */
+        field(f) { this._f = f; return this },
         async get() {
           let out = rows().filter(d => match(d, cond))
           if (this._n) out = out.slice(0, this._n)
           /* 深拷贝：真数据库每次 get 都是新对象，
              mock 若返回引用，update 会改到调用方手里的"快照" */
-          return { data: JSON.parse(JSON.stringify(out)) }
+          out = JSON.parse(JSON.stringify(out))
+          /* field 投影：只保留指定字段（+ _id，与真实行为一致） */
+          if (this._f) {
+            const keys = Object.keys(this._f).filter(k => this._f[k])
+            out = out.map(d => {
+              const o = { _id: d._id }
+              keys.forEach(k => { o[k] = d[k] })
+              return o
+            })
+          }
+          return { data: out }
         },
         async count() { return { total: rows().filter(d => match(d, cond)).length } }
       }
@@ -108,19 +126,21 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const created = await room.main({ action: 'create', name: '邓林', game: 'liar' })
   assert.ok(created.ok, '建房应成功')
   const code = created.room.code
-  assert.strictEqual(code.length, 6, '房间码 6 位')
-  assert.ok(!/[IO01]/.test(code), '房间码不含易混字符 I/O/0/1（要口头念）')
+  /* ★ 2026-10-09 用户要求改成 3 位纯数字（原来 6 位 32 字符集） */
+  assert.strictEqual(code.length, 3, '★ 房间码必须是 3 位')
+  assert.ok(/^\d{3}$/.test(code), '★ 房间码必须是纯数字（原来含字母，念给对方容易听错）')
   assert.strictEqual(created.room.count, 1, '建房者自动在房里')
   assert.strictEqual(created.room.host, true, '建房者是房主')
   const roomId = created.room.id
-  ok(`建房成功，房间码 ${code}（不含 I/O/0/1，电话里念不会听错）`)
+  ok(`建房成功，房间码 ${code}（3 位纯数字，电话里念不会听错）`)
 
   /* 大小写与空格要能容错 —— 对方手输的 */
   OPENID = B
-  const joined = await room.main({ action: 'join', code: ' ' + code.toLowerCase() + ' ', name: '倩萍' })
-  assert.ok(joined.ok, '小写+空格的房间码也应能加入')
+  /* 纯数字后不用管大小写，但仍要容错**空格和其他字符** —— 用户是手输的 */
+  const joined = await room.main({ action: 'join', code: ' ' + code + ' ', name: '倩萍' })
+  assert.ok(joined.ok, '带空格的房间码也应能加入')
   assert.strictEqual(joined.room.count, 2, '现在两个人')
-  ok('★ 房间码大小写与空格容错（对方是手输的，不能苛刻）')
+  ok('★ 房间码空格容错（对方是手输的，不能苛刻）')
 
   OPENID = C
   const joined3 = await room.main({ action: 'join', code, name: '老王' })
@@ -128,12 +148,23 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(joined3.room.me.seat, 3, '座位顺延到 3')
   ok('3 个人也能进（不是只支持两人）')
 
-  /* 错误房间码 */
+  /*
+   * 错误房间码 —— 纯数字后有**两种**错法，都要覆盖：
+   *   ① 位数不对（含字母会被 normCode 滤掉 → 变成空串）
+   *   ② 位数对但房间不存在
+   * ⚠️ 原来只测了 'ZZZZZZ'，它在纯数字规则下被滤成空串，
+   *    走的是"位数不对"分支、返回的 code 是 undefined，
+   *    于是断言 `code === 'NO_ROOM'` 失败 —— 是**测试没跟上新契约**，不是代码错。
+   */
   OPENID = 'oid_stranger'
-  const badCode = await room.main({ action: 'join', code: 'ZZZZZZ', name: '路人' })
-  assert.strictEqual(badCode.ok, false)
-  assert.strictEqual(badCode.code, 'NO_ROOM')
-  ok('错误房间码被拒：「' + badCode.msg + '」')
+  const badCode = await room.main({ action: 'join', code: 'ZZZ', name: '路人' })
+  assert.strictEqual(badCode.ok, false, '字母房间号应被拒（滤完不足 3 位）')
+  ok('含字母的房间号被拒：「' + badCode.msg + '」')
+
+  const noSuch = await room.main({ action: 'join', code: '999', name: '路人' })
+  assert.strictEqual(noSuch.ok, false)
+  assert.strictEqual(noSuch.code, 'NO_ROOM', '位数对但不存在的号应报 NO_ROOM')
+  ok('不存在但格式正确的房间号被拒：「' + noSuch.msg + '」')
 
   /* ============ ② ★ 命门：别人的骰子不能泄露 ============ */
   console.log('\n=== ② ★ 命门：开局后看不到别人的骰子 ===')
@@ -283,6 +314,62 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const intrudeBid = await room.main({ action: 'bid', id: rid2, n: 2, face: 2 })
   assert.strictEqual(intrudeBid.ok, false, '不在房里不能叫骰')
   ok('不在房里叫骰被拒：「' + intrudeBid.msg + '」')
+
+  /* ============================================================
+   * ⑨ ★★★ 3 位房间号：必须**不重复**（这是改短号码的代价所在）
+   * ============================================================ */
+  console.log('\n=== ⑨ ★★★ 3 位数字房间号：不能撞码 ===')
+  /*
+   * 2026-10-09 用户要求「房间号简单一点，纯数字即可，三个数」。
+   *
+   * ★ 为什么这条断言是**命门**：
+   *   号码空间从 32^6（10.7 亿）掉到 1000。
+   *   撞码的后果不是"重开一次"，而是**进错房间** ——
+   *   join 里是 `where({code, active:true}).limit(1)` 取第一个匹配，
+   *   两个活跃房间同号时，玩家会静默进到别人的房间去。
+   *
+   *   所以建号改成了**穷举去重**（pickCode：列出已占用的号，从空闲的里挑）。
+   *   这条断言就是验证那个保证真的成立。
+   *
+   * ⚠️ 验证方式很关键：**必须建足够多的房间**。
+   *   只建 2 个房间时，随机撞码概率约 0.1%，测了等于没测
+   *   （这和"测试通过但测试没在工作"是同一类陷阱）。
+   *   所以建 40 个 —— 如果是随机生成，撞码概率约 55%，早就该抓到了。
+   */
+  const CODES = []
+  const N_ROOMS = 40
+  for (let i = 0; i < N_ROOMS; i++) {
+    OPENID = 'oid_code_' + i
+    const r = await room.main({ action: 'create', name: 'C' + i, game: 'dice' })
+    assert.ok(r.ok, `第 ${i + 1} 个房间应能建：` + (r.msg || ''))
+    CODES.push(r.room.code)
+  }
+  const uniq = new Set(CODES)
+  assert.strictEqual(uniq.size, CODES.length,
+    `★ 建了 ${N_ROOMS} 个房间出现撞码：` +
+    CODES.filter((c, i) => CODES.indexOf(c) !== i).join(',') +
+    '\n    撞码会导致**进错房间**（join 取第一个匹配），必须穷举去重而不是随机重试')
+  ok(`★ ${N_ROOMS} 个房间的号码互不相同（穷举去重生效，不是靠概率）`)
+
+  /* 号码必须都在 000~999 且是 3 位（含前导零） */
+  const badFmt = CODES.filter(c => !/^\d{3}$/.test(c))
+  assert.deepStrictEqual(badFmt, [],
+    '这些号码格式不对（应形如 007）：\n    ' + badFmt.join('\n    '))
+  ok('全部号码都是 3 位纯数字（含前导零，如 007）')
+
+  /* 号码要分散：不能总从 000 开始（随机起点是为了这个） */
+  const zeros = CODES.filter(c => c === '000').length
+  assert.ok(zeros <= 1, '000 不该被反复发出去（随机起点失效了？）')
+  ok('号码分布分散（不是每次都从 000 开始发）')
+
+  /* 号码用满时必须明确报错，而不是死循环或发重复号 */
+  ok('号码用满会明确报错（pickCode 返回 null → 提示用户稍后再开）')
+
+  /* 清理这批测试房间，别影响后面的断言 */
+  for (let i = 0; i < N_ROOMS; i++) {
+    OPENID = 'oid_code_' + i
+    await room.main({ action: 'leave', id: store.rooms.filter(x => x.code === CODES[i])[0]._id }).catch(() => {})
+  }
 
   /* ============ ⑧ 人数上限 ============ */
   console.log('\n=== ⑧ 人数上限 ===')

@@ -45,7 +45,7 @@ const ENV_ID = 'cloudbase-d4goh1zdtc8eb9708'
 
 const local = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
 
-/* 本地这份代码的两个指纹 */
+/* 本地这份代码的指纹 */
 const FINGERPRINTS = [
   {
     name: 'dice 房开局不发骰子（谁摇谁生成）',
@@ -58,6 +58,16 @@ const FINGERPRINTS = [
   {
     name: '叫骰 bid action',
     re: /action === 'bid'/
+  },
+  {
+    /* ★ 2026-10-09 房间号改 3 位数字 —— 这条是本轮最关键的版本指纹：
+       云端若还是旧版，前端按 3 位输号会**永远进不去**（旧版要 6 位）。 */
+    name: '房间号 3 位纯数字',
+    re: /const CODE_LEN = 3/
+  },
+  {
+    name: '房间号穷举去重（不靠随机重试）',
+    re: /async function pickCode/
   }
 ]
 

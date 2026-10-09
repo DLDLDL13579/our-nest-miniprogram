@@ -18,7 +18,7 @@
       <view class="eh-in">
         <view class="eh-lbl">各自用自己手机</view>
         <view class="eh-t">联网一起玩</view>
-        <view class="eh-s">一个人开房间拿到 6 位房间号，其他人输号进来</view>
+        <view class="eh-s">一个人开房间拿到 3 位房间号，其他人输号进来</view>
       </view>
     </view>
 
@@ -54,8 +54,8 @@
     <!-- 加入 -->
     <view class="card">
       <view class="lbl">进别人的房间</view>
-      <input class="tin code" value="{{joinCode}}" maxlength="6"
-             placeholder="输入 6 位房间号" placeholder-class="ph" bindinput="onCode" />
+      <input class="tin code" value="{{joinCode}}" maxlength="3" type="number"
+             placeholder="输入 3 位房间号" placeholder-class="ph" bindinput="onCode" />
       <view class="btn ghostb" style="margin-top:22rpx" bindtap="doJoin">进去</view>
     </view>
 

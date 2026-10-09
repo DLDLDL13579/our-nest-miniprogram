@@ -37,9 +37,28 @@ const db = cloud.database()
 const _ = db.command
 const rooms = db.collection('rooms')
 
-/* 房间码字符集：去掉容易看错的 I O 0 1（要口头念给对方听） */
-const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-const CODE_LEN = 6
+/*
+ * 房间码：**3 位纯数字**（000~999）。
+ *
+ * 2026-10-09 用户要求「房间号简单一点，纯数字即可，三个数」。
+ * 原来是 6 位 × 32 字符集（去掉 I/O/0/1 这些容易看错的字符）。
+ *
+ * ★★ 但 3 位只有 1000 个号，撞码从"可忽略"变成"必须处理"：
+ *    按生日问题算，同时有 10 个活跃房间时撞码概率就有 4.4%，20 个时 17%。
+ *    自用产品通常只有 1~2 个房间，够用 —— 但**不能靠概率**，因为
+ *    撞码的后果不是"重开一次"，而是**进错房间**：
+ *    join 里是 `where({code, active:true}).limit(1)` 取第一个匹配，
+ *    两个活跃房间同号时，玩家会静默进到别人的房间去。
+ *
+ *    所以建号改成**穷举去重**（见 pickCode）：列出所有已被占用的号，
+ *    从剩下的里随机挑。这样在号码空间耗尽前**保证不重复**。
+ *
+ * ⚠️ 纯数字的附带好处：不用再处理大小写（原 normCode 要 toUpperCase）。
+ */
+const DIGITS = '0123456789'
+const CODE_LEN = 3
+/* 号码空间 = 1000；用满就没号可发，要明确提示而不是死循环 */
+const CODE_SPACE = 1000
 
 /* 房间存活时间：2 小时没人动就当作废弃。
    酒桌游戏一局最多几十分钟，2 小时足够宽松。 */
@@ -67,14 +86,44 @@ const WHEEL_SECTORS = [
   { k: 'pass',  t: '免罚一次', weight: 6 }
 ]
 
-function genCode() {
-  let s = ''
-  for (let i = 0; i < CODE_LEN; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)]
-  return s
+/**
+ * 生成一个还在用的房间号。
+ *
+ * ★ 为什么不是"随机生成 + 撞了就重试"：
+ *   3 位只有 1000 个号。随机重试在房间多起来后会**反复撞**，
+ *   重试 5 次全失败就只能报错让用户重开 —— 体验差且不可控。
+ *
+ *   改成**穷举去重**：一次查出所有活跃房间的号，从"没被占用的"里随机挑。
+ *   代价是每次建房多一次查询（本来就要查重，成本一样），
+ *   换来的是**号码空间耗尽前绝不重复** —— 这才是"不靠概率"。
+ *
+ * @returns {Promise<string|null>} 可用号码；null = 号码用满了
+ */
+async function pickCode() {
+  /* 只取 code 字段，别把整个房间文档拉回来（省流量与内存） */
+  const r = await rooms.where({ active: true }).field({ code: true }).limit(CODE_SPACE).get()
+    .catch(() => ({ data: [] }))
+  const used = new Set((r.data || []).map(x => x.code))
+
+  if (used.size >= CODE_SPACE) return null      // 号发完了
+
+  /*
+   * 先从**全部号码**里随机起点、顺序找第一个没占用的。
+   * 不用"列出所有空闲号再随机挑" —— 那要建一个 1000 元素的数组，
+   * 而 1000 以内顺序探测最多 1000 次、每次都只是 Set 查找，够快。
+   * 随机起点是为了让号码分散，不是每次都从 000 开始。
+   */
+  const start = Math.floor(Math.random() * CODE_SPACE)
+  for (let i = 0; i < CODE_SPACE; i++) {
+    const c = String((start + i) % CODE_SPACE).padStart(CODE_LEN, '0')
+    if (!used.has(c)) return c
+  }
+  return null
 }
 
+/** 房间号归一化：只留数字，最多 3 位。纯数字就不用处理大小写了 */
 function normCode(c) {
-  return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LEN)
+  return String(c || '').replace(/\D/g, '').slice(0, CODE_LEN)
 }
 
 function now() { return Date.now() }
@@ -167,6 +216,11 @@ async function loadRoom(event, openid, needMember) {
     const r = await rooms.doc(String(event.id)).get().catch(() => null)
     room = r && r.data
   } else if (event.code) {
+    /*
+     * 按 code 找房间。
+     * ★ pickCode 已保证活跃房间的号不重复，所以这里 limit(1) 是安全的；
+     *   万一历史数据里有重复（旧版 6 位号残留），也只影响那一批旧房间。
+     */
     const r = await rooms.where({ code: normCode(event.code), active: true }).limit(1).get().catch(() => ({ data: [] }))
     room = (r.data || [])[0]
   }
@@ -191,14 +245,16 @@ exports.main = async (event) => {
       const sec = await safe(name, OPENID)
       if (!sec.pass) return { ok: false, msg: sec.msg, _debug: sec._debug }
 
-      /* 房间码撞车重试（6 位 32 字符集，撞车概率极低，但重试 5 次更稳） */
-      let code = ''
-      for (let i = 0; i < 5; i++) {
-        const c = genCode()
-        const dup = await rooms.where({ code: c, active: true }).count().catch(() => ({ total: 0 }))
-        if (dup.total === 0) { code = c; break }
+      /*
+       * 房间号：3 位数字，**穷举去重**（见 pickCode）。
+       * 原来这里是"随机生成 + count 查重 + 重试 5 次" ——
+       * 6 位 32 字符集时够用，但 3 位只有 1000 个号，
+       * 房间一多就会反复撞、重试完还失败。改成一次查全、挑空闲的。
+       */
+      const code = await pickCode()
+      if (!code) {
+        return { ok: false, msg: '房间号用满了（同时最多 1000 个房间），等一会儿再开' }
       }
-      if (!code) return { ok: false, msg: '房间号生成失败，再试一次' }
 
       const added = await rooms.add({
         data: {
@@ -227,7 +283,7 @@ exports.main = async (event) => {
     /* ================= 加入 ================= */
     if (action === 'join') {
       const code = normCode(event.code)
-      if (code.length !== CODE_LEN) return { ok: false, msg: '房间号是 6 位' }
+      if (code.length !== CODE_LEN) return { ok: false, msg: '房间号是 3 位数字' }
 
       const name = String(event.name || '').trim().slice(0, 12) || ('玩家')
       const sec = await safe(name, OPENID)

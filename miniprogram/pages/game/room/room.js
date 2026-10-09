@@ -620,14 +620,18 @@ Page({
   /* ================= 加入 ================= */
 
   onCode(e) {
-    /* 房间码统一大写，避免用户输入小写后对不上 */
-    this.setData({ joinCode: String(e.detail.value || '').toUpperCase() })
+    /*
+     * 房间号改 3 位纯数字后，这里**只留数字**：
+     * 用户可能手滑打进空格、字母、或者用输入法带出全角字符，
+     * 直接滤掉比"输错了再报错"体验好得多。
+     */
+    this.setData({ joinCode: String(e.detail.value || '').replace(/\D/g, '').slice(0, 3) })
   },
 
   async doJoin() {
     const code = (this.data.joinCode || '').trim()
-    if (code.length !== 6) {
-      return this.setData({ err: '房间号是 6 位' })
+    if (code.length !== 3) {
+      return this.setData({ err: '房间号是 3 位数字' })
     }
     if (this.data.joining) return
     this.setData({ joining: true, err: '' })
