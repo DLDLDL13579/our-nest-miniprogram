@@ -213,6 +213,74 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     noSource.map(f => 'room.' + f).join('\n    '))
   ok(`模板用的 ${mustCompute.length} 个派生字段都有赋值来源（${mustCompute.join(' / ')}）`)
 
+  /*
+   * ★★★ ⑥ 派生字段必须只有一个出口（2026-10-09 真实事故）
+   *
+   * 上面那条只查了"有没有 `room.xxx =` 赋值"，**查不出"赋值是不是每次都会跑"**。
+   * 而本次「点击 2个3 没反应」恰恰是这么来的：
+   *
+   *   服务端 shape() **不返回** options/myTurn/turnName/waiting*（它们是前端算的），
+   *   而页面里有 7 处 `this.setData({ room: r.room })` —— setData 对 room 是
+   *   **整体替换**，每调一次就把这些派生字段抹成 undefined。
+   *   于是：点一下 → 请求成功 → options 被抹掉 → 再点 → 取不到文本 → 裸 return
+   *   → **完全没反应，连请求都不发、一句提示都没有**。
+   *
+   * 这和「转盘无法转」（stage 在 doStart 里被手写死）是**同一类错误**：
+   *   同一份状态有多个写入出口，迟早不同步。
+   *   stage 的解法是收敛到 stageOf()；派生字段的解法是收敛到 decorate()。
+   *
+   * 判据（两条，缺一不可）：
+   *   ① 必须存在 decorate()，且它真的算了这些派生字段
+   *   ② 所有 `setData({... room: <表达式> ...})` 里，<表达式> 只能有两种形态：
+   *        · `this.decorate(...)`  —— 补全后写入
+   *        · `null`                —— 清空（离开房间）
+   *      出现裸的 `r.room` / `res.room` 就是漏网之鱼
+   */
+  console.log('\n=== ⑥ 派生字段只能有一个出口（decorate） ===')
+
+  assert.ok(/decorate\s*\(\s*room\s*\)\s*\{/.test(code),
+    '★ 找不到 decorate() —— 前端派生字段（options/myTurn/turnName/waiting*）' +
+    '必须收敛到一个补全入口，否则某处 setData 会把它们抹掉')
+  for (const f of mustCompute) {
+    assert.ok(new RegExp('room\\.' + f + '\\s*=').test(
+      (/decorate\s*\(\s*room\s*\)\s*\{([\s\S]*?)\n  \}/.exec(code) || ['', ''])[1]),
+      `★ decorate() 里没有算 room.${f} —— 它会在每次写入后变成 undefined`)
+  }
+  ok(`decorate() 补齐了全部 ${mustCompute.length} 个派生字段`)
+
+  /* 找出所有 `setData({ ... room: X ... })`，检查 X 的形态 */
+  const badWrites = []
+  for (const mm of code.matchAll(/setData\(\{[^}]*?\broom:\s*([^,}]+)/g)) {
+    const expr = mm[1].trim()
+    /* 允许：this.decorate(...) / null（清空）/ 变量（refresh 里已 decorate 过） */
+    const allowed = /^this\.decorate\(/.test(expr) || expr === 'null' || expr === 'room'
+    if (!allowed) {
+      const line = code.slice(0, mm.index).split('\n').length
+      badWrites.push(`第 ${line} 行附近  room: ${expr}`)
+    }
+  }
+  assert.deepStrictEqual(badWrites, [],
+    '★ 这些 setData 直接写入原始 room，会**抹掉前端派生字段**\n' +
+    '    （options/myTurn/turnName/waiting* —— 服务端 shape() 不返回它们）：\n    ' +
+    badWrites.join('\n    ') +
+    '\n    症状：点一下能成功，之后按钮就"点了没反应"（取不到选项文本，静默 return）\n' +
+    '    修法：改成 room: this.decorate(r.room)')
+  ok('所有 setData 写 room 的路径都经过 decorate（无裸写入）')
+
+  /*
+   * ★ 叫骰按钮必须**自带选项文本**（data-l），不能只靠下标去查派生数组。
+   *
+   * 按下标取是"依赖派生状态"：派生数组为空 → 取到空串 → 静默失败；
+   * 派生数组比视图层新一拍 → **取到另一个叫法**（点「2个3」叫出「2个4」），
+   * 两者都不报错。把文本跟着按钮传，点击的含义就只由"用户看到的按钮"决定。
+   */
+  const bidBtn = /<view[^>]*data-i="\{\{index\}\}"[^>]*bindtap="doBid"/.exec(tpl)
+  assert.ok(bidBtn, '找不到叫骰按钮')
+  assert.ok(/data-l="\{\{item\}\}"/.test(bidBtn[0]),
+    '★ 叫骰按钮没有 `data-l="{{item}}"` —— 只传下标会让点击依赖派生数组，' +
+    '数组被抹掉时"点了没反应"，数组抢先更新时"叫错骰"（都不报错）')
+  ok('叫骰按钮自带选项文本（data-l），点击不依赖派生数组')
+
   /* ============ ⑥ 动态 class 必须有样式 ============ */
   console.log('\n=== ⑥ 动态 class 必须有 CSS 定义 ===')
 

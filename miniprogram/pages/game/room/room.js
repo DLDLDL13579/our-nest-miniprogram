@@ -337,28 +337,11 @@ Page({
     }
 
     const prev = this.data.room
-    const room = res.room
-
-    /* 叫骰选项在前端算（服务端只判合法性）。
-       放前端算的原因：选项随人数和上家叫法变化，列表可能几十个，
-       每次都从服务端传一遍没必要；而且它只是"给人点的按钮"，
-       真点下去服务端还会再校验一次，前端算错也骗不过去。 */
-    room.options = this.buildOptions(room)
-
-    /* ★ 轮次提示：多人游戏最需要、却最容易漏的一件事 ——「现在该谁了」。
-       没有它，玩家只能靠乱点按钮、被服务端回一句"还没轮到你"来试出来，
-       体感就是"这游戏不智能"。服务端已经给了 turn（座位号）和 me.seat，
-       直接比一下就有，不用多打一次请求。 */
-    const mySeat = (room.me && room.me.seat) || 0
-    room.myTurn = !!room.turn && room.turn === mySeat
-    room.turnName = ((room.players || []).filter(p => p.seat === room.turn)[0] || {}).name || ''
-
-    /* ★ "还在等谁"——摇骰子比大小里，扣盅之后唯一能做的事就是等。
-       只说"等其他人"等于没说：不知道等几个、等谁、对方是不是掉线了。
-       把没摇的人名和人数算出来，等待才是**有信息**的。 */
-    const waiting = (room.players || []).filter(p => !(p.diceCount > 0))
-    room.waitingCount = waiting.length
-    room.waitingNames = waiting.map(p => p.name).join('、')
+    /* ★★ 派生字段走唯一入口 decorate()。
+       原来是内联在这里算的，只有 refresh 这一条路会算 ——
+       而另外 7 处 `setData({ room: r.room })` 整体替换时不会算，
+       于是 options/myTurn 被抹成 undefined（详见 decorate 的注释）。 */
+    const room = this.decorate(res.room)
 
     /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见。
        多人游戏的音效有个特殊职责：**提示"不在这部手机上的事发生了"**。 */
@@ -591,6 +574,57 @@ Page({
     return out.slice(0, 24)
   },
 
+  /**
+   * ★★ 给服务端返回的 room 补上「前端算出来的字段」——**唯一入口**。
+   *
+   * ============ 为什么必须抽成一个函数（真实事故） ============
+   *
+   * 服务端 `shape()` 只返回它自己知道的东西：phase / players / turn / bid …
+   * 而下面这 5 个字段是**前端算的**，服务端**根本不返回**：
+   *
+   *     options / myTurn / turnName / waitingCount / waitingNames
+   *
+   * 问题在于 `room.js` 里有 7 处 `this.setData({ room: r.room })`，
+   * 而 setData 对 `room` 是**整体替换**（不是合并子字段）——
+   * 每调用一次，这 5 个字段就被抹成 `undefined`。
+   *
+   * 于是出现了 2026-10-09 用户实测报的现象：
+   *
+   *     点一下「2个3」→ 云端成功 → options 被抹成 undefined
+   *                  → 逻辑层立刻变，但**视图层还没重绘**（按钮还在屏幕上）
+   *                  → 再点 → label 取不到 → 正则不匹配 → return
+   *                  → **完全没反应**，连请求都不发、一句提示都没有
+   *
+   * 这和之前「转盘无法转」是**同一类错误**：
+   *   `stage` 曾经在 doStart 里被手写死 → 抽出 `stageOf()` 才修好；
+   *   现在 `options` 等派生字段有 7 个出口 → 同样必须收敛成 1 个。
+   *
+   * ⚠️ 只算前端字段，**不要动服务端字段** —— 这里不是"状态机"，
+   *    是纯粹的"给响应补上派生视图字段"。
+   *
+   * @param {object} room 服务端返回的房间对象（会被就地补全并返回）
+   */
+  decorate(room) {
+    if (!room) return room
+
+    /* 叫骰选项：随人数和上家叫法变化，前端算（服务端只判合法性）。
+       真点下去服务端还会再校验一次，所以前端算错也骗不过去。 */
+    room.options = this.buildOptions(room)
+
+    /* 轮次提示：服务端已给 turn（座位号）和 me.seat，比一下就有 */
+    const mySeat = (room.me && room.me.seat) || 0
+    room.myTurn = !!room.turn && room.turn === mySeat
+    room.turnName = ((room.players || []).filter(p => p.seat === room.turn)[0] || {}).name || ''
+
+    /* "还在等谁"：摇骰子比大小里，扣盅后唯一能做的事就是等。
+       只说"等其他人"等于没说 —— 不知道等几个、等谁。 */
+    const waiting = (room.players || []).filter(p => !(p.diceCount > 0))
+    room.waitingCount = waiting.length
+    room.waitingNames = waiting.map(p => p.name).join('、')
+
+    return room
+  },
+
   /* ================= 建房 ================= */
 
   onName(e) { this.setData({ myName: e.detail.value }) },
@@ -612,7 +646,7 @@ Page({
       /* ★ 即便"建房后必然是 lobby"，也从服务端返回的 phase 推导 ——
          手写常量等于在第二个地方重复描述"服务端是什么状态"，
          将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
-      this.setData({ room: r.room, stage: stageOf(r.room.phase) })
+      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
       this.startPoll()
     }
   },
@@ -644,7 +678,7 @@ Page({
     this.setData({ joining: false })
     if (r && r.ok) {
       sfx.play('confetti')
-      this.setData({ room: r.room, stage: stageOf(r.room.phase), joinCode: '' })
+      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), joinCode: '' })
       this.startPoll()
     } else if (r && !r.ok) {
       this.setData({ err: r.msg || '进不去这个房间' })
@@ -671,7 +705,7 @@ Page({
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
-      this.setData({ room: r.room, stage: stageOf(r.room.phase) })
+      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
       /* 房主自己也要走倒计时读秒 —— 否则只有非房主听到读秒声 */
       if (r.room.phase === 'countdown') this.startCountdown(r.room.countdownMs)
     } else if (r && !r.ok) {
@@ -692,7 +726,7 @@ Page({
     if (r && r.ok) {
       sfx.play('tap')
       /* 再来一局 → 服务端回到 lobby；同样从 phase 推导，不写死 */
-      this.setData({ room: r.room, stage: stageOf(r.room.phase), result: null })
+      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), result: null })
       this.resetRound()
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg || '只有房主能开新局', icon: 'none', duration: 2500 })
@@ -751,7 +785,7 @@ Page({
     }
 
     /* ③ 揭盅：盅提起来，我的骰子露出来 */
-    this.setData({ room: r.room, myDice: (r.room.me && r.room.me.dice) || [] })
+    this.setData({ room: this.decorate(r.room), myDice: (r.room.me && r.room.me.dice) || [] })
     this._cupTimers.push(setTimeout(() => this.revealCup(), 260))
 
     if (r.result) {
@@ -874,11 +908,53 @@ Page({
   /* ================= 大话骰 ================= */
 
   async doBid(e) {
-    const i = Number(e.currentTarget.dataset.i)
-    const label = (this.data.room && this.data.room.options && this.data.room.options[i]) || ''
+    const ds = e.currentTarget.dataset
+    const i = Number(ds.i)
+    /*
+     * ★ 优先用按钮**自带**的文本（模板里的 data-l）。
+     *
+     * 这是"根本解"：点击的正确含义由**用户实际看到的那个按钮**决定，
+     * 而不是由逻辑层的派生数组决定 —— 后者会被 setData 抹掉、
+     * 也可能比视图层新一拍（详见模板里 data-l 的注释）。
+     * data-l 只有在极老的模板编译结果里才会缺，所以保留下面的回退。
+     */
+    const opts = (this.data.room && this.data.room.options) || []
+    const label = ds.l || opts[i] || ''
     /* 选项是 "3个4" 这种字符串，解析回 n / face */
     const m = /^(\d+)个(\d)$/.exec(label)
-    if (!m) return
+
+    /*
+     * ★★ 拿不到选项时**不能说走就走**（2026-10-09 用户实测报「点击 2个3 没反应」）。
+     *
+     * 原来这里是裸的 `if (!m) return` —— 一句提示都没有，用户只看到"点了没反应"。
+     * 而它真的会发生：视图层重绘比逻辑层慢，按钮还画在屏幕上，
+     * 但 `room.options` 已经被上一次 setData 抹成 undefined 了
+     * （原因见 decorate() 的注释）。
+     *
+     * 现在的做法：**先自愈，再说话**。
+     *   · 自愈：派生字段能重算就重算，把这次点击救回来（绝大多数情况能救）
+     *   · 兜底：实在算不出来，也要给一句人话，不能让点击石沉大海
+     */
+    if (!m) {
+      /* 自愈：options 是纯前端派生字段，能重算 */
+      const room = this.data.room
+      if (room && room.game === 'liar' && !this._bidHealing) {
+        this._bidHealing = true          // 防止自愈失败时无限递归
+        try {
+          this.decorate(room)
+          const retry = (room.options || [])[i] || ''
+          if (/^(\d+)个(\d)$/.test(retry)) return this.doBid(e)   // 重算成功 → 正常走
+        } finally {
+          this._bidHealing = false
+        }
+      }
+      sfx.play('tapSoft')
+      wx.showToast({
+        title: '这一下没点上，再点一次',
+        icon: 'none', duration: 1800
+      })
+      return
+    }
     const n = Number(m[1])
     const face = Number(m[2])
 
@@ -925,7 +1001,7 @@ Page({
       return null
     })
     if (r && r.ok) {
-      this.setData({ room: r.room })
+      this.setData({ room: this.decorate(r.room) })
     }
   },
 
@@ -954,7 +1030,7 @@ Page({
       })
     this.setData({ suspense: false })
     if (r && r.ok) {
-      this.setData({ room: r.room, result: r.result, stage: 'over' })
+      this.setData({ room: this.decorate(r.room), result: r.result, stage: 'over' })
       sfx.play('revealHit')
       this.bump()
       feedback.vibrate('heavy')

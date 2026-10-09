@@ -210,9 +210,24 @@
       -->
       <scroll-view class="optscroll" scroll-x enable-flex show-scrollbar="{{false}}">
         <view class="optrow">
+          <!--
+            ★★ `data-l="{{item}}"` —— 让按钮**自带“我叫的是什么”**。
+
+            为什么不能只传下标（原来是 `data-i="{{index}}"`）：
+              doBid 拿下标去 `this.data.room.options[i]` 取文本，
+              而 options 是**前端派生字段**，分分钟可能为空或过期
+              （它曾经被 7 处 setData 抹成 undefined，见 room.js 的 decorate 注释）。
+              更隐蔽的是**视图层重绘比逻辑层慢** —— 屏幕上还画着旧的一行按钮，
+              逻辑层 options 已经换新了，这时按下标取会**取到另一个叫法**，
+              用户点「2个3」实际叫出「2个4」，而且**不报错**。
+
+            把文本跟着按钮一起传，点击就只依赖“用户看到并点下的那个按钮”——
+            这正是用户的本意。合法性仍由服务端判定：若这一叫已经过期，
+            服务端回「只能往上叫」，用户得到明确提示（而不是悄悄叫错）。
+          -->
           <view wx:for="{{room.options}}" wx:key="index"
                 class="optbtn {{liarReady && room.myTurn ? '' : 'locked'}}"
-                data-i="{{index}}" bindtap="doBid">{{item}}</view>
+                data-i="{{index}}" data-l="{{item}}" bindtap="doBid">{{item}}</view>
         </view>
       </scroll-view>
 
