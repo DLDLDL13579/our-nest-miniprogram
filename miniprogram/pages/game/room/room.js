@@ -110,6 +110,28 @@ for (const _k of ['speakerOn', 'speakerOff', 'target', 'dice', 'wheel']) {
   _IC[_k] = icons.dataUri(_k, '#E8B33C')
 }
 
+/**
+ * 服务端 phase → 页面 stage。
+ *
+ * ★★ 必须**只有这一处**做映射。之前踩过的坑：
+ *   `doStart` 里写死 `stage:'playing'`，而服务端 start 返回的是
+ *   `phase:'countdown'`（还有 3.2 秒倒计时）——
+ *   于是房主本地 stage=playing、房间实际 phase=countdown：
+ *     · 房主看到的是"游戏界面"，点转盘/摇盅 → 服务端回「这局还没开始」
+ *     · 1.5 秒后轮询又把他拽回倒计时界面，界面**闪一下**
+ *     · 非房主反而正常（他们全靠轮询，走的就是这个映射）
+ *   这就是「转盘无法转」的根因 —— 不是转盘坏了，是房主压根没进 playing。
+ *
+ *   凡是"服务端状态 → 界面状态"的推导，都只能有一个出口，
+ *   否则两处一旦不同步，就会出现"某台手机上能点、另一台不能"的怪现象。
+ */
+function stageOf(phase) {
+  if (phase === 'lobby') return 'lobby'
+  if (phase === 'countdown') return 'countdown'
+  if (phase === 'playing') return 'playing'
+  return 'over'
+}
+
 Page({
   data: {
     ic: _IC,
@@ -281,6 +303,15 @@ Page({
     /* 叫骰选项（前端算的）可能随 bid 变化 */
     if (JSON.stringify(prev.options || null) !== JSON.stringify(room.options || null)) return true
 
+    /* ★ 轮次提示：轮到谁变了必须刷新 ——
+       漏了这条，"该你了"的提示会停在上一轮，比不做还糟
+       （玩家以为轮到自己了，点了却被拒）。 */
+    if (prev.myTurn !== room.myTurn) return true
+    if (prev.turnName !== room.turnName) return true
+    /* "还在等谁"同理：别人摇完了要立刻反映出来 */
+    if (prev.waitingCount !== room.waitingCount) return true
+    if (prev.waitingNames !== room.waitingNames) return true
+
     return false
   },
 
@@ -314,10 +345,29 @@ Page({
        真点下去服务端还会再校验一次，前端算错也骗不过去。 */
     room.options = this.buildOptions(room)
 
+    /* ★ 轮次提示：多人游戏最需要、却最容易漏的一件事 ——「现在该谁了」。
+       没有它，玩家只能靠乱点按钮、被服务端回一句"还没轮到你"来试出来，
+       体感就是"这游戏不智能"。服务端已经给了 turn（座位号）和 me.seat，
+       直接比一下就有，不用多打一次请求。 */
+    const mySeat = (room.me && room.me.seat) || 0
+    room.myTurn = !!room.turn && room.turn === mySeat
+    room.turnName = ((room.players || []).filter(p => p.seat === room.turn)[0] || {}).name || ''
+
+    /* ★ "还在等谁"——摇骰子比大小里，扣盅之后唯一能做的事就是等。
+       只说"等其他人"等于没说：不知道等几个、等谁、对方是不是掉线了。
+       把没摇的人名和人数算出来，等待才是**有信息**的。 */
+    const waiting = (room.players || []).filter(p => !(p.diceCount > 0))
+    room.waitingCount = waiting.length
+    room.waitingNames = waiting.map(p => p.name).join('、')
+
     /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见。
        多人游戏的音效有个特殊职责：**提示"不在这部手机上的事发生了"**。 */
     if (prev && prev.phase !== room.phase) {
       if (room.phase === 'countdown') {
+        /* ★ 新一局：所有本地局内状态在这里统一清掉。
+           不能靠"某个字段恰好变了"来重置 —— 漏一处就是"新一局还是旧骰子"，
+           而且不报错。 */
+        this.resetRound()
         /* 开局倒计时开始：读秒声（最后一声更急促） */
         this.startCountdown(room.countdownMs)
       } else if (room.phase === 'playing') {
@@ -381,9 +431,9 @@ Page({
 
     this.setData({
       room: room,
-      stage: room.phase === 'lobby' ? 'lobby'
-        : (room.phase === 'countdown' ? 'countdown'
-        : (room.phase === 'playing' ? 'playing' : 'over')),
+      /* ★ 走统一映射，别在这里手写三元表达式 ——
+         之前 doStart 里写死 'playing' 就是这类"两处各写一份"出的错 */
+      stage: stageOf(room.phase),
       result: room.lastResult || null,
       netTip: ''
     })
@@ -402,29 +452,71 @@ Page({
     const mine = (room.players || []).filter(p => p.isMe)[0] || {}
     const myDice = (mine.dice || [])
 
-    /* 摇骰子比大小：我这轮摇过没有 */
+    /* ---------- 摇骰子比大小 ---------- */
     if (room.game === 'dice') {
       const rolled = myDice.length > 0
+      /*
+       * ★★ 这里原来是 `rolled && !myRolled → 已扣盅，等其他人`，
+       *    而云端**开局就把骰子发给所有人**，于是：
+       *      一进 playing 就 myRolled=true → 摇盅按钮永远点不动（doRoll 直接 return）
+       *      → 游戏彻底卡死。用户说的「双人交互不智能」就是这个。
+       *    现在云端改成"谁摇谁生成"（dice 房开局不发骰子），
+       *    所以 rolled 只在**自己真的摇过**之后才为真，这条判断才成立。
+       *
+       *    另外：这里只在"我"的骰子出现时扣盅，**不再**用 round 变化去猜新一局 ——
+       *    新一局的重置改在 phase 进入 countdown 时统一做（见 resetRound），
+       *    判据唯一，不会因为轮询时机不同而漏掉。
+       */
       if (rolled && !this.data.myRolled) {
-        /* 我刚摇完 → 扣盅，等其他人 */
         this.setData({
           myRolled: true, myDice: myDice,
           cupSrc: 'cup-down', cupCls: '',
           cupHint: '已扣盅，等其他人摇完',
           diceShown: false
         })
-      } else if (!rolled && prev && prev.game === room.game && this.data.myRolled && room.phase === 'playing' && room.round !== (prev && prev.round)) {
-        /* 新一局：重置 */
-        this.setData({ myRolled: false, myDice: [], diceShown: false, cupHint: '' })
+      }
+      /* 还没摇的人：给一句明确的"该你了"，而不是一片空白 */
+      if (!rolled && room.phase === 'playing' && !this.data.rolling && !this.data.myRolled) {
+        if (this.data.cupHint !== '该你了，摇盅！') {
+          this.setData({ cupHint: '该你了，摇盅！' })
+        }
       }
     }
 
-    /* 大话骰：骰子到手了就能扣盅开叫 */
-    if (room.game === 'liar' && myDice.length > 0) {
-      if (!this.data.liarReady) {
+    /* ---------- 大话骰 ---------- */
+    if (room.game === 'liar') {
+      /* 骰子到手 → 记下来（偷看时要显示）。
+         ★ 原来写成 `if (!liarReady) setData({myDice})` ——
+           liarReady 一旦为 true 就再也不会更新 myDice，
+           新一局骰子变了、界面还显示上一局的点数。
+           现在无条件同步，liarReady 只表示"这一局偷看过没有"。 */
+      if (myDice.length && JSON.stringify(myDice) !== JSON.stringify(this.data.myDice)) {
         this.setData({ myDice: myDice })
       }
+      /* 还没偷看 → 明确引导；看过了 → 提示可以再看 */
+      if (myDice.length && !this.data.diceShown) {
+        const want = this.data.liarReady ? '按住盅可以再看' : '按住盅偷看自己的骰子'
+        if (this.data.cupHint !== want) this.setData({ cupHint: want })
+      }
     }
+  },
+
+  /**
+   * 新一局开始时把"这一局的本地状态"清干净。
+   *
+   * ★ 为什么必须集中做：这些字段（骰子、是否摇过、是否偷看过、盅的样子）
+   *   散在十几个 setData 里，靠"某个条件恰好成立"来重置 ——
+   *   只要有一处漏了，就会出现"新一局还是上一局的骰子""按钮点不动"这类怪事，
+   *   而且**不报错**。统一在一个入口重置，才不会有漏网的。
+   */
+  resetRound() {
+    this.clearCupTimers()
+    this.setData({
+      myDice: [], myRolled: false, liarReady: false, diceShown: false,
+      rolling: false, suspense: false,
+      cupSrc: 'cup-down', cupCls: '', cupHint: '',
+      result: null
+    })
   },
 
   /**
@@ -517,7 +609,10 @@ Page({
     this.setData({ creating: false })
     if (r && r.ok) {
       sfx.play('confetti')
-      this.setData({ room: r.room, stage: 'lobby' })
+      /* ★ 即便"建房后必然是 lobby"，也从服务端返回的 phase 推导 ——
+         手写常量等于在第二个地方重复描述"服务端是什么状态"，
+         将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
+      this.setData({ room: r.room, stage: stageOf(r.room.phase) })
       this.startPoll()
     }
   },
@@ -545,7 +640,7 @@ Page({
     this.setData({ joining: false })
     if (r && r.ok) {
       sfx.play('confetti')
-      this.setData({ room: r.room, stage: 'lobby', joinCode: '' })
+      this.setData({ room: r.room, stage: stageOf(r.room.phase), joinCode: '' })
       this.startPoll()
     } else if (r && !r.ok) {
       this.setData({ err: r.msg || '进不去这个房间' })
@@ -569,7 +664,12 @@ Page({
       .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
     if (r && r.ok) {
       sfx.play('shakerMetal')
-      this.setData({ room: r.room, stage: 'playing' })
+      /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
+         写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
+         「转盘无法转」「摇盅没反应」都是这么来的。 */
+      this.setData({ room: r.room, stage: stageOf(r.room.phase) })
+      /* 房主自己也要走倒计时读秒 —— 否则只有非房主听到读秒声 */
+      if (r.room.phase === 'countdown') this.startCountdown(r.room.countdownMs)
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg || '开不了', icon: 'none', duration: 2500 })
     }
@@ -580,7 +680,9 @@ Page({
       .catch(() => null)
     if (r && r.ok) {
       sfx.play('tap')
-      this.setData({ room: r.room, stage: 'lobby', result: null })
+      /* 再来一局 → 服务端回到 lobby；同样从 phase 推导，不写死 */
+      this.setData({ room: r.room, stage: stageOf(r.room.phase), result: null })
+      this.resetRound()
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg || '只有房主能开新局', icon: 'none', duration: 2500 })
     }
@@ -763,13 +865,24 @@ Page({
     const face = Number(m[2])
 
     /*
-     * 还没偷看骰子 → 给一句人话。
-     * 第一版是直接 return（点了完全没反应），用户会以为界面坏了 ——
-     * 正确做法是明确告诉用户"下一步该做什么"。
+     * 点不动的时候，**必须说清"为什么"和"接下来做什么"**。
+     *
+     * 第一版是直接 return（点了完全没反应），用户以为界面坏了；
+     * 第二版统一回一句"先按住盅偷看"，可如果其实是"没轮到你"，
+     * 这句话就是错的 —— 玩家照做还是点不了，反而更困惑。
+     * 所以按状态给不同的话。
      */
     if (!this.data.liarReady) {
       sfx.play('tapSoft')
       wx.showToast({ title: '先按住盅偷看自己的骰子', icon: 'none', duration: 1800 })
+      return
+    }
+    if (!this.data.room.myTurn) {
+      sfx.play('tapSoft')
+      wx.showToast({
+        title: '还没轮到你，等 ' + (this.data.room.turnName || '对方') + ' 叫',
+        icon: 'none', duration: 1800
+      })
       return
     }
 
@@ -785,6 +898,15 @@ Page({
   },
 
   async doOpen() {
+    /* 开骰只有轮到自己才有意义 —— 先拦，别让玩家白等一次网络往返 */
+    if (!this.data.room.myTurn) {
+      sfx.play('tapSoft')
+      wx.showToast({
+        title: '还没轮到你，等 ' + (this.data.room.turnName || '对方') + ' 叫完',
+        icon: 'none', duration: 1800
+      })
+      return
+    }
     /* 开骰是全场最紧张的一刻 —— 三段式：
          蓄力（自己手机上）→ 开盅重击（全场都会轮询到）→ 结果音 */
     sfx.play('chargeUp', { volume: 0.6 })

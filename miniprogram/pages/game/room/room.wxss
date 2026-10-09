@@ -204,9 +204,28 @@
    层次（从下到上）：
      绒布桌面 → 聚光 → 骰子 → 盅 → 提示文字
    ============================================================ */
+/*
+ * 骰盅舞台。
+ *
+ * ★★ 这里的尺寸不是"看着调的"，是按**图片真实内容边界**算出来的。
+ *
+ * 图片实测（cup-down.png，312×485 画布）：
+ *   内容只有 278×400，**上留白 83px（17%）**、下留白 2px。
+ *   也就是说 CSS 写的 300×466 里，真正画着盅的只有中间那块 ——
+ *   拿 CSS 盒子去算"盅盖没盖住骰子"必然算错。
+ *
+ * 第一版"拿开盅骰子看不全"就是两处几何同时不够：
+ *   ① 5 颗骰子横排 612rpx，而盅的**内容宽**只有 267rpx → 两端露在外面；
+ *   ② 偷看只抬 64rpx，盅的内容底边仍在骰子上方压着 → 上沿被盖。
+ *   实测算下来：盅最低点 378.5rpx，骰子顶边 374.0rpx —— **还压着 4.5rpx**。
+ *
+ * 现在按下面这组参数（scripts/test-cup-geometry.js 会断言）：
+ *   场景 610 / 盅 360（高 560）/ 骰子 58×62 / 偷看抬 145 + scale .84
+ *   → 揭盅余量 44rpx、横向余量 15rpx，横竖都真的露得出来。
+ */
 .cupscene {
   position: relative;
-  height: 520rpx;
+  height: 610rpx;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 24rpx;
   border-radius: var(--r-2);
@@ -237,29 +256,27 @@
 }
 
 /*
- * 骰子：压在盅底下（z-index 更低），只有揭盅/偷看时才露出来。
+ * 骰子：压在盅底下（z-index 更低），只有偷看/揭盅时才露出来。
  *
- * ★ 布局必须和盅对齐 —— 第一版把 5 颗骰子横排（5×108 + 4×18 = 612rpx 宽），
- *   而盅只有 300rpx 宽。盅一抬起来**两端就露在外面、中间还被压住**，
- *   变成「看不全」。现在骰子按**盅底的宽度**紧凑排列，
- *   保证盅盖住时完全看不见、抬起时全部露出。
+ * ★ 宽度必须 ≤ 盅的**内容宽**（320.8rpx），否则两端会从盅两侧探出来。
+ *   骰子行宽 = 5×58 + 4×4 = 306rpx ✓
+ *   骰子要落在桌面（bottom 42rpx），和盅的内容底边对齐。
  */
 .cs-dice {
   position: absolute; left: 50%;
-  bottom: 88rpx;
-  width: 300rpx;                       /* 与盅同宽 */
-  margin-left: -150rpx;
+  bottom: 42rpx;
+  width: 306rpx;                       /* 5×58 + 4×4，塞得进盅的内容宽 320.8 */
+  margin-left: -153rpx;
   display: flex; align-items: center; justify-content: center;
   flex-wrap: nowrap;
-  gap: 6rpx;
+  gap: 4rpx;
   z-index: 1;
   opacity: 0;
   transition: opacity .18s ease;
 }
 .cs-dice.show { opacity: 1 }
 .cs-die {
-  /* 5 颗必须挤进 300rpx：5×54 + 4×6 = 294rpx */
-  width: 54rpx; height: 58rpx;
+  width: 58rpx; height: 62rpx;
   flex: none;
   /* 逐个落位：每颗延迟一点，像真的骰子先后停住 */
   animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
@@ -271,10 +288,19 @@
   100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
 }
 
-/* 盅本体 */
+/*
+ * 盅本体。
+ *
+ * ★ 用**绝对定位贴场景底**，而不是 flex 居中 ——
+ *   因为图片上留白 17%，flex 居中会让"CSS 盒子居中"而不是"盅的图形居中"，
+ *   盅看起来会浮在半空。贴底之后盅的口沿正好落在桌面上。
+ *   （盅高 560 = 360 × 485/312，保持图片原始比例 0.643，不变形。）
+ */
 .cs-cup {
-  position: relative;
-  width: 300rpx; height: 466rpx;
+  position: absolute; left: 50%;
+  bottom: 0;
+  width: 360rpx; height: 560rpx;
+  margin-left: -180rpx;
   z-index: 3;
   transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
               opacity .3s ease;
@@ -306,11 +332,13 @@
   100% { transform: translateY(0) scale(1) }
 }
 
-/* 揭盅：盅提起来并淡出（骰子露出来） */
+/* 揭盅：盅整个提走并淡出（骰子完全露出来）。
+   ★ 抬得比"偷看"更高（-220rpx）、缩得更小，让"揭盅"比"偷看"更彻底 ——
+     两个动作幅度必须能区分开，否则玩家分不清自己是偷看还是揭盅。 */
 .cs-cup.lift {
-  transform: translateY(-120rpx) rotate(-9deg) scale(.94);
+  transform: translateY(-220rpx) rotate(-9deg) scale(.78);
 }
-.cs-cup.gone { opacity: 0; transform: translateY(-200rpx) rotate(-14deg) scale(.88) }
+.cs-cup.gone { opacity: 0; transform: translateY(-320rpx) rotate(-14deg) scale(.7) }
 
 /*
  * 入盅：骰子掉进盅里，盅被轻轻撞一下。
@@ -333,22 +361,34 @@
 /*
  * 偷看（大话骰按住）：抬起盅看自己的骰子。
  *
- * ⚠️ 第一版只抬 64rpx，结果骰子仍在盅的覆盖范围内 ——
- *    盅是 300×466，抬起 64rpx 后下方仍盖住骰子上半部分，
- *    加上骰子横向比盅宽，于是「两端露在外面、中间被压住」。
- *    现在抬 **-120rpx**（盅的下沿完全离开骰子所在的高度），
- *    骰子才真正全部露出。
+ * ★★ 抬起量 145rpx 是按几何算出来的，不是估的。
+ *
+ * 计算（盅内容底边距场景底 4.5rpx，半宽 160.4rpx）：
+ *   最低点 = 中心 + (内容底边−中心)×scale + 半宽×sin(7°) − lift
+ *          = 305 + 265×0.84 + 160.4×0.122 − 145 ≈ 198rpx
+ *   骰子顶边 = 610 − 42 − 62 = 506rpx
+ *   → 余量 44rpx（原来只有 −4.5rpx，即"还压着"）
+ *
+ * ⚠️ 第一版只抬 64rpx，且盅是 flex 居中的 —— 两处叠加，骰子上沿必被压住。
+ *    另外**不再用 opacity 半透明**：盅该是实心抬走，
+ *    半透明会让骰子隔着盅若隐若现，反而更"看不全"。
  */
 .cs-cup.peek {
-  transform: translateY(-120rpx) rotate(-7deg) scale(.96);
-  opacity: .35;
+  transform: translateY(-145rpx) rotate(-7deg) scale(.84);
 }
 
+/*
+ * 提示语。
+ * ★ 放在**场景顶部**，不放底部 —— 底部是骰子（42~104rpx）和盅口沿（贴底）的地盘，
+ *   文字压上去正好挡住"骰子露出来"的那一刻。顶部 0~146rpx 是空白绒布
+ *   （盅图本身有 17% 上留白，内容从 146rpx 才开始），完全空着。
+ */
 .cs-hint {
-  position: absolute; left: 0; right: 0; bottom: 22rpx;
+  position: absolute; left: 0; right: 0; top: 6rpx;
   text-align: center;
   font-size: 23rpx; color: rgba(246,231,195,.55);
   z-index: 4;
+  pointer-events: none;
 }
 
 /* ---------- 其他玩家的盅（摇骰子比大小）---------- */
@@ -372,6 +412,21 @@
   max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .oc-stat { font-size: 19rpx; color: rgba(255,255,255,.4); margin-top: 4rpx }
+/* 已摇的人用金色标出来 —— 一眼扫过去就知道还差谁 */
+.oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
+
+/*
+ * 等待行（摇骰子比大小）。
+ * "已扣盅，等其他人"必须说清**等谁、还差几个** ——
+ * 否则玩家不知道对方是没摇还是掉线了，只能干等，体感就是"不智能"。
+ */
+.waitline {
+  text-align: center;
+  font-size: 23rpx;
+  color: rgba(255,255,255,.45);
+  margin-top: 16rpx;
+  line-height: 1.6;
+}
 
 /* ============================================================
    命运转盘（联机）
@@ -454,6 +509,35 @@
 }
 .ln-t { font-size: 26rpx; color: #F6E7C3; font-weight: 600 }
 .ln-s { font-size: 21rpx; color: rgba(255,255,255,.5); line-height: 1.5 }
+
+/* "等别人"用中性色 —— 和"该你操作了"的金色区分开，扫一眼就知道要不要动手 */
+.liarnudge.wait {
+  background: rgba(255,255,255,.05);
+  border-color: rgba(255,255,255,.14);
+}
+.liarnudge.wait .ln-t { color: rgba(255,255,255,.62) }
+
+/*
+ * 轮次提示条。
+ * 多人游戏最该有的一条信息：「现在该谁了」。
+ * 轮到自己时金色高亮 —— 不用靠"点一下试试会不会被拒"来猜。
+ */
+.turnbar {
+  text-align: center;
+  font-size: 24rpx;
+  padding: 14rpx 0;
+  margin-bottom: 16rpx;
+  border-radius: 999rpx;
+  color: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.05);
+  transition: all .2s ease;
+}
+.turnbar.mine {
+  color: #2A1D16;
+  background: linear-gradient(135deg, #F0C560, #E8B33C);
+  font-weight: 700;
+  box-shadow: 0 6rpx 18rpx rgba(232,179,60,.3);
+}
 
 .openbtn {
   height: 96rpx; margin-top: 10rpx;

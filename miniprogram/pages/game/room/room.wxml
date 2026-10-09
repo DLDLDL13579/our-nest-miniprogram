@@ -127,8 +127,18 @@
         </block>
         <block wx:else>
           <view class="bid-lbl">还没人叫</view>
-          <view class="bid-val hint">等 {{room.players[0].name}} 先叫</view>
+          <view class="bid-val hint">从 1 个起叫，随便叫</view>
         </block>
+      </view>
+
+      <!--
+        ★ 轮次提示条：多人游戏最该有、最容易漏的一件东西。
+        没有它，玩家只能靠"点一下看看会不会被拒"来猜轮没轮到自己 ——
+        体感就是"这游戏不智能"。服务端本来就返回了 turn，比一下就有。
+      -->
+      <view class="turnbar {{room.myTurn ? 'mine' : ''}}">
+        <text wx:if="{{room.myTurn}}">轮到你叫了</text>
+        <text wx:else>等 {{room.turnName || '别人'}} 叫</text>
       </view>
 
       <!-- ============ 骰盅 ============
@@ -155,31 +165,36 @@
       </view>
 
       <!--
-        ★ 叫骰选项**永远显示**，不因"还没偷看骰子"而隐藏。
+        ★ 叫骰区**永远显示**，不因"还没偷看"或"没轮到我"而整块藏起来。
 
-        第一版用 wx:if="{{liarReady}}" 把整个区块藏起来 ——
-        liarReady 要**按住盅偷看过**才为真，于是新玩家进来看到的是：
-        一个盅 + 一句"该你了"，**连叫骰按钮都没有**，
-        完全不知道该干嘛，还以为功能坏了。
+        第一版用 wx:if="{{liarReady}}" 把整个区块藏掉 ——
+        liarReady 要按住盅偷看过才为真，于是新玩家进来看到的是：
+        一个盅 + 一句"该你了"，**连叫骰按钮都没有**，完全不知道能干嘛。
         （实测：这就是「大话骰无法喊骰」的原因）
 
-        正确做法是**引导而不是上锁**：
-          · 没看过 → 区块显示，但提示"先按住盅偷看自己的骰子"
-          · 看过   → 正常可叫
-        入口始终可见，用户永远知道下一步该做什么。
+        正确做法是**引导而不是上锁**：入口始终在，只是说明"现在为什么不能点"。
+        三态各有一句人话：
+          · 没偷看   → 先按住盅偷看
+          · 不是我的回合 → 等谁
+          · 都能了   → 正常可叫
       -->
       <view wx:if="{{!liarReady}}" class="liarnudge">
         <text class="ln-t">先按住盅偷看自己的骰子，再叫</text>
         <text class="ln-s">看完松手盖回去就行，你的骰子只有你能看到</text>
       </view>
+      <view wx:elif="{{!room.myTurn}}" class="liarnudge wait">
+        <text class="ln-t">等 {{room.turnName || '别人'}} 叫完，就轮到你了</text>
+        <text class="ln-s">你可以先按住盅，看看自己这局的骰子</text>
+      </view>
 
       <view class="sechead"><text>叫一个</text></view>
       <view class="optgrid">
-        <view wx:for="{{room.options}}" wx:key="index" class="optbtn {{liarReady ? '' : 'locked'}}"
+        <view wx:for="{{room.options}}" wx:key="index"
+              class="optbtn {{liarReady && room.myTurn ? '' : 'locked'}}"
               data-i="{{index}}" bindtap="doBid">{{item}}</view>
       </view>
 
-      <view wx:if="{{room.bid}}" class="btn openbtn" bindtap="doOpen">
+      <view wx:if="{{room.bid && room.myTurn}}" class="btn openbtn" bindtap="doOpen">
         开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
       </view>
     </block>
@@ -202,19 +217,28 @@
         <view class="cs-hint">{{cupHint}}</view>
       </view>
 
-      <!-- 其他玩家的状态：每人一个盅，摇完的盅会"扣下" -->
+      <!--
+        其他玩家的状态：每人一个盅，摇完的盅会"扣下"。
+        ★ 这是"等其他人"这件事**唯一看得见的地方** ——
+          原来只有一句"已扣盅，等其他人摇完"，但没说等谁、谁还没摇，
+          玩家只能干等。现在每人的状态都写在脸上。
+      -->
       <view class="othercups">
         <view wx:for="{{room.players}}" wx:key="openid" class="oc-item {{item.isMe ? 'me' : ''}}">
           <image class="oc-cup {{item.diceCount > 0 ? 'done' : ''}}"
                  src="/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png"
                  mode="aspectFit" />
           <view class="oc-name">{{item.name}}</view>
-          <view class="oc-stat">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
+          <view class="oc-stat {{item.diceCount > 0 ? 'done' : ''}}">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
         </view>
       </view>
 
-      <view class="btn main bigbtn {{rolling ? 'disabled' : ''}}" bindtap="doRoll">
+      <view class="btn main bigbtn {{rolling || myRolled ? 'disabled' : ''}}" bindtap="doRoll">
         {{rolling ? '摇盅中…' : (myRolled ? '已扣盅，等其他人' : '摇盅！')}}
+      </view>
+      <!-- 等别人的时候，明确说是**谁**还没摇 —— 不然就是干等 -->
+      <view wx:if="{{myRolled && !result}}" class="waitline">
+        还差 {{room.waitingCount}} 个人没摇<block wx:if="{{room.waitingNames}}">（{{room.waitingNames}}）</block>
       </view>
     </block>
 
