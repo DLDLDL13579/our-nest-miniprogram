@@ -140,11 +140,49 @@ function px(body, prop) {
   ok(`★ 偷看时盅最低点 ${lowest.toFixed(1)}rpx < 骰子顶边 ${diceTop}rpx（余量 ${margin.toFixed(1)}rpx，真的露得出来）`)
 
   /* ---------- ④ 抬起来之后不能被 overflow:hidden 裁掉 ---------- */
-  const contentTopY = center + (boxTop + cTop - center) * scale - lift
-  assert.ok(contentTopY > 0,
-    `★ 盅抬起来后顶部跑到 ${contentTopY.toFixed(1)}rpx（<0），会被 .cupscene 的 ` +
-    `overflow:hidden 裁掉一块 —— 看起来像盅被切了`)
-  ok(`抬起后盅顶仍在场景内（${contentTopY.toFixed(1)}rpx > 0，不会被裁）`)
+  /*
+   * ★★ 这条是**真机量出来才发现的**，而且第一版判据是错的：
+   *
+   *   我原来算"图片内容顶边"（扣掉顶部透明留白），真机一量才发现：
+   *   偷看用的是 **cup-up.png**，它的 alpha 边界是 (2,2)-(280,404) ——
+   *   **顶部透明带只有 2px（0.4%）**，几乎顶到上沿，
+   *   所以"扣掉透明带"这个修正在这张图上几乎不起作用，实体照样被切。
+   *
+   *   更要紧的是：**被 overflow:hidden 裁的是变换后的包围盒**，
+   *   不是"内容顶边"。带 rotate 时包围盒会明显变大：
+   *       盒高 = H·scale·cos θ + W·scale·sin θ
+   *   所以判据必须用**包围盒**（真机 element.size() 量的也正是这个）。
+   *
+   *   真机实测（旧参数 lift=170/scale=.80）：包围盒超出上沿 25px，
+   *   透明带只抵掉 1.2px → **实体被切 23.8px**，盅顶就是平的。
+   */
+  const cupUp = pngSize(path.join(ROOT, 'miniprogram/images/cup/cup-up.png'))
+  assert.strictEqual(cupUp.w, IMG.w, 'cup-up.png 尺寸变了，几何基准要重算')
+
+  const bbW = cupW * scale, bbH = cupH * scale
+  const rotRad = rot * Math.PI / 180
+  const boxH = bbH * Math.cos(rotRad) + bbW * Math.sin(rotRad)   // 旋转后包围盒高
+  const boxW = bbW * Math.cos(rotRad) + bbH * Math.sin(rotRad)   // 旋转后包围盒宽
+  const bbTop = (center - bbH / 2) - (boxH - bbH) / 2 - lift
+  const bbBottom = bbTop + boxH
+
+  assert.ok(bbTop >= 4,
+    `★ 盅抬起来后包围盒顶跑到 ${bbTop.toFixed(1)}rpx（<4）——\n` +
+    `      会被 .cupscene 的 overflow:hidden 裁掉，盅顶被切平（一眼假）。\n` +
+    `      变换后包围盒高 ${boxH.toFixed(1)}rpx = 盒高·cosθ + 盒宽·sinθ（旋转会放大它）。\n` +
+    `      ⚠️ 判据必须用**包围盒**，不能用"图片内容顶边"：\n` +
+    `         偷看用的 cup-up.png 顶部透明带只有 2px，扣掉也不解决问题。\n` +
+    `      解法：场景加高，或抬升量/缩放调小。`)
+  ok(`抬起后包围盒顶 ${bbTop.toFixed(1)}rpx ≥ 4（不会被 overflow 裁平）`)
+
+  assert.ok(bbBottom <= sceneH,
+    `★ 盅包围盒底 ${bbBottom.toFixed(1)}rpx 超出场景底 ${sceneH}rpx，会被裁`)
+  ok(`包围盒底 ${bbBottom.toFixed(1)}rpx 在场景内（场景高 ${sceneH}）`)
+
+  /* 横向：页面宽 750 - 左右 padding 32×2 = 686 */
+  assert.ok(boxW <= 686,
+    `★ 盅旋转后包围盒宽 ${boxW.toFixed(1)}rpx 超过场景宽 686rpx，两侧会被切`)
+  ok(`包围盒宽 ${boxW.toFixed(1)}rpx ≤ 场景宽 686rpx`)
 
   /* ---------- ⑤ 盖着的时候，骰子必须真的看不见 ---------- */
   const coveredTop = center + (boxTop + cTop - center)      // 没抬时内容顶边
@@ -153,7 +191,7 @@ function px(body, prop) {
     `盅扣着时骰子会从盅口上方冒出来（泄底）`)
   ok(`扣盅时骰子完全在盅内（骰子顶 ${diceTop} ≥ 盅内容顶 ${coveredTop.toFixed(1)}）`)
 
-  /* ---------- ⑥ 揭盅要比偷看抬得更高（两个动作要能区分） ---------- */
+  /* ---------- ⑥ 揭盅要比偷看抬得更高，且必须淡出 ---------- */
   const liftRule = rule('.cs-cup.lift')
   const liftM2 = /translateY\(\s*(-?[\d.]+)rpx\s*\)/.exec(liftRule)
   assert.ok(liftM2, '.cs-cup.lift 必须有 translateY')
@@ -162,20 +200,38 @@ function px(body, prop) {
     `★ 揭盅抬 ${lift2}rpx、偷看抬 ${lift}rpx —— 差得太少，玩家分不清是偷看还是揭盅`)
   ok(`揭盅(${lift2}rpx) 明显高于偷看(${lift}rpx)，两个动作能区分`)
 
-  /* ---------- ⑦ 提示语不能压在骰子上 ---------- */
-  const hintTop = px(hint, 'top')
-  const hintBottom = px(hint, 'bottom')
-  if (hintBottom !== null) {
-    assert.ok(hintBottom + 30 < diceBottom,
-      `★ 提示语在底部 ${hintBottom}rpx，而骰子在 ${diceBottom}~${diceBottom + dieH}rpx —— ` +
-      `文字会挡住刚露出来的骰子`)
-    ok('提示语在骰子下方，不遮挡')
-  } else {
-    assert.ok(hintTop !== null, '.cs-hint 既没有 top 也没有 bottom')
-    assert.ok(hintTop + 34 < coveredTop,
-      `★ 提示语在顶部 ${hintTop}rpx，盅内容从 ${coveredTop.toFixed(1)}rpx 开始 —— 会压在盅上`)
-    ok(`提示语在盅上方空白区（${hintTop}rpx，盅从 ${coveredTop.toFixed(1)}rpx 才开始）`)
-  }
+  /*
+   * ★ 揭盅必须**淡出**：那时盅已经超出场景上沿，会被 overflow:hidden 切平。
+   *   切平之所以难看，是"还看得见却被切"——淡出到看不见就没这个问题。
+   *   （偷看相反：盅还在画面里，必须实心、不能被裁。）
+   */
+  assert.ok(/opacity\s*:\s*0/.test(liftRule),
+    '★ .cs-cup.lift 没有 opacity:0 —— 揭盅时盅会超出场景上沿被切平，一眼假。\n' +
+    '    盅是"被提走"的，必须淡出到看不见。')
+  ok('揭盅带淡出（被切平时已经看不见了）')
+
+  /* ---------- ⑦ 提示语必须在**场景外** ---------- */
+  /*
+   * ⚠️ 第一版断言的是"提示语在盅上方空白区"—— 错了两处：
+   *    ① 盅抬起来时会**扫过场景上半部**，"松手扣回去"正好被压在盅身上
+   *       （真机截图看到了）
+   *    ② 场景内没有安全位置：底部是骰子，顶部被抬起的盅扫过
+   *    正确做法是把它挪到场景**外面**，所以断言改成"不许 absolute 在场景内"。
+   */
+  const hintPos = /position\s*:\s*absolute/.test(hint)
+  assert.ok(!hintPos,
+    '★ .cs-hint 又变成 absolute 了 —— 它必须在场景外面（普通流元素）。\n' +
+    '    场景内没有安全位置：底部压骰子，顶部被抬起的盅扫过。')
+  ok('提示语在场景外（不会被盅的动画扫到）')
+
+  /* 提示语必须排在场景之后（模板顺序），否则它会跑到场景上面去 */
+  const tplSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/game/room/room.wxml'), 'utf8')
+  const sceneEnd = tplSrc.indexOf('</view>', tplSrc.indexOf('class="cs-cup'))
+  const hintIdx = tplSrc.indexOf('class="cs-hint"')
+  assert.ok(hintIdx > sceneEnd,
+    '★ 模板里 .cs-hint 排在骰盅场景**内部**（应在 </view> 之后）')
+  ok('模板顺序正确：提示语在场景之后')
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  骰盅几何：全部 ${n} 项断言通过`)

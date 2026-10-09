@@ -220,12 +220,18 @@
  *   实测算下来：盅最低点 378.5rpx，骰子顶边 374.0rpx —— **还压着 4.5rpx**。
  *
  * 现在按下面这组参数（scripts/test-cup-geometry.js 会断言）：
- *   场景 610 / 盅 360（高 560）/ 骰子 58×62 / 偷看抬 145 + scale .84
- *   → 揭盅余量 44rpx、横向余量 15rpx，横竖都真的露得出来。
+ *   场景 640 / 盅 380（高 591）/ 骰子 62×66 / 偷看抬 90 + scale .78
+ *   → 揭盅余量 107rpx、横向余量 12rpx，横竖都真的露得出来。
+ *
+ * ⚠️ 还有一个**只能靠真机量**才发现的坑：盅抬起来后会被本场景的
+ *    `overflow:hidden` **裁掉顶部**（实测超出上沿 34px，盅顶被切平，一眼假）。
+ *    静态算 wxss 数值看不出来 —— CSS 盒子超出不等于"图形"超出
+ *    （图片顶部有 17% 透明留白，看着没超、其实已经切到实体了）。
+ *    所以参数里专门留了"抬起后**可见内容**顶边 ≥ 10rpx"这条约束。
  */
 .cupscene {
   position: relative;
-  height: 610rpx;
+  height: 640rpx;
   display: flex; align-items: center; justify-content: center;
   margin-bottom: 24rpx;
   border-radius: var(--r-2);
@@ -264,9 +270,9 @@
  */
 .cs-dice {
   position: absolute; left: 50%;
-  bottom: 42rpx;
-  width: 306rpx;                       /* 5×58 + 4×4，塞得进盅的内容宽 320.8 */
-  margin-left: -153rpx;
+  bottom: 38rpx;
+  width: 326rpx;                       /* 5×62 + 4×4，塞得进盅的内容宽 338.6 */
+  margin-left: -163rpx;
   display: flex; align-items: center; justify-content: center;
   flex-wrap: nowrap;
   gap: 4rpx;
@@ -276,7 +282,7 @@
 }
 .cs-dice.show { opacity: 1 }
 .cs-die {
-  width: 58rpx; height: 62rpx;
+  width: 62rpx; height: 66rpx;
   flex: none;
   /* 逐个落位：每颗延迟一点，像真的骰子先后停住 */
   animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
@@ -299,8 +305,8 @@
 .cs-cup {
   position: absolute; left: 50%;
   bottom: 0;
-  width: 360rpx; height: 560rpx;
-  margin-left: -180rpx;
+  width: 380rpx; height: 591rpx;
+  margin-left: -190rpx;
   z-index: 3;
   transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
               opacity .3s ease;
@@ -332,13 +338,24 @@
   100% { transform: translateY(0) scale(1) }
 }
 
-/* 揭盅：盅整个提走并淡出（骰子完全露出来）。
-   ★ 抬得比"偷看"更高（-220rpx）、缩得更小，让"揭盅"比"偷看"更彻底 ——
-     两个动作幅度必须能区分开，否则玩家分不清自己是偷看还是揭盅。 */
+/*
+ * 揭盅：盅被提走，骰子完全露出来。
+ *
+ * ★ 和"偷看"必须拉开差距 —— 两个动作幅度太近，玩家分不清是偷看还是揭盅：
+ *     偷看 = 抬 90 + scale .78（盅**还在画面里**，按住才抬、松手扣回）
+ *     揭盅 = 抬 300 + scale .72 + **淡出到 0**（盅离开画面）
+ *
+ * ⚠️ 揭盅时盅必然超出场景上沿，会被 overflow:hidden 切平。
+ *    这里**不靠"留在画面内"解决，而靠 opacity 归零**：
+ *    盅是"被提走"的，本来就该移出画面；"切平"之所以难看，
+ *    是因为"还看得见却被切"。淡出到看不见，这个观感就不存在了。
+ *    （偷看则相反：那时盅还在画面里，必须实心且不能被裁。）
+ */
 .cs-cup.lift {
-  transform: translateY(-220rpx) rotate(-9deg) scale(.78);
+  transform: translateY(-240rpx) rotate(-9deg) scale(.72);
+  opacity: 0;
 }
-.cs-cup.gone { opacity: 0; transform: translateY(-320rpx) rotate(-14deg) scale(.7) }
+.cs-cup.gone { opacity: 0; transform: translateY(-360rpx) rotate(-14deg) scale(.66) }
 
 /*
  * 入盅：骰子掉进盅里，盅被轻轻撞一下。
@@ -374,20 +391,22 @@
  *    半透明会让骰子隔着盅若隐若现，反而更"看不全"。
  */
 .cs-cup.peek {
-  transform: translateY(-145rpx) rotate(-7deg) scale(.84);
+  transform: translateY(-90rpx) rotate(-7deg) scale(.78);
 }
 
 /*
  * 提示语。
- * ★ 放在**场景顶部**，不放底部 —— 底部是骰子（42~104rpx）和盅口沿（贴底）的地盘，
- *   文字压上去正好挡住"骰子露出来"的那一刻。顶部 0~146rpx 是空白绒布
- *   （盅图本身有 17% 上留白，内容从 146rpx 才开始），完全空着。
+ * ★ 它是**场景外面的普通元素**，不是 absolute ——
+ *   场景内没有安全位置：底部压骰子，顶部被抬起的盅扫过。
+ *   放在场景下方单独一行，任何动画都不会和它打架。
  */
 .cs-hint {
-  position: absolute; left: 0; right: 0; top: 6rpx;
   text-align: center;
-  font-size: 23rpx; color: rgba(246,231,195,.55);
-  z-index: 4;
+  font-size: 23rpx;
+  color: rgba(246,231,195,.55);
+  height: 34rpx;
+  line-height: 34rpx;
+  margin-bottom: 12rpx;
   pointer-events: none;
 }
 

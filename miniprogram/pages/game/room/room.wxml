@@ -160,9 +160,16 @@
         <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png"
                bindtouchstart="onCupPress" bindtouchend="onCupRelease"
                bindtouchcancel="onCupRelease" mode="aspectFit" />
-
-        <view class="cs-hint">{{cupHint}}</view>
       </view>
+
+      <!--
+        ★ 提示语放在**场景外面**，不放场景里。
+        放里面时试过顶部和底部，都不行：
+          · 底部 → 压住刚露出来的骰子（骰子就在底部）
+          · 顶部 → 盅一抬起来正好扫过那里，"松手扣回去"被压在盅身上
+        盅抬起时会扫过整个场景上半部，**场景内没有安全位置**，所以移到外面。
+      -->
+      <view class="cs-hint">{{cupHint}}</view>
 
       <!--
         ★ 叫骰区**永远显示**，不因"还没偷看"或"没轮到我"而整块藏起来。
@@ -213,9 +220,10 @@
         </view>
 
         <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png" mode="aspectFit" />
-
-        <view class="cs-hint">{{cupHint}}</view>
       </view>
+
+      <!-- 提示语同样放场景外（盅抬起会扫过场景内所有位置） -->
+      <view class="cs-hint">{{cupHint}}</view>
 
       <!--
         其他玩家的状态：每人一个盅，摇完的盅会"扣下"。
