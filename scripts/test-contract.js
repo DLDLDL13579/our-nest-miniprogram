@@ -667,6 +667,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   const appCss2 = fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8')
   const noSize = []
+  /* ③e-3 用（在本段之后断言）：class 压根没定义的 <image> */
+  const undefinedCss = []
   wxmlFiles.forEach(f => {
     const wxss = f.replace(/\.wxml$/, '.wxss')
     let css = appCss2
@@ -692,8 +694,11 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
        *    实测踩到过：index.wxml 里第一个 <image class="hero-glow">（无 CSS 定义）
        *    触发 return，后面 4 个真缺尺寸的图标全被跳过，断言报"通过"。
        *    —— 又一次「测试通过但测试根本没在工作」。
+       *
+       * ★ 「类没定义」不在这里报 —— 那一条由下面的 ③e-3 单独查。
+       *   这里只管"定义了、但只写了 font-size"（对 <image> 无效）。
        */
-      if (!hit) continue                       // 类没定义，不管
+      if (!hit) continue                       // 没定义 → 交给 ③e-3
       if (/width\s*:/.test(hit[1])) continue   // 有尺寸，OK
       if (/font-size\s*:/.test(hit[1])) {
         noSize.push(path.relative(ROOT, f) + ' → ' + sel +
@@ -705,6 +710,61 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些图标只定义了 font-size（对 <image> 完全无效，会撑满容器挤爆布局）：\n    ' +
     noSize.join('\n    '))
   ok('<image> 图标全部有显式尺寸')
+
+  /*
+   * ★★ ③e-3 `<image>` 的 class **必须有 CSS 定义**（哪怕只有尺寸）
+   *
+   * 2026-10-08 真实事故（用户截图报「首页最上面的卡片太大了」）：
+   *   首页 hero 里的小气球写的是 `<image class="hn-ic">`，
+   *   而 `.hn-ic` **在 wxss 里根本没有定义** ——
+   *   `<image>` 不给 width/height 时会**按原始尺寸撑满容器**，
+   *   气球被放大到几百 rpx，hero 从 ~380rpx 涨到 1000rpx+，
+   *   占满整个首屏，下面的功能入口全被挤出屏幕。
+   *
+   * ★ 为什么原来查不到：上面那条断言里写着 `if (!hit) continue  // 类没定义，不管`
+   *   —— 它只查"定义了但只写 font-size"，**"压根没定义"被主动跳过了**。
+   *   而"没定义"恰恰是后果最严重的一种（撑满容器）。
+   *   AGENTS.md 里记过同一个坑（游戏页喇叭撑满半屏），说明这类问题**会反复出现**。
+   *
+   * ⚠️ 两个必须处理的例外（否则会大量误报）：
+   *   ① **动态 class**：`class="cs-cup {{cupCls}}"` 里的插值要剥掉；
+   *   ② **占位类**：有些 class 只用来给 JS 选择器定位、或纯装饰，
+   *      确实不需要样式 —— 用显式白名单放行，而不是放宽判据。
+   */
+  const CSS_OK_WITHOUT_RULE = new Set([
+    /* 首页 hero 的装饰光晕：只是一个绝对定位的空 view，样式由内联/父级控制 */
+    'hero-glow'
+  ])
+  wxmlFiles.forEach(f => {
+    const wxss = f.replace(/\.wxml$/, '.wxss')
+    let css = appCss2
+    if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
+    const raw = fs.readFileSync(f, 'utf8')
+    const re = /<image[^>]*class="([^"]+)"[^>]*>/g
+    let m
+    while ((m = re.exec(raw))) {
+      /*
+       * ⚠️ 处理顺序踩了两次坑，最终必须是「**先整体剥插值，再按空格拆**」：
+       *   ① 先拆后剥 → `{{hapticOn ? '' : 'off'}}` 被空格拆成 5 段乱码；
+       *   ② 剥的时候用 `[^}]*` → 遇到嵌套/多表达式会提前收尾，留残余。
+       *   所以：用非贪婪 `[\s\S]*?` 匹配到 `}}`，**先整串替换掉**，再拆分。
+       */
+      const noTpl = m[1].replace(/\{\{[\s\S]*?\}\}/g, ' ')
+      for (const cls of noTpl.trim().split(/\s+/).filter(Boolean)) {
+        if (CSS_OK_WITHOUT_RULE.has(cls)) continue
+        /* 词边界查选择器：.hn-icX 不该被当成 .hn-ic 命中 */
+        if (!new RegExp('\\.' + cls.replace(/[-]/g, '\\-') + '(?![\\w-])').test(css)) {
+          undefinedCss.push(path.relative(ROOT, f) + ' → .' + cls)
+        }
+      }
+    }
+  })
+  assert.deepStrictEqual(undefinedCss, [],
+    '★ 这些 <image> 的 class 没有任何 CSS 定义 ——\n' +
+    '    `<image>` 缺 width/height 时会**按原始尺寸撑满容器**（不报错，只是变得巨大）。\n' +
+    '    实测踩过：首页 hero 的小气球没定义 → hero 被撑到占满整屏。\n    ' +
+    undefinedCss.join('\n    '))
+  ok('<image> 的 class 全部有 CSS 定义（不会撑满容器）')
 
   /* ③ 图标库本身要健康：每个条目都能生成合法的 data URI */
   const iconsJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/icons.js'), 'utf8')

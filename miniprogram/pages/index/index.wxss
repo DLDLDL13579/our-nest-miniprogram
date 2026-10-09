@@ -22,6 +22,29 @@
   background: rgba(255,255,255,.2); border-radius: 999rpx;
   font-size: 22rpx; color: #fff;
 }
+/*
+ * hero 里"下次纪念日"前面那个小气球。
+ *
+ * ★★ 这个 class 曾经**完全没有定义**，后果是整张 hero 被撑爆：
+ *    `<image>` 不给 width/height 时会**按原始尺寸撑满容器** ——
+ *    气球被放大到几百 rpx，hero 从 ~380rpx 涨到 1000rpx+，
+ *    占满整个首屏，下面的功能入口全被挤出屏幕。
+ *    （用户截图报的「最上面的卡片太大了」就是这个）
+ *
+ * ⚠️ 它**不报错**：`<image>` 缺尺寸是合法写法，只是渲染成"巨大"。
+ *    AGENTS.md 记过同一个坑（游戏页喇叭撑满半屏），
+ *    但当时的断言只查"有定义、却只写了 font-size"的情况，
+ *    查不到"**压根没定义**"—— 所以这次又踩了一遍。
+ *    现在 scripts/test-contract.js 的 ③e-3 专门抓这种。
+ *
+ * 尺寸：与同一行的 22rpx 文字对齐，取 24rpx 并微调基线。
+ */
+.hn-ic {
+  width: 24rpx; height: 24rpx;
+  display: inline-block;
+  vertical-align: -3rpx;
+  margin-right: 8rpx;
+}
 
 /* ---------- 记一笔：整页最显眼的东西 ---------- */
 /* ★ 2026-09-30 改：笔按钮原本是红渐变，和上面的 hero 撞色 ——
