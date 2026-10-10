@@ -115,7 +115,26 @@ exports.main = async (event) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, msg: '日期不对' }
       const r = await moments.where({ pairId: pair._id, date }).orderBy('createdAt', 'asc').limit(50).get()
       if (!r.data.length) return { ok: false, msg: '这一天还没有记录' }
-      const pick = (arr) => arr.map(x => ({ text: x.text || '', photos: x.photos || [], mood: x.mood || 'daily', at: x.at || x.createdAt }))
+      /*
+       * ★ 必须同时返回 thumbs（2026-10-09 修）。
+       *
+       * 这里原来只返回 photos（原图 fileID），而 day.wxml 直接绑它渲染 ——
+       * 一天最多 50 条 × 3 张 = **最多 150 张原图**在进页面时同时发起下载。
+       * 一张原图 3~5MB，最坏 450~750MB 流量，首屏白屏很久。
+       *
+       * 这和 AGENTS.md 里记过的「列表加载慢、流量大」是**同一个根因**，
+       * 当时只修了被点名的首页和编年史，**漏了这个详情页**。
+       * 现在四张列表（首页 / 编年史 / 想去 / 这里）口径一致。
+       *
+       * 老记录没有 thumbs → 回退成空数组，前端再用 photos 兜底。
+       */
+      const pick = (arr) => arr.map(x => ({
+        text: x.text || '',
+        photos: x.photos || [],
+        thumbs: x.thumbs || [],
+        mood: x.mood || 'daily',
+        at: x.at || x.createdAt
+      }))
       return {
         ok: true,
         date: date,

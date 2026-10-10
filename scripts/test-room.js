@@ -25,15 +25,31 @@ const nextId = () => 'r' + (++seq)
 
 function neq(v) { return { __op: 'neq', v } }
 function pushv(v) { return { __op: 'push', v } }
-const command = { neq, push: pushv }
+/* ★ 比较操作符：真实 SDK 有 _.lt / _.gt / _.lte / _.gte / _.and。
+   业务代码用 _.lt 过滤"过期房间"（见 pickCode），
+   所以 mock 必须支持 —— **在 mock 里补齐，不在业务代码里绕开**，
+   否则测的就不是线上真正跑的那份代码。 */
+function lt(v) { return { __op: 'lt', v } }
+function gt(v) { return { __op: 'gt', v } }
+function and(...args) { return { __op: 'and', v: args } }
+const command = { neq, push: pushv, lt, gt, and }
+
+/** 单条条件求值（供 and 递归） */
+function one(doc, key, c) {
+  if (c && c.__op === 'neq') return doc[key] !== c.v
+  if (c && c.__op === 'lt') return Number(doc[key]) < Number(c.v)
+  if (c && c.__op === 'gt') return Number(doc[key]) > Number(c.v)
+  if (c && c.__op === 'and') {
+    /* and([_.gt(a), _.lt(b)]) 或 and(_.gt(a), _.lt(b)) 都要支持 */
+    const list = Array.isArray(c.v[0]) ? c.v[0] : c.v
+    return list.every(x => one(doc, key, x))
+  }
+  if (Array.isArray(doc[key])) return doc[key].indexOf(c) >= 0
+  return doc[key] === c
+}
 
 function match(doc, q) {
-  return Object.keys(q).every(k => {
-    const c = q[k]
-    if (c && c.__op === 'neq') return doc[k] !== c.v
-    if (Array.isArray(doc[k])) return doc[k].indexOf(c) >= 0
-    return doc[k] === c
-  })
+  return Object.keys(q).every(k => one(doc, k, q[k]))
 }
 
 function collection(name) {
@@ -362,8 +378,70 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(zeros <= 1, '000 不该被反复发出去（随机起点失效了？）')
   ok('号码分布分散（不是每次都从 000 开始发）')
 
-  /* 号码用满时必须明确报错，而不是死循环或发重复号 */
-  ok('号码用满会明确报错（pickCode 返回 null → 提示用户稍后再开）')
+  /*
+   * ★★★ 号码回收：判据必须**二值**（2026-10-09 修的真实缺陷）
+   *
+   * 缺陷：`active` 永远不会被置回 false —— 全项目只有一处设它（房主主动解散）。
+   * 玩家直接退出去、或关掉小程序，房间就一直挂着 active:true。
+   * 老写法 `where({active:true})` 把**过期房间的号码也算占用**，
+   * 而 3 位只有 1000 个 → **号码池只减不增**：
+   *   每天 10 局 → 100 天后**永久**报「房间号用满了」
+   *   （"等一会儿再开"永远不会好，没有任何机制回收）
+   *
+   * 修法：pickCode 的 where 加 `updatedAt: _.gt(now - TTL)`，只统计未过期房间。
+   * 依据：loadRoom / join 里都有 isStale → 拒绝，**过期房间本来就谁也进不去**。
+   *
+   * ⚠️⚠️ 判据设计踩了两次坑，记下来：
+   *   第一版「建 12 个房间，看能否撞回被释放的号」—— 单个号命中概率 12/1000 ≈ 1.2%，
+   *     **测了等于没测**（跑起来报失败，我一度以为是代码错）。
+   *   第二版「999 个过期房占位，断言新房必拿 000」—— 前提就错了：
+   *     修复**正是要让过期房不占号**，所以任何号都可能被拿到。
+   *   → 正确判据是**两个方向各测一次**，都是二值、不依赖随机：
+   *      A. 1000 个号全被**过期**房占着 → 必须**能**建房（回收生效）
+   *      B. 1000 个号全被**未过期**房占着 → 必须**不能**建房（占用生效，防过度修复）
+   */
+  {
+    const snapshot = JSON.parse(JSON.stringify(store.rooms))
+    const mkFake = (n, updatedAt) => {
+      store.rooms.length = 0
+      for (let i = 0; i < n; i++) {
+        store.rooms.push({
+          _id: 'fake_' + i, code: String(i).padStart(3, '0'),
+          active: true, updatedAt: updatedAt,
+          players: [], phase: 'lobby', game: 'dice', hostOpenid: 'x'
+        })
+      }
+    }
+    const OLD = Date.now() - 3 * 3600 * 1000   // 3 小时前 → 超过 2 小时 TTL
+    OPENID = 'oid_reclaim'
+
+    try {
+      /* ---- A. 1000 个号全被「过期」房占着 → 必须能建房 ---- */
+      mkFake(1000, OLD)
+      const a = await room.main({ action: 'create', name: 'A', game: 'dice' })
+      assert.ok(a.ok,
+        '★ 1000 个号全被**过期**房间占着时，仍应能建房 —— ' +
+        '过期房间谁也进不去（loadRoom / join 都有 isStale → 拒绝），不该占号。\n' +
+        '    实际报错：' + (a.msg || '(无)') + '\n' +
+        '    老代码 `where({active:true})` 把过期房算作占用 → 号码池只减不增，\n' +
+        '    1000 个号用完后**永久**报「房间号用满了」。')
+      ok('★ 过期房间的号码会被回收（1000 个过期房占满时仍能建房）')
+
+      /* ---- B. 1000 个号全被「未过期」房占着 → 必须不能建房 ---- */
+      mkFake(1000, Date.now())
+      const b = await room.main({ action: 'create', name: 'B', game: 'dice' })
+      assert.ok(!b.ok,
+        '★ 1000 个号被**未过期**房间占满时，必须明确拒绝 —— ' +
+        '否则会发出重复号码，玩家 join 时**进错房间**（取第一个匹配）。\n' +
+        '    实际却建成功了，拿到号码：' + (b.room && b.room.code))
+      assert.ok(/用满/.test(b.msg || ''),
+        '号用满时提示应说清原因，实际：' + (b.msg || '(无)'))
+      ok('★ 未过期房间的号码确实占位（占满时明确拒绝，不会发重复号）')
+    } finally {
+      store.rooms.length = 0
+      snapshot.forEach(r => store.rooms.push(r))
+    }
+  }
 
   /* 清理这批测试房间，别影响后面的断言 */
   for (let i = 0; i < N_ROOMS; i++) {

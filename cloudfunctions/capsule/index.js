@@ -171,7 +171,21 @@ exports.main = async (event) => {
       if (!c.openedAt) {
         await capsules.doc(id).update({ data: { openedAt: nowCN().at } })
       }
-      return { ok: true, text: c.text || '', title: c.title || '', photos: c.photos || [] }
+      /*
+       * ★ 一并返回 thumbs（2026-10-09 修）。
+       *
+       * 读信弹层原来是拿 photos（原图）直接渲染的 —— 一封最多 3 张，
+       * 单张 3~5MB，要在"用户最期待立刻看到内容"的时刻等完这几 MB。
+       * 写作端本来就同时上传了缩略图（add 里存了 thumbs），
+       * 只是 open 这里没返回，所以弹层用不上。
+       */
+      return {
+        ok: true,
+        text: c.text || '',
+        title: c.title || '',
+        photos: c.photos || [],
+        thumbs: c.thumbs || []
+      }
     }
 
     /* ================= 回信（在已解锁的信下面接一段）================= */

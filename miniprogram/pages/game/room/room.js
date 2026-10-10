@@ -180,6 +180,19 @@ Page({
 
   onLoad() {
     sfx.init && sfx.init()
+    /*
+     * ★ 页面存活标志。
+     *
+     * 为什么必须有：本页有 40 处 await（云函数往返），而**每一个 await
+     * 之后都可能已经不在这个页面上了**（用户点返回、或退到后台）。
+     * 这时再 setData 会被微信警告「setData: Page has been unloaded」，
+     * 而且闭包会短时把已卸载的页面对象吊住。
+     *
+     * ⚠️ 不能拿 `this.data.room` 当存活判据 —— 页面卸载后它仍是旧值，
+     *    判断结果永远是"还活着"。必须用一个显式的、在 onUnload 里翻转的标志。
+     */
+    this._dead = false
+    this._busy = false
     /* ★ 必须先初始化定时器数组：摇盅流程里有十几处 _cupTimers.push，
        不初始化的话第一次 push 就是 undefined.push → 页面直接崩。
        这类错误 check.sh 的语法检查发现不了（语法是对的）。 */
@@ -216,10 +229,16 @@ Page({
   /** 清掉骰盅动画的定时器 */
   clearCupTimers() {
     if (this._cupTimers) { this._cupTimers.forEach(t => clearTimeout(t)); this._cupTimers = [] }
-    if (this._wheelTimer) { clearInterval(this._wheelTimer); this._wheelTimer = null }
+    if (this._wheelTimer) { clearTimeout(this._wheelTimer); this._wheelTimer = null }
+    /* ★ `_bumpTimer` 原来不在任何清理函数里 —— 屏幕震动后 320ms 内离开页面，
+       它仍会对已卸载的页面 setData({impact:false})。 */
+    if (this._bumpTimer) { clearTimeout(this._bumpTimer); this._bumpTimer = null }
   },
 
   onUnload() {
+    /* ★ 第一件事就是标记"这个页面没了" —— 之后所有 await 回来都会提前返回。
+       必须在清理之前设，否则清理期间飞行中的响应仍可能 setData */
+    this._dead = true
     this.stopPoll()
     this.clearCountdown()
     this.clearCupTimers()
@@ -241,7 +260,23 @@ Page({
 
   startPoll() {
     this.stopPoll()
-    this._poll = setInterval(() => this.refresh(), POLL_MS)
+    this._poll = setInterval(() => this.pollTick(), POLL_MS)
+  },
+
+  /**
+   * ★ 轮询并发保护：上一次还没回来就跳过这一轮。
+   *
+   * 为什么必须有：云函数往返一旦慢于 1.5 秒（弱网、冷启动、或云端函数没部署），
+   * setInterval 不会等 —— 每 1.5 秒照发一个，请求会**越堆越多**，
+   * 而且返回顺序不保证：先发的后到，就会用**旧状态覆盖新状态**
+   * （表现为界面"倒退"一下，然后 1.5 秒后又跳回来）。
+   *
+   * 跳过而不是排队：轮询的意义是"拿到最新状态"，
+   * 排队拿到的是过期快照，没有价值，白白多打几次云函数。
+   */
+  pollTick() {
+    if (this._busy || this._dead) return
+    this.refresh()
   },
 
   stopPoll() {
@@ -318,12 +353,25 @@ Page({
   /** 拉一次房间状态 */
   async refresh() {
     const r = this.data.room
-    if (!r) return
-    const res = await call('room', { action: 'status', id: r.id }, { silent: true }).catch(() => null)
+    if (!r || this._dead) return
+    this._busy = true
+    let res
+    try {
+      res = await call('room', { action: 'status', id: r.id }, { silent: true }).catch(() => null)
+    } finally {
+      this._busy = false
+    }
+    if (this._dead) return          // 等云函数这段时间里页面可能已经卸载
 
     if (!res) {
-      /* 网络失败：不打断游戏，只提示一下。下一次轮询会自动重试 */
-      this.setData({ netTip: '网络不太好，正在重试…' })
+      /*
+       * 网络失败：不打断游戏，只提示一下。下一次轮询会自动重试。
+       * ★ 但**必须先去重** —— 原来这里无条件 setData，
+       *   而它发生在下面 roomChanged() 去重**之前**，等于绕过了那层优化：
+       *   断网持续时每 1.5 秒一次无效 setData（跨线程拷贝 + 视图 diff）。
+       */
+      const tip = '网络不太好，正在重试…'
+      if (this.data.netTip !== tip) this.setData({ netTip: tip })
       return
     }
     if (!res.ok) {
@@ -380,7 +428,14 @@ Page({
       /* 不是自己叫的 → 额外提示一下（多人游戏的"轮到你了"感） */
       const mineCalled = prev.turn === (room.players.filter(p => p.isMe)[0] || {}).seat
       if (!mineCalled && room.turn) {
-        setTimeout(() => sfx.play('tapSoft'), 260)
+        /* ★ 必须走 _cupTimers —— 裸 setTimeout 清不掉：
+           别人叫骰后 260ms 内退出房间，它仍会执行 sfx.play()，
+           而此时 onUnload 里的 sfx.destroy() 已经把音频池清空了 ——
+           于是**又新建一个再也没人销毁的 InnerAudioContext**（实例泄漏）。 */
+        this._cupTimers.push(setTimeout(() => {
+          if (this._dead) return
+          sfx.play('tapSoft')
+        }, 260))
       }
     }
 
@@ -410,7 +465,9 @@ Page({
 
        提前 return 之前已经把 netTip 清掉了 —— 那是有意义的 UI 变化，
        必须照常渲染。 */
+    if (this._dead) return
     if (!this.roomChanged(prev, room) && !this.data.netTip) return
+    if (this._dead) return          // 上面有音效/动画副作用，仍可能已经卸载
 
     this.setData({
       room: room,
@@ -646,6 +703,7 @@ Page({
       /* ★ 即便"建房后必然是 lobby"，也从服务端返回的 phase 推导 ——
          手写常量等于在第二个地方重复描述"服务端是什么状态"，
          将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
       this.startPoll()
     }
@@ -678,6 +736,7 @@ Page({
     this.setData({ joining: false })
     if (r && r.ok) {
       sfx.play('confetti')
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), joinCode: '' })
       this.startPoll()
     } else if (r && !r.ok) {
@@ -705,6 +764,7 @@ Page({
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
       /* 房主自己也要走倒计时读秒 —— 否则只有非房主听到读秒声 */
       if (r.room.phase === 'countdown') this.startCountdown(r.room.countdownMs)
@@ -726,6 +786,7 @@ Page({
     if (r && r.ok) {
       sfx.play('tap')
       /* 再来一局 → 服务端回到 lobby；同样从 phase 推导，不写死 */
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), result: null })
       this.resetRound()
     } else if (r && !r.ok) {
@@ -765,6 +826,7 @@ Page({
       })
 
     await this.wait(1050)
+    if (this._dead) return          // 摇盅这 1.05 秒里可能已经离开房间
 
     /* ② 扣盅 —— 整个流程的重音。
        盅砸在桌上，整屏震一下，骰子在盅里被震得跳一下（音效里带了）。 */
@@ -785,6 +847,7 @@ Page({
     }
 
     /* ③ 揭盅：盅提起来，我的骰子露出来 */
+    if (this._dead) return          // 云函数往返期间页面可能已卸载
     this.setData({ room: this.decorate(r.room), myDice: (r.room.me && r.room.me.dice) || [] })
     this._cupTimers.push(setTimeout(() => this.revealCup(), 260))
 
@@ -855,18 +918,32 @@ Page({
     }, 1500))
   },
 
-  /** 等一段时间（Promise 版 setTimeout，让流程能写成顺序的） */
+  /**
+   * 等一段时间（Promise 版 setTimeout，让流程能写成顺序的）。
+   *
+   * ★ 页面卸载时要**立刻 resolve**：onUnload 会 clearTimeout 掉 _cupTimers 里的
+   *   所有定时器，若不做处理，这个 Promise 就**永远不会 settle** ——
+   *   `await this.wait(1050)` 之后的整段流程（以及它闭包里的页面对象）
+   *   会永久挂在那里。虽然不增长、量也小，但属于"该结束却没结束"。
+   *   立刻 resolve 后，调用方紧接着的 `if (this._dead) return` 就会正常收尾。
+   */
   wait(ms) {
     return new Promise(resolve => {
-      this._cupTimers.push(setTimeout(resolve, ms))
+      const t = setTimeout(resolve, ms)
+      this._cupTimers.push(t)
+      if (this._dead) { clearTimeout(t); resolve() }
     })
   },
 
   /** 屏幕震一下（关键结果时的打击感） */
   bump() {
+    if (this._dead) return
     this.setData({ impact: true })
     if (this._bumpTimer) clearTimeout(this._bumpTimer)
-    this._bumpTimer = setTimeout(() => this.setData({ impact: false }), 320)
+    this._bumpTimer = setTimeout(() => {
+      if (this._dead) return
+      this.setData({ impact: false })
+    }, 320)
   },
 
   /* ================= 大话骰：扣盅与偷看 ================= */
@@ -1001,6 +1078,7 @@ Page({
       return null
     })
     if (r && r.ok) {
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room) })
     }
   },
@@ -1030,17 +1108,25 @@ Page({
       })
     this.setData({ suspense: false })
     if (r && r.ok) {
+      if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), result: r.result, stage: 'over' })
       sfx.play('revealHit')
       this.bump()
       feedback.vibrate('heavy')
-      setTimeout(() => {
+      /* 两处都走 _cupTimers：裸 setTimeout 清不掉 ——
+         开骰后 340ms / 900ms 内离开房间，它们仍会执行 sfx.play()，
+         而此时 onUnload 的 sfx.destroy() 已清空音频池 → 重建出没人销毁的实例。 */
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
         sfx.play(iLost ? 'failDrop' : 'confetti')
         feedback.vibrate(iLost ? 'long' : 'double')
-      }, 340)
-      setTimeout(() => sfx.play('gulp'), 900)
+      }, 340))
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        sfx.play('gulp')
+      }, 900))
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
     }
@@ -1108,6 +1194,7 @@ Page({
     this.scheduleTicks(2600)
 
     this._wheelTimer = setTimeout(() => {
+      if (this._dead) return
       this.setData({ wheelSpinning: false })
       feedback.fire('wheelStop')
       this.setData({ wheelText: spin.t })

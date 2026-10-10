@@ -60,9 +60,17 @@ Page({
     staleTip: ''                     // 搁置过久的提醒
   },
 
-  onShow() { this.load() },
-  onHide() { this.stopTick() },
-  onUnload() { this.stopTick() },
+  /*
+   * ★ `_visible` —— 页面可见性标志。
+   *   为什么需要：load() 里有 3 个 await（ensurePair + current + history），
+   *   而 await 期间用户可能已经切走了。onHide 虽然停掉了走秒，
+   *   但 await 返回后 load() 结尾又会 startTick() **把定时器重新拉起来** ——
+   *   于是隐藏的页面继续每秒 setData。（mood 是 tab 页，不会被卸载，
+   *   所以这是"后台空转"而不是崩溃，但同样该修。）
+   */
+  onShow() { this._visible = true; this.load() },
+  onHide() { this._visible = false; this.stopTick() },
+  onUnload() { this._visible = false; this.stopTick() },
   onPullDownRefresh() { this.load().then(() => wx.stopPullDownRefresh()) },
 
   async load() {
@@ -106,7 +114,29 @@ Page({
 
     /* 重设倒计时基准：每次 load 都拿服务端最新的 remainMs 重新对齐 */
     this._baseAt = Date.now()
-    this._pulled = false
+
+    /*
+     * ★★ `_pulled` 不能在这里无条件重置（2026-10-09 修的真实缺陷）。
+     *
+     * 它表示「倒计时归零后已经拉过一次状态」，用来保证只拉一次。
+     * 原来这里写死 `this._pulled = false`，于是和 tick() 组成死循环：
+     *
+     *     tick(): left<=0 且 !_pulled  →  _pulled=true; load()
+     *     load(): _pulled = false;  若 cool 非空 → startTick()
+     *              ↑______________________________________|
+     *
+     * 为什么 cool 不会变空：云端 `active` 只在「放弃」时置 false，
+     * **倒计时归零本身不改它**（否则就变成"到点自动结束"，违背设计）。
+     * 所以 remainMs 恒为 0 → 每秒一次 load → 每次 2 个云函数调用（current+history），
+     * 而且 load() 首行的 setData({loading:true}) 会让整页**每秒闪一次**
+     * （wxml 是 wx:if="{{loading}}" 互斥分支）—— 页面直接没法用。
+     *
+     * 修法：只有当服务端**又给出一个未来的截止时刻**（remainMs > 0，
+     * 即新一次冷静期开始）才重置 _pulled，让它有机会再拉一次。
+     */
+    const remain = (this.data.cool && this.data.cool.remainMs) || 0
+    if (remain > 0) this._pulled = false
+
     if (this.data.cool) this.startTick()
     else this.stopTick()
   },
@@ -120,15 +150,27 @@ Page({
    */
   startTick() {
     this.stopTick()
-    this.tick()
+    /* 页面不可见就别起定时器（见 _visible 的注释） */
+    if (this._visible === false) return
+    /* ★ 用 tick() 的返回值决定要不要起表 —— 它返回 false 表示
+       "已经归零/没有进行中的冷静期"，那时界面停在 0:00，不需要再走秒。 */
+    if (this.tick() === false) return
     this._timer = setInterval(() => this.tick(), 1000)
   },
   stopTick() {
     if (this._timer) { clearInterval(this._timer); this._timer = null }
   },
+  /**
+   * 走一帧倒计时。
+   * @returns {boolean} 是否还需要继续走秒（false = 该停了）
+   *   ★ 用返回值而不是"看 _timer 有没有被设过"来表达 —— 后者不成立：
+   *     startTick 会先 stopTick 清掉 _timer，再去调 tick，
+   *     所以 tick 执行完 _timer 一定是 null，判断不出"该不该起表"。
+   */
   tick() {
     const c = this.data.cool
-    if (!c) return this.stopTick()
+    if (!c) { this.stopTick(); return false }
+    if (this._visible === false) { this.stopTick(); return false }
 
     /* 服务端给了 remainMs 作为基准，这里减去本地流逝的时间 */
     const elapsed = Date.now() - (this._baseAt || Date.now())
@@ -144,12 +186,26 @@ Page({
       timeUp: up
     })
 
-    /* 时间到了 → 重新拉一次，让服务端把状态推进到写感受。
-       只拉一次，否则会打转。 */
-    if (up && !this._pulled) {
-      this._pulled = true
-      this.load()
+    /*
+     * 时间到了 → 重新拉一次，让服务端把状态推进到「写感受」。
+     *
+     * ★ 只拉一次，**然后停掉走秒** —— 两件事缺一不可：
+     *   · 只拉一次：否则每秒一次云函数调用（详见 load() 里 _pulled 的注释）
+     *   · 停掉走秒：归零后界面已经不需要每秒更新了（显示的就是 0:00），
+     *     留着定时器等于让页面永远空转
+     *
+     * 之后的状态推进由**用户操作**驱动 —— 提交感受/责任/约定时
+     * 每个入口都会 load()，所以不需要轮询。
+     */
+    if (up) {
+      this.stopTick()
+      if (!this._pulled) {
+        this._pulled = true
+        this.load()
+      }
+      return false            // 归零了，不用再走秒
     }
+    return true
   },
 
   /* ---------------- 发起 ---------------- */

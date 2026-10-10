@@ -100,8 +100,30 @@ const WHEEL_SECTORS = [
  * @returns {Promise<string|null>} 可用号码；null = 号码用满了
  */
 async function pickCode() {
-  /* 只取 code 字段，别把整个房间文档拉回来（省流量与内存） */
-  const r = await rooms.where({ active: true }).field({ code: true }).limit(CODE_SPACE).get()
+  /*
+   * ★★ 只统计**未过期**的房间（2026-10-09 修的真实缺陷）。
+   *
+   * 老写法是 `where({ active: true })`，但 **active 永远不会被置回 false** ——
+   * 全项目只有一处把它设成 false（房主主动解散时），
+   * 房间里的人直接退出去、或者干脆关掉小程序，房间就一直挂着 active:true。
+   *
+   * 而 3 位号码只有 1000 个。过期房间占着号不放 → **号码池只减不增**：
+   *   每天 10 局 → 100 天后永久报「房间号用满了，等一会儿再开」
+   *   （而且"等一会儿"永远不会好，因为没有任何机制回收号码）
+   *
+   * 为什么"过期就该释放"是成立的：`loadRoom` / `join` 里都有
+   * `isStale(room) → 拒绝`，**过期房间本来就谁也进不去** ——
+   * 它占着号码是纯粹的浪费，不是"保护"。
+   *
+   * 用 updatedAt 做时间下界（心跳每轮都会刷新它），而不是遍历后再过滤：
+   * 让数据库只返回真正可能冲突的那些行。
+   * ⚠️ 兼容老数据：createdAt 缺失时用 updatedAt 兜底，两者都没有则视为"很旧"。
+   */
+  const aliveSince = now() - TTL_MS
+  const r = await rooms.where({
+    active: true,
+    updatedAt: _.gt(aliveSince)
+  }).field({ code: true }).limit(CODE_SPACE).get()
     .catch(() => ({ data: [] }))
   const used = new Set((r.data || []).map(x => x.code))
 

@@ -116,9 +116,17 @@
         <view class="sheet-at">写于 {{reading.at}}</view>
         <scroll-view scroll-y class="sheet-body">
           <view class="sheet-text">{{reading.text}}</view>
+          <!--
+            ★ 缩略图优先、原图兜底（2026-10-09 修）。
+              原来直接绑 photos（原图，3~5MB/张）—— 读信是"最想立刻看到内容"的时刻，
+              让用户在这里等几 MB 下载，观感就是"点了没反应"。
+              data-src 仍传原图：点开大图预览时才需要清晰的那张。
+          -->
           <view wx:if="{{reading.photos.length}}" class="sheet-photos">
-            <image wx:for="{{reading.photos}}" wx:key="*this" src="{{item}}"
-                   mode="widthFix" class="sheet-photo" data-src="{{item}}" bindtap="previewPhoto" />
+            <image wx:for="{{reading.photos}}" wx:for-index="pi" wx:key="*this"
+                   src="{{reading.thumbs[pi] || item}}"
+                   mode="widthFix" class="sheet-photo"
+                   data-src="{{item}}" bindtap="previewPhoto" />
           </view>
         </scroll-view>
         <view class="reply">

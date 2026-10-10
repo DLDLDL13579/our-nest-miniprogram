@@ -1037,6 +1037,206 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(day.mine.length, '今天记的那条应该在我的数组里')
   ok('day 详情返回数组，前端 wx:for 可用（原来被当对象用，渲染恒空）')
 
+  /* ============================================================
+     * ⑦ 全仓扫描：缩略图 / 存活守卫 / 无限循环
+     * ============================================================
+     *
+     * 这一组是 2026-10-09 全面审计的产物。三条断言都是**全仓扫描**，
+     * 不是逐个页面点名 —— 因为上一轮修同类 bug 时只改了被点名的页面，
+     * 漏掉的详情页半年后才被发现（见 ⑦-1 的说明）。
+     */
+  const glob = (dir, ext) => {
+    const out = []
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) walk(fp)
+        else if (f.name.endsWith(ext)) out.push(fp)
+      }
+    }
+    walk(dir)
+    return out
+  }
+  const MINI = path.join(ROOT, 'miniprogram')
+  const allWxml = glob(MINI, '.wxml')
+  const allPages = glob(path.join(MINI, 'pages'), '.js')
+
+  /* ---------- ⑦-1 图片列表必须缩略图优先 ---------- */
+  console.log('\n=== ⑦-1 渲染 photos 的 <image> 必须有 thumbs 回退 ===')
+  /*
+   * ★ 为什么这条必须全仓扫描：
+   *   AGENTS.md 记过一次「列表加载慢、流量大」——home / chronicle 漏返回 thumbs，
+   *   前端回退加载原图（3~5MB/张）。当时只修了**被点名的两个页面**，
+   *   而 day 详情页和 capsule 读信弹层是**同一个根因**，一直漏着：
+   *     · day 页：一天最多 50 条 × 3 张 = 最多 150 张原图同时下载
+   *     · capsule 弹层：读信那一刻要等 3~5MB
+   *   逐页点名的做法必然会漏，所以这里改成扫全仓。
+   *
+   * 判据：任何 `<image>` 只要 src 里出现 `photos`，就必须同时出现 `thumbs`
+   *      （形如 `xxx.thumbs[i] || xxx` 的兜底写法）。
+   */
+  /*
+   * ⚠️ 判据要**只看 src**，不能"标签里出现 photos 字样就报"。
+   *    第一版写成了后者，结果误报了 capsule.wxml:53 ——
+   *    那一处 `<image src="{{item}}">` 里的 item 来自 `wx:for="{{thumbs}}"`
+   *    （渲染的就是缩略图），`data-src="{{photos[index]}}"` 只是点击预览时才用的原图。
+   *    **那是完全正确的写法。**
+   *
+   *    假阳性比漏报更糟：它会让我去改本来正确的代码。
+   *    所以判据收紧为：src 的表达式里**直接**引用原图数组（photos / .photo），
+   *    且同一标签内没有 thumbs 兜底。
+   */
+  /*
+   * ★★ 判据的难点：**修复后的正确写法里根本不含 `photos` 字段名** ——
+   *    它写成了 `{{it.thumbs[pi] || ph}}`，ph 是 wx:for 的临时变量。
+   *    所以"看 src 里有没有 photos"这个思路是废的：
+   *    改坏成 `src="{{ph}}"` 之后，src 里同样没有 photos 字样，
+   *    断言**照样通过**（反向验证时发现的 —— 这条断言第一版就是废的）。
+   *
+   * 正确判据：**从 wx:for 的源数组倒推**。
+   *   `<image>` 若是遍历原图数组（photos / reading.photos / …）渲染的，
+   *   它的 src 就必须带缩略图兜底。
+   *
+   * 做法：先找出模板里所有"遍历原图数组"的 wx:for，
+   *      再看**同一个 <image> 标签内**有没有 thumbs 兜底。
+   *      这样无论变量叫什么名字都能抓到。
+   */
+  const badImg = []
+  for (const f of allWxml) {
+    const src = fs.readFileSync(f, 'utf8')
+    for (const m of src.matchAll(/<image\b[^>]*>/g)) {
+      const tag = m[0]
+      const srcM = /src="([^"]*)"/.exec(tag)
+      if (!srcM) continue
+      const expr = srcM[1]
+      /* 缩略图兜底：表达式里出现 thumb（含 thumbs / photoThumb / thumbUrl）即放行 */
+      if (/thumb/i.test(expr)) continue
+      /*
+       * 没有 thumbs 字样的，要判断"这个 src 是不是原图"。
+       */
+      /*
+       * ★★ 判据的核心：**只看这个 <image> 自己遍历的是什么**。
+       *
+       * 原来的写法是"src 里出现 photos 字样才检查" —— 那是废的：
+       * 修复后的正确写法 `src="{{it.thumbs[pi] || ph}}"` 里**不含 photos**，
+       * 而改坏成 `src="{{ph}}"` 之后同样不含 photos，
+       * 于是改坏了也检测不到（反向验证时发现，第一版断言完全无效）。
+       *
+       * 现在改成从 **wx:for 的源数组**倒推，与变量名无关：
+       *   · 遍历的是原图数组（photos / photo）→ 必须有缩略图兜底
+       *   · 缩略图兜底可以写在两个地方，任一即可：
+       *       ① src 表达式里      `src="{{it.thumbs[pi] || ph}}"`
+       *       ② wx:for 表达式里   `wx:for="{{it.thumbs.length ? it.thumbs : it.photos}}"`
+       *
+       * ⚠️ 曾经试图加"文件里别处有 thumbs 遍历就放行"的例外，来兼容
+       *    `src="{{item}}"` 遍历 thumbs 的正确写法 —— 结果那个例外
+       *    把**改坏后的** `src="{{item}}"`（遍历 photos）也放行了，
+       *    反向验证报不出错。**例外条件不能跨标签传播**，已彻底去掉；
+       *    那种正确写法由"遍历的是 thumbs"这一步自然放行（不含原图字段名）。
+       */
+      const ORIG = /photos?|photo/i
+      if (!ORIG.test(expr)) {
+        /* src 没写原图字段名 —— 再看它遍历的是什么 */
+        const f2 = /wx:for="\{\{([^}]*)\}\}"/.exec(tag)
+        if (!(f2 && ORIG.test(f2[1]))) continue
+        /* 遍历的确实是原图，但兜底写在了 wx:for 里 → 放行 */
+        if (/thumb/i.test(f2[1])) continue
+      } else {
+        /* src 直接引用原图 → 必须自带缩略图兜底 */
+        if (/thumb/i.test(expr)) continue
+      }
+      const line = src.slice(0, m.index).split('\n').length
+      badImg.push(`${path.relative(ROOT, f)}:${line}  ${tag.replace(/\s+/g, ' ').slice(0, 96)}`)
+    }
+  }
+  assert.deepStrictEqual(badImg, [],
+    '★ 这些 <image> 直接绑 photos（原图）却没有 thumbs 回退：\n    ' +
+    badImg.join('\n    ') +
+    '\n    原图 3~5MB/张，列表会同时发起大量下载 → 白屏久、流量大。\n' +
+    '    写法：src="{{item.thumbs[i] || item.photos[i]}}"，点击预览才用原图')
+  ok('全部渲染 photos 的 <image> 都做了缩略图回退')
+
+  /* ---------- ⑦-2 异步回调必须有存活守卫 ---------- */
+  console.log('\n=== ⑦-2 页面 onUnload 后不能 setData（必须声明存活标志）===')
+  /*
+   * ★ 为什么：页面里有大量 `await call(...)`，而**每个 await 之后都可能已经
+   *   不在这个页面上了**（用户点返回、退出房间）。再 setData 会：
+   *     · 控制台报 `setData: Page has been unloaded`
+   *     · 闭包短时把整个页面对象（含全量数据）吊住
+   *
+   *   ⚠️ 不能拿 `this.data.xxx` 当存活判据 —— 卸载后它仍是旧值，永远是"还活着"。
+   *      必须是一个在 onUnload 里显式翻转的标志。
+   *
+   * 判据：onUnload 里设了存活标志（`this._dead = true` 或 `this._alive = false`），
+   *      且该文件里确实有 `await` + `setData` 的组合。
+   */
+  /*
+   * ⚠️ 判据要**分级**，不能一刀切。
+   *
+   * 第一版写的是"凡有 await+setData 就必须有 _dead"，结果报出 8 个页面。
+   * 逐个看下来，其中大部分**不值得改**：
+   *   · index / chronicle / wishes / mood 是 **tabBar 页面** ——
+   *     切 tab 只触发 onHide，**永远不会 unload**，不存在"打到已卸载页面"
+   *   · write / pair / settings / day 等是表单页，await 只有一次
+   *     （进页面加载或点保存），几百毫秒内离开的概率极低，
+   *     而且 setData 之后闭包就结束了，没有累积效应
+   *
+   * 真正有**持续性**风险的是**带定时器**的页面：
+   * 轮询/走秒每秒都在跑，云函数往返期间卸载就会反复打到死页面，
+   * 这才是必须挡的（room 的 1.5 秒轮询、mood 的 1 秒走秒）。
+   *
+   * 所以判据收敛为：**有 setInterval 的页面必须声明存活标志**。
+   * 宁可精确也不要宽 —— 假阳性会让我去改本来正确的代码。
+   */
+  const noGuard = []
+  for (const f of allPages) {
+    const src = fs.readFileSync(f, 'utf8')
+    /* 只挑有持续定时器的页面 */
+    if (!/setInterval\s*\(/.test(src)) continue
+    if (!/await\s/.test(src)) continue
+    const declares = /this\._(dead|visible)\s*=\s*(true|false)/.test(src) &&
+                     /on(Unload|Hide)\s*\([^)]*\)\s*\{[\s\S]{0,300}?this\._(dead|visible)\s*=/.test(src)
+    if (!declares) noGuard.push(path.relative(ROOT, f))
+  }
+  assert.deepStrictEqual(noGuard, [],
+    '★ 这些页面有 setInterval（持续轮询/走秒）但没有存活标志：\n    ' +
+    noGuard.join('\n    ') +
+    '\n    定时器每秒都在跑，云函数往返期间页面被卸载就会反复 setData 到死页面。\n' +
+    '    修法：onUnload/onHide 里翻转 this._dead / this._visible，异步回调处判断')
+  ok('所有带定时器的页面都声明了存活/可见标志（room 的 _dead、mood 的 _visible）')
+
+  /* ---------- ⑦-3 定时器自重启不能形成无限循环 ---------- */
+  console.log('\n=== ⑦-3 走秒/轮询：重置标志不能被自己的回调清掉 ===')
+  /*
+   * ★★ 这是本轮最严重的一个（mood 页**整个不可用**）：
+   *
+   *     tick():  left<=0 且 !_pulled  →  _pulled=true; load()
+   *     load():  _pulled = false;  若 cool 非空 → startTick()   ← 又起表
+   *              ↑____________________________________|
+   *
+   *   实测（用真实源码跑闭环）：旧版 6 帧内 load **6 次**（每秒一次，
+   *   每次 2 个云函数调用），而且 load() 首行的 setData({loading:true})
+   *   让整页每秒闪一次 —— 页面直接没法用。修复后同样 6 帧只 load 1 次。
+   *
+   * 判据：如果某函数体里出现"把 _pulled/_done 这类**一次性标志重置**"，
+   *      就必须同时存在让它只在**新条件**下才重置的判断（形如 `if (x > 0)`），
+   *      不能是无条件赋值。
+   */
+  const moodSrc = fs.readFileSync(path.join(MINI, 'pages/mood/mood.js'), 'utf8')
+  const unconditional = /^\s*this\._pulled\s*=\s*false\s*$/m.test(moodSrc)
+  assert.ok(!unconditional,
+    '★ mood.js 里 `this._pulled = false` 是无条件赋值 —— ' +
+    '它会被 load() 每次执行时清掉，而 load() 结尾又 startTick() 起表，\n' +
+    '    于是 tick→load→startTick→tick 形成闭环：**每秒一次云函数调用 + 整页闪烁**。\n' +
+    '    必须改成"只有服务端给出新的未来截止时刻（remainMs > 0）才重置"。')
+  assert.ok(/if\s*\(remain\s*>\s*0\)\s*this\._pulled\s*=\s*false/.test(moodSrc),
+    '★ 找不到"仅在新周期才重置 _pulled"的判断 —— 循环防护可能被删掉了')
+  /* 归零时必须停表，不能只靠标志 */
+  assert.ok(/if\s*\(up\)\s*\{[\s\S]{0,200}?this\.stopTick\(\)/.test(moodSrc),
+    '★ mood 的 tick() 在归零时没有 stopTick() —— ' +
+    '表会一直跑，靠标志挡不住"每次都重新起表"')
+  ok('mood 走秒：归零后停表 + _pulled 仅在新周期重置（无每秒循环）')
+
   console.log(`\n${'='.repeat(56)}\n  字段契约：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 失败：', e.message, '\n')
