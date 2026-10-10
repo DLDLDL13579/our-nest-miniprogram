@@ -702,7 +702,18 @@ exports.main = async (event) => {
       if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
 
       /* 每人自己摇自己的 —— 服务端摇，前端只拿结果 */
-      const n = room.game === 'liar' ? 5 : (room.diceCount || 2)
+      /*
+       * 每人几颗：大话骰 5 颗；摇骰子比大小 2 颗。
+       *
+       * ⚠️ 原来写的是 `(room.diceCount || 2)` —— 但 `room.diceCount` **从未被赋值**
+       *    （房间文档里没这个字段；第 206 行的 diceCount 是 shape() 给**每个 player**
+       *    的，不是房间顶层的）。所以它恒为 undefined、恒回退 2。
+       *
+       * 行为**恰好是对的**（dice 房本就该 2 颗），但这个写法有误导性：
+       * 读的人会以为"房间可以配置骰子数"，而实际上没有这个能力。
+       * 已改成明确的常量表达式 —— 若将来真要做可配置，再引字段也不迟。
+       */
+      const n = room.game === 'liar' ? 5 : 2
       const dice = []
       for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
 

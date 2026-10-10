@@ -380,13 +380,34 @@ exports.main = async (event) => {
       const sec = await safe(text, OPENID)
       if (!sec.pass) return { ok: false, msg: sec.msg }
 
+      /*
+       * ★ 关于"同一人重复提交"（2026-10-09 评估过，结论：**不需要额外闸门**）
+       *
+       * 理论风险：读-检查-写之间有窗口，双击会让 plans 变成同一人的两条，
+       * 于是 `after.length >= memberCount` 误判成"双方都写完"，把这次冷静提前结束。
+       *
+       * 但实测**不可达**：前端 `savePlan` 第一行就是
+       *     `if (this.data.saving) return`
+       * 双击的第二次会被直接拦下，根本发不出请求。
+       *
+       * 我一度加了 `where({_id, active:true}).update(...)` 当闸门 ——
+       * 后来自查发现**它挡不住这个场景**（写入时 active 并未改变，条件照样成立），
+       * 而且会给"第二个写完的人"带来新的失败分支。已撤掉。
+       *
+       * **教训：加防护前先确认「这个攻击路径到底通不通」。**
+       * 给一个不可达的风险加闸门，换来的是真实的复杂度和新的失败模式。
+       */
       const t = nowCN()
       const after = (c.plans || []).concat([{ by: OPENID, text: text, at: t.at }])
       const upd = { plans: _.push({ by: OPENID, text: text, at: t.at }) }
       /* 双方都写了 → 这一次就算走完了，从"进行中"里摘掉 */
       if (after.length >= memberCount) { upd.active = false; upd.doneAt = ts }
       await cools.doc(c._id).update({ data: upd })
-      return { ok: true, cool: shape(Object.assign({}, c, { plans: after, active: !(after.length >= memberCount), doneAt: upd.doneAt || 0 })) }
+      return { ok: true, cool: shape(Object.assign({}, c, {
+        plans: after,
+        active: !(after.length >= memberCount),
+        doneAt: upd.doneAt || 0
+      })) }
     }
 
     /* ================= 历史 + 规矩本 ================= */
