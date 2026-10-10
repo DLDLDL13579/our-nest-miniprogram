@@ -509,6 +509,53 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '座位重复 → 回合永远轮不到其中一个 → 游戏卡死且不报错')
   ok('★ 并发加入不丢人，且座位重编号为 1..N 连续唯一')
 
+  /* ============ ⑧b 叫骰参数必须校验「整数」而不只是范围 ============ */
+  console.log('\n=== ⑧b 叫骰：小数 / NaN 必须被拒 ===')
+  /*
+   * ★ 2026-10-09 安全审计发现：`!(n >= 1 && n <= max)` 这种范围判断
+   *   **挡不住小数** —— 2.5 落在 [1,10] 内，会直接落库。
+   *
+   *   后果不是"数据难看"，而是**玩法被破坏**：
+   *   开骰时按 face 精确匹配数骰子（`dice.filter(d => d === face)`），
+   *   face=3.7 永远命中 0 颗 → 无论实际有没有 3 点，
+   *   判定都是"叫的人输了"→ 谁叫谁输，一局直接废掉。
+   *
+   * ⚠️ 顺带澄清一个审计报告的误判：`NaN` 其实**会**被范围判断拦住
+   *    （`NaN >= 1` 为 false）—— 真实缺口只有小数。
+   *    断言把两种都覆盖上，但注释要写对，否则下次会照着错的前提去改。
+   */
+  {
+    OPENID = A
+    const lr = await room.main({ action: 'create', name: 'L', game: 'liar' })
+    OPENID = B
+    await room.main({ action: 'join', code: lr.room.code, name: 'LB' })
+    OPENID = A
+    const started = await room.main({ action: 'start', id: lr.room.id })
+    assert.strictEqual(started.room.phase, 'countdown', 'start 之后应进倒计时')
+    /* 把倒计时拨到过去 —— status 会据此推进到 playing（与文件里其它用例同法） */
+    store.rooms.filter(x => x._id === lr.room.id)[0].countdownEnd = Date.now() - 100
+    const st = await room.main({ action: 'status', id: lr.room.id })
+    assert.strictEqual(st.room.phase, 'playing', '倒计时应已结束')
+
+    for (const [n, face, why] of [
+      [2.5, 3, '小数数量'],
+      [2, 3.7, '小数点数'],
+      [NaN, 3, 'NaN 数量'],
+      [2, NaN, 'NaN 点数']
+    ]) {
+      const r = await room.main({ action: 'bid', id: lr.room.id, n: n, face: face })
+      assert.strictEqual(r.ok, false,
+        `★ ${why} 竟然被接受了（n=${n} face=${face}）—— ` +
+        '范围判断挡不住小数，必须用 Number.isInteger')
+    }
+    ok('小数 / NaN 的叫骰参数全部被拒（整数校验生效）')
+
+    /* 合法的一叫必须仍然能过 —— 别把功能一起拦死了 */
+    const good = await room.main({ action: 'bid', id: lr.room.id, n: 2, face: 3 })
+    assert.ok(good.ok, '合法叫骰应能通过：' + (good.msg || ''))
+    ok('合法叫骰（2个3）仍然通过')
+  }
+
   /* ============ ⑨ 开局前不能操作 ============ */
   console.log('\n=== ⑨ 大厅阶段不能叫骰 ===')
   OPENID = A

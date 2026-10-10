@@ -29,6 +29,33 @@ const MAXNOTE = 120
 /* 提前量的几档预设，对应不同的准备成本 */
 const LEADS = [0, 3, 7, 14, 30]
 
+
+/**
+ * 内容安全。
+ * ★ 失败时**拒绝写入**（fail-closed）—— 微信对上架小程序的要求是
+ *   UGC 必须先过 msgSecCheck；服务不可用时选择"不让写"而不是"放进去"。
+ *   这条策略与 moments / capsule / mood / room 完全一致。
+ *
+ * ⚠️ 2026-10-09 安全审计发现：wishes / reminds / pair 三处有用户自由输入的
+ *    文本，却**从未调用过内容安全**（config.json 里的权限一直配着，代码没用）。
+ *    这是上架合规的硬缺口，不是"可优化项"。
+ */
+async function safe(text, openid) {
+  if (!text) return { pass: true }
+  try {
+    const r = await cloud.openapi.security.msgSecCheck({
+      content: text, openid: openid, scene: 2, version: 2
+    })
+    const s = r && r.result && r.result.suggest
+    if (s && s !== 'pass') return { pass: false, msg: '这段文字系统判断有风险，改一改再写' }
+    return { pass: true }
+  } catch (err) {
+    console.error('[reminds] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
+  }
+}
+
 function todayCN() {
   const d = new Date(Date.now() + 8 * 3600 * 1000)
   return d.toISOString().slice(0, 10)
@@ -127,6 +154,12 @@ exports.main = async (event) => {
       if (!title) return { ok: false, msg: '写一件要记得的事' }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, msg: '选一个日期' }
 
+      /* ★ 自由文本都要过内容安全 —— title / who / lastGift / note 全都是用户输入 */
+      const secText = [title, event.who, event.lastGift, event.note]
+        .map(x => String(x || '').trim()).filter(Boolean).join('\n')
+      const sec = await safe(secText, OPENID)
+      if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
+
       let lead = Number(event.leadDays)
       if (LEADS.indexOf(lead) < 0) lead = repeat === 'monthly' ? 3 : 14
 
@@ -151,7 +184,12 @@ exports.main = async (event) => {
       if (cur.data.pairId !== pair._id) return { ok: false, msg: '不属于你们的小窝' }
 
       const data = {}
-      if (event.title !== undefined) data.title = String(event.title).trim().slice(0, MAXTITLE)
+      if (event.title !== undefined) {
+        /* 改标题也要过检查 —— 否则"先写合法的、再改成违规的"就绕过了 */
+        const sec2 = await safe(String(event.title).trim(), OPENID)
+        if (!sec2.pass) return { ok: false, msg: sec2.msg, _code: sec2._code }
+        data.title = String(event.title).trim().slice(0, MAXTITLE)
+      }
       if (event.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(event.date)) data.date = event.date
       if (event.repeat !== undefined && ['yearly', 'monthly', 'once'].indexOf(event.repeat) >= 0) data.repeat = event.repeat
       if (event.leadDays !== undefined && LEADS.indexOf(Number(event.leadDays)) >= 0) data.leadDays = Number(event.leadDays)

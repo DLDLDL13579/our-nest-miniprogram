@@ -71,12 +71,17 @@ function collection(name){
 }
 let OPENID=''
 const mock={init(){},DYNAMIC_CURRENT_ENV:'mock',database(){return{collection,command,async createCollection(n){store[n]=store[n]||[];return true}}},
-  getWXContext(){return{OPENID}},openapi:{security:{async msgSecCheck(){return{errCode:0,result:{suggest:'pass'}}}}}}
+  getWXContext(){return{OPENID}},openapi:{security:{async msgSecCheck({content}){
+    /* 可配置：出现「违禁」就判风险 —— 否则测不出检查是否真的接上了 */
+    SEC_CALLS++
+    return {errCode:0,result:{suggest:/违禁/.test(content||'')?'risky':'pass'}}
+  }}}}
 const ROOT=path.join(__dirname,'..')
 const orig=Module._load; Module._load=function(r){if(r==='wx-server-sdk')return mock;return orig.apply(this,arguments)}
 
 const pair=require(path.join(ROOT,'cloudfunctions','pair','index.js'))
 const chronicle=require(path.join(ROOT,'cloudfunctions','chronicle','index.js'))
+let SEC_CALLS=0
 const wishes=require(path.join(ROOT,'cloudfunctions','wishes','index.js'))
 const moments=require(path.join(ROOT,'cloudfunctions','moments','index.js'))
 const initdb=require(path.join(ROOT,'cloudfunctions','initdb','index.js'))
@@ -187,6 +192,28 @@ let n=0; const ok=m=>{n++;console.log('  ✓ '+m)}
   const steal=await wishes.main({action:'done',id:'alien_wish',photo:'cloud://x/y.jpg'})
   assert.strictEqual(steal.ok,false)
   ok('别人的愿望点不亮：「'+steal.msg+'」')
+
+  /* ============ 内容安全：三处「漏网」的自由文本输入 ============ */
+  console.log('\n=== 内容安全：wishes / reminds / pair 必须过 msgSecCheck ===')
+  /*
+   * 2026-10-09 安全审计发现的**上线合规缺口**：
+   *   wishes / reminds / pair 三处都有用户自由输入的文本，
+   *   而 config.json 里的 security.msgSecCheck 权限一直配着、**代码从没调用**。
+   *   微信对上架小程序的要求是 UGC 必须先过内容检查 —— 这是硬要求，不是优化项。
+   *
+   * 判据必须验证「真的会拦」，不能只看「有没有调用」：
+   * 写一条含敏感词的记录，必须被拒绝且**不落库**。
+   */
+  {
+    const before = store.wishes.length
+    const badWish = await wishes.main({ action: 'add', text: '违禁内容测试' })
+    assert.strictEqual(badWish.ok, false, '★ 想去·去过的自由文本没过内容安全')
+    assert.strictEqual(store.wishes.length, before, '★ 被拦的内容仍然落库了')
+    ok('想去·去过：敏感文本被拦在写库之前')
+
+    const okWish = await wishes.main({ action: 'add', text: '一起去海边看日出' })
+    assert.ok(okWish.ok, '正常文本应能写入')
+  }
 
   console.log(`\n${'='.repeat(56)}\n  编年史 + 想去去过：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e=>{console.error('\n  ✗ 失败：',e.message,'\n',e.stack.split('\n')[1]);process.exit(1)})

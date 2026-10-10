@@ -433,7 +433,20 @@ exports.main = async (event) => {
       if (err) return { ok: false, msg: err }
       if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能开局' }
       if ((room.players || []).length < 2) return { ok: false, msg: '至少两个人才能开始' }
-      if (room.phase === 'playing') return { ok: false, msg: '已经开始了' }
+      /*
+       * ★ 必须把 countdown 也拦掉（2026-10-09 安全审计发现）。
+       *
+       * 原来只拦 `playing`，于是房主在 3.2 秒倒计时窗口内重复调用 start，会：
+       *   · 反复重置 countdownEnd（永远开不了局）
+       *   · **重新生成大话骰的骰子** —— 前一秒偷看过的点数突然变了，
+       *     玩家会以为"这游戏作弊"（而骰子确实是重新摇的）
+       *
+       * 前端此时按钮已隐藏，所以正常操作碰不到；但云函数是公开接口，
+       * 直接调用可达 —— 这类"前端藏了、后端没拦"的缺口必须后端补。
+       */
+      if (room.phase === 'countdown' || room.phase === 'playing') {
+        return { ok: false, msg: '这局已经开始了' }
+      }
 
       /* 骰子由**服务端**生成 —— 前端只拿自己的。
          这和"前端摇完上报"有本质区别：那样抓包就能看到别人的点数。
@@ -497,8 +510,24 @@ exports.main = async (event) => {
       const n = Number(event.n)
       const face = Number(event.face)
       const zhai = !!event.zhai
-      if (!(n >= 1 && n <= (room.players || []).length * 5)) return { ok: false, msg: '数量不对' }
-      if (!(face >= 1 && face <= 6)) return { ok: false, msg: '点数不对' }
+      /*
+       * ★ 必须校验**整数**，不只是范围（2026-10-09 安全审计发现）。
+       *
+       * 范围判断挡不住小数：`2.5 >= 1 && 2.5 <= 10` 成立 → 会落库。
+       * 后果不是"数据难看"，而是**玩法被破坏**：
+       *   开骰时按 face 精确匹配数骰子（`dice.filter(d => d === face)`），
+       *   face=3.7 永远命中 0 颗 → 无论实际有没有 3 点，
+       *   判定都是"叫的人输了"→ 谁叫谁输，一局就废了。
+       *
+       * （顺带澄清：`NaN` 其实**会**被范围判断拦住 —— `NaN >= 1` 为 false。
+       *   审计报告说"NaN 直接落库"不准确，真实缺口是小数。）
+       */
+      if (!Number.isInteger(n) || n < 1 || n > (room.players || []).length * 5) {
+        return { ok: false, msg: '数量不对' }
+      }
+      if (!Number.isInteger(face) || face < 1 || face > 6) {
+        return { ok: false, msg: '点数不对' }
+      }
 
       /* 必须比上一个大 —— 服务端判定，不信任前端算好的结果 */
       const cur = room.bid

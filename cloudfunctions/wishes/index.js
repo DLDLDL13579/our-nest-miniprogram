@@ -17,6 +17,33 @@ const _ = db.command
 const pairs = db.collection('pairs')
 const wishes = db.collection('wishes')
 
+
+/**
+ * 内容安全。
+ * ★ 失败时**拒绝写入**（fail-closed）—— 微信对上架小程序的要求是
+ *   UGC 必须先过 msgSecCheck；服务不可用时选择"不让写"而不是"放进去"。
+ *   这条策略与 moments / capsule / mood / room 完全一致。
+ *
+ * ⚠️ 2026-10-09 安全审计发现：wishes / reminds / pair 三处有用户自由输入的
+ *    文本，却**从未调用过内容安全**（config.json 里的权限一直配着，代码没用）。
+ *    这是上架合规的硬缺口，不是"可优化项"。
+ */
+async function safe(text, openid) {
+  if (!text) return { pass: true }
+  try {
+    const r = await cloud.openapi.security.msgSecCheck({
+      content: text, openid: openid, scene: 2, version: 2
+    })
+    const s = r && r.result && r.result.suggest
+    if (s && s !== 'pass') return { pass: false, msg: '这段文字系统判断有风险，改一改再写' }
+    return { pass: true }
+  } catch (err) {
+    console.error('[wishes] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
+  }
+}
+
 function todayCN() {
   return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
 }
@@ -72,6 +99,8 @@ exports.main = async (event) => {
     if (action === 'add') {
       const text = String(event.text || '').trim().slice(0, MAXTEXT)
       if (!text) return { ok: false, msg: '写一件想一起做的事' }
+      const sec = await safe(text, OPENID)
+      if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
       const added = await wishes.add({
         data: {
           pairId: pair._id, text: text, done: false,

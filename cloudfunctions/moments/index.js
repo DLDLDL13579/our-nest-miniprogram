@@ -214,6 +214,15 @@ exports.main = async (event) => {
     if (/ResourceNotFound|not exist|集合不存在|Table not exist/i.test(raw)) {
       return { ok: false, code: 'NO_TABLE', msg: '数据表还没建好，重启一次小程序即可（会自动创建）' }
     }
-    return { ok: false, msg: '操作失败了，再试一次', debug: raw.slice(0, 120) }
+    /*
+     * ⚠️ 这里原来还返回 `debug: raw.slice(0, 120)` —— 把数据库的**原始错误信息**
+     *    带给客户端。它可能含集合名、字段名、甚至部分查询条件，
+     *    属于"内部实现泄漏给调用方"（2026-10-09 安全审计发现）。
+     *
+     * 真正的错误信息已经 `console.error` 到云函数日志里了，
+     * 排查时去日志看即可 —— 客户端只需要一句人话。
+     * 全项目其余云函数都是这个口径，这里是唯一的例外，已统一。
+     */
+    return { ok: false, msg: '操作失败了，再试一次' }
   }
 }

@@ -97,11 +97,46 @@ App({
         g.openid = r.openid || g.openid
         g._pairAt = Date.now()
         g.ready = true
+        /*
+         * 记一份本地快照 —— 断网时用它兜底（见 catch）。
+         *
+         * ★ 服务端明确回答"没有配对"（r.ok 为真但 pair 为 null）时，
+         *   必须把快照**清掉**而不是跳过写入。
+         *   第一版写成 `if (g.pair) setStorageSync(...)` —— 那样旧快照会残留，
+         *   于是"已经解绑/换了伴侣"的用户一旦断网，又会被兜底逻辑读成
+         *   "还配着对"，显示上一个伴侣的信息。**兜底不能比真相更长寿。**
+         */
+        try {
+          if (r.ok) wx.setStorageSync('pairCache', { pair: g.pair, at: g._pairAt })
+        } catch (e) {}
         return g.pair
       })
       .catch(err => {
         console.error('[ensurePair] 取配对状态失败：', err)
         g.ready = true
+        /*
+         * ★★ 断网时**必须返回上一次的配对状态**，不能返回 null
+         *    （2026-10-09 修的真实缺陷）。
+         *
+         * 原来这里是 `return null`。而 9 个页面都拿 `if (!pair)` 判断"还没配对"
+         * → 于是**已配对的老用户在地铁里打开小程序，看到的是配对引导页**，
+         *   以为数据丢了。这正是最伤信任的一类故障。
+         *
+         * "取不到"和"没有"是两件完全不同的事，不能都表达成 null。
+         * 优先用内存里的值；内存没有（比如冷启动就断网）就读本地快照。
+         * ⚠️ 快照只用于"离线时别显示错"，一旦联网成功就会被真实值覆盖，
+         *    所以不会让"已经解绑"的旧状态长期滞留。
+         */
+        if (g.pair) return g.pair
+        try {
+          const cached = wx.getStorageSync('pairCache')
+          if (cached && cached.pair) {
+            g.pair = cached.pair
+            g._pairAt = cached.at || 0
+            /* ⚠️ 不更新 _pairAt：这是旧数据，下次调用仍应尝试联网刷新 */
+            return g.pair
+          }
+        } catch (e) {}
         return null
       })
   }

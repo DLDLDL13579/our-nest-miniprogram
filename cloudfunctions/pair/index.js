@@ -15,6 +15,29 @@ const pairs = db.collection('pairs')
 /* 去掉 I O 0 1 —— 电话里念邀请码，这四个必然听错 */
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 
+
+/**
+ * 内容安全。
+ * ★ 称呼（myName）会展示给**对方**看，属于 UGC，上架要求必须过 msgSecCheck。
+ *   2026-10-09 安全审计发现这里一直没做（config 权限配着、代码没用）。
+ *   fail-closed：检查服务不可用时拒绝写入，而不是放进去。
+ */
+async function safe(text, openid) {
+  if (!text) return { pass: true }
+  try {
+    const r = await cloud.openapi.security.msgSecCheck({
+      content: text, openid: openid, scene: 2, version: 2
+    })
+    const s = r && r.result && r.result.suggest
+    if (s && s !== 'pass') return { pass: false, msg: '这个称呼系统判断有风险，换一个' }
+    return { pass: true }
+  } catch (err) {
+    console.error('[pair] msgSecCheck 调用失败，按发布策略拒绝写入：',
+      err.errCode, err.errMsg || err.message)
+    return { pass: false, code: 'SEC_UNAVAILABLE', msg: '内容检查服务暂时不可用，稍后再试一次' }
+  }
+}
+
 function genCode() {
   let s = ''
   for (let i = 0; i < 6; i++) s += CHARS[Math.floor(Math.random() * CHARS.length)]
@@ -146,7 +169,11 @@ exports.main = async (event) => {
       }
       if (event.myName !== undefined) {
         const n = String(event.myName).trim().slice(0, 8)
-        if (n) { data.names = data.names || {}; data.names[OPENID] = n }
+        if (n) {
+          const sec = await safe(n, OPENID)
+          if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
+          data.names = data.names || {}; data.names[OPENID] = n
+        }
       }
       if (Object.keys(data).length === 0) return { ok: false, msg: '没要改的东西' }
       data.updatedAt = today()

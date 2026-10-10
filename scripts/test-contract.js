@@ -19,6 +19,21 @@
  *   这一组测试就是把这些"静默失败"钉死。
  *
  * 跑法：node scripts/test-contract.js
+ *
+ * ============ ⚠️ 反向验证这条断言时，判据用**退出码**，别数关键字 ============
+ *
+ * 本文件的失败路径是 `console.error('✗ 失败：', ...)` + `process.exit(1)`，
+ * **输出里没有 `AssertionError` 字样**。
+ * 我在这里栽过两次：改坏代码后用 `grep -c AssertionError` 数结果 → 数到 0，
+ * 于是误判成"断言漏报"，接着去改本来正确的断言。
+ *
+ * 正确写法：
+ *     node scripts/test-contract.js > /dev/null 2>&1; echo "exit=$?"
+ *     # exit=1 → 断言有效；exit=0 → 断言是废的
+ *
+ * （同类错误在 test-room.js 里也发生过一次 —— 那次是 grep 格式不匹配，
+ *   把"验证成功"读成了"验证失败"。凡是**用输出文本判断程序结果**都不可靠，
+ *   退出码才是程序自己给出的判据。）
  */
 const path = require('path')
 const Module = require('module')
@@ -1236,6 +1251,39 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '★ mood 的 tick() 在归零时没有 stopTick() —— ' +
     '表会一直跑，靠标志挡不住"每次都重新起表"')
   ok('mood 走秒：归零后停表 + _pulled 仅在新周期重置（无每秒循环）')
+
+  /* ---------- ⑦-4 离线兜底：取不到 ≠ 没有 ---------- */
+  console.log('\n=== ⑦-4 ensurePair 断网时必须返回旧值，不能返回 null ===')
+  /*
+   * ★ 真实缺陷（2026-10-09）：`ensurePair` 的 catch 里 `return null`，
+   *   而 9 个页面都拿 `if (!pair)` 判断"还没配对" ——
+   *   **已配对的老用户在地铁里打开小程序，看到的是配对引导页**，以为数据丢了。
+   *
+   * 「取不到」和「没有」是两件完全不同的事，不能都表达成 null。
+   *
+   * 判据三条（缺一不可）：
+   *   ① catch 里不能直接 return null（要有旧值兜底）
+   *   ② 联网成功且 r.ok 时**同步快照**（含 pair 为 null 时清空快照）——
+   *      否则"已解绑"的旧状态会在断网时复活
+   *   ③ 兜底读快照时**不要更新 _pairAt** —— 否则旧数据会被当成"刚拉过"，
+   *      联网后 60 秒内不再刷新
+   */
+  const appSrc = fs.readFileSync(path.join(MINI, 'app.js'), 'utf8')
+  const epBody = /ensurePair\(force\)\s*\{([\s\S]*?)\n  \}/.exec(appSrc)
+  assert.ok(epBody, '★ app.js 里抽不出 ensurePair 函数体')
+  const ep = epBody[1]
+
+  assert.ok(!/catch\s*\([^)]*\)\s*\{\s*[\s\S]{0,400}?return null\s*\}\s*$/.test(ep.trim()),
+    '★ ensurePair 的 catch 直接 return null —— 断网时已配对用户会看到配对引导页。\n' +
+    '    「取不到」和「没有」必须区分：优先返回内存里的 g.pair，其次读本地快照。')
+  assert.ok(/if\s*\(g\.pair\)\s*return g\.pair/.test(ep),
+    '★ 找不到"有内存旧值就先用旧值"的兜底')
+  assert.ok(/getStorageSync\(\s*'pairCache'\s*\)/.test(ep),
+    '★ 找不到本地快照兜底（冷启动就断网时会退回 null）')
+  assert.ok(/if\s*\(r\.ok\)\s*wx\.setStorageSync\(\s*'pairCache'/.test(ep),
+    '★ 快照没有在 r.ok 时同步 —— 若写成 `if (g.pair)`，' +
+    '服务端明确回答"没配对"时旧快照会残留，断网时又复活成"还配着对"')
+  ok('ensurePair 区分「取不到」与「没有」，且快照不会让旧状态复活')
 
   console.log(`\n${'='.repeat(56)}\n  字段契约：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e => {
