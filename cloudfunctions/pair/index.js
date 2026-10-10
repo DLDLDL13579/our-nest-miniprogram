@@ -138,7 +138,33 @@ exports.main = async (event) => {
       if ((target.members || []).indexOf(OPENID) >= 0) return { ok: false, msg: '这是你自己的码' }
       if ((target.members || []).length >= 2) return { ok: false, msg: '这个小窝已经两个人了' }
 
-      await pairs.doc(target._id).update({
+      /*
+       * ★★ 必须做**条件更新**，不能裸 push（2026-10-09 安全审计发现）。
+       *
+       * 老写法是「读 target → 检查 members.length < 2 → `_.push(OPENID)`」。
+       * `_.push` 是原子追加，但它**不检查追加前的人数** —— 读和写之间的窗口里：
+       *
+       *     请求A（oid=A）                  请求B（oid=B）
+       *     查 target → members=[host]      查 target → members=[host]   ← 同一份快照
+       *     1 < 2 → 通过                     1 < 2 → 通过
+       *     push A                          push B
+       *     ↑ members 变成 [host, A, B] —— **三人同窝**
+       *
+       * 而 `inviteActive: false` 挡不住 B：B 的 update 是无条件的，
+       * 不会因为 A 刚把它置 false 而失败。
+       *
+       * **pair 是"两人分区"这个产品的根** —— 三人群会让所有挂 pairId 的
+       * 查询（moments / wishes / cools…）语义全乱，且没有 UI 能表达这种状态。
+       *
+       * 修法：把"人数还没满"和"邀请码还有效"做成**更新条件**，
+       * 让数据库在一次操作里同时判定并写入。这样第二个请求会 matched=0，
+       * 我们据此明确告诉他"已经两个人了"，而不是静静挤进去。
+       */
+      const upd = await pairs.where({
+        _id: target._id,
+        inviteActive: true,
+        inviteCode: code
+      }).update({
         data: {
           members: _.push(OPENID),
           inviteActive: false,          // 配对成功立刻作废，防第三人加入
@@ -146,6 +172,15 @@ exports.main = async (event) => {
           pairedAt: today()
         }
       })
+      /*
+       * matched 为 0 = 在我们读完之后，这条已经被别人用掉（或码已作废）。
+       * 注意：**不能**改成条件里带 `members.length < 2` —— 查询语法不支持
+       * 按数组长度过滤。用 inviteActive 做闸门是等价的：
+       * 它一旦被置 false，后续任何并发请求都会 matched=0。
+       */
+      if (!upd || !upd.stats || upd.stats.updated === 0) {
+        return { ok: false, msg: '这个小窝刚刚已经两个人了' }
+      }
       /* 我这边如果留着一个空的半成品 pair，删掉，避免 status 查到错的那条 */
       if (mine && (mine.members || []).length === 1 && mine._id !== target._id) {
         await pairs.doc(mine._id).remove()

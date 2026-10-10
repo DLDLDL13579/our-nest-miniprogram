@@ -85,7 +85,22 @@ function collection(name) {
           })
           return { data: out }
         },
-        async count() { return { total: rows().filter(d => match(d, cond)).length } }
+        async count() { return { total: rows().filter(d => match(d, cond)).length } },
+        /*
+         * ★ 条件更新 —— pair.join 靠它做原子闸门（第二个并发请求拿到 updated=0）。
+         *   mock 缺了它就报 "is not a function"，而且**报错被 catch 吞掉后
+         *   测试可能照样 exit=0**（假绿）。在 mock 里补齐，不在业务代码里绕开。
+         */
+        async update({ data }) {
+          const hit = rows().filter(d => match(d, cond))
+          hit.forEach(d => {
+            Object.keys(data).forEach(k => {
+              if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+              else d[k] = data[k]
+            })
+          })
+          return { stats: { updated: hit.length } }
+        }
       }
     },
     doc(id) {
@@ -158,10 +173,26 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* ---------- 准备：配对 + 写一条带照片的记录 ---------- */
   OPENID = D
   const c = await pair.main({ action: 'create' })
+  assert.ok(c.ok && c.code, '准备阶段：生成邀请码应成功 —— ' + (c.msg || ''))
+
   OPENID = Q
-  await pair.main({ action: 'join', code: c.code })
+  /*
+   * ★★ 准备阶段的每一步都必须**断言成功**，不能只 await。
+   *
+   * 原来这里是裸的 `await pair.main({action:'join'})` —— join 失败时
+   * 脚本照样往下跑，后面 30 项断言就在一个"其实没配对"的假状态上执行。
+   * 而它们**可能照样打印 ✓**（假绿），因为很多断言只检查字段形状、
+   * 不检查数据是否真的存在。
+   *
+   * 实际发生过：mock 缺 `where().update()` → join 抛错被吞 → 整个文件
+   * 内部报错但 **exit=0**，`test-all.sh` 完全看不出来。
+   */
+  const pj = await pair.main({ action: 'join', code: c.code })
+  assert.ok(pj.ok, '准备阶段：配对应成功 —— ' + (pj.msg || ''))
+
   OPENID = D
-  await pair.main({ action: 'set', anniversary: '2024-03-26' })
+  const ps = await pair.main({ action: 'set', anniversary: '2024-03-26' })
+  assert.ok(ps.ok, '准备阶段：设置纪念日应成功 —— ' + (ps.msg || ''))
 
   const PHOTOS = ['cloud://x/moments/a.jpg', 'cloud://x/moments/b.jpg']
   const THUMBS = ['cloud://x/moments/a_thumb.jpg', 'cloud://x/moments/b_thumb.jpg']

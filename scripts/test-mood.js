@@ -61,7 +61,22 @@ function collection(name) {
           })
           return { data: out }
         },
-        async count() { return { total: rows().filter(d => match(d, cond)).length } }
+        async count() { return { total: rows().filter(d => match(d, cond)).length } },
+        /*
+         * ★ 条件更新 —— pair.join 靠它做原子闸门（第二个并发请求拿到 updated=0）。
+         *   mock 缺了它就报 "is not a function"，而且**报错被 catch 吞掉后
+         *   测试可能照样 exit=0**（假绿）。在 mock 里补齐，不在业务代码里绕开。
+         */
+        async update({ data }) {
+          const hit = rows().filter(d => match(d, cond))
+          hit.forEach(d => {
+            Object.keys(data).forEach(k => {
+              if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+              else d[k] = data[k]
+            })
+          })
+          return { stats: { updated: hit.length } }
+        }
       }
     },
     doc(id) {

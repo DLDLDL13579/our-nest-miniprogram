@@ -64,7 +64,30 @@ function collection(name) {
           })
           return { data: out }
         },
-        async count() { return { total: rows().filter(d => match(d, cond)).length } }
+        async count() { return { total: rows().filter(d => match(d, cond)).length } },
+        /*
+         * ★ `where(...).update({data})` —— 真实 SDK 支持"条件更新"，
+         *   返回 `stats.updated` 告诉调用方实际改了几条。
+         *
+         *   pair.join 靠它做**原子闸门**（把"邀请码还有效"变成更新条件，
+         *   第二个并发请求会拿到 updated=0）。mock 必须支持，
+         *   否则那条并发保护测不到 —— 而"测试通过但没测到"比没测更危险。
+         *   在 mock 里补齐，**不在业务代码里绕开**。
+         */
+        async update({ data }) {
+          const hit = rows().filter(d => match(d, cond))
+          hit.forEach(d => {
+            Object.keys(data).forEach(k => {
+              /* ★ 必须像 doc().update() 一样处理 `_.push` ——
+                 第一版漏了它，把 `{__op:'push', v:'QP'}` 整个对象写进了 members，
+                 于是 view() 里 members.filter 报 "not a function"。
+                 mock 的操作符处理必须与 doc().update() 保持一致。 */
+              if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+              else d[k] = data[k]
+            })
+          })
+          return { stats: { updated: hit.length } }
+        }
       }
     },
     doc(id) {
@@ -161,6 +184,55 @@ function ok(msg) { pass++; console.log('  ✓ ' + msg) }
   assert.strictEqual(pairDoc.inviteActive, false, '配对后邀请码必须作废')
   assert.strictEqual(pairDoc.inviteCode, '', '作废要连码一起清掉，防第三人加入')
   ok('配对成功，邀请码已作废（第三人再也进不来）')
+
+  /*
+   * ★★ 并发配对：两个不同 openid **同时**用同一个邀请码，不能三人同窝
+   *
+   * 老写法是「读 target → 检查 members.length < 2 → `_.push(OPENID)`」。
+   * `_.push` 原子追加，但**不检查追加前的人数** —— 读和写之间的窗口里
+   * 两个请求都读到 members=[host]、都通过检查，然后各自 push：
+   * members 变成 [host, A, B] → **三人同窝**。
+   * 而 `inviteActive: false` 挡不住第二个：它的 update 是无条件的。
+   *
+   * 后果特别重：pair 是"两人分区"这个产品的**根**，
+   * 三人群会让所有挂 pairId 的查询（moments / wishes / cools…）语义全乱。
+   *
+   * 修法：把"邀请码还有效"做成**更新条件** → 第二个请求 matched=0 → 明确拒绝。
+   */
+  {
+    const snap = JSON.parse(JSON.stringify(store.pairs))
+    store.pairs.length = 0
+
+    CURRENT_OPENID = 'host_c'
+    const cc = await pair.main({ action: 'create' })
+    assert.ok(cc.ok, '建房应成功')
+
+    /* 两个不同的人**同时** join 同一个码（真并发，不是串行） */
+    const oldOid = CURRENT_OPENID
+    const jA = (async () => { CURRENT_OPENID = 'conc_A'; return pair.main({ action: 'join', code: cc.code }) })()
+    const jB = (async () => { CURRENT_OPENID = 'conc_B'; return pair.main({ action: 'join', code: cc.code }) })()
+    const [rA, rB] = await Promise.all([jA, jB])
+    CURRENT_OPENID = oldOid
+
+    const okCount = [rA, rB].filter(x => x.ok).length
+    assert.strictEqual(okCount, 1,
+      '★ 同一个邀请码被两个人同时使用，成功数应为 1，实际 ' + okCount + '\n' +
+      '    老写法（裸 _.push + 无条件 update）会让两人都进去 → **三人同窝**。\n' +
+      '    修法：where({_id, inviteActive:true, inviteCode}).update(...)，' +
+      '第二个请求会拿到 stats.updated=0，据此拒绝。')
+
+    const pd = store.pairs.filter(p => (p.members || []).indexOf('host_c') >= 0)[0]
+    assert.ok(pd, '房主的 pair 应还在')
+    assert.strictEqual(pd.members.length, 2,
+      '★ members 应为 2 人，实际 ' + pd.members.length + ' 人：' + JSON.stringify(pd.members))
+    assert.strictEqual(pd.inviteActive, false, '配对后邀请码必须作废')
+    ok('★ 并发配对只有一人成功，members 恰好 2 人（不会三人同窝）')
+
+    /* 恢复：这批并发测试的 pair 不影响后续断言 */
+    store.pairs.length = 0
+    snap.forEach(x => store.pairs.push(x))
+    CURRENT_OPENID = oldOid
+  }
 
   console.log('\n=== 3. 填在一起的日子（全库唯一时间输入）===')
   CURRENT_OPENID = DENG
