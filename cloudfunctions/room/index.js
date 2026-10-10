@@ -265,7 +265,21 @@ exports.main = async (event) => {
       const game = ['dice', 'liar', 'wheel'].indexOf(event.game) >= 0 ? event.game : 'dice'
 
       const sec = await safe(name, OPENID)
-      if (!sec.pass) return { ok: false, msg: sec.msg, _debug: sec._debug }
+      /*
+       * 这里原来写的是 `_debug: sec._debug` —— 而 safe() 返回的字段叫 **`_code`**
+       * （见 safe 里 `return { pass:false, code:'SEC_UNAVAILABLE', _code: code }`）。
+       * 取一个不存在的字段 → 恒为 undefined，**排查信息实际没传到前端**，
+       * 而它正是当初为了排查"openapi 权限没绑"才加的。
+       * 改成正确的 `_code`，让那条排查线索真的可用。
+       */
+      if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
+      /*
+       * 关于 `_code` 的安全性（想清楚了再改）：
+       *   它是微信 openapi 的错误码（如 -601059），**不含 openid / 数据库 id / 堆栈**，
+       *   前端也不展示它（只进 console 和日志）。它是"权限没绑 vs 接口挂了"的
+       *   唯一区分线索 —— 去掉它等于把当初踩过的坑重新埋一遍。
+       *   若将来要收紧，应该按环境开关，而不是直接删。
+       */
 
       /*
        * 房间号：3 位数字，**穷举去重**（见 pickCode）。
@@ -332,15 +346,54 @@ exports.main = async (event) => {
         return { ok: false, msg: '这局已经开始了，等他们打完再进' }
       }
 
-      const seat = (room.players || []).length + 1
-      const players = (room.players || []).concat([{
-        openid: OPENID, name: name, seat: seat,
-        ready: false, score: 0, dice: [],
-        joinedAt: ts, lastSeen: ts
-      }])
-      await rooms.doc(room._id).update({ data: { players: players, updatedAt: ts } })
+      /*
+       * ★★ 用**原子 push** 追加，不要整数组覆盖写（2026-10-09 修竞态）。
+       *
+       * 老写法是「读 room → 拼一个新数组 → 整数组写回」。问题是读和写之间有窗口：
+       * 两个人同时点「进去」时，双方都读到同样的 3 人列表、都算出 seat=4，
+       * 然后**后写的覆盖先写的** —— 结果只进来一个人，另一个静默消失
+       * （他的请求返回 ok:true，界面上却不在房间里，下一轮轮询才被踢回大厅）。
+       *
+       * `_.push` 是数据库端的原子追加，天然消除"读-改-写"窗口。
+       */
+      await rooms.doc(room._id).update({
+        data: {
+          players: _.push([{
+            openid: OPENID, name: name, seat: 0,     // seat 稍后统一重编号
+            ready: false, score: 0, dice: [],
+            joinedAt: ts, lastSeen: ts
+          }]),
+          updatedAt: ts
+        }
+      })
+
+      /* 追加后重读：并发下可能几个人同时通过了容量检查，必须复查 */
       const rr = await rooms.doc(room._id).get()
-      return { ok: true, room: shape(rr.data, OPENID) }
+      let finalPlayers = (rr.data && rr.data.players) || []
+
+      /* 超员 → 把自己摘出去（同样是整写，但此时只有"我"这一个变量） */
+      if (finalPlayers.length > MAX_PLAYERS) {
+        finalPlayers = finalPlayers.filter(p => p.openid !== OPENID)
+        await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } }).catch(() => {})
+        return { ok: false, msg: '房间满了（最多 ' + MAX_PLAYERS + ' 人）' }
+      }
+
+      /*
+       * ★ 座位按最终顺序重编号 —— 保证 seat 是 1..N 连续且唯一。
+       *
+       * 为什么必须做：并发追加时两个人先都拿到 seat=0（占位），
+       * 不重编号就会出现"两个座位相同"的情况。而 `turn` 是按 seat 找人的
+       * （`players.filter(p => p.seat === room.turn)`）——
+       * 座位重复意味着**回合永远轮不到其中一个**，游戏卡死且不报错。
+       * 这和 leave 里的"退出后重编号"是同一个不变式，两处都要维持。
+       */
+      const seatsOk = finalPlayers.every((p, i) => p.seat === i + 1)
+      if (!seatsOk) {
+        finalPlayers = finalPlayers.map((p, i) => Object.assign({}, p, { seat: i + 1 }))
+        await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } })
+      }
+
+      return { ok: true, room: shape(Object.assign({}, rr.data, { players: finalPlayers }), OPENID) }
     }
 
     /* ================= 房间状态（轮询用） ================= */

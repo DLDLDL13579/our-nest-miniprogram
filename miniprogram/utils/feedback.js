@@ -264,12 +264,20 @@ function vibrate(kind) {
   }
 
   if (kind === 'double') {
-    /* 微信只提供「震一次」，双击靠排期 —— 120ms 间隔听感上是两次 */
+    /*
+     * 微信只提供「震一次」，双击靠排期 —— 120ms 间隔听感上是两次。
+     *
+     * ★ 这个定时器必须进 `_timers`（2026-10-09 修）：
+     *   原来是裸 setTimeout，`clear()` 清不掉。触发 double 后 120ms 内
+     *   离开页面/退到后台，第二次震动仍会响 —— 用户已经不在那个场景里了。
+     *   后果轻（只多震一下，无 setData、无实例泄漏），
+     *   但**凡是"延迟副作用"都该能被打断**，这是同一类问题。
+     */
     safeShort('light')
-    setTimeout(() => {
+    _timers.push(setTimeout(() => {
       _lastHapticAt = 0        // 绕过节流，双击的第二次必须响
       safeShort('light')
-    }, 120)
+    }, 120))
     return
   }
 

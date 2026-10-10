@@ -467,6 +467,48 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(added, 8, '★ 上限 8 人')
   ok(`人数上限生效：加到第 ${added} 个后被拒（最多 8 人）`)
 
+  /*
+   * ★★ 并发加入不能丢人（2026-10-09 修的真实竞态）
+   *
+   * 老写法是「读 room → 拼新数组 → **整数组写回**」。读和写之间有窗口：
+   * 两个人同时点「进去」，双方都读到同样的列表、都算出同一个 seat，
+   * 然后**后写的覆盖先写的** —— 只进来一个人，另一个**静默消失**
+   * （他的请求还返回 ok:true，界面上却不在房间里）。
+   *
+   * 修法：改用 `_.push`（数据库端原子追加），追加后重读并统一重编号座位。
+   *
+   * ⚠️ 判据必须真的并发：串行 join 永远测不出这个 bug。
+   *    这里让两个 join 的 Promise **同时发出**，靠 mock 的深拷贝
+   *    复现"两边读到同一份快照"的交错。
+   */
+  OPENID = A
+  const race = await room.main({ action: 'create', name: 'Race', game: 'dice' })
+  const raceCode = race.room.code
+  const raceId = race.room.id
+
+  OPENID = 'oid_race_1'
+  const p1 = room.main({ action: 'join', code: raceCode, name: 'R1' })
+  OPENID = 'oid_race_2'
+  const p2 = room.main({ action: 'join', code: raceCode, name: 'R2' })
+  const [r1, r2] = await Promise.all([p1, p2])
+
+  assert.ok(r1.ok && r2.ok, '两人都应加入成功')
+  /* 直接看内存里房间的真实成员：必须三个人（房主 + 两个）都在 */
+  const raceDoc = store.rooms.filter(x => x._id === raceId)[0]
+  const raceNames = (raceDoc.players || []).map(p => p.name).sort()
+  assert.deepStrictEqual(raceNames, ['R1', 'R2', 'Race'],
+    '★ 并发加入丢了人 —— 两人同时 join 时后写的覆盖了先写的。\n' +
+    '    实际房间成员：' + raceNames.join(',') + '（期望 Race, R1, R2）\n' +
+    '    修法：用 _.push 原子追加，不要整数组覆盖写')
+
+  /* 座位必须 1..N 连续且唯一 —— 重复 seat 会让"轮到谁"永远找不到人 */
+  const raceSeats = (raceDoc.players || []).map(p => p.seat).sort((a, b) => a - b)
+  assert.deepStrictEqual(raceSeats, [1, 2, 3],
+    '★ 并发加入后座位不是 1..N 连续唯一：' + JSON.stringify(raceSeats) +
+    '\n    turn 是按 seat 找人的（players.filter(p => p.seat === turn)），' +
+    '座位重复 → 回合永远轮不到其中一个 → 游戏卡死且不报错')
+  ok('★ 并发加入不丢人，且座位重编号为 1..N 连续唯一')
+
   /* ============ ⑨ 开局前不能操作 ============ */
   console.log('\n=== ⑨ 大厅阶段不能叫骰 ===')
   OPENID = A
