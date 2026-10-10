@@ -915,21 +915,57 @@ exports.main = async (event) => {
     }
 
     /* ================= 再来一局 ================= */
-    if (action === 'again') {
+    /*
+     * ================= 回大厅（再来一局 / 换玩法） =================
+     *
+     * ★★ 「再来一局」和「换个玩法」**合并成同一个入口**，只差改不改 game。
+     *
+     * 为什么必须合并：两者的动作本质相同 ——
+     *   清局内状态（骰子 / 叫骰 / 结果 / 回合）→ 回 lobby。
+     * 如果拆成两个 action 各写一份清理，就必然出现"其中一个漏清某个字段"的问题，
+     * 而且**不报错**。这个项目已经在这类"同一件事有多个出口"上栽过两次：
+     *   · `stage` 在 doStart 里被手写死 → 「转盘无法转」
+     *   · 派生字段有 7 个出口被 setData 抹掉 → 「点击叫骰没反应」
+     * 所以清理逻辑只能有一份。
+     *
+     * `deck`（题卡场合）一次带过来：换玩法时如果新玩法是转盘，
+     * 可以顺便把场合也定了 —— 省得再点一次。
+     */
+    if (action === 'again' || action === 'game') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
-      if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能开新一局' }
+      if (room.hostOpenid !== OPENID) {
+        return { ok: false, msg: action === 'game' ? '只有房主能换玩法' : '只有房主能开新一局' }
+      }
 
-      /* 清掉骰子和结果，回到大厅 */
-      const players = (room.players || []).map(p => Object.assign({}, p, { dice: [], ready: false }))
-      await rooms.doc(room._id).update({
-        data: {
-          players: players, phase: 'lobby',
-          bid: null, lastResult: null, turn: 0, updatedAt: ts
+      const data = {
+        players: (room.players || []).map(p => Object.assign({}, p, { dice: [], ready: false })),
+        phase: 'lobby',
+        bid: null, lastResult: null, turn: 0,
+        /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
+        spin: null,
+        updatedAt: ts
+      }
+
+      if (action === 'game') {
+        /*
+         * 只在**没在玩**的时候允许换。
+         * playing 中途换会让"已经摇过的骰子"失去意义（玩家不知道算不算数），
+         * countdown 中途换则是和开局抢时序。
+         */
+        if (room.phase === 'playing' || room.phase === 'countdown') {
+          return { ok: false, msg: '这局玩完再换' }
         }
-      })
+        const g = String(event.game || '')
+        if (['dice', 'liar', 'wheel'].indexOf(g) < 0) return { ok: false, msg: '没有这个玩法' }
+        data.game = g
+        /* 顺便换题卡场合（只有转盘用得到；传了就换，没传就保持） */
+        if (event.deck !== undefined) data.deck = decks.deckOf(String(event.deck)).k
+      }
+
+      await rooms.doc(room._id).update({ data: data })
       const rr = await rooms.doc(room._id).get()
-      return { ok: true, room: shape(rr.data, OPENID) }
+      return { ok: true, room: shape(rr.data, OPENID), game: data.game || room.game }
     }
 
     /* ================= 离开 ================= */

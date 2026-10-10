@@ -433,6 +433,23 @@ Page({
         feedback.fire('cupOpen')
       }
     }
+    /*
+     * ★ 房主换了玩法 → 全场提示。
+     *
+     * 为什么必须有：换玩法是**房主单方面的操作**，其他人只会看到界面突然变了
+     * （骰盅没了、变成转盘），不知道发生了什么。多人游戏里"不在这部手机上发生的事"
+     * 必须被说出来 —— 这和"等别人摇骰"要说清等谁，是同一条原则。
+     *
+     * 只在**非房主**这边弹：房主自己点的，他知道（给他弹反而多余）。
+     */
+    if (prev && prev.game && room.game && prev.game !== room.game) {
+      const g = GAMES.filter(x => x.k === room.game)[0]
+      if (g && !room.host) {
+        sfx.play('whoosh')
+        wx.showToast({ title: '房主换成了「' + g.name + '」', icon: 'none', duration: 2200 })
+      }
+    }
+
     /* 人数变化：有人进来/走了。
        进来的音更"亮"（用 combo 上行），走的音更"闷" */
     if (prev && prev.count !== room.count) {
@@ -880,25 +897,55 @@ Page({
     }
   },
 
-  async doAgain() {
+  /**
+   * 回大厅 —— 「再来一局」和「换个玩法」是**同一个动作**，只差改不改 game。
+   *
+   * ★ 为什么合成一个方法：两者的服务端语义完全相同（清局内状态 → 回 lobby），
+   *   拆开写就会有两份 UI 更新逻辑，漏一处就是"换了玩法但界面还是旧的"这类
+   *   静默故障。这和 AGENTS.md 里记的「派生字段 7 个出口」是同一类错误。
+   *
+   * @param {string} [game] 要换成的玩法；不传 = 只是再来一局
+   */
+  async backToLobby(game) {
+    const payload = { action: game ? 'game' : 'again', id: this.data.room.id }
+    if (game) payload.game = game
+    /* 换到转盘时顺便带上当前选的场合（建房时选的那个） */
+    if (game === 'wheel') payload.deck = this.data.pickDeck
+
     /* ★ 同 doBid：call() 失败会 throw，`.catch(() => null)` 会吞掉原因 → 点了没反应 */
-    const r = await call('room', { action: 'again', id: this.data.room.id }, { loading: '重开' })
+    const r = await call('room', payload, { loading: game ? '换玩法' : '重开' })
       .catch((e) => {
         wx.showToast({
-          title: (e && (e.friendly || e.message)) || '开不了新一局',
+          title: (e && (e.friendly || e.message)) || (game ? '换不了' : '开不了新一局'),
           icon: 'none', duration: 2200
         })
         return null
       })
     if (r && r.ok) {
-      sfx.play('tap')
-      /* 再来一局 → 服务端回到 lobby；同样从 phase 推导，不写死 */
+      if (game === 'wheel') sfx.play('whoosh')
+      else sfx.play('tap')
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), result: null })
+      /* 服务端回到 lobby；stage 从 phase 推导，不写死 */
+      this.setData({
+        room: this.decorate(r.room),
+        stage: stageOf(r.room.phase),
+        result: null,
+        /* 换玩法后，建房时选的那个玩法也要跟着切 —— 否则再点"开一局"会用旧玩法 */
+        pickGame: r.game || this.data.pickGame
+      })
       this.resetRound()
     } else if (r && !r.ok) {
-      wx.showToast({ title: r.msg || '只有房主能开新局', icon: 'none', duration: 2500 })
+      wx.showToast({ title: r.msg || (game ? '换不了' : '只有房主能开新局'), icon: 'none', duration: 2500 })
     }
+  },
+
+  doAgain() { return this.backToLobby() },
+
+  /* 房主换玩法（只在 lobby 可用；服务端会拦"正在玩"的时候） */
+  changeGame(e) {
+    const k = e.currentTarget.dataset.k
+    if (k === this.data.room.game) return
+    this.backToLobby(k)
   },
 
   /* ================= 摇骰子（比大小） =================

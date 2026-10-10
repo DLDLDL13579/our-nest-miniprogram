@@ -301,6 +301,60 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     '数组被抹掉时"点了没反应"，数组抢先更新时"叫错骰"（都不报错）')
   ok('叫骰按钮自带选项文本（data-l），点击不依赖派生数组')
 
+  /* ============ ⑤b 回大厅只能有一个入口 ============ */
+  console.log('\n=== ⑤b 「回大厅」只能有一个入口（再来一局 / 换玩法）===')
+  /*
+   * ★「再来一局」和「换个玩法」在服务端已合并成一个 action（清局内状态 → 回 lobby），
+   *   前端也必须走同一个方法。否则两份 UI 更新逻辑必然有一份漏字段，
+   *   而且**不报错** —— 表现是"换了玩法但界面还是旧的"，极难查。
+   *
+   * 这和本项目记过的两次事故是同一类：
+   *   · `stage` 在 doStart 里被手写死 → 「转盘无法转」
+   *   · 派生字段有 7 个出口 → 「点击叫骰没反应」
+   *
+   * 判据：**调用 `action: 'again'` 或 `action: 'game'` 的地方必须只有一处**。
+   */
+  /*
+   * ⚠️ 这个判据我写错了**三版**，值得记下来（都是"用正则猜代码写法"）：
+   *
+   *   v1  数 `action:\s*'(again|game)'` 字面量
+   *       → 统一入口写的是三元 `action: game ? 'game' : 'again'`，**匹配不到**
+   *       → 数到 0 处，故意加一处后变成 1 处，仍 ≤1 → **假通过**
+   *   v2  抓 `call('room', {...})` 的 action 表达式
+   *       → 但统一入口把 payload 提成了**变量** `call('room', payload, ...)`，**还是匹配不到**
+   *       → 正常代码数到 0 处 → **假失败**
+   *   v3（本版）不猜写法，而是**从"哪个变量承载了 again/game"倒推**
+   *
+   * ★ 教训：判据不能依赖"代码长什么样"。要用**语义**判：
+   *   凡是"构造出的 payload 里含 again/game 字样"的地方，必须只有一处。
+   */
+  const hallDefs = [...code.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\{[^}]*action:[^,}]*'(again|game)'/g)]
+  assert.strictEqual(hallDefs.length, 1,
+    '★ 构造「回大厅」请求的地方必须**恰好一处**（backToLobby 内），实际 ' + hallDefs.length + ' 处：\n    ' +
+    hallDefs.map(m => '第 ' + code.slice(0, m.index).split('\n').length + ' 行  变量 ' + m[1]).join('\n    ') +
+    '\n    两份清理逻辑必然有一份漏字段，而且不报错（表现是"换了玩法但界面是旧的"）')
+
+  /*
+   * 并且这个 payload 只能被传给 call('room', ...) 一次 ——
+   * 否则可能出现"某处绕开 backToLobby 自己发请求"。
+   */
+  const hallVar = hallDefs[0][1]
+  const uses = [...code.matchAll(new RegExp("call\\(\\s*'room'\\s*,\\s*" + hallVar + "\\b", 'g'))]
+  assert.strictEqual(uses.length, 1,
+    '★ 「回大厅」的 payload 变量 ' + hallVar + ' 被调用 ' + uses.length + ' 次（应为 1）')
+
+  ok('「回大厅」只有一个服务端入口（backToLobby 统一封装 again/game）')
+
+  /* 换玩法必须带上场合（换到转盘时用得到），否则转盘会退回默认题库 */
+  assert.ok(/game === 'wheel'[\s\S]{0,80}deck/.test(code),
+    '★ 换到转盘时没有带上题卡场合 —— 会退回默认题库，房主选的场合失效')
+  ok('换到转盘时会带上题卡场合')
+
+  /* 换玩法后 pickGame 要跟着切，否则再点"开一局"会用旧玩法 */
+  assert.ok(/pickGame:\s*r\.game/.test(code),
+    '★ 换玩法后没有同步 pickGame —— 再点"开一局"会用回旧玩法')
+  ok('换玩法后建房的玩法选择会同步（不会用回旧玩法）')
+
   /* ============ ⑥ 动态 class 必须有样式 ============ */
   console.log('\n=== ⑥ 动态 class 必须有 CSS 定义 ===')
 

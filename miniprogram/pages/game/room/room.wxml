@@ -112,6 +112,27 @@
       </view>
     </view>
 
+    <!--
+      ★ 换个玩法 —— 只在**大厅**能换（服务端也会拦"正在玩"的时候）。
+      为什么不做进结算页：换玩法意味着"这一局的结果就此翻篇"，
+      放在结算页会让人以为"换完还能回来看刚才那局"。
+      回大厅是明确的"重新开始"状态，语义更清楚。
+
+      为什么要这个功能：酒桌上常发生"这局大话骰玩腻了，换个转盘吧"，
+      改造前只能**重新开一个房**（房间号变了、要重新发一遍）。
+    -->
+    <view wx:if="{{room.host}}" class="gameswitch">
+      <view class="gs-lbl">换个玩法</view>
+      <view class="gs-row">
+        <view wx:for="{{games}}" wx:key="k"
+              class="gspill {{room.game === item.k ? 'on' : ''}}"
+              data-k="{{item.k}}" bindtap="changeGame">
+          <image class="gspill-icon" src="{{ic[item.icon]}}" mode="aspectFit" />
+          <text>{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+
     <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
       开始（{{room.count}} 人）
     </view>

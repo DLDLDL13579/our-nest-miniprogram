@@ -631,6 +631,88 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============ ⑧d 换玩法：清局内状态 + 只在大厅能换 ============ */
+  console.log('\n=== ⑧d 换玩法（同一房间不换号）===')
+  /*
+   * ★ 需求原话：「同一房间内换玩法」。
+   *   改造前 game 是建房时定死的，玩腻了只能**重新开一个房**（房间号变了、
+   *   要重新发一遍给所有人）。
+   *
+   * ★★ 关键设计：`again` 与 `game` **合并成同一个服务端入口** ——
+   *   两者本质都是"清局内状态 → 回 lobby"，只差改不改 game。
+   *   拆成两份清理就会漏字段，而且不报错（本项目栽过两次同类）。
+   *   所以断言要验的是「**清得干净**」，不只是「能换」。
+   */
+  {
+    const snapshot = JSON.parse(JSON.stringify(store.rooms))
+    try {
+      store.rooms.length = 0
+      OPENID = A
+      const mk = await room.main({ action: 'create', name: 'PA', game: 'liar' })
+      const GID = mk.room.id
+      OPENID = B
+      await room.main({ action: 'join', code: mk.room.code, name: 'PB' })
+      OPENID = A
+      await room.main({ action: 'start', id: GID })
+      store.rooms.filter(x => x._id === GID)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: GID })
+
+      /* 造一点"局内状态"，这样才测得出"清干净了" */
+      await room.main({ action: 'bid', id: GID, n: 2, face: 3 })
+      const dirty = store.rooms.filter(x => x._id === GID)[0]
+      dirty.spin = { k: 'truth', t: '真心话', at: Date.now() }
+      assert.ok(dirty.bid, '前置：应有一条叫骰')
+      assert.ok(dirty.spin, '前置：应有一个转盘结果')
+
+      /* ---- ① 非房主不能换 ---- */
+      OPENID = B
+      const nope = await room.main({ action: 'game', id: GID, game: 'wheel' })
+      assert.strictEqual(nope.ok, false, '★ 非房主竟然能换玩法')
+      assert.ok(/房主/.test(nope.msg), '提示应说清是权限问题：' + nope.msg)
+
+      /* ---- ② 玩到一半不能换 ---- */
+      OPENID = A
+      const mid = await room.main({ action: 'game', id: GID, game: 'wheel' })
+      assert.strictEqual(mid.ok, false,
+        '★ 正在玩的时候竟然能换玩法 —— 已经摇过的骰子会失去意义')
+      assert.ok(/玩完/.test(mid.msg), '提示应说清"玩完再换"：' + mid.msg)
+
+      /* ---- ③ 回大厅后能换，且局内状态清干净 ---- */
+      await room.main({ action: 'again', id: GID })          // 回大厅
+      const sw = await room.main({ action: 'game', id: GID, game: 'wheel', deck: 'family' })
+      assert.ok(sw.ok, '回大厅后应能换玩法：' + (sw.msg || ''))
+      assert.strictEqual(sw.game, 'wheel', '换完应报告新玩法')
+      assert.strictEqual(sw.room.game, 'wheel', '房间的 game 应已改')
+      assert.strictEqual(sw.room.deck, 'family', '顺便带的题卡场合也应生效')
+      assert.strictEqual(sw.room.phase, 'lobby', '换完应回到大厅')
+
+      /* ★ 清得干净：这四个字段任一残留都会让新玩法看到旧状态 */
+      assert.strictEqual(sw.room.bid, null, '★ 旧叫骰没清 —— 换到转盘后还显示着上一局的叫骰')
+      assert.strictEqual(sw.room.lastResult, null, '★ 旧结算没清')
+      assert.strictEqual(sw.room.spin, null, '★ 旧转盘结果没清 —— 屏幕会留着上一轮的扇区')
+      assert.strictEqual(sw.room.turn, 0, '★ 回合序号没清')
+      const after = store.rooms.filter(x => x._id === GID)[0]
+      assert.ok((after.players || []).every(p => (p.dice || []).length === 0),
+        '★ 有人还留着骰子 —— 换玩法后新一局会带着旧点数')
+      assert.strictEqual(after.players.length, 2, '★ 人应该全留下（换玩法不是重开房）')
+      ok('★ 换玩法：只在大厅能换、只有房主能换，且局内状态清得干净')
+
+      /* ---- ④ 无效玩法要拒绝，不能静默改成别的 ---- */
+      const bad = await room.main({ action: 'game', id: GID, game: '麻将' })
+      assert.strictEqual(bad.ok, false, '★ 无效玩法竟然被接受了')
+      assert.strictEqual(store.rooms.filter(x => x._id === GID)[0].game, 'wheel',
+        '★ 无效玩法把房间改坏了 —— 应保持原样')
+      ok('无效玩法被拒，且不会把房间改成别的（房主以为换了、其实没换更糟）')
+
+      /* ---- ⑤ 房间号不变（这正是这个功能的意义）---- */
+      assert.strictEqual(sw.room.code, mk.room.code, '★ 房间号变了 —— 那还不如重新开房')
+      ok('换玩法后房间号不变（不用重新发给所有人）')
+    } finally {
+      store.rooms.length = 0
+      snapshot.forEach(r => store.rooms.push(r))
+    }
+  }
+
   /* ============ ⑨ 开局前不能操作 ============ */
   console.log('\n=== ⑨ 大厅阶段不能叫骰 ===')
   OPENID = A

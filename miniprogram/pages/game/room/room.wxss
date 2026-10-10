@@ -1001,3 +1001,39 @@
 .mineitem.dare { background: rgba(94,127,166,.16); border-left-color: #5E7FA6 }
 .mi-type { font-size: 20rpx; color: rgba(255,255,255,.45); flex: none }
 .mi-text { font-size: 25rpx; color: rgba(255,255,255,.82); line-height: 1.45 }
+
+/* ================================================================
+ * 大厅：换个玩法
+ *
+ * 为什么放在大厅而不是结算页：换玩法意味着"这一局翻篇了"。
+ * 放结算页会让人以为"换完还能回来看刚才那局"，语义含糊。
+ * ================================================================ */
+.gameswitch {
+  margin: 24rpx 0 20rpx;
+  padding: 24rpx 26rpx;
+  border-radius: var(--r-2);
+  background: rgba(255,255,255,.04);
+  border: 2rpx solid rgba(255,255,255,.10);
+}
+.gs-lbl { font-size: 22rpx; color: rgba(255,255,255,.45); margin-bottom: 16rpx }
+.gs-row { display: flex; gap: 14rpx }
+.gspill {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 8rpx;
+  padding: 18rpx 8rpx;
+  border-radius: var(--r-2);
+  background: rgba(255,255,255,.05);
+  border: 2rpx solid rgba(255,255,255,.10);
+  font-size: 22rpx;
+  color: rgba(255,255,255,.6);
+  transition: background .18s ease, border-color .18s ease;
+}
+/* 当前玩法高亮 —— 一眼看出"现在玩的是哪个" */
+.gspill.on {
+  background: rgba(232,179,60,.18);
+  border-color: rgba(232,179,60,.5);
+  color: #F6E7C3;
+  font-weight: 600;
+}
+/* 图标必须有显式尺寸 —— 否则 <image> 会撑满容器（项目踩过两次） */
+.gspill-icon { width: 40rpx; height: 40rpx }
