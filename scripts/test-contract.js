@@ -354,6 +354,14 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         const lits = stripped.match(/'[a-zA-Z][\w-]*'/g) || []
         lits.forEach(q => {
           const lit = q.slice(1, -1)
+          /*
+           * 确实不需要样式的类用**显式白名单**放行，不要放宽判据。
+           * 每项都要说明"为什么不需要"：
+           *   truth —— 题卡（真心话/大冒险）的默认态。颜色由 `.cardbox` 的
+           *     默认样式提供，只有 `.dare` 需要改色。所以 'truth' 这个字面量
+           *     是**语义标记**（前端用它判断显示哪种标签），不是样式钩子。
+           */
+          if (lit === 'truth') return
           /* 词边界匹配，不用 indexOf 子串 ——
              `.table.shakingX` 里包含 `.table.shaking` 这个前缀，
              子串检查会误判成"存在"。CSS 类名后面不能跟 [\w-]。 */

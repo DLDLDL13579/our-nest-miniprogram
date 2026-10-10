@@ -48,6 +48,25 @@
           <text>{{item.name}}</text>
         </view>
       </view>
+      <!--
+        ★ 场合选择只在选「命运转盘」时出现。
+        另两个游戏用不到题卡 —— 一直显示会让人以为"摇骰子也要选题"。
+        按场合而不是按"尺度"分：尺度是把关者视角，场合是玩家视角
+        （我们今晚是什么局）。同事聚餐和情侣在家需要的是**不同的题**，
+        而不是同一套题调辣度。
+      -->
+      <block wx:if="{{pickGame === 'wheel'}}">
+        <view class="lbl" style="margin-top:26rpx">今晚是什么局</view>
+        <view class="deckgrid">
+          <view wx:for="{{decks}}" wx:key="k"
+                class="deckcard {{pickDeck === item.k ? 'on' : ''}}"
+                data-k="{{item.k}}" bindtap="pickDeck">
+            <view class="dc-name">{{item.name}}</view>
+            <view class="dc-desc">{{item.desc}}</view>
+          </view>
+        </view>
+      </block>
+
       <view class="btn main" style="margin-top:24rpx" bindtap="doCreate">开房间，拿房间号</view>
     </view>
 
@@ -294,6 +313,38 @@
 
       <view class="ws-result">{{wheelText}}</view>
 
+      <!--
+        ★ 题卡 —— 转到「真心话 / 大冒险」时显示具体题目。
+        为什么这块最重要：转盘的仪式感一半在"转到什么"，
+        另一半全在"转到之后做什么"。改造前只显示一个词（"真心话"），
+        大家看着屏幕等下文，而屏幕上什么都没有。
+        ⚠️ 题目由**服务端**抽（和扇区同一次返回），前端抽可以重摇到满意。
+      -->
+      <view wx:if="{{card}}" class="cardbox {{card.type === 'dare' ? 'dare' : 'truth'}}">
+        <view class="cb-tag">
+          <text class="cb-type">{{card.type === 'dare' ? '大冒险' : '真心话'}}</text>
+          <text class="cb-deck">{{card.deckName}}</text>
+        </view>
+        <view class="cb-text">{{card.text}}</view>
+      </view>
+      <!-- 转到喝酒类扇区时给一句人话，别让屏幕空着 -->
+      <view wx:elif="{{wheelText && !wheelSpinning && wheelText !== '转起来了…'}}" class="ws-note">
+        {{wheelText === '免罚一次' ? '这一下躲过去了，先记着' : '照着念一遍，然后执行'}}
+      </view>
+
+      <!-- 场合选择：房主可换（局中服务端会拦） -->
+      <view class="deckrow">
+        <view wx:for="{{decks}}" wx:key="k"
+              class="deckpill {{room.deck === item.k ? 'on' : ''}}"
+              data-k="{{item.k}}" bindtap="changeDeck">{{item.name}}</view>
+      </view>
+
+      <view class="cardentry" bindtap="openCards">
+        <text class="ce-t">加一道自己的题</text>
+        <text class="ce-s" wx:if="{{room.myCards.length}}">已加 {{room.myCards.length}} 条 · 抽得到</text>
+        <text class="ce-s" wx:else>你们桌上的梗，内置题库没有</text>
+      </view>
+
       <block wx:if="{{room.host}}">
         <view class="btn main bigbtn {{wheelSpinning ? 'disabled' : ''}}" bindtap="doSpin">
           {{wheelSpinning ? '转着呢…' : '转！'}}
@@ -304,6 +355,46 @@
 
     <view class="btn ghostb" style="margin-top:24rpx" bindtap="leave">离开房间</view>
   </block>
+
+  <!-- ============ 加题面板 ============
+       ★ 「加一道自己的题」—— 内置题库之外的口子。
+       为什么值得做：酒桌上"我刚想到一个梗"是真实的高频瞬间，
+       内置题库再全也覆盖不到你们那一桌的梗。
+       加进去的题与内置题**同等机会**被抽到（服务端把两个题池合并后再抽）。 -->
+  <view wx:if="{{cardPanel}}" class="mask" bindtap="closeCards">
+    <!-- catchtap 阻止冒泡：点面板内部不该把它关掉 -->
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-t">加一道自己的题</view>
+      <view class="sheet-s">加进去之后和内置题目一起抽，机会一样</view>
+
+      <view class="typerow">
+        <view class="typebtn {{cardType === 'truth' ? 'on' : ''}}"
+              data-t="truth" bindtap="pickCardType">真心话</view>
+        <view class="typebtn dare {{cardType === 'dare' ? 'on' : ''}}"
+              data-t="dare" bindtap="pickCardType">大冒险</view>
+      </view>
+
+      <textarea class="cardta" value="{{cardText}}" maxlength="60"
+                placeholder="比如：说出你手机里最近一张截图是什么"
+                placeholder-class="ph" bindinput="onCardText" />
+
+      <view class="btn main" style="margin-top:20rpx" bindtap="addCard">加进去</view>
+
+      <block wx:if="{{room.myCards.length}}">
+        <view class="mine-t">我加的（点一下删掉）</view>
+        <view class="minelist">
+          <view wx:for="{{room.myCards}}" wx:key="text"
+                class="mineitem {{item.type === 'dare' ? 'dare' : ''}}"
+                data-t="{{item.text}}" bindtap="delCard">
+            <text class="mi-type">{{item.type === 'dare' ? '大冒险' : '真心话'}}</text>
+            <text class="mi-text">{{item.text}}</text>
+          </view>
+        </view>
+      </block>
+
+      <view class="btn ghostb" style="margin-top:20rpx" bindtap="closeCards">收起</view>
+    </view>
+  </view>
 
   <!-- ============ 结算 ============ -->
   <block wx:elif="{{stage === 'over'}}">

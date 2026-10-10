@@ -375,6 +375,124 @@ function extractBuildSectors(src) {
     'refresh 里没有用上 roomChanged —— 加了这个函数却不用，等于没优化')
   ok('refresh 里确实调用了 roomChanged')
 
+  /* ============ ⑨ 酒桌题卡库 ============ */
+  console.log('\n=== ⑨ 题卡库（真心话 / 大冒险）===')
+  /*
+   * 题卡是转到「真心话/大冒险」之后**唯一的内容来源**。
+   * 它坏了不会报错，只是全场看着屏幕等下文 —— 和转盘"转完就没了"同一个观感问题。
+   *
+   * 收题标准（写在 decks.js 头部）靠人工把关，但**几条硬指标可以机器验**：
+   *   · 每题非空、长度合理（太短没信息量，太长读不完）
+   *   · 同一副牌内不重复、**跨场合也不重复**（否则换场合会觉得"怎么还是这些"）
+   *   · 四个场合的题量均衡（某个场合题太少会很快抽腻）
+   */
+  const decks = require(path.join(ROOT, 'miniprogram', 'utils', 'decks.js'))
+
+  assert.ok(decks.DECKS.length >= 4,
+    '场合应至少 4 个（朋友/情侣/家人/同事），实际 ' + decks.DECKS.length)
+
+  const all = decks.allTexts()
+  assert.ok(all.length >= 120, '题目总数应 ≥ 120，实际 ' + all.length)
+
+  /* 每条都要有实质内容 */
+  const tooShort = all.filter(x => x.text.trim().length < 6)
+  assert.deepStrictEqual(tooShort.map(x => x.text), [],
+    '★ 这些题太短（少于 6 字），一句话就没了：\n    ' + tooShort.map(x => x.text).join('\n    '))
+  const tooLong = all.filter(x => x.text.length > 40)
+  assert.deepStrictEqual(tooLong.map(x => x.text), [],
+    '★ 这些题太长（超过 40 字），酒桌上读不完：\n    ' + tooLong.map(x => x.text).join('\n    '))
+
+  /* 跨场合去重 —— 这是"换场合"体验的关键 */
+  const seen = {}
+  const dup = []
+  all.forEach(x => {
+    const t = x.text.trim()
+    if (seen[t]) dup.push(t + '  （' + seen[t] + ' 与 ' + x.deck + ' 都有）')
+    seen[t] = x.deck
+  })
+  assert.deepStrictEqual(dup, [],
+    '★ 有题目在多个场合重复 —— 换场合的人会觉得"怎么还是这些"：\n    ' + dup.join('\n    '))
+
+  /* 每个场合都要"够玩"：真心话和大冒险各至少 12 条 */
+  decks.DECKS.forEach(d => {
+    assert.ok(d.truth.length >= 12 && d.dare.length >= 12,
+      '「' + d.name + '」的题太少（真心话 ' + d.truth.length + ' / 大冒险 ' + d.dare.length +
+      '）—— 至少各 12 条才够玩几轮')
+    assert.ok(d.name && d.desc && d.k,
+      '场合「' + d.k + '」缺少 name/desc/k 之一 —— 建房页会显示空白')
+  })
+  ok('题卡库 ' + decks.DECKS.length + ' 个场合 / ' + all.length + ' 条题，无重复、长度合理、题量均衡')
+
+  /* ---------- 云端抽题必须真的连上 ---------- */
+  console.log('\n=== ⑨b 抽题在服务端做，且用得上场合 ===')
+  /*
+   * ★ 为什么必须服务端抽：前端抽的话可以"重摇到满意"，
+   *   题目就不再是运气了；而且没法保证全场同时看到同一张。
+   *   这和转盘抽扇区是同一个理由。
+   */
+  assert.ok(/require\(['"]\.\/decks\.js['"]\)/.test(roomCloud),
+    '★ 云函数没有 require decks.js —— 抽题会拿不到题库')
+  assert.ok(/decks\.deckOf\(room\.deck\)/.test(roomCloud),
+    '★ 云函数抽题时没有用 room.deck（场合）—— 换场合会不起作用')
+  assert.ok(/sec\.k === 'truth' \|\| sec\.k === 'dare'/.test(roomCloud),
+    '★ 云函数没有判断"是不是真心话/大冒险"就抽题 —— 喝一杯也会被塞一道题')
+  assert.ok(/card:\s*card/.test(roomCloud),
+    '★ 抽出来的题没有随 spin 一起下发（分开两次请求会让各人看到不同的题）')
+  ok('抽题在服务端、按场合、只对真心话/大冒险生效，且与扇区同一次下发')
+
+  /* ---------- 前后端题库必须一致（同转盘扇区那条命门） ---------- */
+  /* ---------- 自定义题：内容安全 + 权限 + 题池合并 ---------- */
+  console.log('\n=== ⑨d 自定义题（UGC，必须过内容安全）===')
+  /*
+   * ★ 这一条是**合规硬要求**，不是优化项。
+   *   2026-10-09 安全审计刚补上 wishes/reminds/pair 漏检的内容安全，
+   *   新功能不能在同一处再犯 —— 而且房间是多人场景，违规内容会被**所有人**看到，
+   *   比双人场景更严重。
+   *
+   * 判据不能只看"有没有 require"，要确认**加了题的那条路径上真的调了 safe()**。
+   */
+  const cardBranch = /if \(action === 'card'\)[\s\S]*?\n    \}/.exec(roomCloud)
+  assert.ok(cardBranch, '★ 云函数里找不到 card action（加自定义题）')
+  assert.ok(/await safe\(text, OPENID\)/.test(cardBranch[0]),
+    '★ 加自定义题的路径上**没有调用 safe()** —— 自定义题是 UGC，必须过内容安全。\n' +
+    '    房间是多人场景，违规内容会被所有人看到。')
+  assert.ok(/if \(!sec\.pass\) return/.test(cardBranch[0]),
+    '★ 调了 safe() 但没检查结果 —— 等于没做')
+  ok('加自定义题的路径上做了内容安全检查（UGC 合规）')
+
+  /* 只能删自己的 —— 同 moments 的"只能删自己记的" */
+  const delBranch = /if \(action === 'cardDel'\)[\s\S]*?\n    \}/.exec(roomCloud)
+  assert.ok(delBranch, '★ 云函数里找不到 cardDel action')
+  assert.ok(/c\.by === OPENID/.test(delBranch[0]),
+    '★ 删题没有校验归属 —— 能删掉别人加的题')
+  ok('只能删自己加的题（校验 by === OPENID）')
+
+  /* 题池必须合并：自定义题要真的抽得到，否则用户加了却抽不到 */
+  assert.ok(/const pool = builtin\.concat\(custom\)/.test(roomCloud),
+    '★ 抽题时没有把自定义题并入题池 —— 用户加了也抽不到，会以为没生效')
+  ok('自定义题与内置题合并成同一个题池（加了就抽得到）')
+
+  /* 每人每类有上限：防刷屏，也防把内置题库淹掉 */
+  assert.ok(/MAX_CARDS_PER_KIND/.test(roomCloud),
+    '★ 自定义题没有条数上限 —— 可以塞几百条把内置题库淹没')
+
+  console.log('\n=== ⑨c 前后端题库必须逐字节一致 ===')
+  /*
+   * 云函数独立打包、不能跨目录 require，所以题卡有两份（源 + 云函数拷贝）。
+   * 两份不一致的后果：
+   *   · 前端建房页列出的场合、和云端实际能抽的场合对不上
+   *   · 更糟的是题目内容不同 —— 但**这个不一致不会报错**，
+   *     只是"某些题永远抽不到"，几乎不可能被发现
+   *
+   * 所以这里做**逐字节比对**，和 derive.js 的 5 处一致是同一个机制。
+   */
+  const deckSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'utils', 'decks.js'), 'utf8')
+  const deckCopy = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'room', 'decks.js'), 'utf8')
+  assert.strictEqual(deckCopy, deckSrc,
+    '★ 云函数里的 decks.js 与源文件不一致 —— 跑 scripts/sync-derive.sh 同步\n' +
+    '    （不一致不会报错，只会让"某些题永远抽不到"）')
+  ok('题卡库两份完全一致（改完记得跑 sync-derive.sh）')
+
   console.log('\n========================================================')
   console.log('  游戏逻辑：全部 ' + n + ' 项断言通过')
   console.log('========================================================')

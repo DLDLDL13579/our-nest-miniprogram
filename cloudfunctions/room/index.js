@@ -31,6 +31,15 @@
  * 房间数据很小（一个文档），轮询成本可以忽略。
  */
 const cloud = require('wx-server-sdk')
+/*
+ * 酒桌题卡库 —— 云函数独立打包、不能跨目录 require，所以这里是一份拷贝。
+ * 源文件是 `miniprogram/utils/decks.js`，改完跑 `scripts/sync-derive.sh` 同步
+ * （那个脚本会自动扫描所有云函数目录下的 decks.js，不用手记路径）。
+ *
+ * 为什么抽题要放在**服务端**：和转盘抽扇区同理 ——
+ * 前端抽的话，"重摇到满意"就穿帮了，而且没法保证全场看到同一张。
+ */
+const decks = require('./decks.js')
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
@@ -66,6 +75,10 @@ const TTL_MS = 2 * 3600 * 1000
 
 /* 单房间人数上限 —— 一部手机传着玩，人太多轮不过来 */
 const MAX_PLAYERS = 8
+
+/* 自定义题：单条长度上限 / 每人每类条数上限 */
+const MAX_CARD = 60
+const MAX_CARDS_PER_KIND = 20
 
 /* 开局倒计时：3 秒。太短来不及反应，太长会等得烦 */
 const COUNTDOWN_MS = 3200
@@ -227,6 +240,17 @@ function shape(room, openid) {
     streaks: room.streaks || {},
     /* 转盘：当前这一转的结果（所有人靠它同步看到同一个扇区） */
     spin: room.spin || null,
+    /* 题卡场合（转盘用）—— 全场要看到同一个，所以放在房间状态里 */
+    deck: room.deck || 'friends',
+    /*
+     * 这个房间自己加的题：只返回**条数**和**我自己加的**。
+     * 不把所有人的自定义题全量下发 —— 那是"别人的输入"，前端用不到全量，
+     * 而且列表长了会把房间状态撑大（每 1.5 秒轮询一次）。
+     */
+    cardsCount: (room.cards || []).length,
+    myCards: (room.cards || [])
+      .filter(c => c.by === openid)
+      .map(c => ({ type: c.type, text: c.text })),
     updatedAt: room.updatedAt || 0
   }
 }
@@ -289,6 +313,11 @@ exports.main = async (event) => {
     if (action === 'create') {
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
       const game = ['dice', 'liar', 'wheel'].indexOf(event.game) >= 0 ? event.game : 'dice'
+      /*
+       * 题卡场合（转盘用）：房主开局前选，全场同步。
+       * 校验用 deckOf —— 未知 key 会被回退成默认那副，不会让房间卡在无题可抽的状态。
+       */
+      const deck = decks.deckOf(String(event.deck || '')).k
 
       const sec = await safe(name, OPENID)
       /*
@@ -333,6 +362,7 @@ exports.main = async (event) => {
           round: 0,
           bid: null,
           lastResult: null,
+          deck: deck,
           active: true,
           createdAt: ts,
           updatedAt: ts
@@ -679,10 +709,53 @@ exports.main = async (event) => {
       }
       const sec = WHEEL_SECTORS[index]
 
+      /*
+       * ★ 转到「真心话 / 大冒险」时，**顺手把题目抽好**一起下发。
+       *
+       * 为什么必须由服务端抽、且和扇区结果同一次返回：
+       *   ① 前端抽 → 可以"重新抽到满意"，题目就不再是运气了
+       *   ② 分开两次请求 → 中间那一小段时间，每个人看到的可能不是同一张
+       *      （转盘的仪式感全在"全场同时看到同一个结果"）
+       *
+       * 场合从房间取（房主开局前选），没选就回退第一副牌 —— 保证永远有题可抽。
+       */
+      let card = null
+      if (sec.k === 'truth' || sec.k === 'dare') {
+        const deck = decks.deckOf(room.deck)
+        /*
+         * ★ 题池 = 内置题库 + 这个房间里自己加的题。
+         *
+         * 为什么合并而不是二选一：酒桌上"我刚想到一个梗，加进去"是真实需求，
+         * 加了却抽不到会让人以为没生效。合并之后自定义题和内置题**同等机会**。
+         */
+        const builtin = deck[sec.k] || []
+        const custom = (room.cards || []).filter(c => c.type === sec.k).map(c => c.text)
+        const pool = builtin.concat(custom)
+        if (pool.length) {
+          /*
+           * ⚠️ 下标**只抽一次**。
+           *   第一版写成 `pool[抽]` 和 `custom.indexOf(pool[抽])` 各调一次
+           *   Math.random() —— 两次抽到的可能不是同一个元素，
+           *   于是"是不是自定义题"这个标记会随机错。
+           *   这类 bug 不报错、只是偶尔标错，极难发现。
+           */
+          const pick = Math.floor(Math.random() * pool.length)
+          card = {
+            deck: deck.k,
+            deckName: deck.name,
+            type: sec.k,
+            text: pool[pick],
+            /* 标记来源：自定义题在界面上有个小标记，让加的人有反馈 */
+            custom: pick >= builtin.length
+          }
+        }
+      }
+
       const spin = {
         index: index,
         k: sec.k,
         t: sec.t,
+        card: card,                                 // 真心话/大冒险的题目；其余扇区为 null
         turns: 4 + Math.floor(Math.random() * 3),   // 4~6 圈，每次不一样
         jitter: (Math.random() - 0.5) * 0.6,        // 扇区内随机偏移（前端会夹紧）
         at: ts
@@ -767,6 +840,78 @@ exports.main = async (event) => {
       })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID), result: result }
+    }
+
+    /* ================= 再来一局 ================= */
+    /* ================= 加一道自己的题 ================= */
+    if (action === 'card') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'wheel') return { ok: false, msg: '这个房间玩的不是转盘' }
+
+      const type = event.type === 'dare' ? 'dare' : 'truth'
+      const text = String(event.text || '').trim().slice(0, MAX_CARD)
+      if (!text) return { ok: false, msg: '写点什么' }
+
+      /*
+       * ★★ 自定义题目也是 UGC，**必须过内容安全**。
+       *
+       * 这一条是 2026-10-09 安全审计刚补上的合规要求（wishes/reminds/pair 都漏过），
+       * 新功能不能在同一处再犯 —— 而且房间是多人场景，违规内容会被**所有人**看到，
+       * 比双人场景更严重。
+       */
+      const sec = await safe(text, OPENID)
+      if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
+
+      /* 每人每类最多 20 条 —— 防刷屏，也避免房主塞几百条把内置题库淹掉 */
+      const mine = (room.cards || []).filter(c => c.by === OPENID && c.type === type)
+      if (mine.length >= MAX_CARDS_PER_KIND) {
+        return { ok: false, msg: '你自己这一类已经加了 ' + MAX_CARDS_PER_KIND + ' 条，够玩了' }
+      }
+
+      const card = { by: OPENID, type: type, text: text, at: ts }
+      await rooms.doc(room._id).update({
+        data: { cards: _.push([card]), updatedAt: ts }
+      })
+      const rr = await rooms.doc(room._id).get()
+      return {
+        ok: true,
+        room: shape(rr.data, OPENID),
+        card: card,
+        total: ((rr.data && rr.data.cards) || []).length
+      }
+    }
+
+    /* ================= 删掉自己加的题 ================= */
+    if (action === 'cardDel') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      const text = String(event.text || '')
+      const before = (room.cards || []).length
+      /* 只能删自己的 —— 别人加的题你无权删（同 moments 的"只能删自己记的"） */
+      const after = (room.cards || []).filter(c => !(c.by === OPENID && c.text === text))
+      if (after.length === before) return { ok: false, msg: '没有这条题' }
+      await rooms.doc(room._id).update({ data: { cards: after, updatedAt: ts } })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 换题卡场合（房主，lobby 或 over 时） ================= */
+    if (action === 'deck') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能换题卡' }
+      /*
+       * 只在**没在玩**的时候允许换：局中换会让"这张牌属于哪个场合"变得含糊，
+       * 而且已经转出来的人会觉得规则变了。
+       */
+      if (room.phase === 'playing' || room.phase === 'countdown') {
+        return { ok: false, msg: '这局玩完再换' }
+      }
+      const dk = decks.deckOf(String(event.deck || ''))
+      await rooms.doc(room._id).update({ data: { deck: dk.k, updatedAt: ts } })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID), deck: dk.k }
     }
 
     /* ================= 再来一局 ================= */

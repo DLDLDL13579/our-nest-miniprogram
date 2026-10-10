@@ -27,3 +27,24 @@ for f in $targets; do
 done
 
 echo "derive.js $((n + 1)) 处一致 ✓（1 个源 + $n 份拷贝）"
+
+# ──────────────────────────────────────────────────────────────
+# decks.js（酒桌题卡库）走同样的机制 —— 云端要抽题就必须有一份拷贝。
+# 同样**自动扫描**，不硬编码路径：将来别的云函数要用题卡，加进来即可。
+# ──────────────────────────────────────────────────────────────
+SRC2=miniprogram/utils/decks.js
+targets2=$(ls cloudfunctions/*/decks.js 2>/dev/null || true)
+
+if [ -f "$SRC2" ] && [ -n "$targets2" ]; then
+  m=0
+  for f in $targets2; do
+    m=$((m + 1))
+    if ! diff -q "$SRC2" "$f" >/dev/null 2>&1; then
+      cp "$SRC2" "$f"
+      echo "  同步 → $f"
+    else
+      echo "  已一致 $f"
+    fi
+  done
+  echo "decks.js $((m + 1)) 处一致 ✓（1 个源 + $m 份拷贝）"
+fi

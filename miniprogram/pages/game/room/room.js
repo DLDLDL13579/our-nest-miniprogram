@@ -26,6 +26,12 @@ const app = getApp()
 const { call } = require('../../../utils/cloud.js')
 const sfx = require('../../../utils/sfx.js')
 const feedback = require('../../../utils/feedback.js')
+/*
+ * 酒桌题卡库。★ 前端这份**只用来渲染"有哪些场合可选"**（名字/说明），
+ * 真正的抽题在服务端做 —— 见 cloudfunctions/room/index.js 的 spin。
+ * 前端抽的话可以"重摇到满意"，且没法保证全场同时看到同一张。
+ */
+const decks = require('../../../utils/decks.js')
 
 const POLL_MS = 1500
 
@@ -143,6 +149,15 @@ Page({
     /* 建房表单 */
     myName: '',
     pickGame: 'liar',
+    /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
+    decks: decks.DECKS,
+    pickDeck: 'friends',
+    /* 转盘转到真心话/大冒险时的那张牌 */
+    card: null,
+    /* 自定义题：面板开关 / 正在写的类型 / 输入内容 */
+    cardPanel: false,
+    cardType: 'truth',
+    cardText: '',
     /* 加入表单 */
     joinCode: '',
     joining: false,
@@ -320,6 +335,8 @@ Page({
     const sa = prev.spin, sb = room.spin
     if (!!sa !== !!sb) return true
     if (sa && sb && sa.at !== sb.at) return true
+    /* 题卡场合变了也要刷新 —— 否则房主换了场合，别人还显示旧的 */
+    if (prev.deck !== room.deck) return true
 
     /* 每个人的状态：在线状态、已摇、骰子（自己的） */
     const pa = prev.players || [], pb = room.players || []
@@ -555,7 +572,8 @@ Page({
       myDice: [], myRolled: false, liarReady: false, diceShown: false,
       rolling: false, suspense: false,
       cupSrc: 'cup-down', cupCls: '', cupHint: '',
-      result: null
+      result: null,
+      card: null          /* 上一局的题卡不能留到新一局 */
     })
   },
 
@@ -682,10 +700,97 @@ Page({
     return room
   },
 
+  /* ================= 自定义题 ================= */
+
+  openCards() {
+    sfx.play('tapSoft')
+    this.setData({ cardPanel: true, cardText: '', cardType: 'truth' })
+  },
+  closeCards() {
+    sfx.play('tapSoft')
+    this.setData({ cardPanel: false, cardText: '' })
+  },
+  pickCardType(e) {
+    sfx.play('tapSoft')
+    this.setData({ cardType: e.currentTarget.dataset.t })
+  },
+  onCardText(e) { this.setData({ cardText: e.detail.value }) },
+
+  /*
+   * 空方法，只为给面板加 catchtap。
+   * 为什么需要：遮罩层绑了 closeCards（点空白关闭），
+   * 而面板本身在遮罩里面 —— 没这个空方法的话，点面板任何位置都会冒泡上去把面板关掉，
+   * 连输入框都点不了。
+   */
+  noop() {},
+
+  /**
+   * 加一道自己的题。
+   *
+   * ★ 加完立刻清空输入框但**不关面板** —— 酒桌上往往是"想到好几个梗"，
+   *   加一条就关掉会让人反复点开。面板里能看到已加的列表，才形成闭环。
+   */
+  async addCard() {
+    const text = (this.data.cardText || '').trim()
+    if (!text) return wx.showToast({ title: '写点什么', icon: 'none' })
+    sfx.play('tap')
+    const r = await call('room', {
+      action: 'card', id: this.data.room.id, type: this.data.cardType, text: text
+    }, { silent: true }).catch((err) => {
+      wx.showToast({ title: (err && (err.friendly || err.message)) || '没加上', icon: 'none', duration: 2200 })
+      return null
+    })
+    if (r && r.ok) {
+      this.setData({ room: this.decorate(r.room), cardText: '' })
+      wx.showToast({ title: '加好了，抽得到', icon: 'none' })
+    }
+  },
+
+  async delCard(e) {
+    const text = e.currentTarget.dataset.t
+    sfx.play('tapSoft')
+    /*
+     * ⚠️ catch 里**必须给提示**，不能 `.catch(() => null)`。
+     *    这是本项目反复踩过的坑（「点击叫骰没反应」报了两次才找到根因）：
+     *    静默吞掉之后，用户看到的就是"点了没反应"，只能靠猜。
+     *    `scripts/test-error-feedback.js` 会拦这一类 —— 它这次就拦住了我。
+     */
+    const r = await call('room', {
+      action: 'cardDel', id: this.data.room.id, text: text
+    }, { silent: true }).catch((err) => {
+      wx.showToast({ title: (err && (err.friendly || err.message)) || '删不掉，再试一次', icon: 'none' })
+      return null
+    })
+    if (r && r.ok) this.setData({ room: this.decorate(r.room) })
+  },
+
   /* ================= 建房 ================= */
 
   onName(e) { this.setData({ myName: e.detail.value }) },
   pickGame(e) { this.setData({ pickGame: e.currentTarget.dataset.k }); sfx.play('tapSoft') },
+
+  /* 选题卡场合（建房时；只有命运转盘会用到） */
+  pickDeck(e) { this.setData({ pickDeck: e.currentTarget.dataset.k }); sfx.play('tapSoft') },
+
+  /*
+   * 局中换场合（房主）。服务端会拦"正在玩的时候"，
+   * 前端也先拦一道 —— 少一次白跑的往返。
+   */
+  async changeDeck(e) {
+    const k = e.currentTarget.dataset.k
+    if (k === this.data.room.deck) return
+    sfx.play('tapSoft')
+    const r = await call('room', { action: 'deck', id: this.data.room.id, deck: k },
+      { silent: true }).catch((err) => {
+      wx.showToast({ title: (err && (err.friendly || err.message)) || '换不了', icon: 'none' })
+      return null
+    })
+    if (r && r.ok) {
+      this.setData({ room: this.decorate(r.room) })
+      const d = decks.deckOf(k)
+      wx.showToast({ title: '换成「' + d.name + '」了', icon: 'none' })
+    }
+  },
 
   async doCreate() {
     if (this.data.creating) return
@@ -693,7 +798,9 @@ Page({
     const r = await call('room', {
       action: 'create',
       name: this.data.myName || '房主',
-      game: this.data.pickGame
+      game: this.data.pickGame,
+      /* 场合只有转盘用得到，但一起传过去无害 —— 房主中途换游戏也不用重开房 */
+      deck: this.data.pickDeck
     }, { loading: '开房间' })
       .catch((e) => { this.setData({ err: (e && e.friendly) || '开房间失败' }); return null })
 
@@ -1187,6 +1294,9 @@ Page({
     this.setData({
       wheelSpinning: true,
       wheelText: '转起来了…',
+      /* ★ 清掉上一张牌 —— 否则新一转还在转的时候，屏幕上留着上一题的正文，
+         看起来像"这题已经抽好了"，等停下再换会有一瞬间的错位感 */
+      card: null,
       wheelDeg: finalDeg
     })
     sfx.play('wheelStart')
@@ -1197,7 +1307,12 @@ Page({
       if (this._dead) return
       this.setData({ wheelSpinning: false })
       feedback.fire('wheelStop')
-      this.setData({ wheelText: spin.t })
+      /*
+       * ★ 题卡与结果**同一次 setData**。
+       *   分两次设（先显示"真心话"，再显示题目）会有一帧只显示类别，
+       *   而"转到真心话了 → 然后呢？"那一瞬间正是大家盯着屏幕的时候。
+       */
+      this.setData({ wheelText: spin.t, card: spin.card || null })
       /* 抽到"免罚一次"给惊喜反馈，其他给普通确认 */
       if (spin.k === 'pass') {
         this._cupTimers.push(setTimeout(() => feedback.fire('luckyHit'), 160))

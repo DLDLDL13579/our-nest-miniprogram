@@ -810,3 +810,194 @@
   100% { transform: scale(1);    opacity: 1 }
 }
 .cd-sub { font-size: 23rpx; color: rgba(255,255,255,.45); margin-top: 18rpx }
+
+/* ================================================================
+ * 题卡（真心话 / 大冒险）
+ *
+ * 为什么做得像一张"牌"而不是普通文字块：
+ *   酒桌上转到真心话的那一刻，全场目光在屏幕上。
+ *   一行小字会让这个过程显得"没分量"——它值得占一块地方。
+ *   左边竖条是"牌边"，两种颜色区分真心话（暖红）与大冒险（冷蓝）。
+ * ================================================================ */
+.cardbox {
+  position: relative;
+  background: linear-gradient(160deg, rgba(255,255,255,.10), rgba(255,255,255,.04));
+  border-radius: var(--r-2);
+  padding: 30rpx 32rpx 34rpx 44rpx;
+  margin: 20rpx 0 8rpx;
+  border: 2rpx solid rgba(255,255,255,.14);
+  /* 出现时"翻出来"——和转盘停下的节奏接上 */
+  animation: cardIn .42s cubic-bezier(.22, 1.2, .4, 1) backwards;
+}
+@keyframes cardIn {
+  0%   { opacity: 0; transform: translateY(18rpx) scale(.94) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
+}
+/* 左侧色条：真心话暖红 / 大冒险冷蓝 */
+.cardbox::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 10rpx;
+  border-radius: var(--r-2) 0 0 var(--r-2);
+  background: #C4573A;
+}
+.cardbox.dare::before { background: #5E7FA6 }
+
+.cb-tag { display: flex; align-items: center; gap: 14rpx; margin-bottom: 16rpx }
+.cb-type {
+  font-size: 22rpx; font-weight: 700; letter-spacing: 2rpx;
+  color: #F0A98C;
+  background: rgba(196,87,58,.20);
+  border-radius: 999rpx;
+  padding: 6rpx 18rpx;
+}
+.cardbox.dare .cb-type { color: #9FC0DD; background: rgba(94,127,166,.22) }
+.cb-deck { font-size: 20rpx; color: rgba(255,255,255,.4) }
+/* 题目正文：这块要让人一眼读完，所以给大字号 + 宽松行高 */
+.cb-text {
+  font-size: 32rpx;
+  line-height: 1.62;
+  color: #F6E7C3;
+  font-weight: 600;
+}
+
+/* 非题卡扇区（喝酒类）的一句说明，别让屏幕空着 */
+.ws-note {
+  text-align: center;
+  font-size: 24rpx;
+  color: rgba(255,255,255,.5);
+  margin: 6rpx 0 4rpx;
+}
+
+/* ================================================================
+ * 场合选择
+ * ================================================================ */
+
+/* 建房时：四张卡片，带说明 —— 让人真的看懂"这局该选哪个" */
+.deckgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin-top: 18rpx;
+}
+.deckcard {
+  box-sizing: border-box;
+  padding: 20rpx 22rpx;
+  border-radius: var(--r-2);
+  background: rgba(255,255,255,.05);
+  border: 2rpx solid rgba(255,255,255,.10);
+  transition: background .18s ease, border-color .18s ease;
+}
+.deckcard.on {
+  background: rgba(232,179,60,.16);
+  border-color: rgba(232,179,60,.5);
+}
+.dc-name { font-size: 26rpx; font-weight: 600; color: rgba(255,255,255,.88) }
+.deckcard.on .dc-name { color: #F6E7C3 }
+.dc-desc { font-size: 20rpx; color: rgba(255,255,255,.42); margin-top: 6rpx; line-height: 1.4 }
+
+/* 游戏中：一行小胶囊，房主点了即换（不打断当前这局，服务端会拦） */
+.deckrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 18rpx 0 8rpx;
+}
+.deckpill {
+  font-size: 22rpx;
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.55);
+  border: 2rpx solid rgba(255,255,255,.10);
+}
+/* 当前场合高亮 —— 一眼看出"现在是哪一局" */
+.deckpill.on {
+  background: rgba(232,179,60,.20);
+  border-color: rgba(232,179,60,.45);
+  color: #F6E7C3;
+  font-weight: 600;
+}
+
+/* ================================================================
+ * 自定义题（入口 + 面板）
+ * ================================================================ */
+
+/* 转盘页底部那一行入口 —— 低调，不抢"转！"按钮的注意力 */
+.cardentry {
+  margin: 22rpx 0 8rpx;
+  padding: 22rpx 26rpx;
+  border-radius: var(--r-2);
+  background: rgba(255,255,255,.04);
+  border: 2rpx dashed rgba(255,255,255,.16);
+  display: flex; flex-direction: column; gap: 6rpx;
+}
+.ce-t { font-size: 26rpx; color: rgba(246,231,195,.85); font-weight: 600 }
+.ce-s { font-size: 21rpx; color: rgba(255,255,255,.4) }
+
+/* 遮罩 */
+.mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 100;
+  display: flex; align-items: flex-end;
+}
+
+/* 面板从下方升起 —— 和"临时操作"的心智一致（转盘还在后面等着） */
+.sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 36rpx 32rpx calc(40rpx + env(safe-area-inset-bottom));
+  background: #2A211A;
+  border-radius: 28rpx 28rpx 0 0;
+  border-top: 2rpx solid rgba(232,179,60,.28);
+  animation: sheetUp .3s cubic-bezier(.22, 1.1, .4, 1);
+  max-height: 82vh;
+  overflow-y: auto;
+}
+@keyframes sheetUp {
+  0%   { transform: translateY(60rpx); opacity: .4 }
+  100% { transform: translateY(0); opacity: 1 }
+}
+.sheet-t { font-size: 32rpx; font-weight: 700; color: #F6E7C3 }
+.sheet-s { font-size: 22rpx; color: rgba(255,255,255,.45); margin-top: 8rpx; line-height: 1.5 }
+
+/* 类型切换：两枚并排，选中态用题卡同款颜色（真心话暖红 / 大冒险冷蓝） */
+.typerow { display: flex; gap: 16rpx; margin: 26rpx 0 18rpx }
+.typebtn {
+  flex: 1;
+  text-align: center;
+  padding: 20rpx 0;
+  border-radius: var(--r-2);
+  font-size: 26rpx;
+  color: rgba(255,255,255,.6);
+  background: rgba(255,255,255,.05);
+  border: 2rpx solid rgba(255,255,255,.10);
+}
+.typebtn.on { color: #F0A98C; background: rgba(196,87,58,.22); border-color: rgba(196,87,58,.5); font-weight: 700 }
+.typebtn.dare.on { color: #9FC0DD; background: rgba(94,127,166,.24); border-color: rgba(94,127,166,.55) }
+
+.cardta {
+  width: 100%; box-sizing: border-box;
+  height: 150rpx;
+  padding: 22rpx 24rpx;
+  border-radius: var(--r-2);
+  background: rgba(255,255,255,.06);
+  border: 2rpx solid rgba(255,255,255,.12);
+  color: #F6E7C3;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.mine-t { font-size: 22rpx; color: rgba(255,255,255,.4); margin: 30rpx 0 14rpx }
+.minelist { display: flex; flex-direction: column; gap: 12rpx }
+.mineitem {
+  padding: 18rpx 22rpx;
+  border-radius: var(--r-2);
+  background: rgba(196,87,58,.14);
+  border-left: 8rpx solid #C4573A;
+  display: flex; gap: 14rpx; align-items: baseline;
+}
+.mineitem.dare { background: rgba(94,127,166,.16); border-left-color: #5E7FA6 }
+.mi-type { font-size: 20rpx; color: rgba(255,255,255,.45); flex: none }
+.mi-text { font-size: 25rpx; color: rgba(255,255,255,.82); line-height: 1.45 }

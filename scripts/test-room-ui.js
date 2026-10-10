@@ -198,10 +198,30 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   const derived = new Set()
   for (const mm of tpl.matchAll(/\{\{\s*room\.([a-zA-Z][\w]*)/g)) derived.add(mm[1])
   /* 服务端 shape() 真正返回的字段（前端直接用，不需要自己算） */
-  const fromServer = new Set([
-    'id', 'code', 'game', 'phase', 'host', 'me', 'players', 'count',
-    'countdownMs', 'turn', 'round', 'bid', 'lastResult', 'streaks', 'spin', 'updatedAt'
-  ])
+  /*
+   * ★ 服务端返回的字段清单**从源码里抽**，不能硬编码。
+   *
+   * 这个清单原本是手写的。结果本轮给 shape() 加了 `deck`（题卡场合）之后，
+   * 断言立刻报「模板用了 room.deck 但 js 里没有赋值」—— 而 deck 本来就是
+   * 服务端字段、根本不需要前端算。**是清单没跟上，不是代码错。**
+   *
+   * 这正是 AGENTS.md 里记过的同一个坑（"幽灵字段断言把字段名硬编码在测试里"）。
+   * 手写的清单会随着代码演进变成"假失败"，而假失败会让人去改本来正确的代码。
+   *
+   * 改成从 `cloudfunctions/room/index.js` 的 shape() 返回体里抽键名 ——
+   * 加了字段自动纳入，不用记着来改测试。
+   */
+  const roomCloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+  const shapeBody = /function shape\(room, openid\)[\s\S]*?\n\}/.exec(roomCloud)
+  assert.ok(shapeBody, '抽不出 shape() 的函数体 —— 抽取逻辑可能失效了')
+  const fromServer = new Set(
+    [...shapeBody[0].matchAll(/^\s{4}([a-zA-Z][\w]*):/gm)].map(m => m[1])
+  )
+  assert.ok(fromServer.has('id') && fromServer.has('phase') && fromServer.has('players'),
+    'shape() 抽出的字段不全（应含 id/phase/players），实际：' + [...fromServer].join(','))
+  assert.ok(fromServer.has('deck'),
+    '★ shape() 里应该有 deck（题卡场合）—— 没有的话房间页拿不到当前场合')
   const mustCompute = [...derived].filter(f => !fromServer.has(f))
   assert.ok(mustCompute.length >= 4,
     `模板里只用到 ${mustCompute.length} 个派生字段，` +
@@ -289,7 +309,20 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   for (const mm of tpl.matchAll(/class="([^"]*\{\{[^"]*)"/g)) {
     for (const lit of mm[1].matchAll(/'([a-zA-Z][\w-]*)'/g)) dyn.add(lit[1])
   }
+  /*
+   * 确实不需要样式的类，用**显式白名单**放行 —— 不要放宽判据。
+   * 放宽（比如"找不到就跳过"）等于把这条断言变成废的，那正是
+   * AGENTS.md 里记过的「③e-2 主动跳过没定义的类」那个坑。
+   *
+   * 每一项都要写清"为什么不需要样式"：
+   */
+  const NO_STYLE_NEEDED = new Set([
+    /* 题卡的"默认态"：颜色由 .cardbox 的默认样式给，
+       只有 .dare 需要改色。所以 truth 这个字面量是**语义标记**，不是样式钩子。 */
+    'truth'
+  ])
   const missingCss = [...dyn].filter(c => {
+    if (NO_STYLE_NEEDED.has(c)) return false
     /* 词边界：.waitingX 不该被当成 .waiting 命中 */
     const re = new RegExp('\\.' + c.replace(/[-]/g, '\\-') + '(?![\\w-])')
     return !re.test(css) && !re.test(fs.readFileSync(path.join(ROOT, 'miniprogram/app.wxss'), 'utf8'))
@@ -298,6 +331,22 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     '★ 模板里的动态 class 没有 CSS 定义（样式静默失效）：\n    ' +
     missingCss.join('\n    '))
   ok(`动态 class ${dyn.size} 个全部有样式定义`)
+
+  /*
+   * ⚠️ 这条断言的**固有边界**（2026-10-10 反向验证时确认，如实记录）：
+   *
+   *   它的判据是「这个类名在 wxss 里出现过」，**不是**「每种状态都有完整样式」。
+   *   所以如果某个类有多条规则（例如 `.cardbox.dare::before` 管色条、
+   *   `.cardbox.dare .cb-type` 管标签色），删掉其中一条，另一条仍会让正则命中，
+   *   断言**测不出来**。
+   *
+   *   实测：删掉 `.cardbox.dare::before` 后断言照样通过。
+   *
+   *   它真正能抓的是「整个类没定义」——那是最常见、后果最重的一种
+   *   （样式静默失效 / <image> 撑满容器）。
+   *   "少写了一条规则"属于视觉问题，只能靠真机看或截图比对，静态断言做不到。
+   *   **知道边界在哪，比假装它全能更有用。**
+   */
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
