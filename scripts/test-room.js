@@ -721,10 +721,136 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(/还没开始/.test(notStarted.msg))
   ok('开局前叫骰被拒：「' + notStarted.msg + '」')
 
-  const soloStart = await room.main({ action: 'start', id: rid2 })
-  assert.strictEqual(soloStart.ok, false, '一个人不能开局')
-  assert.ok(/至少两个/.test(soloStart.msg))
-  ok('一个人开局被拒：「' + soloStart.msg + '」')
+  /*
+   * ★ 2026-10-10 用户要求改为**允许单人开局**：
+   *   「能否一个人也能开房间进去…现在为两人以上才能玩游戏我不好调试」
+   *
+   * ⚠️ 单人开局**必须用独立房间**测 —— 第一版直接对 rid2 开局，
+   *    而 rid2 后面的⑩要"再加一个人进来"，房间已在 countdown → join 被拒
+   *    → 连锁失败。**测试也要遵守"一个用例只改变它自己需要改变的状态"。**
+   */
+  OPENID = A
+  const soloRoom = await room.main({ action: 'create', name: 'SOLO', game: 'liar' })
+  assert.ok(soloRoom.ok, '前置：单人房应能创建')
+  const soloStart = await room.main({ action: 'start', id: soloRoom.room.id })
+  assert.strictEqual(soloStart.ok, true, '★ 单人应该能开局（用户要求，便于调试）')
+  assert.strictEqual(soloStart.room.phase, 'countdown', '单人开局应进入倒计时')
+  ok('单人能开局（旧规则"至少两人"已按用户要求放开）')
+
+  /* ============ ⑨b 中途加入：只观战，下一局参与 ============ */
+  console.log('\n=== ⑨b 中途加入（下一局才参与）===')
+  /*
+   * ★ 用户要求：「中途别人也能加入房间」。
+   *
+   * ★★ 但不能只删掉 `phase !== 'lobby'` 那一行 —— 会引入三个更糟的问题：
+   *   ① 座位重编号把正在玩的人**座位平移** → 回合错乱
+   *   ② `every(dice.length>0)` 把观战者算进去 → **本局永远结束不了**
+   *   ③ 回合轮转停在观战者身上 → **卡死**
+   *   所以引入 inRound：中途进来 = false（观战），开新一局时统一置回 true。
+   *
+   * 这一组断言就是锁这三个坑 + "下一局自动参与"的兑现。
+   */
+  {
+    const snapshot = JSON.parse(JSON.stringify(store.rooms))
+    try {
+      store.rooms.length = 0
+      OPENID = A
+      const mk = await room.main({ action: 'create', name: 'RA', game: 'dice' })
+      const MID = mk.room.id
+      const MIDCODE = mk.room.code
+      OPENID = B
+      await room.main({ action: 'join', code: MIDCODE, name: 'RB' })
+      OPENID = A
+      await room.main({ action: 'start', id: MID })
+      store.rooms.filter(x => x._id === MID)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: MID })
+
+      const before = store.rooms.filter(x => x._id === MID)[0]
+      const seatsBefore = before.players.map(p => p.seat).sort().join(',')
+
+      /* ---- ① 中途加入应该成功（不再是"这局已经开始了"）---- */
+      OPENID = 'C'
+      const midJoin = await room.main({ action: 'join', code: MIDCODE, name: 'RC' })
+      assert.ok(midJoin.ok, '★ 中途加入应被允许，实际：' + (midJoin.msg || ''))
+      const after = store.rooms.filter(x => x._id === MID)[0]
+      const C = after.players.filter(p => p.openid === 'C')[0]
+      assert.ok(C, '中途加入的人应在 players 里')
+      assert.strictEqual(C.inRound, false, '★ 中途加入者必须 inRound=false（只观战）')
+      ok('中途加入成功，且标记为"本局观战"')
+
+      /* ---- ② ★ 已有座位不能变（否则轮到 seat2 的人会被顶掉）----
+       *
+       * ⚠️ 这条断言我写错了两版，都是**判据太弱、反向验证时漏报**：
+       *    v1 直接比对"已有人的座位集合" —— 在"新人排末尾"这个场景下，
+       *       整队重编号（1,2,3）和"只给新人末尾号"结果**完全一样**，测不出。
+       *    v2 把数组顺序颠倒后重试 —— 仍漏报（比对集合的取法不对）。
+       *
+       * ★ v3 用**逐人比对**，且用已被独立复现验证过的路径：
+       *   先记下每个人的 (openid → seat)，打乱数组顺序，再让人中途加入，
+       *   然后逐人核对"有没有人的座位被改"。
+       *   实测：改坏后 B 从 seat2→1、A 从 seat1→2，v3 能抓到。
+       */
+      const doc2 = store.rooms.filter(x => x._id === MID)[0]
+      /* 打乱数组顺序但不动座位号 —— 逼出"按数组顺序重编号"的实现缺陷 */
+      doc2.players = doc2.players.slice().reverse()
+      const seatMap = {}
+      doc2.players.forEach(p => { seatMap[p.openid] = p.seat })
+
+      /*
+       * ⚠️⚠️ 这里必须用**全新的 openid**（'C2'），不能用 'C'。
+       *
+       * 前两版断言漏报的真因就在这：'C' 已经加入过了，
+       * 再次 join 会命中的是「已在房里 → 只刷心跳」那条分支，
+       * **根本不进座位重编号代码** —— 于是好实现和坏实现的结果一模一样，
+       * 断言无论在哪种实现下都通过（= 废的）。
+       *
+       * ★ 教训：断言"测不出坏实现"时，先确认**它有没有真的触发目标代码路径**，
+       *   而不是继续加强判据。判据再强，路径没走到也是白搭。
+       */
+      OPENID = 'C2'
+      const midJoin2 = await room.main({ action: 'join', code: MIDCODE, name: 'RC4' })
+      assert.ok(midJoin2.ok, '第三人中途加入也应成功：' + (midJoin2.msg || ''))
+
+      const after3 = store.rooms.filter(x => x._id === MID)[0]
+      const moved = after3.players
+        .filter(p => seatMap[p.openid] !== undefined && p.seat !== seatMap[p.openid])
+        .map(p => p.openid + ' ' + seatMap[p.openid] + '→' + p.seat)
+      assert.deepStrictEqual(moved, [],
+        '★ 中途加入改动了已有座位（' + moved.join('、') + '）—— ' +
+        '数组顺序被打乱时，"按顺序整队重编号"会移动正在玩的人的座位 → 回合错乱')
+      ok('中途加入不改动已有座位（逐人核对，打乱顺序也测得出）')
+
+      /* ---- ③ ★ 观战者拖不住本局：全员摇完仍能判结束 ---- */
+      OPENID = A
+      await room.main({ action: 'roll', id: MID })
+      OPENID = B
+      await room.main({ action: 'roll', id: MID })
+      const done = store.rooms.filter(x => x._id === MID)[0]
+      assert.strictEqual(done.phase, 'over',
+        '★ 观战者没摇骰子，导致本局结束不了（phase=' + done.phase + '）—— ' +
+        '判"全员摇完"时必须只算 inRound 的人')
+      ok('观战者不参与"全员摇完"判定，本局能正常结束')
+
+      /* ---- ④ 观战者不能叫骰（且要有明确提示）---- */
+      OPENID = 'C'
+      const cBid = await room.main({ action: 'bid', id: MID, n: 2, face: 3 })
+      assert.strictEqual(cBid.ok, false, '★ 观战者不该能操作')
+      assert.ok(/下一局|中途/.test(cBid.msg), '提示应说清"下一局才能玩"：' + cBid.msg)
+      ok('观战者被拒且提示明确：「' + cBid.msg + '」')
+
+      /* ---- ⑤ ★ 开新一局必须把观战者纳入（否则他永远观战）---- */
+      OPENID = A
+      const nl = await room.main({ action: 'again', id: MID })
+      assert.ok(nl.ok, '房主应能开新一局')
+      const C2 = (store.rooms.filter(x => x._id === MID)[0].players || []).filter(p => p.openid === 'C')[0]
+      assert.strictEqual(C2.inRound, true,
+        '★ 开新一局后观战者仍是 inRound=false —— 他会永远观战下去（且不报错）')
+      ok('开新一局后观战者自动纳入（inRound 置回 true）')
+    } finally {
+      store.rooms.length = 0
+      snapshot.forEach(r => store.rooms.push(r))
+    }
+  }
 
   /* ============ ⑩ 再来一局 ============ */
   console.log('\n=== ⑩ 再来一局：清空骰子回到大厅 ===')

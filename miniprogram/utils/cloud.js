@@ -19,6 +19,14 @@ function call(name, data, opt) {
       if (r.ok !== true) {
         var e = new Error(r.msg || '操作没成功')
         e.code = r.code || 'BIZ_ERROR'
+        /*
+         * ⚠️ 临时诊断（v2.9.1，查完删）：把云函数带回来的 `_diag` / `_probe`
+         * 一起挂在错误上，并弹一个**长文本模态**——
+         * toast 只能显示很短一行，截图里错误码被截断成 "-502..."，
+         * 定位不了。模态框能看到全文。
+         */
+        e._diag = r._diag || ''
+        e._probe = r._probe || null
         throw e
       }
       return r
@@ -37,6 +45,17 @@ function call(name, data, opt) {
       }
       msg = msg || '网络不太好，再试一次'
       err.friendly = msg
+      /* ⚠️ 临时诊断（查完删）：有 _probe 就弹模态，全文可见 */
+      if (err._probe || err._diag) {
+        try {
+          wx.showModal({
+            title: '诊断信息（临时）',
+            content: String(err._diag || '') + '\n\n' + JSON.stringify(err._probe, null, 1),
+            showCancel: false,
+            confirmText: '知道了'
+          })
+        } catch (e2) {}
+      }
       if (opt.silent) console.warn('[' + name + ']', msg)
       else wx.showToast({ title: msg, icon: 'none', duration: 3500 })
       throw err

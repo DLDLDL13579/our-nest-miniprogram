@@ -212,6 +212,8 @@ function shape(room, openid) {
     isMe: p.openid === openid,
     isHost: p.openid === room.hostOpenid,
     online: now() - (p.lastSeen || 0) < 30000,   // 30 秒内有心跳算在线
+    /* ★ 是否参与本局：中途进来的是 false（这一局只观战），下一局自动变 true */
+    inRound: p.inRound !== false,
     ready: !!p.ready,
     score: p.score || 0,
     /* ★ 只有自己的骰子才返回；别人的在服务端就丢掉 */
@@ -356,6 +358,7 @@ exports.main = async (event) => {
           players: [{
             openid: OPENID, name: name, seat: 1,
             ready: false, score: 0, dice: [],
+            inRound: true,          // 房主一定参与（单人房能直接开局）
             joinedAt: ts, lastSeen: ts
           }],
           turn: 0,
@@ -426,9 +429,28 @@ exports.main = async (event) => {
       if ((room.players || []).length >= MAX_PLAYERS) {
         return { ok: false, msg: '房间满了（最多 ' + MAX_PLAYERS + ' 人）' }
       }
-      if (room.phase !== 'lobby') {
-        return { ok: false, msg: '这局已经开始了，等他们打完再进' }
-      }
+      /*
+       * ★★ 允许"玩到一半进来"（2026-10-10 用户要求）。
+       *
+       * 改造前：`phase !== 'lobby'` 直接拒绝 —— 别人打到一半你就进不来，
+       * 只能等他开新一局。真实酒桌不是这样的：有人晚到，坐下就能看。
+       *
+       * ★ 但**不能只是删掉这句**，否则引入两个更糟的问题：
+       *
+       *   ① **回合错乱**
+       *      座位重编号会把所有人的 seat 平移。若 A 正轮到 seat2，
+       *      新人插进来占了 seat2、A 变成 seat3 → 正在玩的人回合全乱。
+       *   ② **本局永远结束不了**（最隐蔽）
+       *      比大小的结束判据是 `players.every(p => p.dice.length > 0)`。
+       *      新人的 dice 是空的 → **永远为假** → 这局卡死。
+       *
+       * 所以引入 `inRound` 标记：
+       *   · 中途进来的人 `inRound: false` —— 排在末尾、**不重编号已有座位**
+       *   · 只在 lobby 进来的人 `inRound: true` —— 参与本局
+       *   · 发骰子、判结束、轮回合都只看 `inRound` 的人
+       *   · 开新一局（again/game）时统一置回 true —— 新人自然参与下一局
+       */
+      const joinMidRound = room.phase === 'playing' || room.phase === 'countdown'
 
       /*
        * ★★ 用**原子 push** 追加，不要整数组覆盖写（2026-10-09 修竞态）。
@@ -445,6 +467,8 @@ exports.main = async (event) => {
           players: _.push([{
             openid: OPENID, name: name, seat: 0,     // seat 稍后统一重编号
             ready: false, score: 0, dice: [],
+            /* ★ 中途进来的人不参与本局（只观战），下一局才发骰子 */
+            inRound: !joinMidRound,
             joinedAt: ts, lastSeen: ts
           }]),
           updatedAt: ts
@@ -471,10 +495,34 @@ exports.main = async (event) => {
        * 座位重复意味着**回合永远轮不到其中一个**，游戏卡死且不报错。
        * 这和 leave 里的"退出后重编号"是同一个不变式，两处都要维持。
        */
-      const seatsOk = finalPlayers.every((p, i) => p.seat === i + 1)
-      if (!seatsOk) {
-        finalPlayers = finalPlayers.map((p, i) => Object.assign({}, p, { seat: i + 1 }))
+      /*
+       * ★ 座位重编号。
+       *
+       * 平时（lobby 加入）按最终顺序重编成 1..N ——
+       * 并发追加时两人都先拿 seat=0，不重编就会出现"座位重复"，
+       * 而 turn 是按 seat 找人的 → 回合永远轮不到其中一个（卡死且不报错）。
+       *
+       * ★★ 但**中途加入时绝不能重编号已有座位** ——
+       * 那会把正在玩的人的座位平移（A 从 seat2 变 seat3），
+       * 而他正轮到 seat2 → 回合立刻错乱。
+       * 所以这种情况只给新人分配"末尾的号"。
+       */
+      if (joinMidRound) {
+        /* 已有人的座位保持不变；新人取"当前最大座位 + 1" */
+        const maxSeat = finalPlayers.reduce((m, p) => Math.max(m, p.seat || 0), 0)
+        let nextSeat = maxSeat
+        finalPlayers = finalPlayers.map(p => {
+          if (p.openid !== OPENID || (p.seat && p.seat > 0)) return p
+          nextSeat += 1
+          return Object.assign({}, p, { seat: nextSeat })
+        })
         await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } })
+      } else {
+        const seatsOk = finalPlayers.every((p, i) => p.seat === i + 1)
+        if (!seatsOk) {
+          finalPlayers = finalPlayers.map((p, i) => Object.assign({}, p, { seat: i + 1 }))
+          await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } })
+        }
       }
 
       return { ok: true, room: shape(Object.assign({}, rr.data, { players: finalPlayers }), OPENID) }
@@ -516,7 +564,14 @@ exports.main = async (event) => {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
       if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能开局' }
-      if ((room.players || []).length < 2) return { ok: false, msg: '至少两个人才能开始' }
+      /*
+       * ★ 允许单人开局（2026-10-10 用户要求：两个人才能玩，没法调试）。
+       *
+       * 真实场景也说得通：一个人想先看看自己摇到什么、熟悉一下玩法。
+       * 唯一要保证的是**不因此产生非法状态** —— 下面所有按人数算的东西
+       * （骰子上限、轮次）在 1 人时都要成立。
+       */
+      if ((room.players || []).length < 1) return { ok: false, msg: '房间是空的' }
       /*
        * ★ 必须把 countdown 也拦掉（2026-10-09 安全审计发现）。
        *
@@ -549,6 +604,13 @@ exports.main = async (event) => {
 
          ★ 转盘不需要骰子（它靠 spin 抽扇区），同样跳过。 */
       const players = (room.players || []).map(p => {
+        /*
+         * ★ 中途进来的人（inRound === false）这一局**只观战**：
+         *   不发骰子、不参与回合。开新一局（again/game）时会统一置回 true。
+         *   1 人房的房主 inRound 默认就是 true（create 时写的）。
+         */
+        const inRound = p.inRound !== false
+        if (!inRound) return Object.assign({}, p, { dice: [], ready: false })
         if (room.game === 'wheel' || room.game === 'dice') {
           return Object.assign({}, p, { dice: [], ready: false })
         }
@@ -585,10 +647,20 @@ exports.main = async (event) => {
     if (action === 'bid') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
 
+      /*
+       * ★ 观战者判定要放在 `phase !== 'playing'` **之前**。
+       *
+       * 顺序反了的话，一局结束后（phase='over'）观战者点叫骰会收到
+       * 「这局还没开始」—— 而真正的原因是"你是中途进来的，下一局才能玩"。
+       * **提示的顺序决定用户知不知道下一步该做什么**，这不是文字问题。
+       * （这条是写断言时才暴露出来的：断言期望看到"下一局"，实际却拿到"还没开始"。）
+       */
       const mySeat = (room.players || []).filter(p => p.openid === OPENID)[0]
       if (!mySeat) return { ok: false, msg: '你不在这个房间里' }
+      if (mySeat.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
+
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
       if (room.turn !== mySeat.seat) return { ok: false, msg: '还没轮到你' }
 
       const n = Number(event.n)
@@ -620,7 +692,19 @@ exports.main = async (event) => {
         if (!okHigher) return { ok: false, msg: '只能往上叫（数量变大，或数量同、点数大）' }
       }
 
-      const nextSeat = mySeat.seat >= (room.players || []).length ? 1 : mySeat.seat + 1
+      /*
+       * ★ 回合只在**参与本局**的人之间轮转。
+       *
+       * 原来按 `players.length` 转 —— 中途进来的观战者也被算进循环，
+       * 于是回合会停在观战者身上：他不能叫骰（inRound=false 会被拒），
+       * 别人又等不到 → **整局卡死且不报错**。
+       * 这是"允许中途加入"必须同步改的第三处（前两处：发骰子、判结束）。
+       */
+      const ring = (room.players || []).filter(p => p.inRound !== false)
+        .map(p => p.seat).sort((a, b) => a - b)
+      const myIdx = ring.indexOf(mySeat.seat)
+      const nextSeat = ring.length === 0 ? 1
+        : ring[(myIdx + 1 + ring.length) % ring.length]
       await rooms.doc(room._id).update({
         data: {
           bid: { n: n, face: face, zhai: zhai, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
@@ -636,12 +720,15 @@ exports.main = async (event) => {
     if (action === 'open') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
+
+      /* 同 bid：观战者判定必须在 phase 之前（否则提示会误导） */
+      const mySeat = (room.players || []).filter(p => p.openid === OPENID)[0]
+      if (!mySeat) return { ok: false, msg: '你不在这个房间里' }
+      if (mySeat.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
+
       if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
       const cur = room.bid
       if (!cur) return { ok: false, msg: '还没人叫骰' }
-
-      const mySeat = (room.players || []).filter(p => p.openid === OPENID)[0]
-      if (!mySeat) return { ok: false, msg: '你不在这个房间里' }
       if (room.turn !== mySeat.seat) return { ok: false, msg: '还没轮到你' }
 
       /* 统计全场骰子（1 是否万能由 zhai 决定） */
@@ -793,7 +880,16 @@ exports.main = async (event) => {
       const players = (room.players || []).map(p =>
         p.openid === OPENID ? Object.assign({}, p, { dice: dice, rolledAt: ts }) : p)
 
-      const allRolled = players.every(p => (p.dice || []).length > 0)
+      /*
+       * ★★ 判"全员摇完"只能看**参与本局**的人。
+       *
+       * 若把中途进来的观战者也算进去，他的 dice 永远是空的
+       * → `every(...)` 永远为假 → **这局永远结束不了**（卡死且不报错）。
+       * 这是"允许中途加入"最容易踩的坑。
+       */
+      const inRoundPlayers = players.filter(p => p.inRound !== false)
+      const allRolled = inRoundPlayers.length > 0 &&
+        inRoundPlayers.every(p => (p.dice || []).length > 0)
 
       let result = null
       if (allRolled) {
@@ -939,7 +1035,13 @@ exports.main = async (event) => {
       }
 
       const data = {
-        players: (room.players || []).map(p => Object.assign({}, p, { dice: [], ready: false })),
+        /*
+         * ★ 新一局把**所有中途进来的人纳入**（inRound 置回 true）。
+         *   这是"下一局才参与"这个承诺的兑现处 —— 漏了它，
+         *   观战者会永远观战下去（而且不报错）。
+         */
+        players: (room.players || []).map(p =>
+          Object.assign({}, p, { dice: [], ready: false, inRound: true })),
         phase: 'lobby',
         bid: null, lastResult: null, turn: 0,
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
