@@ -240,11 +240,37 @@ async function loadRoom(event, openid, needMember) {
   } else if (event.code) {
     /*
      * 按 code 找房间。
-     * ★ pickCode 已保证活跃房间的号不重复，所以这里 limit(1) 是安全的；
-     *   万一历史数据里有重复（旧版 6 位号残留），也只影响那一批旧房间。
+     *
+     * ★★ 必须排除**已过期**的房间（2026-10-09 修的真实缺陷，而且是上一轮
+     *    「号码回收」修复自己引入的回归）。
+     *
+     *    背景：pickCode 现在会把过期房间的号码回收给新房间（这是对的）。
+     *    但过期的老房间**文档还在、active 仍是 true**，
+     *    于是「按 code 查」会同时匹配到两条：
+     *        老房间（号码被回收，自己已过期）
+     *        新房间（刚拿到这个号码，正常可用）
+     *    而 `limit(1)` 取第一个 —— 命中老房间 → isStale 拒绝 →
+     *    **玩家看到「这个房间已经过期了」，可新房间明明好好的**。
+     *
+     *    实测复现：老房间过期 → 号码 283 被回收给新房间 →
+     *    别人输 283 进来 → 报「已过期」（新房间 id 才是该进的）。
+     *
+     *    判据与 pickCode 保持一致：只认未过期的房间。
+     *    这样「活跃号码空间」和「按号能找到的房间」就是同一个集合。
      */
-    const r = await rooms.where({ code: normCode(event.code), active: true }).limit(1).get().catch(() => ({ data: [] }))
+    const r = await rooms.where({
+      code: normCode(event.code),
+      active: true,
+      updatedAt: _.gt(now() - TTL_MS)
+    }).limit(1).get().catch(() => ({ data: [] }))
     room = (r.data || [])[0]
+    /* 老数据可能没有 updatedAt（早期版本写的），退回按 createdAt 也查一次 */
+    if (!room) {
+      const r2 = await rooms.where({
+        code: normCode(event.code), active: true, createdAt: _.gt(now() - TTL_MS)
+      }).limit(1).get().catch(() => ({ data: [] }))
+      room = (r2.data || [])[0]
+    }
   }
   if (!room) return { err: '房间不存在或已解散' }
   if (isStale(room)) return { err: '房间已过期（超过 2 小时没人玩了）' }
@@ -325,9 +351,37 @@ exports.main = async (event) => {
       const sec = await safe(name, OPENID)
       if (!sec.pass) return { ok: false, msg: sec.msg }
 
-      const r0 = await rooms.where({ code: code, active: true }).limit(1).get().catch(() => ({ data: [] }))
+      /*
+       * 同 loadRoom：必须排除过期房间 —— 否则号码被回收后，
+       * 输号的人会命中那个过期的老房间，被告知"已过期"（见 loadRoom 的注释）。
+       */
+      const r0 = await rooms.where({
+        code: code, active: true, updatedAt: _.gt(ts - TTL_MS)
+      }).limit(1).get().catch(() => ({ data: [] }))
+      if (!(r0.data || []).length) {
+        const r0b = await rooms.where({
+          code: code, active: true, createdAt: _.gt(ts - TTL_MS)
+        }).limit(1).get().catch(() => ({ data: [] }))
+        r0.data = r0b.data || []
+      }
       const room = (r0.data || [])[0]
-      if (!room) return { ok: false, code: 'NO_ROOM', msg: '没找到这个房间，确认一下房间号' }
+      if (!room) {
+        /*
+         * ★ 查不到时，再确认一次「是不是有个同号的房间只是过期了」。
+         *
+         * 为什么不能直接回「没找到」：号码一被回收，同名的新房间就存在了，
+         * 但用户也可能是拿着**老房间的号**来试。两种情况的正确提示完全不同：
+         *   · 有同号的过期房 → 「这个房间已经过期了」（号码没错，是房间没了）
+         *   · 完全没这个号   → 「没找到这个房间，确认一下房间号」
+         * 只说"没找到"会让用户反复核对一个其实没错的号码。
+         */
+        const stale = await rooms.where({ code: code, active: true }).limit(1).get()
+          .catch(() => ({ data: [] }))
+        if ((stale.data || []).length) {
+          return { ok: false, code: 'STALE', msg: '这个房间已经过期了，让房主重新开一个' }
+        }
+        return { ok: false, code: 'NO_ROOM', msg: '没找到这个房间，确认一下房间号' }
+      }
       if (isStale(room)) return { ok: false, code: 'STALE', msg: '这个房间已经过期了，让房主重新开一个' }
 
       const already = (room.players || []).some(p => p.openid === OPENID)

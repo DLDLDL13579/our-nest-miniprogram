@@ -556,6 +556,81 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('合法叫骰（2个3）仍然通过')
   }
 
+  /* ============ ⑧c 号码被回收后，按 code 必须进新房间 ============ */
+  console.log('\n=== ⑧c 号码回收后：按 code 必须命中新房间，不能命中过期老房间 ===')
+  /*
+   * ★★ 这是「号码回收」修复**自己引入的回归**（2026-10-09 发现）。
+   *
+   * pickCode 现在会把过期房间的号码回收给新房间（这是对的）。
+   * 但过期的老房间**文档还在、active 仍是 true**，于是「按 code 查」会同时
+   * 匹配到两条：老房间（号码被回收、自己已过期）和新房间（刚拿到号，正常）。
+   * `limit(1)` 取第一个 —— 命中老房间 → isStale 拒绝 →
+   * **玩家看到「这个房间已经过期了」，可新房间明明好好的**。
+   *
+   * 判据必须构造出「两条同号」的真实状态，否则测不出：
+   *   ① 建一个房间，记下号码
+   *   ② 把它的 updatedAt 拨到 3 个 TTL 之前（模拟过期）
+   *   ③ 再建房 —— pickCode 会把这个号回收出去
+   *   ④ 按这个号 join —— 必须进**新房间**
+   */
+  {
+    const snapshot = JSON.parse(JSON.stringify(store.rooms))
+    try {
+      store.rooms.length = 0
+      const TTL = 2 * 3600 * 1000
+
+      OPENID = 'oid_rec_old'
+      const oldR = await room.main({ action: 'create', name: '老房主', game: 'dice' })
+      const RECODE = oldR.room.code
+      const oldId = oldR.room.id
+      /* 变老 —— 只改 updatedAt，active 保持 true（这正是真实状态） */
+      store.rooms.filter(x => x._id === oldId)[0].updatedAt = Date.now() - 3 * TTL
+
+      /* 再建，直到拿到那个被回收的号（pickCode 随机起点，要试几次） */
+      let newId = null
+      for (let i = 0; i < 1200 && !newId; i++) {
+        OPENID = 'oid_rec_new_' + i
+        const r = await room.main({ action: 'create', name: '新房主', game: 'dice' })
+        if (!r.ok) break
+        if (r.room.code === RECODE) newId = r.room.id
+      }
+      assert.ok(newId, '号码没有被回收（pickCode 的时间下界失效了？）')
+
+      /* ★ 关键判据：按这个号加入，必须进新房间 */
+      OPENID = 'oid_rec_joiner'
+      const j = await room.main({ action: 'join', code: RECODE, name: '进来的人' })
+      assert.ok(j.ok,
+        '★ 号码被回收后，按 code ' + RECODE + ' 加入失败：「' + (j.msg || '') + '」\n' +
+        '    过期的老房间 active 仍是 true，where({code, active:true}).limit(1) ' +
+        '可能命中它 → isStale 拒绝 → 玩家被告知"已过期"，而新房间明明可用。\n' +
+        '    修法：按 code 查询也要带上 updatedAt 时间下界（与 pickCode 同一判据）')
+      assert.strictEqual(j.room.id, newId,
+        '★ 按 code 进到了**老房间**而不是新房间\n' +
+        '    期望 = ' + newId + '  实际 = ' + j.room.id)
+      ok('★ 号码被回收后，按 code 进的是新房间（不会命中过期的老房间）')
+
+      /* 反例：只有同号过期房、没有新房 → 提示应说"已过期"而不是"没找到" */
+      store.rooms.length = 0
+      store.rooms.push({
+        _id: 'only_stale', code: '099', game: 'dice', phase: 'lobby',
+        hostOpenid: 'h', active: true,
+        createdAt: Date.now() - 3 * TTL, updatedAt: Date.now() - 3 * TTL,
+        players: [], turn: 0, round: 0, bid: null
+      })
+      OPENID = 'oid_rec_j2'
+      const j2 = await room.main({ action: 'join', code: '099', name: 'x' })
+      assert.strictEqual(j2.ok, false)
+      assert.strictEqual(j2.code, 'STALE',
+        '★ 拿着一个"只是过期了"的号码进来，应提示「已过期」而不是「没找到」\n' +
+        '    实际：' + j2.code + ' / ' + j2.msg + '\n' +
+        '    房间号没错，说"没找到"会让用户反复核对一个正确的号码')
+      ok('只有过期房时，提示是「已过期」而不是「没找到」（语义没退化）')
+    } finally {
+      store.rooms.length = 0
+      snapshot.forEach(r => store.rooms.push(r))
+    }
+  }
+
   /* ============ ⑨ 开局前不能操作 ============ */
   console.log('\n=== ⑨ 大厅阶段不能叫骰 ===')
   OPENID = A
