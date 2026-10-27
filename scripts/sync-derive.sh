@@ -1,50 +1,46 @@
 #!/usr/bin/env bash
-# derive.js 是全工程唯一的时间算法源。云函数各自独立打包、不能跨目录 require，
-# 所以每个用到它的云函数都必须留一份拷贝 —— 用这个脚本保证拷贝永远和源一致，不靠人记。
+# 前后端共享文件的同步器。
 #
-# 为什么改成「自动发现」而不是硬编码路径：
-#   原来这里写死了两处（miniprogram/utils + daily），但后来 home / chronicle / reminds
+# 背景：云函数独立打包，**不能跨目录 require**（打包时会漏掉父目录的文件），
+# 所以前端要用的纯数据模块，云端必须有一份拷贝。
+# 拷贝靠脚本保证一致，不靠人记 —— 改完源文件跑一次就行。
+#
+# 为什么「自动发现」而不是硬编码路径：
+#   原来这里写死了两处（miniprogram/utils + daily），后来 home / chronicle / reminds
 #   也各自拷了一份，脚本没跟着长 —— 结果 home 和 chronicle 一直停在旧版，
 #   少了 clampDay（每月 31 号在小月会静默进位成下月 1 号）。
 #   现在扫全目录，以后新增云函数自动纳入，不会再漏。
+#
+# 2026-10-27（转纯酒桌游戏）：
+#   · derive.js 随情侣功能一起退役，已删除
+#   · 新增 games.js（玩法注册表）—— 大厅、房间、服务端校验共用同一份真相
+#   · decks.js（题卡库）继续保留
 set -e
 cd "$(dirname "$0")/.."
-SRC=prototype/derive.js
 
-# SRC 本身不参与比对；其余所有拷贝都必须和它逐字节一致
-targets=$(ls miniprogram/utils/derive.js cloudfunctions/*/derive.js 2>/dev/null || true)
-
-n=0
-for f in $targets; do
-  [ "$f" = "$SRC" ] && continue
-  n=$((n + 1))
-  if ! diff -q "$SRC" "$f" >/dev/null 2>&1; then
-    cp "$SRC" "$f"
-    echo "  同步 → $f"
-  else
-    echo "  已一致 $f"
+# 用法：sync_one <源文件> <目标 glob 描述>
+sync_one() {
+  local src="$1"; shift
+  local label="$1"; shift
+  local targets
+  targets=$(ls "$@" 2>/dev/null || true)
+  if [ -z "$targets" ]; then
+    echo "  $label：没有拷贝需要同步"
+    return
   fi
-done
-
-echo "derive.js $((n + 1)) 处一致 ✓（1 个源 + $n 份拷贝）"
-
-# ──────────────────────────────────────────────────────────────
-# decks.js（酒桌题卡库）走同样的机制 —— 云端要抽题就必须有一份拷贝。
-# 同样**自动扫描**，不硬编码路径：将来别的云函数要用题卡，加进来即可。
-# ──────────────────────────────────────────────────────────────
-SRC2=miniprogram/utils/decks.js
-targets2=$(ls cloudfunctions/*/decks.js 2>/dev/null || true)
-
-if [ -f "$SRC2" ] && [ -n "$targets2" ]; then
-  m=0
-  for f in $targets2; do
-    m=$((m + 1))
-    if ! diff -q "$SRC2" "$f" >/dev/null 2>&1; then
-      cp "$SRC2" "$f"
+  local n=0
+  for f in $targets; do
+    n=$((n + 1))
+    if ! diff -q "$src" "$f" >/dev/null 2>&1; then
+      cp "$src" "$f"
       echo "  同步 → $f"
     else
       echo "  已一致 $f"
     fi
   done
-  echo "decks.js $((m + 1)) 处一致 ✓（1 个源 + $m 份拷贝）"
-fi
+  echo "  $label $((n + 1)) 处一致 ✓（1 个源 + $n 份拷贝）"
+}
+
+echo "── 共享模块 ──"
+sync_one miniprogram/utils/games.js "games.js" cloudfunctions/*/games.js
+sync_one miniprogram/utils/decks.js "decks.js" cloudfunctions/*/decks.js

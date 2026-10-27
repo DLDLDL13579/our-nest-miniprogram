@@ -1,0 +1,70 @@
+/**
+ * 我的页样式
+ * 刻意做得比大厅"安静"：这里没有要抢的焦点，全是配置项。
+ */
+
+/* ---------- 身份 ---------- */
+.meprof {
+  display: flex; align-items: center; gap: 22rpx;
+  padding: 30rpx 28rpx; margin-bottom: var(--gap-2);
+  background: var(--card); border-radius: var(--r-3);
+  box-shadow: var(--sh-2);
+}
+.meav {
+  width: 96rpx; height: 96rpx; border-radius: 50%; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40rpx; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #E88060, #C24E2F);
+  box-shadow: var(--sh-1);
+}
+.meinfo { flex: 1; min-width: 0 }
+.mein {
+  width: 100%; height: 60rpx;
+  font-size: 34rpx; font-weight: 600; color: var(--ink);
+  border-bottom: 2rpx solid var(--line);
+}
+.ph { color: var(--ink3); font-weight: 400 }
+.meprof-s { font-size: 21rpx; color: var(--ink3); margin-top: 10rpx }
+
+/* ---------- 设置行 ---------- */
+.rline {
+  display: flex; align-items: center; gap: 18rpx;
+  padding: 22rpx 0; border-bottom: 2rpx solid var(--line);
+}
+.rline:last-child { border-bottom: none; padding-bottom: 4rpx }
+.rl-main { flex: 1; min-width: 0 }
+.rl-t { font-size: 28rpx; font-weight: 600; color: var(--ink) }
+.rl-s { font-size: 21rpx; color: var(--ink3); margin-top: 6rpx; line-height: 1.55 }
+
+/* ---------- 自绘开关 ----------
+   不用原生 <switch>：两个原因 ——
+   ① 原生 switch 在不同机型上尺寸/颜色不一致（和 emoji 是同一类问题）
+   ② 原生 switch 的"开"色只认一个 hex，没法跟主题的渐变 */
+.sw {
+  width: 84rpx; height: 48rpx; border-radius: 999rpx; flex: none;
+  background: #E2DAD0; position: relative;
+  transition: background .2s;
+}
+.sw.on { background: var(--brand) }
+.swdot {
+  position: absolute; top: 5rpx; left: 5rpx;
+  width: 38rpx; height: 38rpx; border-radius: 50%;
+  background: #fff; box-shadow: 0 2rpx 6rpx rgba(0,0,0,.18);
+  transition: transform .2s cubic-bezier(.22, 1, .36, 1);
+}
+.sw.on .swdot { transform: translateX(36rpx) }
+
+/* ---------- 玩法行 ---------- */
+.row2-main { flex: 1; min-width: 0 }
+.row2-arrow { width: 28rpx; height: 28rpx; opacity: .4; flex: none }
+.mi-icon { width: 36rpx; height: 36rpx }
+
+/* ---------- 关于 ---------- */
+.about { font-size: 23rpx; color: var(--ink2); line-height: 1.9 }
+.ab-line { display: block }
+.ab-ver { margin-top: 14rpx; font-size: 20rpx; color: var(--ink3); letter-spacing: 1rpx }
+
+.foot-tip {
+  margin-top: 18rpx; text-align: center;
+  font-size: 20rpx; color: var(--ink3); line-height: 1.7;
+}

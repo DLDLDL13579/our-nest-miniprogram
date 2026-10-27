@@ -3,13 +3,19 @@
 set -e
 cd "$(dirname "$0")/.."
 
-echo "═══ 1/4 语法 ───"
-for f in cloudfunctions/*/index.js miniprogram/utils/*.js miniprogram/pages/*/*.js miniprogram/pages/*/*/*.js miniprogram/app.js miniprogram/config.js; do
+echo "═══ 1/5 语法 ───"
+# ★ 用 find 而不是写死层级的 glob：
+#   原来写的是 pages/*/*.js 和 pages/*/*/*.js 两条，页面结构调整后
+#   第二层 glob 没有匹配 → node --check 拿到字面量路径 → 直接报 MODULE_NOT_FOUND。
+#   （"没有文件" 和 "文件有语法错" 是两件事，不能混成一个失败。）
+n_js=0
+while IFS= read -r f; do
   node --check "$f" || { echo "  ✗ $f"; exit 1; }
-done
-echo "  ✓ 所有 js 语法通过"
+  n_js=$((n_js + 1))
+done < <(find cloudfunctions miniprogram -name '*.js' -not -path '*/node_modules/*' | sort)
+echo "  ✓ $n_js 个 js 语法通过"
 
-echo "═══ 2/4 WXML 标签配平（含 <br> 检查）───"
+echo "═══ 2/5 WXML 标签配平（含 <br> 检查）───"
 python3 - << 'PY'
 import re, glob, sys
 bad=0
@@ -38,7 +44,7 @@ print('  ✓ WXML 全部通过' if not bad else f'  共 {bad} 处问题')
 sys.exit(1 if bad else 0)
 PY
 
-echo "═══ 3/4 app.json 页面文件齐全 ───"
+echo "═══ 3/5 app.json 页面文件齐全 ───"
 node -e "
 const fs=require('fs'),path=require('path');
 const app=JSON.parse(fs.readFileSync('miniprogram/app.json','utf8'));
@@ -52,7 +58,7 @@ if(bad) process.exit(1);
 console.log('  ✓ '+app.pages.length+' 个页面齐全，tabBar 正常');
 "
 
-echo "═══ 4/5 derive.js 五处一致 ───"
+echo "═══ 4/5 前后端共享模块一致 ───"
 bash scripts/sync-derive.sh
 
 echo "═══ 5/5 前端调用的云函数 action 必须真实存在 ───"

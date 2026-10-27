@@ -31,7 +31,7 @@ const path = require('path')
 const assert = require('assert')
 
 const ROOT = path.join(__dirname, '..')
-const WXSS = path.join(ROOT, 'miniprogram/pages/game/room/room.wxss')
+const WXSS = path.join(ROOT, 'miniprogram/pages/room/room.wxss')
 const CUP_PNG = path.join(ROOT, 'miniprogram/images/cup/cup-down.png')
 
 let n = 0
@@ -226,7 +226,7 @@ function px(body, prop) {
 
   /* 提示语必须排在场景之后（模板顺序），否则它会跑到场景上面去 */
   const tplSrc = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/pages/game/room/room.wxml'), 'utf8')
+    path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8')
   const sceneEnd = tplSrc.indexOf('</view>', tplSrc.indexOf('class="cs-cup'))
   const hintIdx = tplSrc.indexOf('class="cs-hint"')
   assert.ok(hintIdx > sceneEnd,

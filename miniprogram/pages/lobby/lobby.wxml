@@ -1,0 +1,59 @@
+<view class="page">
+  <!-- ① 夜色头部：和「记录类」页面的米白暖调区分开，这是"玩"的场域 -->
+  <view class="lb-hero">
+    <view class="lb-glow"></view>
+    <view class="lb-in">
+      <view class="lb-top">
+        <view class="lb-lbl">今晚玩什么</view>
+        <!-- 静音 / 震动分开两个开关：酒桌上「想留声音但不想震」很常见 -->
+        <view class="lb-switches">
+          <image class="lb-sw" src="{{ic[muted ? 'speakerOff' : 'speakerOn']}}" mode="aspectFit"
+                 catchtap="toggleMute" />
+          <image class="lb-sw {{hapticOn ? '' : 'off'}}" src="{{ic[hapticOn ? 'hapticOn' : 'hapticOff']}}"
+                 mode="aspectFit" catchtap="toggleHaptic" />
+        </view>
+      </view>
+      <view class="lb-t">酒桌</view>
+      <view class="lb-s">一人开房拿房间号，其他人输号进来 · 各自看自己屏幕</view>
+    </view>
+  </view>
+
+  <!-- ② 快捷进房：别人已经开好了房间，直接输号，不用先挑玩法 -->
+  <view class="joinbar">
+    <input class="join-in" type="number" maxlength="3" value="{{joinCode}}"
+           placeholder="3 位房间号" placeholder-class="ph"
+           confirm-type="go" bindinput="onCode" bindconfirm="doJoin" />
+    <view class="join-btn {{joinCode.length === 3 ? 'on' : ''}}" bindtap="doJoin">进去</view>
+  </view>
+  <view wx:if="{{err}}" class="errbox">{{err}}</view>
+
+  <!--
+    ③ 玩法列表 —— 不做分类筛选。
+    酒桌上一屏就这几个玩法，多一层筛选只是让用户多点一次（见 lobby.js 头注释）。
+  -->
+
+  <!-- ④ 玩法卡：**点一下就直接开好房**，不用再走一遍选择流程 -->
+  <view class="glist">
+    <view wx:for="{{list}}" wx:key="id" class="gcard"
+          style="--accent:{{item.color}}" data-id="{{item.id}}" bindtap="openGame">
+      <view class="gc-icon">
+        <image class="gc-img" src="{{item.iconUri}}" mode="aspectFit" />
+      </view>
+      <view class="gc-main">
+        <view class="gc-top">
+          <text class="gc-name">{{item.name}}</text>
+          <text class="gc-people">{{item.players}}</text>
+        </view>
+        <view class="gc-desc">{{item.desc}}</view>
+      </view>
+      <image class="gc-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
+    </view>
+  </view>
+
+  <view wx:if="{{!list.length}}" class="empty">还没有玩法</view>
+
+  <view class="lb-tip">
+    <view class="tip-line">房间 2 小时后自动过期，玩完不用清理。</view>
+    <view class="tip-line">点数、题卡都由服务器出 —— 别人的牌在你手机上根本拿不到。</view>
+  </view>
+</view>

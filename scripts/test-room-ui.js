@@ -35,9 +35,9 @@ const path = require('path')
 const assert = require('assert')
 
 const ROOT = path.join(__dirname, '..')
-const JS = path.join(ROOT, 'miniprogram/pages/game/room/room.js')
-const WXML = path.join(ROOT, 'miniprogram/pages/game/room/room.wxml')
-const WXSS = path.join(ROOT, 'miniprogram/pages/game/room/room.wxss')
+const JS = path.join(ROOT, 'miniprogram/pages/room/room.js')
+const WXML = path.join(ROOT, 'miniprogram/pages/room/room.wxml')
+const WXSS = path.join(ROOT, 'miniprogram/pages/room/room.wxss')
 
 let n = 0
 function ok(msg) { n++; console.log('  ✓ ' + msg) }

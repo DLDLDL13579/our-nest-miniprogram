@@ -35,7 +35,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
  * ============================================================ */
 
 const roomJs = fs.readFileSync(
-  path.join(ROOT, 'miniprogram/pages/game/room/room.js'), 'utf8')
+  path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
 const roomCloud = fs.readFileSync(
   path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
 
@@ -287,7 +287,7 @@ function extractBuildSectors(src) {
    *   所以下面逐个字段做「改了必须被认出来」的反向验证。
    */
   const rcSrc = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/pages/game/room/room.js'), 'utf8')
+    path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
   const rcStart = rcSrc.indexOf('roomChanged(prev, room)')
   const rcEnd = rcSrc.indexOf('/** 拉一次房间状态', rcStart)
   assert.ok(rcStart >= 0 && rcEnd > rcStart, '没找到 roomChanged 函数')

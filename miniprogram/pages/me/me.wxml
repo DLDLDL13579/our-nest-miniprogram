@@ -1,0 +1,57 @@
+<view class="page">
+  <!-- ① 身份：这一版没有配对，昵称只存本机，进房间时带给服务端 -->
+  <view class="meprof">
+    <view class="meav">{{nick ? nick[0] : '酒'}}</view>
+    <view class="meinfo">
+      <input class="mein" value="{{nick}}" maxlength="12" placeholder="起个名字"
+             placeholder-class="ph" bindinput="onNick" bindblur="saveNick" />
+      <view class="meprof-s">房间里别人看到的就是这个名字</view>
+    </view>
+  </view>
+
+  <!-- ② 声音与振动：两个开关分开，理由见 lobby.js -->
+  <view class="card">
+    <view class="lbl">声音与振动</view>
+    <view class="rline" bindtap="toggleMute">
+      <view class="rl-main">
+        <view class="rl-t">音效</view>
+        <view class="rl-s">摇盅、扣盅、开盅都是合成音，不是随便的 beep</view>
+      </view>
+      <view class="sw {{muted ? '' : 'on'}}"><view class="swdot"></view></view>
+    </view>
+    <view class="rline" bindtap="toggleHaptic">
+      <view class="rl-main">
+        <view class="rl-t">振动</view>
+        <view class="rl-s">骰子落定轻震、开盅重震；连续音不震</view>
+      </view>
+      <view class="sw {{hapticOn ? 'on' : ''}}"><view class="swdot"></view></view>
+    </view>
+  </view>
+
+  <!-- ③ 玩法 -->
+  <view class="card" bindtap="goLobby">
+    <view class="lbl">玩法</view>
+    <view class="row2">
+      <view class="ico"><image class="mi-icon" src="{{ic.dice}}" mode="aspectFit" /></view>
+      <view class="row2-main">
+        <view class="gt">一共 {{gameCount}} 个玩法</view>
+        <view class="xs">{{gameNames}}</view>
+      </view>
+      <image class="row2-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
+    </view>
+  </view>
+
+  <!-- ④ 关于 -->
+  <view class="card flat">
+    <view class="lbl">关于</view>
+    <view class="about">
+      <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</view>
+      <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</view>
+      <view class="ab-line">点数、题卡、身份都由服务端出，别人看不到你的牌。</view>
+      <view class="ab-ver">v{{version}}</view>
+    </view>
+  </view>
+
+  <view class="btn ghostb" bindtap="clearCache">清理本机缓存</view>
+  <view class="foot-tip">清理只会清掉昵称和开关状态，不影响任何对局数据</view>
+</view>

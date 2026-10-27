@@ -83,6 +83,12 @@ const PATHS = {
   target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
   wheel: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>',
   signal: '<path d="M4.5 9.5a11 11 0 0 1 0 5"/><path d="M8 12.5a6.6 6.6 0 0 1 0-1"/><path d="M11.6 15.2a2.4 2.4 0 0 1 0-6.4"/><path d="M18.5 6a15.5 15.5 0 0 1 0 12"/>',
+  /* 竖起的手指 = 「我有你没有」的"我有" */
+  hand: '<path d="M8.8 13.2V6.4a1.5 1.5 0 0 1 3 0V12"/><path d="M11.8 12V4.9a1.5 1.5 0 0 1 3 0V11.8"/><path d="M14.8 11.8V7.2a1.5 1.5 0 0 1 3 0v8a6.2 6.2 0 0 1-6.2 6.2h-.8a4.6 4.6 0 0 1-3.3-1.4l-3.7-3.8a1.6 1.6 0 0 1 2.3-2.3l2.2 2.1"/>',
+  /* 面具 = 「谁是卧底」这类秘密身份玩法 */
+  mask: '<path d="M4 8.6c2.6-1 5.3-1.5 8-1.5s5.4.5 8 1.5c0 4.6-3.6 8.2-8 8.2S4 13.2 4 8.6z"/><circle cx="8.7" cy="10.9" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.3" cy="10.9" r="1.15" fill="currentColor" stroke="none"/>',
+  /* 投票箱 */
+  vote: '<path d="M5 11.5h14v8H5z"/><path d="M8.6 11.5V6.6a3.4 3.4 0 0 1 6.8 0v4.9"/><path d="M9.9 8.9l2.1 2.1 2.1-2.1"/>',
 
   /* ---------- 情绪 ---------- */
   moodHappy: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/><circle cx="9.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.6" r="1" fill="currentColor" stroke="none"/>',

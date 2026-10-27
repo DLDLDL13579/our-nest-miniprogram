@@ -40,6 +40,17 @@ const cloud = require('wx-server-sdk')
  * 前端抽的话，"重摇到满意"就穿帮了，而且没法保证全场看到同一张。
  */
 const decks = require('./decks.js')
+/*
+ * 玩法注册表 —— 与 miniprogram/utils/games.js 逐字节一致。
+ * 云函数独立打包、不能跨目录 require，所以这里是一份拷贝，
+ * 由 scripts/sync-derive.sh 自动同步（改完跑一次）。
+ *
+ * ★ 加新玩法只改注册表 + 写它的规则分支，**不用再改这个文件里的 id 列表**。
+ *   改造前这里有 3 处硬编码 `['dice','liar','wheel']`，加玩法时只改一处的话，
+ *   会出现"大厅看得到、屋里建不出来"或者"能建但不能切"——而且不报错。
+ */
+const { GAMES, gameOf } = require('./games.js')
+const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
@@ -226,7 +237,7 @@ function shape(room, openid) {
   return {
     id: room._id,
     code: room.code,
-    game: room.game || '',          // 'dice' | 'liar' | 'wheel'
+    game: room.game || '',          // 见 utils/games.js 的 GAMES[].id
     phase: room.phase || 'lobby',   // lobby | countdown | playing | over
     host: room.hostOpenid === openid,
     me: me ? { seat: me.seat, name: me.name, dice: me.dice || [] } : null,
@@ -314,7 +325,7 @@ exports.main = async (event) => {
     /* ================= 建房间 ================= */
     if (action === 'create') {
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
-      const game = ['dice', 'liar', 'wheel'].indexOf(event.game) >= 0 ? event.game : 'dice'
+      const game = gameOf(event.game) ? event.game : 'dice'
       /*
        * 题卡场合（转盘用）：房主开局前选，全场同步。
        * 校验用 deckOf —— 未知 key 会被回退成默认那副，不会让房间卡在无题可抽的状态。
@@ -1041,11 +1052,12 @@ exports.main = async (event) => {
          *   观战者会永远观战下去（而且不报错）。
          */
         players: (room.players || []).map(p =>
-          Object.assign({}, p, { dice: [], ready: false, inRound: true })),
+          Object.assign({}, p, { dice: [], ready: false, inRound: true, score: 0, out: false })),
         phase: 'lobby',
         bid: null, lastResult: null, turn: 0,
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
         spin: null,
+
         updatedAt: ts
       }
 
@@ -1059,7 +1071,7 @@ exports.main = async (event) => {
           return { ok: false, msg: '这局玩完再换' }
         }
         const g = String(event.game || '')
-        if (['dice', 'liar', 'wheel'].indexOf(g) < 0) return { ok: false, msg: '没有这个玩法' }
+        if (!gameOf(g)) return { ok: false, msg: '没有这个玩法' }
         data.game = g
         /* 顺便换题卡场合（只有转盘用得到；传了就换，没传就保持） */
         if (event.deck !== undefined) data.deck = decks.deckOf(String(event.deck)).k

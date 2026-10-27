@@ -41,19 +41,43 @@ const assert = require('assert')
 const fs = require('fs')
 
 /* ---------------- 内存 SDK（与其它测试同构） ---------------- */
-const store = { pairs: [], questions: [], answers: [], pings: [], wishes: [], moments: [], capsules: [], reminds: [] }
+/* 只留真正在用的集合（情侣功能删掉后，其余表已无人引用） */
+const store = { rooms: [] }
 let seq = 0
 const nextId = () => 'id' + (++seq)
+
+/*
+ * 条件构造器 —— 必须和 room 云函数里真正用到的算子一致。
+ * 改造前这里只有 neq / push，而 room 的 pickCode 用了 _.gt：
+ * 直接报 `_.gt is not a function`，而且**报错发生在准备阶段**，
+ * 被 catch 吞掉后整个测试就变成一个"其实没建成房间"的假状态。
+ * （AGENTS.md 记过的同类假绿：mock 缺 where().update() → join 抛错被吞 → exit=0。）
+ */
 function neq(v) { return { __op: 'neq', v } }
 function pushv(v) { return { __op: 'push', v } }
-const command = { neq, push: pushv }
+function lt(v) { return { __op: 'lt', v } }
+function gt(v) { return { __op: 'gt', v } }
+function and() {
+  const list = Array.prototype.slice.call(arguments)
+  return { __op: 'and', v: Array.isArray(list[0]) ? list[0] : list }
+}
+const command = { neq, push: pushv, lt, gt, and }
+
+/** 单条条件求值（供 and 递归） */
+function one(doc, key, c) {
+  if (c && c.__op === 'neq') return doc[key] !== c.v
+  if (c && c.__op === 'lt') return Number(doc[key]) < Number(c.v)
+  if (c && c.__op === 'gt') return Number(doc[key]) > Number(c.v)
+  if (c && c.__op === 'and') {
+    const list = Array.isArray(c.v[0]) ? c.v[0] : c.v
+    return list.every(x => one(doc, key, x))
+  }
+  if (Array.isArray(doc[key])) return doc[key].indexOf(c) >= 0
+  return doc[key] === c
+}
+
 function match(doc, q) {
-  return Object.keys(q).every(k => {
-    const c = q[k]
-    if (c && c.__op === 'neq') return doc[k] !== c.v
-    if (Array.isArray(doc[k])) return doc[k].indexOf(c) >= 0
-    return doc[k] === c
-  })
+  return Object.keys(q).every(k => one(doc, k, q[k]))
 }
 function collection(name) {
   const rows = () => (store[name] = store[name] || [])
@@ -160,86 +184,33 @@ const ROOT = path.join(__dirname, '..')
 const orig = Module._load
 Module._load = function (r) { if (r === 'wx-server-sdk') return mock; return orig.apply(this, arguments) }
 
-const pair = require(path.join(ROOT, 'cloudfunctions', 'pair', 'index.js'))
-const home = require(path.join(ROOT, 'cloudfunctions', 'home', 'index.js'))
-const chronicle = require(path.join(ROOT, 'cloudfunctions', 'chronicle', 'index.js'))
-const moments = require(path.join(ROOT, 'cloudfunctions', 'moments', 'index.js'))
+const room = require(path.join(ROOT, 'cloudfunctions', 'room', 'index.js'))
 
 const D = 'oid_deng', Q = 'oid_qp'
 let n = 0
+let ROOM_ID = ''
 function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
 ;(async () => {
-  /* ---------- 准备：配对 + 写一条带照片的记录 ---------- */
-  OPENID = D
-  const c = await pair.main({ action: 'create' })
-  assert.ok(c.ok && c.code, '准备阶段：生成邀请码应成功 —— ' + (c.msg || ''))
-
-  OPENID = Q
+  /* ---------- 准备：开一个房间，两个人进去 ---------- */
   /*
    * ★★ 准备阶段的每一步都必须**断言成功**，不能只 await。
    *
-   * 原来这里是裸的 `await pair.main({action:'join'})` —— join 失败时
-   * 脚本照样往下跑，后面 30 项断言就在一个"其实没配对"的假状态上执行。
-   * 而它们**可能照样打印 ✓**（假绿），因为很多断言只检查字段形状、
-   * 不检查数据是否真的存在。
+   * 原来这里是裸的 `await pair.main({action:'join'})` —— 准备失败时
+   * 脚本照样往下跑，后面几十项断言就在一个"其实没配成"的假状态上执行，
+   * 而它们**可能照样打印 ✓**（假绿），因为很多断言只检查字段形状。
    *
-   * 实际发生过：mock 缺 `where().update()` → join 抛错被吞 → 整个文件
-   * 内部报错但 **exit=0**，`test-all.sh` 完全看不出来。
+   * 这类"准备失败 + 断言宽松"的测试**比没有测试更危险**：
+   * 它给的是虚假的信心。所以下面每一步都 assert.ok。
    */
-  const pj = await pair.main({ action: 'join', code: c.code })
-  assert.ok(pj.ok, '准备阶段：配对应成功 —— ' + (pj.msg || ''))
-
   OPENID = D
-  const ps = await pair.main({ action: 'set', anniversary: '2024-03-26' })
-  assert.ok(ps.ok, '准备阶段：设置纪念日应成功 —— ' + (ps.msg || ''))
+  const c = await room.main({ action: 'create', name: '邓林', game: 'liar' })
+  assert.ok(c.ok && c.room && c.room.code, '准备阶段：建房应成功 —— ' + (c.msg || ''))
+  ROOM_ID = c.room.id
 
-  const PHOTOS = ['cloud://x/moments/a.jpg', 'cloud://x/moments/b.jpg']
-  const THUMBS = ['cloud://x/moments/a_thumb.jpg', 'cloud://x/moments/b_thumb.jpg']
-  const add = await moments.main({
-    action: 'add', text: '今天去看了电影', photos: PHOTOS, thumbs: THUMBS, mood: 'happy'
-  })
-  assert.ok(add.ok, '写一条应成功')
-
-  /* ============ ① 核心：列表接口必须返回 thumbs ============ */
-  console.log('\n=== ① 列表接口必须带上缩略图（漏了就等于加载原图）===')
-
-  const m = await moments.main({ action: 'list' })
-  assert.deepStrictEqual(m.list[0].thumbs, THUMBS, 'moments.list 必须返回 thumbs')
-  ok('moments.list 返回 thumbs ✓')
-
-  const h = await home.main({ date: '2026-09-24' })
-  assert.ok(h.ok, 'home 应成功')
-  assert.ok(h.moments.length, 'home 应带回记录')
-  assert.ok(Array.isArray(h.moments[0].thumbs), '★ home.moments[].thumbs 必须是数组')
-  assert.deepStrictEqual(h.moments[0].thumbs, THUMBS, '★ home 漏返回 thumbs → 前端回退加载原图')
-  ok('★ home.moments[].thumbs 存在且正确（这是首页提速的关键字段）')
-
-  const cl = await chronicle.main({ action: 'list', size: 10 })
-  assert.ok(cl.ok && cl.list.length, 'chronicle 应带回记录')
-  const firstItem = cl.list[0].items[0]
-  assert.ok(Array.isArray(firstItem.thumbs), '★ chronicle 的 items[].thumbs 必须是数组')
-  assert.deepStrictEqual(firstItem.thumbs, THUMBS, '★ chronicle 漏返回 thumbs → 编年史列表加载原图')
-  ok('★ chronicle.list[].items[].thumbs 存在且正确')
-
-  /* ============ ② 老记录没有 thumbs 字段时必须回退成空数组 ============ */
-  console.log('\n=== ② 老记录（没有 thumbs 字段）不能返回 undefined ===')
-  store.moments.push({
-    _id: 'old_one', pairId: store.pairs[0]._id, by: D,
-    text: '很久以前记的', photos: ['cloud://x/old.jpg'],
-    date: '2026-01-01', at: '2026-01-01 10:00', createdAt: '2026-01-01 10:00'
-  })
-  const h2 = await home.main({ date: '2026-09-24' })
-  const oldRow = h2.moments.filter(x => x.id === 'old_one')[0]
-  assert.ok(oldRow, '应能读到老记录')
-  assert.ok(Array.isArray(oldRow.thumbs), '★ 老记录也必须给空数组，不能是 undefined')
-  assert.strictEqual(oldRow.thumbs.length, 0)
-  ok('老记录 thumbs 回退成 []（前端 .length 求值安全）')
-
-  const cl2 = await chronicle.main({ action: 'list', size: 10 })
-  const oldItem = cl2.list.map(d => d.items).reduce((a, b) => a.concat(b), []).filter(x => x.text === '很久以前记的')[0]
-  assert.ok(oldItem && Array.isArray(oldItem.thumbs), '★ 编年史里老记录同样要回退成空数组')
-  ok('编年史里老记录 thumbs 也是 []')
+  OPENID = Q
+  const pj = await room.main({ action: 'join', code: c.room.code, name: '倩萍' })
+  assert.ok(pj.ok, '准备阶段：加入房间应成功 —— ' + (pj.msg || ''))
 
   /* ============ ③a require 的相对路径必须指到真实文件 ============ */
   console.log('\n=== ③a require 路径必须真实存在（白屏杀手）===')
@@ -950,21 +921,23 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const wxml = js.replace(/\.js$/, '.wxml')
     if (!fs.existsSync(wxml)) return
 
-    /* 页面注册表：for (const _k of ['a','b']) { _IC[_k] = ... } */
-    const reg = new Set()
-    for (const m of src.matchAll(/for \(const _k of \[([^\]]*)\]\)/g)) {
-      for (const k of m[1].matchAll(/'([^']+)'/g)) reg.add(k[1])
-    }
-    /* 页面数据里"当作图标用"的字段：icon: 'xxx' / e: 'xxx' */
+    /* ① 数据里"当作图标用"的 key 必须真的存在于图标库。
+       原来这里还判断"有没有注册进 _IC"，但那是去 grep
+       `for (const _k of [...])` 的字面量 —— 装配方式改成 iconSet.build() 后
+       判据就失效了（改对了仍报旧错），属于"判据依赖代码长相"。
+       现在"注册覆盖"改成语义判据，见下面 ③e-3。 */
     const used = new Set()
     for (const m of src.matchAll(/\b(?:icon|e)\s*:\s*'([a-zA-Z][\w]*)'/g)) used.add(m[1])
-
-    /* ① 用到但没注册 —— 只报"确实是图标库里的名字"的，
-       避免把 `e: 'none'`（wx.showToast 的 icon 参数）这类误报。 */
+    /*
+     * ⚠️ `icon: 'success'` 是 wx.showToast 的参数，不是 SVG 图标。
+     *    所以必须有一份显式白名单 —— 不能用"不在图标库里就报"，
+     *    那会把 Toast 全报成人造错误（假阳性比漏报更麻烦：会让我去改对的代码）。
+     */
+    const TOAST_ICONS = ['success', 'loading', 'none', 'error', 'warn', 'info']
     for (const k of used) {
-      if (iconNames.includes(k) && !reg.has(k)) {
-        iconUnregistered.push(path.relative(ROOT, js) + ' → ' + k)
-      }
+      if (iconNames.includes(k)) continue
+      if (TOAST_ICONS.includes(k)) continue
+      iconUnregistered.push(path.relative(ROOT, js) + ' → ' + k)
     }
 
     /* ② wxml 里 {{item.xxx}} / {{xxx}} 直接渲染图标字段 —— 必须是 ic[...] 包裹 */
@@ -979,7 +952,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   })
 
   assert.deepStrictEqual(iconUnregistered, [],
-    '这些图标 key 被数据引用，但页面没注册进 _IC（会渲染成空白）：\n    ' +
+    '这些图标 key 被数据引用，但图标库里根本没有（会渲染成空白）：\n    ' +
     iconUnregistered.join('\n    '))
   ok('数据里用到的图标 key 全部已注册（不会静默空白）')
 
@@ -987,6 +960,28 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     'wxml 直接渲染了图标字段（会把 key 当文字打印，页面显示英文乱码）：\n    ' +
     printedRaw.join('\n    ') + '\n    改用 <image src="{{ic[item.xxx]}}" />')
   ok('wxml 没有裸渲染图标字段（不会打印英文 key）')
+
+  /* ============ ③e-3 玩法图标必须能从注册表自动装配（语义判据）============
+   *
+   * 判的是**行为**：调用页面真正用的那个装配函数，看注册表里每个玩法
+   * 能不能拿到非空 data URI。不去 grep 页面里的 for 循环 ——
+   * 「判据不能依赖代码长什么样」这条，本项目已经因为同类问题连错三版
+   * （数 action 字面量 / 抓 call 的 payload / 词边界正则）。
+   */
+  {
+    const iconSet = require(path.join(ROOT, 'miniprogram', 'utils', 'iconSet.js'))
+    const { GAMES: G } = require(path.join(ROOT, 'miniprogram', 'utils', 'games.js'))
+    const built = iconSet.build([], '#000000')
+    const missing = []
+    for (const g of G) {
+      if (!built[g.icon] || !String(built[g.icon]).length) missing.push(g.id + ' → icon:' + g.icon)
+    }
+    assert.deepStrictEqual(missing, [],
+      '★ 这些玩法拿不到图标 data URI（页面上是空白，且不报错）：\n    ' +
+      missing.join('\n    ') +
+      '\n    修法：在 icons.js 的 PATHS 补这个 key，或改用注册表里已有的图标。')
+    ok(`玩法图标 ${G.length} 个全部能自动装配`)
+  }
 
   /* ============ ③ 前端 wxml 绑定的方法必须在 js 里真实存在 ============ */
   console.log('\n=== ③ wxml 绑定的事件处理函数必须真实存在 ===')
@@ -1019,77 +1014,53 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.deepStrictEqual(missing, [], '存在模板绑定了但 js 未定义的方法：\n    ' + missing.join('\n    '))
   ok('全部页面的 bind/catch 处理函数都有定义（goAnswer / previewPhoto 这类已修）')
 
-  /* ============ ④ 模板引用的字段必须真的有人提供 ============ */
-  console.log('\n=== ④ 模板引用的字段必须由云函数真实返回（幽灵字段检测）===')
+  /* ============ ④ 模板引用的房间字段必须真的有人提供 ============ */
+  console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
-   * 判据：把云函数真实响应里出现过的字段收集起来，再看模板里 x.y 的引用
-   * 是否都能在「真实响应」里找到。
+   * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
+   *      再看模板里 `room.xxx` 的引用是否都在其中。
    *
-   * 注意两件事，否则这个检查会误报：
-   *   · 必须先剥掉 wxml 注释 —— 注释里也会写 {{onThisDay.q}}（正是我们留下的说明）
-   *   · D 是 derive() 的返回值，字段多且都在 miniprogram/utils/derive.js 里定义，
-   *     单独用 derive 的真实输出校验
+   * ⚠️ 只查 `room.` 前缀，**不查 `item.`**：item 在模板里是多义的
+   *    （players / decks / games / cards 都叫 item），拿一个集合去比会大面积误报。
+   *    宁可精确也不要宽 —— AGENTS.md 的原话。
+   *
+   * ⚠️ 字段清单**不能硬编码**在测试里：硬编码时往服务端加字段不会报错，
+   *    往模板加字段也照样通过（等于这条断言是废的）。
+   *    必须从真实响应里抽。
    */
-  /* 造一条「去年今日」的记录，否则 onThisDay 是 null，字段无从收集 */
-  const todayStr = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10)
-  const lastYearStr = (Number(todayStr.slice(0, 4)) - 1) + todayStr.slice(4)
-  store.moments.push({
-    _id: 'last_year_one', pairId: store.pairs[0]._id, by: Q,
-    text: '去年今天她做了顿饭', photos: [], thumbs: [],
-    date: lastYearStr, at: lastYearStr + ' 19:00', createdAt: lastYearStr + ' 19:00'
-  })
-
-  const provided = {
-    onThisDay: new Set(),
-    stats: new Set(),
-    D: new Set()
-  }
-  /* 让云函数真的返回一次，把字段名收集下来 */
-  const realHome = await home.main({ date: '2026-09-24' })
-  const realCl = await chronicle.main({ action: 'list', size: 10 })
-  const realStats = await chronicle.main({ action: 'stats' })
-  const { derive } = require(path.join(ROOT, 'miniprogram', 'utils', 'derive.js'))
-
-  const collect = (obj, set) => { if (obj && typeof obj === 'object') Object.keys(obj).forEach(k => set.add(k)) }
-  collect(realHome.onThisDay, provided.onThisDay)
-  collect(realCl.onThisDay, provided.onThisDay)
-  collect(realStats, provided.stats)
-  collect(derive('2024-03-26'), provided.D)
-  collect(derive('2024-03-26').next, provided.D)   /* 模板里用了 D.next.xxx */
+  const realRoom = await room.main({ action: 'status', id: ROOM_ID })
+  assert.ok(realRoom.ok && realRoom.room, '④ 取房间状态应成功')
+  const providedRoom = new Set(Object.keys(realRoom.room))
+  /* 服务端算的派生字段也要算数（前端 decorate 会补这些） */
+  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options'].forEach(k => providedRoom.add(k))
 
   const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '')
+  /* 自己的递归遍历：④ 在顶层 walk/pagesDir 定义之前，不能复用它们 */
+  function walkGhost(dir, out) {
+    out = out || []
+    for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fp = path.join(dir, f.name)
+      if (f.isDirectory()) walkGhost(fp, out)
+      else if (f.name.endsWith('.wxml')) out.push(fp)
+    }
+    return out
+  }
   const ghost = []
-  walk(pagesDir).forEach(wxml => {
+  walkGhost(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
     const tpl = stripComments(fs.readFileSync(wxml, 'utf8'))
-    const re = /\b(onThisDay|stats|D)\.([a-zA-Z_]\w*)/g
+    const re = /\broom\.([a-zA-Z_]\w*)/g
     let mm
     const seen = new Set()
     while ((mm = re.exec(tpl))) {
-      const root = mm[1], key = mm[2]
-      if (seen.has(root + '.' + key)) continue
-      seen.add(root + '.' + key)
-      if (!provided[root].has(key)) ghost.push(path.relative(ROOT, wxml) + ' → ' + root + '.' + key)
+      const key = mm[1]
+      if (seen.has(key)) continue
+      seen.add(key)
+      if (!providedRoom.has(key)) ghost.push(path.relative(ROOT, wxml) + ' → room.' + key)
     }
   })
-  assert.deepStrictEqual(ghost, [], '模板引用了云函数从未返回的字段（幽灵字段）：\n    ' + ghost.join('\n    '))
-  ok('模板引用的字段都由真实响应提供（onThisDay.q 那类已清掉）')
-
-  /* ============ ⑤ 云函数返回的对象里不该再有 q 这种遗留字段 ============ */
-  console.log('\n=== ⑤ 今日一题遗留字段不应再出现在响应里 ===')
-  /* 重新取一次（此刻已有「去年今日」的数据，onThisDay 才是非 null 的） */
-  const cl3 = await chronicle.main({ action: 'list', size: 10 })
-  assert.ok(cl3.onThisDay, '此刻 onThisDay 应该有值（造过去年今日的数据）')
-  assert.strictEqual(cl3.onThisDay.q, undefined, 'onThisDay 不该再有 q 字段')
-  const day = await chronicle.main({ action: 'day', date: todayStr })
-  assert.strictEqual(day.q, undefined, 'day 详情不该再有 q 字段')
-  ok('chronicle 的 onThisDay / day 都不再返回 q')
-
-  /* ============ ⑥ day 详情返回的 mine/partner 必须是数组 ============ */
-  console.log('\n=== ⑥ 某天详情：mine / partner 必须是数组（前端要 wx:for）===')
-  assert.ok(Array.isArray(day.mine), '★ day.mine 必须是数组')
-  assert.ok(Array.isArray(day.partner), '★ day.partner 必须是数组')
-  assert.ok(day.mine.length, '今天记的那条应该在我的数组里')
-  ok('day 详情返回数组，前端 wx:for 可用（原来被当对象用，渲染恒空）')
+  assert.deepStrictEqual(ghost, [],
+    '模板引用了服务端从未返回的字段（幽灵字段，界面上会静默变空）：\n    ' + ghost.join('\n    '))
+  ok('模板引用的 room.* 字段都由真实响应提供')
 
   /* ============================================================
      * ⑦ 全仓扫描：缩略图 / 存活守卫 / 无限循环
@@ -1114,101 +1085,6 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const MINI = path.join(ROOT, 'miniprogram')
   const allWxml = glob(MINI, '.wxml')
   const allPages = glob(path.join(MINI, 'pages'), '.js')
-
-  /* ---------- ⑦-1 图片列表必须缩略图优先 ---------- */
-  console.log('\n=== ⑦-1 渲染 photos 的 <image> 必须有 thumbs 回退 ===')
-  /*
-   * ★ 为什么这条必须全仓扫描：
-   *   AGENTS.md 记过一次「列表加载慢、流量大」——home / chronicle 漏返回 thumbs，
-   *   前端回退加载原图（3~5MB/张）。当时只修了**被点名的两个页面**，
-   *   而 day 详情页和 capsule 读信弹层是**同一个根因**，一直漏着：
-   *     · day 页：一天最多 50 条 × 3 张 = 最多 150 张原图同时下载
-   *     · capsule 弹层：读信那一刻要等 3~5MB
-   *   逐页点名的做法必然会漏，所以这里改成扫全仓。
-   *
-   * 判据：任何 `<image>` 只要 src 里出现 `photos`，就必须同时出现 `thumbs`
-   *      （形如 `xxx.thumbs[i] || xxx` 的兜底写法）。
-   */
-  /*
-   * ⚠️ 判据要**只看 src**，不能"标签里出现 photos 字样就报"。
-   *    第一版写成了后者，结果误报了 capsule.wxml:53 ——
-   *    那一处 `<image src="{{item}}">` 里的 item 来自 `wx:for="{{thumbs}}"`
-   *    （渲染的就是缩略图），`data-src="{{photos[index]}}"` 只是点击预览时才用的原图。
-   *    **那是完全正确的写法。**
-   *
-   *    假阳性比漏报更糟：它会让我去改本来正确的代码。
-   *    所以判据收紧为：src 的表达式里**直接**引用原图数组（photos / .photo），
-   *    且同一标签内没有 thumbs 兜底。
-   */
-  /*
-   * ★★ 判据的难点：**修复后的正确写法里根本不含 `photos` 字段名** ——
-   *    它写成了 `{{it.thumbs[pi] || ph}}`，ph 是 wx:for 的临时变量。
-   *    所以"看 src 里有没有 photos"这个思路是废的：
-   *    改坏成 `src="{{ph}}"` 之后，src 里同样没有 photos 字样，
-   *    断言**照样通过**（反向验证时发现的 —— 这条断言第一版就是废的）。
-   *
-   * 正确判据：**从 wx:for 的源数组倒推**。
-   *   `<image>` 若是遍历原图数组（photos / reading.photos / …）渲染的，
-   *   它的 src 就必须带缩略图兜底。
-   *
-   * 做法：先找出模板里所有"遍历原图数组"的 wx:for，
-   *      再看**同一个 <image> 标签内**有没有 thumbs 兜底。
-   *      这样无论变量叫什么名字都能抓到。
-   */
-  const badImg = []
-  for (const f of allWxml) {
-    const src = fs.readFileSync(f, 'utf8')
-    for (const m of src.matchAll(/<image\b[^>]*>/g)) {
-      const tag = m[0]
-      const srcM = /src="([^"]*)"/.exec(tag)
-      if (!srcM) continue
-      const expr = srcM[1]
-      /* 缩略图兜底：表达式里出现 thumb（含 thumbs / photoThumb / thumbUrl）即放行 */
-      if (/thumb/i.test(expr)) continue
-      /*
-       * 没有 thumbs 字样的，要判断"这个 src 是不是原图"。
-       */
-      /*
-       * ★★ 判据的核心：**只看这个 <image> 自己遍历的是什么**。
-       *
-       * 原来的写法是"src 里出现 photos 字样才检查" —— 那是废的：
-       * 修复后的正确写法 `src="{{it.thumbs[pi] || ph}}"` 里**不含 photos**，
-       * 而改坏成 `src="{{ph}}"` 之后同样不含 photos，
-       * 于是改坏了也检测不到（反向验证时发现，第一版断言完全无效）。
-       *
-       * 现在改成从 **wx:for 的源数组**倒推，与变量名无关：
-       *   · 遍历的是原图数组（photos / photo）→ 必须有缩略图兜底
-       *   · 缩略图兜底可以写在两个地方，任一即可：
-       *       ① src 表达式里      `src="{{it.thumbs[pi] || ph}}"`
-       *       ② wx:for 表达式里   `wx:for="{{it.thumbs.length ? it.thumbs : it.photos}}"`
-       *
-       * ⚠️ 曾经试图加"文件里别处有 thumbs 遍历就放行"的例外，来兼容
-       *    `src="{{item}}"` 遍历 thumbs 的正确写法 —— 结果那个例外
-       *    把**改坏后的** `src="{{item}}"`（遍历 photos）也放行了，
-       *    反向验证报不出错。**例外条件不能跨标签传播**，已彻底去掉；
-       *    那种正确写法由"遍历的是 thumbs"这一步自然放行（不含原图字段名）。
-       */
-      const ORIG = /photos?|photo/i
-      if (!ORIG.test(expr)) {
-        /* src 没写原图字段名 —— 再看它遍历的是什么 */
-        const f2 = /wx:for="\{\{([^}]*)\}\}"/.exec(tag)
-        if (!(f2 && ORIG.test(f2[1]))) continue
-        /* 遍历的确实是原图，但兜底写在了 wx:for 里 → 放行 */
-        if (/thumb/i.test(f2[1])) continue
-      } else {
-        /* src 直接引用原图 → 必须自带缩略图兜底 */
-        if (/thumb/i.test(expr)) continue
-      }
-      const line = src.slice(0, m.index).split('\n').length
-      badImg.push(`${path.relative(ROOT, f)}:${line}  ${tag.replace(/\s+/g, ' ').slice(0, 96)}`)
-    }
-  }
-  assert.deepStrictEqual(badImg, [],
-    '★ 这些 <image> 直接绑 photos（原图）却没有 thumbs 回退：\n    ' +
-    badImg.join('\n    ') +
-    '\n    原图 3~5MB/张，列表会同时发起大量下载 → 白屏久、流量大。\n' +
-    '    写法：src="{{item.thumbs[i] || item.photos[i]}}"，点击预览才用原图')
-  ok('全部渲染 photos 的 <image> 都做了缩略图回退')
 
   /* ---------- ⑦-2 异步回调必须有存活守卫 ---------- */
   console.log('\n=== ⑦-2 页面 onUnload 后不能 setData（必须声明存活标志）===')
@@ -1260,70 +1136,6 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   ok('所有带定时器的页面都声明了存活/可见标志（room 的 _dead、mood 的 _visible）')
 
   /* ---------- ⑦-3 定时器自重启不能形成无限循环 ---------- */
-  console.log('\n=== ⑦-3 走秒/轮询：重置标志不能被自己的回调清掉 ===')
-  /*
-   * ★★ 这是本轮最严重的一个（mood 页**整个不可用**）：
-   *
-   *     tick():  left<=0 且 !_pulled  →  _pulled=true; load()
-   *     load():  _pulled = false;  若 cool 非空 → startTick()   ← 又起表
-   *              ↑____________________________________|
-   *
-   *   实测（用真实源码跑闭环）：旧版 6 帧内 load **6 次**（每秒一次，
-   *   每次 2 个云函数调用），而且 load() 首行的 setData({loading:true})
-   *   让整页每秒闪一次 —— 页面直接没法用。修复后同样 6 帧只 load 1 次。
-   *
-   * 判据：如果某函数体里出现"把 _pulled/_done 这类**一次性标志重置**"，
-   *      就必须同时存在让它只在**新条件**下才重置的判断（形如 `if (x > 0)`），
-   *      不能是无条件赋值。
-   */
-  const moodSrc = fs.readFileSync(path.join(MINI, 'pages/mood/mood.js'), 'utf8')
-  const unconditional = /^\s*this\._pulled\s*=\s*false\s*$/m.test(moodSrc)
-  assert.ok(!unconditional,
-    '★ mood.js 里 `this._pulled = false` 是无条件赋值 —— ' +
-    '它会被 load() 每次执行时清掉，而 load() 结尾又 startTick() 起表，\n' +
-    '    于是 tick→load→startTick→tick 形成闭环：**每秒一次云函数调用 + 整页闪烁**。\n' +
-    '    必须改成"只有服务端给出新的未来截止时刻（remainMs > 0）才重置"。')
-  assert.ok(/if\s*\(remain\s*>\s*0\)\s*this\._pulled\s*=\s*false/.test(moodSrc),
-    '★ 找不到"仅在新周期才重置 _pulled"的判断 —— 循环防护可能被删掉了')
-  /* 归零时必须停表，不能只靠标志 */
-  assert.ok(/if\s*\(up\)\s*\{[\s\S]{0,200}?this\.stopTick\(\)/.test(moodSrc),
-    '★ mood 的 tick() 在归零时没有 stopTick() —— ' +
-    '表会一直跑，靠标志挡不住"每次都重新起表"')
-  ok('mood 走秒：归零后停表 + _pulled 仅在新周期重置（无每秒循环）')
-
-  /* ---------- ⑦-4 离线兜底：取不到 ≠ 没有 ---------- */
-  console.log('\n=== ⑦-4 ensurePair 断网时必须返回旧值，不能返回 null ===')
-  /*
-   * ★ 真实缺陷（2026-10-09）：`ensurePair` 的 catch 里 `return null`，
-   *   而 9 个页面都拿 `if (!pair)` 判断"还没配对" ——
-   *   **已配对的老用户在地铁里打开小程序，看到的是配对引导页**，以为数据丢了。
-   *
-   * 「取不到」和「没有」是两件完全不同的事，不能都表达成 null。
-   *
-   * 判据三条（缺一不可）：
-   *   ① catch 里不能直接 return null（要有旧值兜底）
-   *   ② 联网成功且 r.ok 时**同步快照**（含 pair 为 null 时清空快照）——
-   *      否则"已解绑"的旧状态会在断网时复活
-   *   ③ 兜底读快照时**不要更新 _pairAt** —— 否则旧数据会被当成"刚拉过"，
-   *      联网后 60 秒内不再刷新
-   */
-  const appSrc = fs.readFileSync(path.join(MINI, 'app.js'), 'utf8')
-  const epBody = /ensurePair\(force\)\s*\{([\s\S]*?)\n  \}/.exec(appSrc)
-  assert.ok(epBody, '★ app.js 里抽不出 ensurePair 函数体')
-  const ep = epBody[1]
-
-  assert.ok(!/catch\s*\([^)]*\)\s*\{\s*[\s\S]{0,400}?return null\s*\}\s*$/.test(ep.trim()),
-    '★ ensurePair 的 catch 直接 return null —— 断网时已配对用户会看到配对引导页。\n' +
-    '    「取不到」和「没有」必须区分：优先返回内存里的 g.pair，其次读本地快照。')
-  assert.ok(/if\s*\(g\.pair\)\s*return g\.pair/.test(ep),
-    '★ 找不到"有内存旧值就先用旧值"的兜底')
-  assert.ok(/getStorageSync\(\s*'pairCache'\s*\)/.test(ep),
-    '★ 找不到本地快照兜底（冷启动就断网时会退回 null）')
-  assert.ok(/if\s*\(r\.ok\)\s*wx\.setStorageSync\(\s*'pairCache'/.test(ep),
-    '★ 快照没有在 r.ok 时同步 —— 若写成 `if (g.pair)`，' +
-    '服务端明确回答"没配对"时旧快照会残留，断网时又复活成"还配着对"')
-  ok('ensurePair 区分「取不到」与「没有」，且快照不会让旧状态复活')
-
   console.log(`\n${'='.repeat(56)}\n  字段契约：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 失败：', e.message, '\n')

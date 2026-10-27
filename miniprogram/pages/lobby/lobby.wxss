@@ -1,0 +1,163 @@
+/**
+ * 酒桌大厅样式
+ *
+ * 视觉基调：**夜色场域**（深褐 + 金），和"记录类"页面的米白暖调区分开。
+ * 但不换纯黑底 —— 换黑底会像另一个 App，这里只是把米白压暗、把金色提亮。
+ */
+
+/* ============================================================
+   ① 夜色头部
+   ============================================================ */
+.lb-hero {
+  position: relative; overflow: hidden;
+  border-radius: var(--r-3); margin-bottom: var(--gap-3);
+  background: linear-gradient(135deg, #3E2E28 0%, #2E211C 60%, #241A16 100%);
+  box-shadow: var(--sh-3);
+  animation: heroDrop .62s cubic-bezier(.22, 1.4, .5, 1) backwards;
+}
+@keyframes heroDrop {
+  0%   { opacity: 0; transform: translateY(-34rpx) scale(.96) }
+  62%  { opacity: 1; transform: translateY(5rpx) scale(1.01) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
+}
+
+/* 金色光晕缓慢呼吸 —— 让静态页面有生命感 */
+.lb-glow {
+  position: absolute; width: 400rpx; height: 400rpx; border-radius: 50%;
+  right: -130rpx; top: -160rpx;
+  background: radial-gradient(circle, rgba(232,179,60,.28) 0%, rgba(232,179,60,0) 70%);
+  animation: glowBreathe 4s ease-in-out infinite;
+}
+@keyframes glowBreathe {
+  0%, 100% { opacity: .7; transform: scale(1) }
+  50%      { opacity: 1;  transform: scale(1.12) }
+}
+
+.lb-in { position: relative; padding: 34rpx 34rpx 30rpx }
+.lb-top { display: flex; align-items: center; justify-content: space-between }
+.lb-lbl {
+  font-size: 22rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .16s backwards;
+}
+.lb-t {
+  font-size: 52rpx; font-weight: 700; color: #F6E7C3;
+  margin-top: 6rpx; letter-spacing: 3rpx; line-height: 1.15;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .24s backwards;
+}
+.lb-s {
+  font-size: 22rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.6;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .32s backwards;
+}
+@keyframes lineRise {
+  0%   { opacity: 0; transform: translateY(14rpx) }
+  100% { opacity: 1; transform: translateY(0) }
+}
+
+/* 开关组：声音 + 震动。必须显式给尺寸 —— <image> 不给宽高会被撑满容器 */
+.lb-switches { display: flex; align-items: center; gap: 8rpx }
+.lb-sw {
+  width: 36rpx; height: 36rpx; flex: none;
+  padding: 6rpx; box-sizing: border-box; opacity: .75;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .4s backwards;
+}
+.lb-sw.off { opacity: .34 }
+.lb-sw:active { opacity: 1; transform: scale(1.15) }
+
+/* ============================================================
+   ② 快捷进房
+   ============================================================ */
+.joinbar {
+  display: flex; align-items: center; gap: 14rpx;
+  padding: 12rpx 12rpx 12rpx 24rpx; margin-bottom: var(--gap-2);
+  background: var(--card); border-radius: var(--r-2);
+  box-shadow: var(--sh-2);
+  border: 2rpx solid var(--line);
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .22s backwards;
+}
+.join-in {
+  flex: 1; min-width: 0; height: 68rpx;
+  font-size: 30rpx; color: var(--ink); letter-spacing: 4rpx;
+}
+.ph { color: var(--ink3); letter-spacing: 1rpx }
+.join-btn {
+  flex: none; height: 68rpx; padding: 0 38rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 18rpx; font-size: 28rpx; font-weight: 600;
+  /* 未输满 3 位时是"待命"态：浅底浅字，而不是灰掉看不见 */
+  background: #F0EAE1; color: var(--ink3);
+  transition: background .16s, color .16s;
+}
+.join-btn.on { background: var(--brand); color: #fff }
+.join-btn.on:active { opacity: .82 }
+
+.errbox {
+  margin: 0 0 var(--gap-2); padding: 18rpx 22rpx;
+  background: #FBEDE7; border-left: 6rpx solid var(--brand2);
+  border-radius: 14rpx; font-size: 23rpx; color: var(--brand2); line-height: 1.6;
+}
+
+/* ============================================================
+   ④ 玩法卡
+   ============================================================ */
+.glist { display: flex; flex-direction: column }
+
+.gcard {
+  display: flex; align-items: center; gap: 22rpx;
+  padding: 26rpx 24rpx 26rpx 22rpx; margin-bottom: var(--gap-2);
+  background: var(--card); border-radius: var(--r-2);
+  box-shadow: var(--sh-1);
+  /* 左侧色条 = 这个玩法的身份色，一眼区分 */
+  border-left: 8rpx solid var(--accent, var(--brand));
+  transition: transform .12s, box-shadow .12s;
+  /* 入场：逐张滑入（靠 animation-delay 错开） */
+  animation: cardSlideIn .5s cubic-bezier(.22, 1, .36, 1) backwards;
+}
+.gcard:nth-of-type(1) { animation-delay: .32s }
+.gcard:nth-of-type(2) { animation-delay: .40s }
+.gcard:nth-of-type(3) { animation-delay: .48s }
+.gcard:nth-of-type(4) { animation-delay: .56s }
+.gcard:nth-of-type(5) { animation-delay: .64s }
+.gcard:nth-of-type(6) { animation-delay: .72s }
+@keyframes cardSlideIn {
+  0%   { opacity: 0; transform: translateX(40rpx) }
+  100% { opacity: 1; transform: translateX(0) }
+}
+.gcard:active { transform: scale(.985); box-shadow: var(--sh-2) }
+
+.gc-icon {
+  width: 92rpx; height: 92rpx; border-radius: 24rpx; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #F6E9D8, #EBD8C0);
+  border: 2rpx solid rgba(200, 160, 120, .28);
+  box-shadow: inset 0 2rpx 4rpx rgba(255,255,255,.7);
+  padding: 18rpx; box-sizing: border-box;
+  transition: transform .2s;
+}
+.gcard:active .gc-icon { transform: scale(1.1) rotate(-6deg) }
+/* <image> 必须显式给宽高：font-size 对它完全无效，不给就会撑满容器 */
+.gc-img { width: 100%; height: 100% }
+
+.gc-main { flex: 1; min-width: 0 }
+.gc-top { display: flex; align-items: center; gap: 14rpx }
+.gc-name { font-size: 32rpx; font-weight: 700; color: var(--ink) }
+.gc-people {
+  font-size: 19rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  background: var(--brandsoft); color: var(--brand2); flex: none;
+}
+.gc-desc { font-size: 23rpx; color: var(--ink2); margin-top: 8rpx; line-height: 1.55 }
+.gc-arrow {
+  width: 32rpx; height: 32rpx; flex: none; opacity: .38;
+  transition: transform .2s;
+}
+.gcard:active .gc-arrow { transform: translateX(6rpx) }
+
+/* ============================================================
+   ⑤ 底部提示
+   ============================================================ */
+.lb-tip {
+  margin-top: 8rpx; padding: 24rpx 26rpx;
+  background: #F5F1EB; border-radius: var(--r-2);
+  font-size: 21rpx; color: var(--ink3); line-height: 1.9;
+  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .78s backwards;
+}
+.tip-line { display: block }
