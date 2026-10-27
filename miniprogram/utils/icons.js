@@ -87,6 +87,8 @@ const PATHS = {
   hand: '<path d="M8.8 13.2V6.4a1.5 1.5 0 0 1 3 0V12"/><path d="M11.8 12V4.9a1.5 1.5 0 0 1 3 0V11.8"/><path d="M14.8 11.8V7.2a1.5 1.5 0 0 1 3 0v8a6.2 6.2 0 0 1-6.2 6.2h-.8a4.6 4.6 0 0 1-3.3-1.4l-3.7-3.8a1.6 1.6 0 0 1 2.3-2.3l2.2 2.1"/>',
   /* 面具 = 「谁是卧底」这类秘密身份玩法 */
   mask: '<path d="M4 8.6c2.6-1 5.3-1.5 8-1.5s5.4.5 8 1.5c0 4.6-3.6 8.2-8 8.2S4 13.2 4 8.6z"/><circle cx="8.7" cy="10.9" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.3" cy="10.9" r="1.15" fill="currentColor" stroke="none"/>',
+  /* 两张叠起来的扑克 = 牌类玩法 */
+  cards: '<rect x="3.6" y="6.4" width="11" height="15.2" rx="2" transform="rotate(-9 9.1 14)"/><rect x="9.4" y="4.2" width="11" height="15.2" rx="2"/><path d="M14.9 9.4l1.1 2.4 2.4 1.1-2.4 1.1-1.1 2.4-1.1-2.4-2.4-1.1 2.4-1.1z" fill="currentColor" stroke="none"/>',
   /* 投票箱 */
   vote: '<path d="M5 11.5h14v8H5z"/><path d="M8.6 11.5V6.6a3.4 3.4 0 0 1 6.8 0v4.9"/><path d="M9.9 8.9l2.1 2.1 2.1-2.1"/>',
 

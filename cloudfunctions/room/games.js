@@ -121,6 +121,22 @@ const GAMES = [
     ]
   },
   {
+    id: 'poker',
+    name: '梦幻金花',
+    icon: 'cards',
+    color: '#B8863C',
+    cat: 'dice',
+    min: 2, max: 6,
+    need: ['cards', 'turn'],
+    desc: '三张牌，不看也能比，敢不敢',
+    how: [
+      '每人三张牌，只有自己看得到',
+      '轮到你：看牌 / 弃牌 / 挑一个人比牌',
+      '比牌时双方亮牌，输的人出局、喝一杯',
+      '最后剩下的人赢'
+    ]
+  },
+  {
     id: 'wheel',
     name: '命运转盘',
     icon: 'wheel',

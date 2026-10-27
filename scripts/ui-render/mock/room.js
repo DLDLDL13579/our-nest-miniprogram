@@ -2,6 +2,7 @@
 const iconSet = require('../../../miniprogram/utils/iconSet.js')
 const { GAMES } = require('../../../miniprogram/utils/games.js')
 const decks = require('../../../miniprogram/utils/decks.js')
+const poker = require('../../../miniprogram/utils/poker.js')
 
 const IC = iconSet.build(['speakerOn', 'speakerOff', 'bulb'], '#E8B33C')
 const GAME_SWITCH = GAMES.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g.desc }))
@@ -20,7 +21,26 @@ const UW_PLAYERS = [
   { openid: 'd', name: '老王', seat: 4, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
 ]
 
+/* 三手固定的牌（用来稳定截图）：♠A ♥K ♠Q = 顺金；♦9 ♣9 ♥3 = 对 9；♠7 ♥5 ♣2 = 单张 */
+const PK_MINE = [{ r: 14, s: 0 }, { r: 13, s: 1 }, { r: 12, s: 0 }]
+const PK_OTHER = [{ r: 9, s: 3 }, { r: 9, s: 2 }, { r: 3, s: 1 }]
+const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
+
 /** 补上 derive 会算的派生字段，让模板里的 room.xxx 都有值 */
+function pkRoom(r) {
+  return Object.assign({
+    id: 'r3', code: '627', count: 3,
+    me: { seat: 1, name: '邓林', dice: [] },
+    players: [
+      { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+      { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+      { openid: 'c', name: '阿杰', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
+    ],
+    round: 1, bid: null, lastResult: null, spin: null, deck: 'friends',
+    myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [], uw: null
+  }, r)
+}
+
 function uwRoom(r) {
   return Object.assign({
     me: { seat: 1, name: '邓林', dice: [] },
@@ -62,6 +82,78 @@ module.exports = {
     }),
     /* 进房输错了号 */
     error: () => ({ joinCode: '999', err: '房间不存在或已解散' }),
+
+    /* ---------- 梦幻金花 ---------- */
+    pkMine: () => ({
+      stage: 'playing',
+      showCards: true,
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: true,
+        turn: 1, myTurn: true, turnName: '邓林',
+        poker: {
+          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
+          myTypeName: poker.rank(PK_MINE).name,
+          folded: false, aliveCount: 3, log: [],
+          last: null, winner: null
+        }
+      })
+    }),
+    pkHidden: () => ({
+      stage: 'playing',
+      showCards: false,
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: true,
+        turn: 2, myTurn: false, turnName: '倩萍',
+        poker: {
+          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
+          myTypeName: poker.rank(PK_MINE).name,
+          folded: false, aliveCount: 3, log: [],
+          last: null, winner: null
+        }
+      })
+    }),
+    pkLast: () => ({
+      stage: 'playing',
+      showCards: false,
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: true,
+        turn: 1, myTurn: true, turnName: '邓林',
+        poker: {
+          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
+          myTypeName: poker.rank(PK_MINE).name,
+          folded: false, aliveCount: 2, log: [],
+          last: {
+            kind: 'vs', by: '倩萍', target: '阿杰',
+            byCards: PK_OTHER, targetCards: PK_THIRD,
+            byText: PK_OTHER.map(c => poker.cardText(c)),
+            targetText: PK_THIRD.map(c => poker.cardText(c)),
+            winner: '倩萍', tie: false,
+            byType: poker.rank(PK_OTHER).name, targetType: poker.rank(PK_THIRD).name
+          },
+          winner: null
+        }
+      })
+    }),
+    pkOver: () => ({
+      stage: 'over',
+      showCards: false,
+      result: {
+        kind: 'poker', winner: '邓林',
+        hands: [
+          { name: '邓林', cards: PK_MINE, out: false },
+          { name: '倩萍', cards: PK_OTHER, out: true },
+          { name: '阿杰', cards: PK_THIRD, out: true }
+        ]
+      },
+      room: pkRoom({
+        game: 'poker', phase: 'over', host: true, turn: 0, myTurn: false, turnName: '',
+        poker: {
+          step: 'result', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
+          myTypeName: poker.rank(PK_MINE).name,
+          folded: false, aliveCount: 1, log: [], last: null, winner: '邓林'
+        }
+      })
+    }),
 
     /* ---------- 谁是卧底 ---------- */
     uwTalk: () => ({

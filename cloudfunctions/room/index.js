@@ -56,6 +56,12 @@ const { GAMES, gameOf } = require('./games.js')
  * 而且"每个人的词"本来就不该由任何一个客户端决定。
  */
 const { pickPair } = require('./words.js')
+/*
+ * 扑克牌与牌型比较 —— 前端源文件的拷贝。
+ * 牌型比较放共享模块的原因：它必须**前后端逐字节一致**，
+ * 否则会出现"我这边显示我大、服务端判我输"（同一份代码算的才对得上）。
+ */
+const poker = require('./poker.js')
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -272,6 +278,23 @@ function shape(room, openid) {
      *     "我好像说错了"。告诉他身份，这个游戏最有趣的部分就没了。
      *   · 只有出局者 / 游戏结束时才公开词与身份
      */
+    /* 梦幻金花：只给自己的牌，别人的牌在服务端就丢掉（与骰子同一套做法） */
+    poker: (function () {
+      if (room.game !== 'poker') return null
+      const meP = (room.players || []).filter(p => p.openid === openid)[0] || null
+      if (!meP) return null
+      const alive = (room.players || []).filter(p => p.inRound !== false && !p.out)
+      return {
+        step: room.pkStep || 'play',
+        myCards: meP.cards || [],
+        folded: !!meP.out,
+        aliveCount: alive.length,
+        /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
+        log: (room.pkLog || []).slice(-6),
+        last: room.pkLast || null,
+        winner: room.pkWinner || null
+      }
+    })(),
     uw: (function () {
       if (room.game !== 'undercover') return null
       const meRaw = (room.players || []).filter(p => p.openid === openid)[0] || null
@@ -666,7 +689,7 @@ exports.main = async (event) => {
         const inRound = p.inRound !== false
         if (!inRound) return Object.assign({}, p, { dice: [], ready: false })
         /* 转盘 / 比大小 / 谁是卧底 都不需要开局发骰子 */
-        if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover') {
+        if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover' || room.game === 'poker') {
           return Object.assign({}, p, { dice: [], ready: false })
         }
         const n = room.game === 'liar' ? 5 : 2
@@ -709,9 +732,30 @@ exports.main = async (event) => {
         })
       }
 
+      /*
+       * ============ 梦幻金花：发牌 ============
+       *
+       * 每人三张，**牌存在自己身上**（p.cards），shape 只按 openid 放行。
+       * 洗牌用 Fisher-Yates（不是 sort(random)，那个分布不均）。
+       */
+      if (room.game === 'poker') {
+        const deck = poker.shuffle(poker.newDeck())
+        let k = 0
+        players.forEach(p => {
+          if (p.inRound === false) { p.cards = []; p.out = true; return }
+          p.cards = [deck[k++], deck[k++], deck[k++]]
+          p.out = false
+        })
+      }
+
       await rooms.doc(room._id).update({
         data: {
           players: players,
+          /* 梦幻金花的进度：开局直接进"比牌"，turn 指向第一个在局的人 */
+          pkStep: room.game === 'poker' ? 'play' : null,
+          pkLog: [],
+          pkLast: null,
+          pkWinner: null,
           /* 谁是卧底的进度：开局直接进"说描述"（看词是按住看，不需要单独一步） */
           uwStep: room.game === 'undercover' ? 'talk' : null,
           uwOut: [],
@@ -1132,11 +1176,13 @@ exports.main = async (event) => {
          *   观战者会永远观战下去（而且不报错）。
          */
         players: (room.players || []).map(p =>
-          Object.assign({}, p, { dice: [], ready: false, inRound: true, score: 0, out: false })),
+          Object.assign({}, p, { dice: [], ready: false, inRound: true, score: 0, out: false, cards: [], uwWord: '', uwRole: '' })),
         phase: 'lobby',
         bid: null, lastResult: null, turn: 0,
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
         spin: null,
+        /* 金花 / 卧底的局内状态一起清 */
+        pkStep: null, pkLog: [], pkLast: null, pkWinner: null,
 
         updatedAt: ts
       }
@@ -1282,6 +1328,111 @@ exports.main = async (event) => {
           .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
       } else {
         patch.uwStep = 'result'
+      }
+
+      await rooms.doc(room._id).update({ data: patch })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 梦幻金花：弃牌 / 比牌 =================
+     *
+     * 只有三个动作，因为用户明确要求「不能太烧脑，简单一些」：
+     *   看牌（按住看，纯前端）· 弃牌 · 比牌
+     *
+     * 刻意**不做**的东西（真实炸金花里都有，但会把一局拖很长）：
+     *   · 下注/跟注/加注 —— 酒桌上用"喝几杯"代替筹码永远是笔糊涂账
+     *   · 闷牌的价格优势 —— 规则一复杂就没人记得住
+     *   · 看牌才能比牌的限制 —— 想看就看，不看也能比，全凭胆子
+     *
+     * 保留的是这个玩法的核心：**三张牌只有自己知道，比牌那一刻才亮**。
+     */
+    if (action === 'pkAct') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'poker') return { ok: false, msg: '这个房间玩的不是梦幻金花' }
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+
+      const players = (room.players || []).map(p => Object.assign({}, p))
+      const mine = players.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '你不在这个房间里' }
+      if (mine.inRound === false) return { ok: false, msg: '你是中途进来的，下一局才能参与' }
+      if (mine.out) return { ok: false, msg: '你已经出局了，这局在旁边看' }
+      if ((room.turn || 0) !== mine.seat) {
+        const cur = players.filter(p => p.seat === room.turn)[0]
+        return { ok: false, msg: '还没轮到你，等 ' + ((cur && cur.name) || '下一位') }
+      }
+
+      const act = String(event.act || '')
+      const alive = players.filter(p => p.inRound !== false && !p.out)
+      const log = (room.pkLog || []).slice()
+      let last = null
+
+      if (act === 'fold') {
+        mine.out = true
+        last = { kind: 'fold', name: mine.name }
+      } else if (act === 'vs') {
+        const target = String(event.target || '')
+        if (!target) return { ok: false, msg: '先选一个人' }
+        if (target === OPENID) return { ok: false, msg: '不能跟自己比' }
+        const tP = players.filter(p => p.openid === target)[0]
+        if (!tP) return { ok: false, msg: '没有这个人' }
+        if (tP.out) return { ok: false, msg: '他已经出局了' }
+        if (tP.inRound === false) return { ok: false, msg: '他是中途进来的，不参与这局' }
+        if (!Array.isArray(mine.cards) || mine.cards.length !== 3) return { ok: false, msg: '你的牌不见了，让房主重开一局' }
+        if (!Array.isArray(tP.cards) || tP.cards.length !== 3) return { ok: false, msg: '对方的牌不见了，让房主重开一局' }
+
+        /*
+         * 比牌 —— **双方亮牌**。
+         * 真实炸金花不亮牌，但线上不亮的话，输的人会觉得"凭什么"；
+         * 亮出来所有人都能自己看，公信力比神秘感重要。
+         *
+         * 并列（同点数不同花色）真实存在。这里的处理：**挑战者赢**。
+         * 理由：先手本就有风险，给它一点补偿；而且规则必须明确，
+         * 不能"随机判"—— 那会让双方都不服。
+         */
+        const cmp = poker.compare(mine.cards, tP.cards)
+        const challengerWins = cmp >= 0
+        if (challengerWins) tP.out = true
+        else mine.out = true
+        last = {
+          kind: 'vs',
+          by: mine.name, target: tP.name,
+          byCards: mine.cards, targetCards: tP.cards,
+          winner: challengerWins ? mine.name : tP.name,
+          tie: cmp === 0,
+          byType: poker.rank(mine.cards).name,
+          targetType: poker.rank(tP.cards).name
+        }
+        log.push(last)
+      } else {
+        return { ok: false, msg: '不认识的动作' }
+      }
+
+      const stillAlive = players.filter(p => p.inRound !== false && !p.out)
+      const patch = {
+        players: players, pkLog: log, pkLast: last, updatedAt: ts
+      }
+
+      if (stillAlive.length <= 1) {
+        patch.phase = 'over'
+        patch.pkStep = 'result'
+        patch.pkWinner = stillAlive.length ? stillAlive[0].name : ''
+        patch.lastResult = {
+          kind: 'poker',
+          winner: patch.pkWinner,
+          hands: players.filter(p => p.inRound !== false)
+            .map(p => ({ name: p.name, cards: p.cards || [], out: !!p.out }))
+        }
+      } else {
+        /* 回合交给下一个还在局里的人（按座位往后找一圈） */
+        let next = null
+        for (let k = 1; k <= players.length; k++) {
+          const seat = ((mine.seat - 1 + k) % players.length) + 1
+          const cand = stillAlive.filter(p => p.seat === seat)[0]
+          if (cand) { next = cand; break }
+        }
+        patch.turn = next ? next.seat : (room.turn || 0)
       }
 
       await rooms.doc(room._id).update({ data: patch })

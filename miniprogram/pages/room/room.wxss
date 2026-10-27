@@ -1168,3 +1168,130 @@
   background: rgba(154,211,168,.18); color: #9AD3A8;
 }
 .uw-rrow.spy .uw-rr { background: rgba(255,180,160,.2); color: #FFB4A0 }
+
+/* ============================================================
+   梦幻金花
+   ------------------------------------------------------------
+   视觉重心是**那三张牌**：酒桌上这就是全部信息。
+   牌面按住才显示 —— 和骰盅偷看、卧底看词是同一个手势，减少记忆负担。
+   ============================================================ */
+
+/* ---------- 我的手牌 ---------- */
+.pk-hand {
+  display: flex; align-items: center; justify-content: center; gap: 16rpx;
+  flex-wrap: wrap;
+  padding: 48rpx 24rpx;
+  margin-bottom: var(--gap-2);
+  background: linear-gradient(135deg, #3A3128, #2A231C);
+  border: 2rpx solid rgba(255,255,255,.08);
+  border-radius: var(--r-3);
+  transition: background .12s;
+}
+.pk-hand.on {
+  background: linear-gradient(135deg, #4A3D2C, #352B20);
+  box-shadow: 0 0 0 6rpx rgba(232,179,60,.14);
+}
+
+/* 牌面：白底、圆角、点数大。3 张并排一眼看清 */
+.pk-card {
+  width: 132rpx; height: 186rpx; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: #FFFDF9; border-radius: 16rpx;
+  font-size: 52rpx; font-weight: 700; color: #2C2822;
+  box-shadow: 0 6rpx 16rpx rgba(0,0,0,.28);
+}
+.pk-red { color: #C4432F }
+/* 牌背：深色斜纹，暗示"有牌但看不到" */
+.pk-back {
+  width: 132rpx; height: 186rpx; flex: none;
+  border-radius: 16rpx;
+  background: repeating-linear-gradient(45deg, #6B5A44 0 8rpx, #5C4C39 8rpx 16rpx);
+  box-shadow: inset 0 0 0 4rpx rgba(255,255,255,.12);
+}
+.pk-hint {
+  width: 100%; text-align: center;
+  font-size: 22rpx; color: rgba(255,255,255,.5); margin-top: 22rpx;
+}
+/* 牌型名：看一眼就知道自己是什么牌 */
+.pk-type {
+  width: 100%; text-align: center;
+  font-size: 26rpx; font-weight: 700; color: #F6E7C3; margin-top: 18rpx;
+  letter-spacing: 2rpx;
+}
+
+/* ---------- 比牌记录 ---------- */
+.pk-last {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-2);
+  padding: 22rpx 20rpx;
+  margin-bottom: var(--gap-2);
+}
+.pkl-row { display: flex; align-items: center; justify-content: center; gap: 12rpx; flex-wrap: wrap }
+.pkl-who { font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,.7) }
+.pkl-who.win { color: #9AD3A8 }
+.pkl-who.lose { color: rgba(255,255,255,.38); text-decoration: line-through }
+.pkl-cards { display: flex; gap: 6rpx }
+.pkl-c {
+  font-size: 24rpx; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 8rpx; padding: 4rpx 10rpx;
+}
+.pkl-vs { font-size: 20rpx; color: rgba(255,255,255,.35) }
+.pkl-note { text-align: center; font-size: 21rpx; color: rgba(255,255,255,.5); margin-top: 12rpx }
+
+/* ---------- 轮到我 ---------- */
+.pk-now {
+  text-align: center; font-size: 32rpx; font-weight: 700; color: #F6E7C3;
+}
+.pk-note {
+  text-align: center; font-size: 21rpx; color: rgba(255,255,255,.45);
+  margin-top: 10rpx; margin-bottom: var(--gap-2); line-height: 1.7;
+}
+.pk-list { display: flex; flex-direction: column; gap: 14rpx }
+.pk-p {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28rpx 26rpx;
+  background: rgba(255,255,255,.07);
+  border: 2rpx solid rgba(255,255,255,.09);
+  border-radius: 20rpx;
+}
+.pk-p:active { background: rgba(255,255,255,.14) }
+.pk-p.cur { border-color: rgba(232,179,60,.5) }
+.pk-pn { font-size: 30rpx; font-weight: 600; color: #fff }
+.pk-pgo { font-size: 24rpx; color: #E8B33C; font-weight: 600 }
+
+/* 弃牌：做成"低一档"的按钮 —— 它不是主操作，但必须好点 */
+.pk-fold {
+  margin-top: 24rpx; padding: 26rpx 0;
+  text-align: center; border-radius: 20rpx;
+  font-size: 26rpx; color: rgba(255,255,255,.55);
+  border: 2rpx solid rgba(255,255,255,.12);
+}
+.pk-fold:active { background: rgba(255,255,255,.06) }
+
+.pk-wait {
+  text-align: center; padding: 44rpx 0;
+  font-size: 24rpx; color: rgba(255,255,255,.45); line-height: 1.8;
+}
+
+/* ---------- 结算摊牌 ---------- */
+.pk-reveal {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-3);
+  padding: 34rpx 26rpx;
+  margin-bottom: var(--gap-2);
+}
+.pkr-t {
+  text-align: center; font-size: 42rpx; font-weight: 700;
+  color: #F6E7C3; letter-spacing: 2rpx; margin-bottom: 22rpx;
+}
+.pkr-row {
+  display: flex; align-items: center; gap: 10rpx;
+  padding: 16rpx 0; border-bottom: 2rpx solid rgba(255,255,255,.07);
+}
+.pkr-row:last-child { border-bottom: none }
+.pkr-row.out { opacity: .5 }
+.pkr-n { flex: 1; font-size: 25rpx; color: rgba(255,255,255,.85) }
+.pkr-c {
+  font-size: 22rpx; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 6rpx; padding: 3rpx 8rpx;
+}

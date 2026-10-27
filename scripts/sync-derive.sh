@@ -45,3 +45,4 @@ echo "── 共享模块 ──"
 sync_one miniprogram/utils/games.js "games.js" cloudfunctions/*/games.js
 sync_one miniprogram/utils/decks.js "decks.js" cloudfunctions/*/decks.js
 sync_one miniprogram/utils/words.js "words.js" cloudfunctions/*/words.js
+sync_one miniprogram/utils/poker.js "poker.js" cloudfunctions/*/poker.js

@@ -31,6 +31,8 @@ const feedback = require('../../utils/feedback.js')
  * 前端抽的话可以"重摇到满意"，且没法保证全场同时看到同一张。
  */
 const decks = require('../../utils/decks.js')
+/* 牌面文字由共享模块生成 —— 和服务端算牌型的必须是同一份代码 */
+const poker = require('../../utils/poker.js')
 
 const POLL_MS = 1500
 
@@ -196,6 +198,9 @@ Page({
 
     /* ---------- 谁是卧底 ---------- */
     showWord: false,     // 按住才显示自己的词（防旁边人瞟到）
+
+    /* ---------- 梦幻金花 ---------- */
+    showCards: false,    // 按住才显示自己的三张牌
 
     /* ---------- 转盘 ---------- */
     wheelSectors: [],
@@ -389,6 +394,13 @@ Page({
     if (ua.step !== ub.step || ua.voteCount !== ub.voteCount || ua.myVote !== ub.myVote) return true
     if (JSON.stringify(ua.lastOut) !== JSON.stringify(ub.lastOut)) return true
     if (JSON.stringify(ua.reveal) !== JSON.stringify(ub.reveal)) return true
+
+    /* 梦幻金花：回合、出局状态、比牌结果都要参与比较，
+       否则轮到我了界面不刷新（和"轮次提示不参与比较"是同一个坑） */
+    const pka = prev.poker || {}, pkb = room.poker || {}
+    if (pka.step !== pkb.step || pka.aliveCount !== pkb.aliveCount) return true
+    if (JSON.stringify(pka.last) !== JSON.stringify(pkb.last)) return true
+    if (JSON.stringify(pka.winner) !== JSON.stringify(pkb.winner)) return true
 
     /* 转盘这一转 */
     const sa = prev.spin, sb = room.spin
@@ -779,6 +791,9 @@ Page({
           1.5 秒轮询会把正在按住看词的人打断。 */
     const nextStep = (raw.uw && raw.uw.step) || ''
     if (prevStep !== nextStep) this._uwResetWord()
+    /* 回合交给别人时也要收起牌，否则屏幕上一直摊着你的三张 */
+    const prevTurn = (this.data.room && this.data.room.turn) || 0
+    if (prevTurn !== raw.turn && this.data.showCards) this.setData({ showCards: false })
   },
 
   decorate(room) {
@@ -850,6 +865,53 @@ Page({
     const r = await call('room', { action: 'uwVote', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' }); return null })
     this.data._uwBusy = false
+    if (r && r.ok) this.applyRoom(r.room)
+  },
+
+  /* ================= 梦幻金花 ================= */
+
+  /* 按住才显示三张牌 —— 理由同卧底看词：同桌的人就坐在旁边 */
+  pkShow() {
+    feedback.vibrate('light')
+    this.setData({ showCards: true })
+  },
+  pkHide() {
+    if (this.data.showCards) this.setData({ showCards: false })
+  },
+
+  /* 弃牌：认输，喝一杯 */
+  async pkFold() {
+    if (!this.data.room || this.data._pkBusy) return
+    const ok = await new Promise((res) => {
+      wx.showModal({
+        title: '弃牌？',
+        content: '弃牌就算输，这杯要喝。',
+        confirmText: '弃牌',
+        cancelText: '再想想',
+        success: (r) => res(!!r.confirm)
+      })
+    })
+    if (!ok) return
+    this.data._pkBusy = true
+    sfx.play('tapSoft')
+    const r = await call('room', { action: 'pkAct', act: 'fold', id: this.data.room.id }, { silent: true })
+      .catch((e) => { wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+    this.data._pkBusy = false
+    if (r && r.ok) this.applyRoom(r.room)
+  },
+
+  /* 比牌：点一个人跟他比。
+     ★ 目标跟着 data-oid 走，不依赖派生列表 —— 视图层旧一拍时按下标会点错人。 */
+  async pkVs(e) {
+    if (!this.data.room || this.data._pkBusy) return
+    const target = String(e.currentTarget.dataset.oid || '')
+    if (!target) return
+    this.data._pkBusy = true
+    sfx.play('diceSettle')
+    feedback.vibrate('medium')
+    const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
+      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+    this.data._pkBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
 

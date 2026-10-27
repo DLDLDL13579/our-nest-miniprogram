@@ -369,6 +369,79 @@
       </block>
     </block>
 
+    <!-- ============ 梦幻金花 ============
+         极简设计（用户要求"不能太烧脑"）：只有三个动作 —— 看牌 · 弃牌 · 比牌。
+         没有下注、没有加注、没有闷牌价格优势。
+         牌面按住才显示，理由同卧底看词：同桌的人就坐在旁边。 -->
+    <block wx:elif="{{room.game === 'poker'}}">
+      <!-- 我的手牌：按住显示 -->
+      <view class="pk-hand {{showCards ? 'on' : ''}}"
+            bindtouchstart="pkShow" bindtouchend="pkHide" bindtouchcancel="pkHide">
+        <block wx:if="{{showCards}}">
+          <view wx:for="{{room.poker.myCardsText}}" wx:key="*this" class="pk-card">
+            <text class="{{item.indexOf('♥') >= 0 || item.indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{item}}</text>
+          </view>
+          <view class="pk-type">{{room.poker.myTypeName}}</view>
+        </block>
+        <block wx:else>
+          <view wx:for="{{room.poker.myCards}}" wx:key="index" class="pk-back"></view>
+          <view class="pk-hint">按住看你的三张牌</view>
+        </block>
+      </view>
+
+      <!-- 比牌记录：双方亮过的牌（这是全场最好看的一刻） -->
+      <view wx:if="{{room.poker.last}}" class="pk-last">
+        <block wx:if="{{room.poker.last.kind === 'vs'}}">
+          <view class="pkl-row">
+            <view class="pkl-who {{room.poker.last.winner === room.poker.last.by ? 'win' : 'lose'}}">{{room.poker.last.by}}</view>
+            <view class="pkl-cards">
+              <text wx:for="{{room.poker.last.byText}}" wx:key="*this" class="pkl-c">{{item}}</text>
+            </view>
+            <text class="pkl-vs">对</text>
+            <view class="pkl-cards">
+              <text wx:for="{{room.poker.last.targetText}}" wx:key="*this" class="pkl-c">{{item}}</text>
+            </view>
+            <view class="pkl-who {{room.poker.last.winner === room.poker.last.target ? 'win' : 'lose'}}">{{room.poker.last.target}}</view>
+          </view>
+          <view class="pkl-note">{{room.poker.last.noteText}}</view>
+        </block>
+        <block wx:else>
+          <view class="pkl-note">{{room.poker.last.noteText}}</view>
+        </block>
+      </view>
+
+      <!-- 轮到我：弃牌 或 挑一个人比 -->
+      <block wx:if="{{room.myTurn && !room.poker.folded}}">
+        <view class="pk-now">轮到你了</view>
+        <view class="pk-note">挑一个人比牌 —— 输了就出局，两个都得亮牌</view>
+        <view class="pk-list">
+          <!--
+            ★ wx:for 与 wx:if 不能写在同一个标签上。
+            真机上 wx:for 优先、能跑，但官方明确不推荐（先展开再判断，白建节点），
+            而且我的离线渲染器处理不了 —— 界面就失去了可验证性。
+            用 block 包一层，两边都对。
+          -->
+          <block wx:for="{{room.players}}" wx:key="openid">
+            <view wx:if="{{!item.out && !item.isMe && item.inRound !== false}}"
+                  class="pk-p {{item.seat === room.turn ? 'cur' : ''}}"
+                  data-oid="{{item.openid}}" bindtap="pkVs">
+              <text class="pk-pn">{{item.name}}</text>
+              <text class="pk-pgo">比 ▸</text>
+            </view>
+          </block>
+        </view>
+        <view class="pk-fold" bindtap="pkFold">算了，我弃牌</view>
+      </block>
+
+      <block wx:elif="{{room.poker.folded}}">
+        <view class="pk-wait">你已弃牌 · 在旁边看这局</view>
+      </block>
+
+      <block wx:else>
+        <view class="pk-wait">等 {{room.turnName}} 决定</view>
+      </block>
+    </block>
+
     <!-- 命运转盘（联机） -->
     <!--
       ★★ 这里原来写的是 `<block wx:else>` —— 立刻改掉的真实原因：
@@ -490,6 +563,17 @@
           <text class="uw-rr">{{item.role === 'spy' ? '卧底' : '好人'}}</text>
         </view>
       </view>
+    </view>
+
+    <!-- 梦幻金花：全员摊牌 -->
+    <view wx:if="{{room.game === 'poker' && room.lastResult && room.lastResult.hands}}" class="pk-reveal">
+      <view class="pkr-t">{{room.lastResult.winText}}</view>
+      <block wx:for="{{room.lastResult.hands}}" wx:key="name">
+        <view class="pkr-row {{item.out ? 'out' : ''}}">
+          <text class="pkr-n">{{item.name}}</text>
+          <text wx:for="{{item.cardsText}}" wx:key="*this" class="pkr-c {{item.indexOf('♥') >= 0 || item.indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{item}}</text>
+        </view>
+      </block>
     </view>
 
     <view wx:if="{{room.game === 'liar' && result}}" class="center-box">

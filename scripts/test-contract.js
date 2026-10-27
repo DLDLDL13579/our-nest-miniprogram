@@ -665,7 +665,18 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   })(path.join(ROOT, 'miniprogram', 'pages'))
 
   /* ① 模板里不该再有 emoji（★ 只扫 text 节点与属性值，跳过注释） */
-  const emojiRe = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2190}-\u{21FF}]/u
+  /*
+   * ★ 精确白名单：扑克花色 ♠♥♣♦（U+2660 2665 2663 2666）。
+   *
+   * 它们落在 emoji 区间里，但**不是 emoji**：Unicode 把它们归为
+   * "Miscellaneous Symbols" 的文字符号，跨平台渲染是单色字形，
+   * 不会出现 iOS 彩色 / Android 黑白那种不一致。
+   * 而且牌面上必须显示花色 —— 画成 SVG 图标既没必要，也会让牌面看起来更假。
+   *
+   * ⚠️ 只挖掉这四个字符，**不放宽整个区间**：
+   *    改成"2600-27BF 全放行"这条断言就等于废了（记过的教训）。
+   */
+  const emojiRe = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{265F}\u{2661}\u{2662}\u{2664}\u{2667}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{2190}-\u{21FF}]/u
   const emojiHits = []
   wxmlFiles.forEach(f => {
     /* 先剥掉注释 —— 注释里写「这里用 📅」不该报错 */
