@@ -50,6 +50,12 @@ const decks = require('./decks.js')
  *   会出现"大厅看得到、屋里建不出来"或者"能建但不能切"——而且不报错。
  */
 const { GAMES, gameOf } = require('./games.js')
+/*
+ * 谁是卧底的词库 —— 同样是前端源文件的拷贝（sync-derive.sh 自动同步）。
+ * 抽词必须在**服务端**：前端抽的话，房主能反复重抽到好词，
+ * 而且"每个人的词"本来就不该由任何一个客户端决定。
+ */
+const { pickPair } = require('./words.js')
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -253,8 +259,45 @@ function shape(room, openid) {
     streaks: room.streaks || {},
     /* 转盘：当前这一转的结果（所有人靠它同步看到同一个扇区） */
     spin: room.spin || null,
-    /* 题卡场合（转盘用）—— 全场要看到同一个，所以放在房间状态里 */
+    /* 题卡场合（转盘用）—— 全场要看到同一个，所以放在房间状态里。
+       谁是卧底复用这个字段存"词库"。 */
     deck: room.deck || 'friends',
+    /*
+     * 谁是卧底：★★ 这一块是整个玩法的**命门**。
+     *
+     * 规则的本质是"只有卧底看到不同的词"，所以：
+     *   · 每个人的词**只发给他自己**（别人的 word 在服务端就丢掉）
+     *   · **谁都不返回身份** —— 连自己的身份也不返回。
+     *     真实玩法里卧底并不知道自己是卧底，他要从别人的描述里察觉
+     *     "我好像说错了"。告诉他身份，这个游戏最有趣的部分就没了。
+     *   · 只有出局者 / 游戏结束时才公开词与身份
+     */
+    uw: (function () {
+      if (room.game !== 'undercover') return null
+      const meRaw = (room.players || []).filter(p => p.openid === openid)[0] || null
+      if (!meRaw) return null
+      const over = room.phase === 'over'
+      const outRow = (room.uwOut || []).filter(x => x.openid === openid)[0] || null
+      const revealOwn = over || !!outRow
+      const alive = (room.players || []).filter(p => p.inRound !== false && !p.out)
+      return {
+        step: room.uwStep || 'talk',
+        /* 我的词：进行中就要给（要说描述），出局/结束也不怕给 */
+        word: meRaw.uwWord || '',
+        /* ★ 我的身份：**只在我出局之后或游戏结束才告诉我**。
+           真实玩法里卧底并不知道自己是卧底 —— 他要从别人的描述里
+           察觉"我好像说错了"。提前告诉他，最有趣的那层就没了。 */
+        myRole: revealOwn ? (meRaw.uwRole || '') : '',
+        myVote: ((room.votes || []).filter(v => v.by === openid)[0] || {}).target || '',
+        voteCount: (room.votes || []).length,
+        voterCount: alive.length,
+        aliveCount: alive.length,
+        /* 上一轮出局的人：公开他的词和身份 —— 这是全场最想看的一刻 */
+        lastOut: room.uwLastOut || null,
+        /* 结束时把所有人摊开 */
+        reveal: over ? (room.uwReveal || null) : null
+      }
+    })(),
     /*
      * 这个房间自己加的题：只返回**条数**和**我自己加的**。
      * 不把所有人的自定义题全量下发 —— 那是"别人的输入"，前端用不到全量，
@@ -622,7 +665,8 @@ exports.main = async (event) => {
          */
         const inRound = p.inRound !== false
         if (!inRound) return Object.assign({}, p, { dice: [], ready: false })
-        if (room.game === 'wheel' || room.game === 'dice') {
+        /* 转盘 / 比大小 / 谁是卧底 都不需要开局发骰子 */
+        if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover') {
           return Object.assign({}, p, { dice: [], ready: false })
         }
         const n = room.game === 'liar' ? 5 : 2
@@ -635,9 +679,45 @@ exports.main = async (event) => {
          为什么必须有：骰子在这一刻已经生成好了，但玩家还在看别人的名字、
          还没把手机放好。直接开局 = 有人错过第一轮叫骰。
          3 秒倒计时给所有人一个"要开始了"的缓冲。 */
+      /*
+       * ============ 谁是卧底：发词 + 抽卧底 ============
+       *
+       * 两个关键决定：
+       *   ① **每个人的词存在自己身上**（p.uwWord），shape 只按 openid 放行 —— 
+       *      别人的词在服务端就丢掉了，抓包也拿不到。
+       *   ② **不告诉任何人自己的身份**。卧底不知道自己是卧底，
+       *      要自己从别人的描述里察觉。这是玩法的核心体验，也是它和
+       *      「我拿到空白卡」那种变体的区别。
+       *
+       * 卧底人数：7 人以上放 2 个（1 个在人多时会被淹没，游戏没张力）。
+       */
+      if (room.game === 'undercover') {
+        const pair = pickPair(room.deck)
+        const inRound = players.filter(p => p.inRound !== false)
+        const spyN = inRound.length >= 7 ? 2 : 1
+        /* 洗牌取前 N 个当卧底 —— 用 Fisher-Yates，不用 sort(random)（后者分布不均） */
+        const order = inRound.slice()
+        for (let i = order.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          const t = order[i]; order[i] = order[j]; order[j] = t
+        }
+        const spies = order.slice(0, Math.min(spyN, Math.max(1, order.length - 1))).map(p => p.openid)
+        players.forEach(p => {
+          if (p.inRound === false) { p.uwWord = ''; p.uwRole = ''; return }
+          p.uwRole = spies.indexOf(p.openid) >= 0 ? 'spy' : 'civilian'
+          p.uwWord = p.uwRole === 'spy' ? pair.spy : pair.civilian
+        })
+      }
+
       await rooms.doc(room._id).update({
         data: {
           players: players,
+          /* 谁是卧底的进度：开局直接进"说描述"（看词是按住看，不需要单独一步） */
+          uwStep: room.game === 'undercover' ? 'talk' : null,
+          uwOut: [],
+          uwLastOut: null,
+          uwReveal: null,
+          votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
           round: (room.round || 0) + 1,
@@ -1080,6 +1160,133 @@ exports.main = async (event) => {
       await rooms.doc(room._id).update({ data: data })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID), game: data.game || room.game }
+    }
+
+    /* ================= 谁是卧底：进入投票 / 下一轮 / 投票 =================
+     *
+     * 状态机只有三步，每一步都对应酒桌上一个真实动作：
+     *   talk   大家轮流口头描述（**手机上不需要任何操作**，按住屏幕顶部看词就行）
+     *   vote   投票（每人一次点击，这是每轮唯一的手机操作）
+     *   result 公布谁出局、他是什么词（全场最想看的一刻）
+     *
+     * ★ 为什么"开始投票"要房主点：
+     *   服务端无法知道桌上聊完了没有。这个点击是**把线下节奏翻译给服务端**，
+     *   属于"必须有一个"，不是多余的交互。
+     */
+    if (action === 'uwSay' || action === 'uwVote') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'undercover') return { ok: false, msg: '这个房间玩的不是「谁是卧底」' }
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+
+      const players = (room.players || []).map(p => Object.assign({}, p))
+      const mine = players.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '你不在这个房间里' }
+      if (mine.inRound === false) return { ok: false, msg: '你是中途进来的，下一局才能参与' }
+
+      const step = room.uwStep || 'talk'
+
+      /* ---------- 房主：开始投票 / 继续下一轮 ---------- */
+      if (action === 'uwSay') {
+        if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能切换环节' }
+        if (step === 'talk') {
+          await rooms.doc(room._id).update({
+            data: { uwStep: 'vote', votes: [], updatedAt: ts }
+          })
+          const rr = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rr.data, OPENID) }
+        }
+        if (step === 'result') {
+          await rooms.doc(room._id).update({
+            data: { uwStep: 'talk', votes: [], uwLastOut: null, updatedAt: ts }
+          })
+          const rr = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rr.data, OPENID) }
+        }
+        return { ok: false, msg: '现在是投票环节，等大家投完' }
+      }
+
+      /* ---------- 投票 ---------- */
+      if (step !== 'vote') return { ok: false, msg: '现在还不是投票的时候' }
+      if (mine.out) return { ok: false, msg: '你已经出局了，这局在旁边看' }
+
+      const target = String(event.target || '')
+      if (!target) return { ok: false, msg: '先选一个人' }
+      if (target === OPENID) return { ok: false, msg: '不能投自己' }
+      const tP = players.filter(p => p.openid === target)[0]
+      if (!tP) return { ok: false, msg: '没有这个人' }
+      if (tP.out) return { ok: false, msg: '他已经出局了' }
+      if (tP.inRound === false) return { ok: false, msg: '他是中途进来的，不参与这局' }
+
+      const votes = (room.votes || []).slice()
+      if (votes.some(v => v.by === OPENID)) return { ok: false, msg: '你已经投过票了' }
+      votes.push({ by: OPENID, target: target, name: mine.name, at: ts })
+
+      const alive = players.filter(p => p.inRound !== false && !p.out)
+      /* 全员投完就自动结算 —— 不让房主再点一次"开票" */
+      const allDone = alive.every(p => votes.some(v => v.by === p.openid))
+
+      if (!allDone) {
+        await rooms.doc(room._id).update({ data: { players: players, votes: votes, updatedAt: ts } })
+        const rr = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rr.data, OPENID) }
+      }
+
+      /* ---- 结算：票最多的出局 ---- */
+      const tally = {}
+      votes.forEach(v => { tally[v.target] = (tally[v.target] || 0) + 1 })
+      let max = 0
+      Object.keys(tally).forEach(k => { if (tally[k] > max) max = tally[k] })
+      const top = Object.keys(tally).filter(k => tally[k] === max)
+      /*
+       * 平票：**随机**选一个出局，并在结果里说明"平票随机"。
+       * 为什么不做重投：重投在酒桌上会拖很久（谁都不想让步），
+       * 而且服务端要在"再投一轮"和"直接结束"之间维护更多状态，
+       * 出错面变大。随机是快的，且所有人都接受 —— 反正是个酒桌游戏。
+       */
+      const picked = top[Math.floor(Math.random() * top.length)]
+      const outP = players.filter(p => p.openid === picked)[0]
+      outP.out = true
+      outP.inRound = true
+
+      const outRow = { openid: outP.openid, name: outP.name, word: outP.uwWord, role: outP.uwRole }
+      const uwOut = (room.uwOut || []).concat([outRow])
+
+      /* ---- 胜负判定 ---- */
+      const stillAlive = players.filter(p => p.inRound !== false && !p.out)
+      const spiesLeft = stillAlive.filter(p => p.uwRole === 'spy').length
+      let winner = ''
+      if (spiesLeft === 0) winner = 'civilian'          // 卧底全出局
+      else if (spiesLeft * 2 >= stillAlive.length) winner = 'spy'   // 卧底占一半，好人也赢不了
+      else if (stillAlive.length <= 2) winner = 'spy'    // 只剩两人，卧底拖到底
+
+      const patch = {
+        players: players, votes: [], uwOut: uwOut,
+        uwLastOut: {
+          name: outRow.name, word: outRow.word, role: outRow.role,
+          tie: top.length > 1, votes: max
+        },
+        updatedAt: ts
+      }
+
+      if (winner) {
+        patch.phase = 'over'
+        patch.uwStep = 'result'
+        patch.lastResult = {
+          kind: 'undercover', winner: winner,
+          civilianWord: (players.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+          spyWord: (players.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+        }
+        patch.uwReveal = players
+          .filter(p => p.inRound !== false)
+          .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
+      } else {
+        patch.uwStep = 'result'
+      }
+
+      await rooms.doc(room._id).update({ data: patch })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
     }
 
     /* ================= 离开 ================= */

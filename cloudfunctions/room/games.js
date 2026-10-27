@@ -105,6 +105,22 @@ const GAMES = [
     ]
   },
   {
+    id: 'undercover',
+    name: '谁是卧底',
+    icon: 'mask',
+    color: '#7A5CA8',
+    cat: 'vote',
+    min: 3, max: 12,
+    need: ['role', 'vote'],
+    desc: '有一个人拿到的词和你不一样',
+    how: [
+      '每人偷偷看一个词，只有卧底看到的词不一样',
+      '轮流说一句话描述自己的词，不能直接说出来',
+      '听完所有人说完，一起投票指认卧底',
+      '票最多的出局；卧底全出局，好人赢'
+    ]
+  },
+  {
     id: 'wheel',
     name: '命运转盘',
     icon: 'wheel',

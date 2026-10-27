@@ -320,8 +320,65 @@
       </view>
     </block>
 
+    <!-- ============ 谁是卧底 ============ -->
+    <block wx:elif="{{room.game === 'undercover'}}">
+      <view class="uw-word {{showWord ? 'on' : ''}}"
+            bindtouchstart="uwShowWord" bindtouchend="uwHideWord" bindtouchcancel="uwHideWord">
+        <block wx:if="{{showWord}}">
+          <view class="uw-wlbl">你的词</view>
+          <view class="uw-wtxt">{{room.uw.word}}</view>
+        </block>
+        <block wx:else>
+          <view class="uw-wlbl">按住看你的词</view>
+          <view class="uw-wtip">松手就收起 · 别让旁边的人看见</view>
+        </block>
+      </view>
+
+      <block wx:if="{{room.uw.step === 'talk'}}">
+        <view class="uw-note">轮流说一句话描述它 —— 别说出词本身，也别说得太明显</view>
+        <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">都说完了，开始投票</view>
+        <view wx:else class="uw-wait">等房主开投票</view>
+      </block>
+
+      <block wx:elif="{{room.uw.step === 'vote'}}">
+        <view class="uw-note">谁的描述最可疑？点一个人</view>
+        <view class="uw-list">
+          <view wx:for="{{room.players}}" wx:key="openid"
+                class="uw-p {{item.out ? 'off' : ''}} {{room.uw.myVote === item.openid ? 'picked' : ''}}"
+                data-oid="{{item.openid}}" bindtap="uwVote">
+            <text class="uw-pn">{{item.name}}</text>
+            <text wx:if="{{item.isMe}}" class="uw-tag">我</text>
+            <text wx:if="{{item.out}}" class="uw-tag off">已出局</text>
+            <text wx:if="{{!item.out && item.inRound === false}}" class="uw-tag off">下局加入</text>
+          </view>
+        </view>
+        <view class="uw-wait">已投 {{room.uw.voteCount}} / {{room.uw.voterCount}}</view>
+      </block>
+
+      <block wx:elif="{{room.uw.step === 'result'}}">
+        <view wx:if="{{room.uw.lastOut}}" class="uw-out">
+          <view class="uw-ot">{{room.uw.lastOut.name}} 出局</view>
+          <view class="uw-ow">
+            他的词是「{{room.uw.lastOut.word}}」 ·
+            <text class="{{room.uw.lastOut.role === 'spy' ? 'uw-spy' : 'uw-good'}}">{{room.uw.lastOut.role === 'spy' ? '是卧底' : '不是卧底'}}</text>
+          </view>
+          <view wx:if="{{room.uw.lastOut.tie}}" class="uw-otie">平票，随机定的</view>
+        </view>
+        <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">继续下一轮</view>
+        <view wx:else class="uw-wait">等房主开下一轮</view>
+      </block>
+    </block>
+
     <!-- 命运转盘（联机） -->
-    <block wx:else>
+    <!--
+      ★★ 这里原来写的是 `<block wx:else>` —— 立刻改掉的真实原因：
+      它把"不是大话骰、不是比大小"的**所有**玩法都兜进了转盘。
+      改造前只有 3 个玩法，`else` 恰好只命中 wheel，所以看不出来；
+      2026-10-27 一加「谁是卧底」，卧底局直接渲染成了转盘。
+      **"最后一个 else 兜底"是危险模式：新增成员时会静默落进兜底分支。**
+      现在显式列出，并且有断言保证注册表里每个玩法都有分支（test-room-ui ⑨）。
+    -->
+    <block wx:elif="{{room.game === 'wheel'}}">
       <view class="wheelscene">
         <view class="ws-pointer"></view>
         <view class="ws-disc"
@@ -419,6 +476,22 @@
 
   <!-- ============ 结算 ============ -->
   <block wx:elif="{{stage === 'over'}}">
+    <!-- 谁是卧底：全员摊牌 -->
+    <view wx:if="{{room.game === 'undercover' && room.uw.reveal}}" class="uw-reveal">
+      <view class="uw-rt">{{result.winner === 'spy' ? '卧底赢了' : '好人赢了'}}</view>
+      <view class="uw-rw">
+        <text>好人词「{{result.civilianWord}}」</text>
+        <text class="uw-rvs">卧底词「{{result.spyWord}}」</text>
+      </view>
+      <view class="uw-rlist">
+        <view wx:for="{{room.uw.reveal}}" wx:key="name" class="uw-rrow {{item.role === 'spy' ? 'spy' : ''}}">
+          <text class="uw-rn">{{item.name}}</text>
+          <text class="uw-rwd">{{item.word}}</text>
+          <text class="uw-rr">{{item.role === 'spy' ? '卧底' : '好人'}}</text>
+        </view>
+      </view>
+    </view>
+
     <view wx:if="{{room.game === 'liar' && result}}" class="center-box">
       <view class="over-tag {{result.bidderWins ? 'ok' : 'no'}}">
         {{result.bidderWins ? '叫骰成立' : '吹牛被抓'}}

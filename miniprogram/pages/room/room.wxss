@@ -1045,3 +1045,126 @@
 }
 /* 图标必须有显式尺寸 —— 否则 <image> 会撑满容器（项目踩过两次） */
 .gspill-icon { width: 40rpx; height: 40rpx }
+
+/* ============================================================
+   谁是卧底
+   ------------------------------------------------------------
+   这个玩法里手机只承担一件事：**藏住你的词**。
+   所以视觉重心全在"你的词"那一块，其余元素一律压低存在感。
+   ============================================================ */
+
+/* ---------- 你的词（按住才显示）---------- */
+.uw-word {
+  background: linear-gradient(135deg, #3A2E42, #2A2130);
+  border: 2rpx solid rgba(255,255,255,.1);
+  border-radius: var(--r-3);
+  padding: 64rpx 30rpx;
+  margin-bottom: var(--gap-3);
+  text-align: center;
+  /* 按住时的手感：轻微内陷，像按下某个实体开关 */
+  transition: transform .12s, background .12s;
+}
+.uw-word.on {
+  background: linear-gradient(135deg, #7A5CA8, #5A3F86);
+  transform: scale(.99);
+  box-shadow: 0 0 0 6rpx rgba(122, 92, 168, .22);
+}
+.uw-wlbl { font-size: 23rpx; color: rgba(255,255,255,.55); letter-spacing: 3rpx }
+.uw-wtxt {
+  font-size: 88rpx; font-weight: 700; color: #fff;
+  margin-top: 18rpx; line-height: 1.2; letter-spacing: 4rpx;
+}
+.uw-wtip {
+  font-size: 20rpx; color: rgba(255,255,255,.35); margin-top: 16rpx;
+}
+
+/* ---------- 说明 ---------- */
+.uw-note {
+  font-size: 23rpx; color: rgba(255,255,255,.5);
+  text-align: center; line-height: 1.7; margin-bottom: var(--gap-2);
+}
+
+/* ---------- 主按钮（房主）---------- */
+.uw-btn {
+  height: 100rpx; margin-top: 22rpx;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 24rpx; font-size: 31rpx; font-weight: 700;
+  background: linear-gradient(135deg, #E88060, #C24E2F);
+  color: #fff;
+  box-shadow: 0 8rpx 20rpx rgba(196, 87, 58, .3);
+}
+.uw-btn:active { transform: scale(.98); opacity: .9 }
+
+.uw-wait {
+  margin-top: 22rpx; text-align: center;
+  font-size: 22rpx; color: rgba(255,255,255,.4); line-height: 1.7;
+}
+
+/* ---------- 投票列表 ---------- */
+.uw-list { display: flex; flex-direction: column; gap: 14rpx }
+.uw-p {
+  display: flex; align-items: center; gap: 14rpx;
+  padding: 28rpx 26rpx;
+  background: rgba(255,255,255,.06);
+  border: 2rpx solid rgba(255,255,255,.08);
+  border-radius: 20rpx;
+  transition: background .14s, border-color .14s;
+}
+.uw-p:active { background: rgba(255,255,255,.12) }
+.uw-pn { flex: 1; font-size: 30rpx; font-weight: 600; color: #fff }
+.uw-tag {
+  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  background: rgba(232,179,60,.25); color: #F6E7C3;
+}
+.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255,255,255,.4) }
+/* 已经投过的那一票：整行变紫，一眼看出"我投的是他" */
+.uw-p.picked {
+  background: rgba(122, 92, 168, .38);
+  border-color: rgba(160, 130, 210, .7);
+}
+.uw-p.off { opacity: .38 }
+
+/* ---------- 出局揭晓 ---------- */
+.uw-out {
+  background: rgba(255,255,255,.07);
+  border-radius: var(--r-2);
+  padding: 34rpx 28rpx;
+  text-align: center;
+  margin-bottom: var(--gap-2);
+}
+.uw-ot { font-size: 38rpx; font-weight: 700; color: #fff }
+.uw-ow { font-size: 24rpx; color: rgba(255,255,255,.62); margin-top: 14rpx; line-height: 1.6 }
+.uw-spy { color: #FFB4A0; font-weight: 700 }
+.uw-good { color: #9AD3A8; font-weight: 700 }
+.uw-otie { font-size: 20rpx; color: rgba(255,255,255,.38); margin-top: 10rpx }
+
+/* ---------- 全场摊牌 ---------- */
+.uw-reveal {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-3);
+  padding: 34rpx 28rpx;
+  margin-bottom: var(--gap-2);
+}
+.uw-rt {
+  font-size: 44rpx; font-weight: 700; color: #F6E7C3;
+  text-align: center; letter-spacing: 2rpx;
+}
+.uw-rw {
+  display: flex; flex-direction: column; align-items: center; gap: 6rpx;
+  margin-top: 14rpx; font-size: 23rpx; color: rgba(255,255,255,.6);
+}
+.uw-rvs { color: #FFB4A0 }
+.uw-rlist { margin-top: 24rpx }
+.uw-rrow {
+  display: flex; align-items: center; gap: 16rpx;
+  padding: 18rpx 0; border-bottom: 2rpx solid rgba(255,255,255,.07);
+}
+.uw-rrow:last-child { border-bottom: none }
+.uw-rn { flex: 1; font-size: 26rpx; color: rgba(255,255,255,.85) }
+.uw-rwd { font-size: 26rpx; font-weight: 600; color: #fff }
+.uw-rr {
+  width: 92rpx; text-align: center; font-size: 19rpx;
+  padding: 4rpx 0; border-radius: 999rpx;
+  background: rgba(154,211,168,.18); color: #9AD3A8;
+}
+.uw-rrow.spy .uw-rr { background: rgba(255,180,160,.2); color: #FFB4A0 }

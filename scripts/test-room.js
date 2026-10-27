@@ -1219,6 +1219,117 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
+  /* ============ ⑫ 谁是卧底：秘密词 + 匿名身份 + 投票结算 ============ */
+  /*
+   * 这个玩法是「加新游戏」的第一个真正落地件，判据按两条铁律筛过：
+   *   ① 需要**秘密信息**（只有卧底看到不同的词）→ 手机不可替代
+   *   ② 需要**大量词库** → 现实里现场出题几轮就干了
+   *
+   * 断言重点（都是"改坏了也不报错、只是悄悄泄漏"的类型）：
+   *   · ★ 别人的词**绝不能**出现在我的响应里
+   *   · ★ 谁都不该知道自己的身份（myRole 恒空）—— 这是玩法的核心体验
+   *   · 只有房主能切环节
+   *   · 不能投自己 / 不能投出局的 / 不能重复投
+   *   · 全员投完**自动结算**，票最多出局
+   */
+  const U1 = 'oid_u1', U2 = 'oid_u2', U3 = 'oid_u3', U4 = 'oid_u4'
+  OPENID = U1
+  const ur = await room.main({ action: 'create', name: 'U1', game: 'undercover', deck: 'food' })
+  assert.ok(ur.ok, '⑫ 建卧底房应成功：' + (ur.msg || ''))
+  const urId = ur.room.id
+  for (const [oid, nm] of [[U2, 'U2'], [U3, 'U3'], [U4, 'U4']]) {
+    OPENID = oid
+    const j = await room.main({ action: 'join', code: ur.room.code, name: nm })
+    assert.ok(j.ok, '⑫ ' + nm + ' 加入应成功：' + (j.msg || ''))
+  }
+
+  OPENID = U1
+  const us = await room.main({ action: 'start', id: urId })
+  assert.ok(us.ok, '⑫ 开机应成功：' + (us.msg || ''))
+  const uRoom = () => store.rooms.filter(x => x._id === urId)[0]
+  uRoom().countdownEnd = Date.now() - 100
+
+  /* 每个人分别取一次自己的词 */
+  const wordsBy = {}
+  for (const oid of [U1, U2, U3, U4]) {
+    OPENID = oid
+    const st = await room.main({ action: 'status', id: urId })
+    assert.ok(st.ok && st.room.uw, '⑫ 应该有 uw 状态')
+    wordsBy[oid] = st.room.uw.word
+    assert.ok(wordsBy[oid], '⑫ 每个人都必须拿到自己的词')
+    /* ★ 命门 1：别人的词不能出现在我的响应里 */
+    const leaked = (st.room.players || []).some(p => p.uwWord || p.word)
+    assert.ok(!leaked, '⑫ ★★ 别人的词绝不能下发到前端（抓到就等于明牌）')
+    /* ★ 命门 2：谁都不该知道自己的身份 */
+    assert.strictEqual(st.room.uw.myRole, '', '⑫ ★★ 进行中不能告诉玩家自己的身份（卧底不知道自己是卧底）')
+    assert.strictEqual(st.room.uw.step, 'talk', '⑫ 开局应直接进入"说描述"')
+  }
+  const uniqWords = Array.from(new Set(Object.values(wordsBy)))
+  assert.strictEqual(uniqWords.length, 2, '⑫ 4 人局应只有两种词（1 个卧底），实际: ' + JSON.stringify(wordsBy))
+  const spyWord = uniqWords.filter(w => Object.values(wordsBy).filter(x => x === w).length === 1)[0]
+  assert.ok(spyWord, '⑫ 应该恰有一个人拿到不同的词')
+  ok('★ 谁是卧底：4 人开局，1 人拿到不同的词，别人的词与身份都拿不到')
+
+  /* 只有房主能切换环节 */
+  OPENID = U2
+  const uwNotHost = await room.main({ action: 'uwSay', id: urId })
+  assert.ok(!uwNotHost.ok, '⑫ ★ 非房主不能开始投票')
+  ok('非房主不能切换环节')
+
+  OPENID = U1
+  const uwToVote = await room.main({ action: 'uwSay', id: urId })
+  assert.ok(uwToVote.ok, '⑫ 房主开始投票应成功：' + (uwToVote.msg || ''))
+  assert.strictEqual(uwToVote.room.uw.step, 'vote', '⑫ 应进入投票环节')
+  ok('★ 房主「开始投票」→ 全场进入投票')
+
+  /* 不能投自己 */
+  OPENID = U1
+  const uwSelf = await room.main({ action: 'uwVote', target: U1, id: urId })
+  assert.ok(!uwSelf.ok, '⑫ ★ 不能投自己')
+  ok('不能投自己')
+
+  /* 四人各投一票，全投给那个拿到不同词的人（找出卧底） */
+  const spyOid = Object.keys(wordsBy).filter(k => wordsBy[k] === spyWord)[0]
+  const civilians = [U1, U2, U3, U4].filter(k => k !== spyOid)
+  /* 平民都投卧底 → 3 票；卧底投一个平民 → 1 票 */
+  let lastRes = null
+  for (const oid of civilians) {
+    OPENID = oid
+    lastRes = await room.main({ action: 'uwVote', target: spyOid, id: urId })
+    assert.ok(lastRes.ok, '⑫ ' + oid + ' 投票应成功：' + (lastRes.msg || ''))
+  }
+  /* 重复投要被拒 */
+  OPENID = civilians[0]
+  const uwDup = await room.main({ action: 'uwVote', target: U2, id: urId })
+  assert.ok(!uwDup.ok, '⑫ ★ 不能重复投票')
+  ok('重复投票被拒（不能靠连点改结果）')
+
+  OPENID = spyOid
+  lastRes = await room.main({ action: 'uwVote', target: civilians[0], id: urId })
+  assert.ok(lastRes.ok, '⑫ 卧底最后一票应成功：' + (lastRes.msg || ''))
+  assert.strictEqual(lastRes.room.uw.step, 'result', '⑫ 全员投完应自动结算，不用房主再点')
+
+  const lastOut = lastRes.room.uw.lastOut
+  assert.ok(lastOut, '⑫ 结算必须给出出局者')
+  assert.strictEqual(lastOut.name, 'U' + spyOid.slice(-1), '⑫ 票最多的人应出局，实际: ' + JSON.stringify(lastOut))
+  assert.strictEqual(lastOut.role, 'spy', '⑫ ★ 出局后必须公开他的身份')
+  assert.strictEqual(lastOut.word, spyWord, '⑫ ★ 出局后必须公开他的词')
+  ok('★ 全员投完自动结算：票最多出局，并公开他的词与身份')
+
+  /* 卧底出局 → 好人赢，进入 over */
+  assert.strictEqual(lastRes.room.phase, 'over', '⑫ 卧底全出局应直接结束')
+  assert.strictEqual(lastRes.room.lastResult.winner, 'civilian', '⑫ 卧底全出局 → 好人赢')
+  assert.ok(Array.isArray(lastRes.room.uw.reveal) && lastRes.room.uw.reveal.length === 4,
+    '⑫ 结束时要把所有人的词摊开')
+  const uwRevealAll = lastRes.room.uw.reveal
+  ok('★ 卧底出局 → 好人赢，全场词与身份公开')
+
+  /* 出局的人在结束后应该能看到自己的身份 */
+  OPENID = spyOid
+  const uwAfter = await room.main({ action: 'status', id: urId })
+  assert.strictEqual(uwAfter.room.uw.myRole, 'spy', '⑫ 结束后应能知道自己就是卧底')
+  ok('结束后玩家能看到自己的真实身份（复盘用）')
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

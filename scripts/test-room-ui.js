@@ -402,6 +402,45 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    *   **知道边界在哪，比假装它全能更有用。**
    */
 
+  /* ============ ⑨ ★ 每个玩法都必须有 wxml 分支（不许用 wx:else 兜底）============
+   *
+   * 2026-10-27 的真实事故：
+   *   玩法分支原来写成 `<block wx:if="liar">` / `wx:elif="dice"` /
+   *   **`<block wx:else>`（转盘）**。前三个玩法时看不出问题 ——
+   *   else 恰好只命中 wheel。
+   *   一加第 4 个玩法「谁是卧底」，卧底局直接渲染成了**转盘**：
+   *   屏幕上出现了转盘、题卡、转按钮，而"你的词"挤在下面。
+   *
+   *   `wx:else` 兜底的危害是通病：**新增成员时会静默落进兜底分支**，
+   *   不报错、不警告，只是界面变成了别的东西。
+   *
+   * 判据（语义，不看代码长相）：
+   *   从注册表读全部玩法 id，断言模板里每个都有 `room.game === '<id>'` 的分支。
+   *   这样"加了玩法忘了写界面"会当场报错。
+   */
+  {
+    const { GAMES } = require(path.join(ROOT, 'miniprogram', 'utils', 'games.js'))
+    const tpl = fs.readFileSync(WXML, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    const missing = []
+    for (const g of GAMES) {
+      /*
+       * ★ 判据必须是"出现在 wx:if / wx:elif **链**上"，不能只说"出现过"。
+       *   第一版就写成了「模板里出现过就算有分支」——
+       *   而结算区恰好也有 `room.game === 'undercover' && …`，
+       *   于是把玩法分支故意改名成 undercoverXX 反向验证时**照样通过**。
+       *   这是"判据只被目标改动影响"的又一次翻车（AGENTS.md 记过同类）。
+       */
+      const re = new RegExp('wx:(if|elif)="\\{\\{room\\.game\\s*===\\s*[\'"]' + g.id + '[\'"]\\}\\}"')
+      if (!re.test(tpl)) missing.push(g.id + '（' + g.name + '）')
+    }
+    assert.deepStrictEqual(missing, [],
+      '★ 这些玩法在 room.wxml 里没有渲染分支（大厅能看到，进去却是一片空白/别的玩法）：\n    ' +
+      missing.join('\n    ') +
+      '\n    修法：加一个 `<block wx:elif="{{room.game === \'<id>\'}}">`，' +
+      '不要用 wx:else 兜底。')
+    ok(`注册表 ${GAMES.length} 个玩法都有对应的界面分支（没有 else 兜底）`)
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

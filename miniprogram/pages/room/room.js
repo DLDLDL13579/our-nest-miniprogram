@@ -194,6 +194,9 @@ Page({
     myRolled: false,     // 我这轮是否已经摇过
     liarReady: false,    // 大话骰：是否已经扣盅（扣了才能叫）
 
+    /* ---------- 谁是卧底 ---------- */
+    showWord: false,     // 按住才显示自己的词（防旁边人瞟到）
+
     /* ---------- 转盘 ---------- */
     wheelSectors: [],
     wheelGradient: '',
@@ -378,6 +381,14 @@ Page({
     const ra = prev.lastResult, rb = room.lastResult
     if (!!ra !== !!rb) return true
     if (ra && rb && JSON.stringify(ra) !== JSON.stringify(rb)) return true
+
+    /* 谁是卧底：环节、票数、出局状态都要参与比较。
+       漏了的后果和「轮次提示不参与比较」一样：界面不刷新，
+       玩家看着上一轮的内容，点了也没反应。 */
+    const ua = prev.uw || {}, ub = room.uw || {}
+    if (ua.step !== ub.step || ua.voteCount !== ub.voteCount || ua.myVote !== ub.myVote) return true
+    if (JSON.stringify(ua.lastOut) !== JSON.stringify(ub.lastOut)) return true
+    if (JSON.stringify(ua.reveal) !== JSON.stringify(ub.reveal)) return true
 
     /* 转盘这一转 */
     const sa = prev.spin, sb = room.spin
@@ -757,11 +768,17 @@ Page({
   applyRoom(raw, extra) {
     if (!raw) return
     if (this._dead) return
+    const prevStep = (this.data.room && this.data.room.uw && this.data.room.uw.step) || ''
     const patch = Object.assign({}, extra || {}, {
       room: this.decorate(raw),
       stage: stageOf(raw.phase)
     })
     this.setData(patch)
+    /* 环节变了就把词收起来：投票时屏幕上还亮着"你的词"会被旁边人看到。
+       ⚠️ 只在**环节变化**时收，不能每次刷新都收 ——
+          1.5 秒轮询会把正在按住看词的人打断。 */
+    const nextStep = (raw.uw && raw.uw.step) || ''
+    if (prevStep !== nextStep) this._uwResetWord()
   },
 
   decorate(room) {
@@ -783,6 +800,57 @@ Page({
     room.waitingNames = waiting.map(p => p.name).join('、')
 
     return room
+  },
+
+  /* ================= 谁是卧底 ================= */
+
+  /*
+   * 按住看词。
+   * ★ 为什么是"按住"而不是"点一下显示、再点一下隐藏"：
+   *   松手即藏的容错性远高于"记得再点一次"—— 后者在酒桌上
+   *   几乎必然会有一次忘记收起，而同桌的人就坐在旁边。
+   *   这和骰盅"按住偷看"是同一个设计理由。
+   */
+  uwShowWord() {
+    feedback.vibrate('light')
+    this.setData({ showWord: true })
+  },
+  uwHideWord() {
+    if (this.data.showWord) this.setData({ showWord: false })
+  },
+
+  /* 环节一变就收起词 —— 否则投票时屏幕上还亮着"你的词"，会被旁边人看到 */
+  _uwResetWord() { if (this.data.showWord) this.setData({ showWord: false }) },
+
+  /* 房主切换环节：说完了→投票 / 结算完→下一轮 */
+  async uwSay() {
+    if (!this.data.room || this.data._uwBusy) return
+    this.data._uwBusy = true
+    sfx.play('tapSoft')
+    const r = await call('room', { action: 'uwSay', id: this.data.room.id }, { silent: true })
+      .catch((e) => { wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+    this.data._uwBusy = false
+    if (r && r.ok) this.applyRoom(r.room)
+  },
+
+  /* 投票：点一个人。
+     ★ 目标跟着 data-oid 走，不依赖逻辑层的派生列表 ——
+     "视图层比逻辑层旧一拍"时按下标取会投错人，而且不报错。 */
+  async uwVote(e) {
+    if (!this.data.room || this.data._uwBusy) return
+    const target = String(e.currentTarget.dataset.oid || '')
+    if (!target) return
+    if (this.data.room.uw && this.data.room.uw.myVote) {
+      wx.showToast({ title: '这轮已经投过了', icon: 'none' })
+      return
+    }
+    this.data._uwBusy = true
+    sfx.play('diceSettle')
+    feedback.vibrate('medium')
+    const r = await call('room', { action: 'uwVote', target: target, id: this.data.room.id }, { silent: true })
+      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' }); return null })
+    this.data._uwBusy = false
+    if (r && r.ok) this.applyRoom(r.room)
   },
 
   /* ================= 自定义题 ================= */
