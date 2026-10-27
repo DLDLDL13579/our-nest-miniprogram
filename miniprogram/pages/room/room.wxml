@@ -2,7 +2,7 @@
   <view class="gbar">
     <view class="gbar-l" bindtap="goBack">
       <text class="gbar-back">‹</text>
-      <text class="gbar-t">多人游戏</text>
+      <text class="gbar-t">大厅</text>
     </view>
     <view class="gbar-r" bindtap="toggleMute">
       <image class="gbar-mute" src="{{ic[muted ? 'speakerOff' : 'speakerOn']}}" mode="aspectFit" />
@@ -22,17 +22,16 @@
       </view>
     </view>
 
-    <!-- 昵称 -->
-    <view class="card">
-      <view class="lbl">你叫什么</view>
-      <input class="tin" value="{{myName}}" maxlength="12"
-             placeholder="比如：邓林" placeholder-class="ph" bindinput="onName" />
-      <view class="hint">别人在房间里看到的就是这个名字</view>
-    </view>
+    <!--
+      昵称输入**去掉了**（2026-10-27 按"手机上不要太多交互"砍）。
+      酒桌上大家互相认识，进房要先输一次名字纯属多一步。
+      没设昵称就用「房主 / 玩家2 / 玩家3」——座位号已经把谁是谁说清楚了。
+      想用真名可以去「我的」里设，一次设好以后都带着。
+    -->
 
     <!-- 建房 -->
     <view class="card hl">
-      <view class="lbl">开一个房间</view>
+      <view class="lbl">开一个房间 · 点一下就有房间号</view>
       <view class="chiprow">
         <view wx:for="{{games}}" wx:key="k"
               class="pill {{pickGame === item.k ? '' : 'ghost'}}"
@@ -67,14 +66,15 @@
         </view>
       </block>
 
-      <view class="btn main" style="margin-top:24rpx" bindtap="doCreate">开房间，拿房间号</view>
+      <view class="btn main" style="margin-top:24rpx" bindtap="doCreate">开一个{{pickGameName}}房间</view>
     </view>
 
     <!-- 加入 -->
     <view class="card">
       <view class="lbl">进别人的房间</view>
       <input class="tin code" value="{{joinCode}}" maxlength="3" type="number"
-             placeholder="输入 3 位房间号" placeholder-class="ph" bindinput="onCode" />
+             placeholder="输入 3 位房间号" bindinput="onCode"
+             placeholder-style="font-size:28rpx;font-weight:400;letter-spacing:1rpx;color:#A39B90" />
       <view class="btn ghostb" style="margin-top:22rpx" bindtap="doJoin">进去</view>
     </view>
 

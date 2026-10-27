@@ -131,6 +131,19 @@ function makeScope(obj, parent) {
 }
 
 const warn = []
+/*
+ * placeholder-style 收集器。
+ *
+ * 小程序的 input/textarea 支持 `placeholder-style="font-size:28rpx;..."`，
+ * 这是**内联**覆盖 —— 优先级高于任何 class，也是最可靠的一种写法
+ * （placeholder-class 在部分基础库上不生效）。
+ * HTML 里只能通过 ::placeholder 伪元素表达，所以这里给每个输入框生成
+ * 一个唯一类名 + 一条规则，最后统一注入。
+ */
+let phSeq = 0
+const phRules = []
+function resetPhRules() { phRules = []; }  // eslint-disable-line no-func-assign
+function takePhCss() { return phRules.join('\n') }
 function evalExpr(expr, scope) {
   try {
     // eslint-disable-next-line no-new-func
@@ -287,7 +300,19 @@ function renderNodeSingular(node, scope, out) {
     const v = clean.value !== undefined ? String(attrVal(clean.value, scope) ?? '') : ''
     const ph = clean.placeholder ? String(attrVal(clean.placeholder, scope) ?? '') : ''
     const ml = clean.maxlength ? String(attrVal(clean.maxlength, scope)) : ''
-    out.push(`<input ${parts.join(' ')} value="${esc(v)}" placeholder="${esc(ph)}" data-maxlength="${esc(ml)}">`)
+    const phStyle = clean['placeholder-style'] ? String(attrVal(clean['placeholder-style'], scope) || '') : ''
+    let phCls = ''
+    if (phStyle) {
+      phCls = 'phx' + (++phSeq)
+      phRules.push(`.${phCls}::placeholder{${phStyle}}`)
+    }
+    /* ⚠️ class 只能拼一次：第一版是"先 push 新 class，再 filter 掉所有 class"，
+       结果把**原来那个 class 也删了** —— 输入框丢掉了 .tin/.code 的边框和字号，
+       截图里看着像"框不见了"。先拼好再一次性输出。 */
+    const allCls = (cls + (phCls ? ' ' + phCls : '')).trim()
+    const attrs = parts.filter(p => !p.startsWith('class="'))
+    if (allCls) attrs.push(`class="${esc(allCls)}"`)
+    out.push(`<input ${attrs.join(' ')} value="${esc(v)}" placeholder="${esc(ph)}" data-maxlength="${esc(ml)}">`)
     return
   }
 
@@ -311,4 +336,4 @@ function render(rootNode, data) {
   return out.join('')
 }
 
-module.exports = { parseWxml, render, interpolate, evalExpr, makeScope, warn, getWarnings: () => warn }
+module.exports = { parseWxml, render, interpolate, evalExpr, makeScope, warn, takePhCss, getWarnings: () => warn }

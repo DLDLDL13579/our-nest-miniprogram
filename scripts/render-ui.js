@@ -25,7 +25,7 @@
 const fs = require('fs')
 const path = require('path')
 const { execFileSync } = require('child_process')
-const { parseWxml, render, getWarnings } = require('./ui-render/wxml.js')
+const { parseWxml, render, getWarnings, takePhCss } = require('./ui-render/wxml.js')
 
 const ROOT = path.resolve(__dirname, '..')
 const MP = path.join(ROOT, 'miniprogram')
@@ -40,6 +40,21 @@ const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
  *   · `page {` → `body {`（小程序的 page 就是根容器）
  *   · `@import` 展开
  */
+/**
+ * rpx → px。
+ *
+ * ★ 必须对**最终整份 CSS** 再跑一次：图内样式、以及渲染期才生成的规则
+ *   （placeholder-style）都不经过 wxssToCss，第一版就漏了它们 ——
+ *   `28rpx` 在浏览器里是无效单位被忽略，placeholder 于是用了继承字号，
+ *   截图上是"字被拉大"，很容易误判成设计问题。
+ */
+function convertRpx(css) {
+  return css.replace(/(-?\d*\.?\d+)rpx/g, (_, n) => {
+    const px = Number(n) * 0.5
+    return (Math.round(px * 100) / 100) + 'px'
+  })
+}
+
 function wxssToCss(file, seen = new Set()) {
   if (seen.has(file) || !fs.existsSync(file)) return ''
   seen.add(file)
@@ -54,11 +69,8 @@ function wxssToCss(file, seen = new Set()) {
   // 注释留着无妨，但为了 HTML 干净先剥掉
   css = css.replace(/\/\*[\s\S]*?\*\//g, '')
 
-  // rpx → px
-  css = css.replace(/(-?\d*\.?\d+)rpx/g, (_, n) => {
-    const px = Number(n) * 0.5
-    return (Math.round(px * 100) / 100) + 'px'
-  })
+  // rpx → px（统一交给 convertRpx，最后会对整份 CSS 再跑一次兜底）
+  css = convertRpx(css)
 
   // 根选择器
   css = css.replace(/(^|\})\s*page\s*\{/g, '$1 body {')
@@ -183,6 +195,10 @@ function renderPage(key, { state = 'default', outDir = OUT, width = 375 } = {}) 
   let css = ''
   css += wxssToCss(path.join(MP, 'app.wxss'))
   css += '\n' + wxssToCss(wxssFile)
+  /* placeholder-style 是运行时生成的规则，必须在 render 之后取 */
+  css += '\n' + takePhCss()
+  /* 统一兜底：任何后加的规则也要完成 rpx → px */
+  css = convertRpx(css)
 
   const html = shell({
     pageTitle: conf.title,

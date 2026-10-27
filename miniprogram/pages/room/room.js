@@ -159,6 +159,7 @@ Page({
     /* 建房表单 */
     myName: '',
     pickGame: 'liar',
+    pickGameName: '大话骰',
     /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
     decks: decks.DECKS,
     pickDeck: 'friends',
@@ -244,7 +245,10 @@ Page({
     const nm = String(wx.getStorageSync('nick') || '').trim()
     if (nm) patch.myName = nm.slice(0, 12)
 
-    if (q.game && gameOf(q.game)) patch.pickGame = q.game
+    if (q.game && gameOf(q.game)) {
+      patch.pickGame = q.game
+      patch.pickGameName = gameOf(q.game).name
+    }
 
     if (q.code) {
       const c = String(q.code).replace(/\D/g, '').slice(0, 3)
@@ -848,7 +852,13 @@ Page({
   /* ================= 建房 ================= */
 
   onName(e) { this.setData({ myName: e.detail.value }) },
-  pickGame(e) { this.setData({ pickGame: e.currentTarget.dataset.k }); sfx.play('tapSoft') },
+  pickGame(e) {
+    const k = e.currentTarget.dataset.k
+    const g = gameOf(k)
+    /* 按钮标题跟着选中的玩法走 —— 用户点开哪个，标题就说哪个 */
+    this.setData({ pickGame: k, pickGameName: g ? g.name : this.data.pickGameName })
+    sfx.play('tapSoft')
+  },
 
   /* 选题卡场合（建房时；只有命运转盘会用到） */
   pickDeck(e) { this.setData({ pickDeck: e.currentTarget.dataset.k }); sfx.play('tapSoft') },

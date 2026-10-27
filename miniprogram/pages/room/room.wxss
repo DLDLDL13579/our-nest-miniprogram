@@ -97,6 +97,14 @@
   text-align: center; letter-spacing: 12rpx;
   font-size: 38rpx; font-weight: 700;
 }
+/*
+ * ★ 占位文字必须**单独给字号与字距**。
+ *   `.tin.code` 是给"输进去的号码"设计的（38rpx + 12rpx 字距，像印在卡上），
+ *   而 placeholder 会**继承**这两个值 ——
+ *   「输入 3 位房间号」被拉开成撑满整行的大字，看着像标题、不像提示。
+ *   （这是渲染截图才暴露的问题，纯读代码看不出来。）
+ */
+.phcode { font-size: 28rpx; font-weight: 400; letter-spacing: 1rpx; color: #A39B90 }
 
 .errbox {
   margin-top: 20rpx; padding: 20rpx 24rpx; border-radius: 18rpx;
