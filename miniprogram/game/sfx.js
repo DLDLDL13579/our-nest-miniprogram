@@ -17,56 +17,56 @@ const MUTE_KEY = 'gameMute'
 /* 所有音效清单。集中在这里，避免各页面写错文件名。 */
 const FILES = {
   // 骰子
-  diceSettle: 'audio/dice-settle.wav',
+  diceSettle: '/game/audio/dice-settle.wav',
   // 转盘
-  tick: 'audio/tick.wav',
-  wheelStart: 'audio/wheel-start.wav',
-  wheelStop: 'audio/wheel-stop.wav',
+  tick: '/audio/tick.wav',
+  wheelStart: '/game/audio/wheel-start.wav',
+  wheelStop: '/game/audio/wheel-stop.wav',
   // 情绪
-  drink: 'audio/drink.wav',
-  whoosh: 'audio/whoosh.wav',
+  drink: '/game/audio/drink.wav',
+  whoosh: '/game/audio/whoosh.wav',
   // UI
-  tap: 'audio/tap.wav',
-  tapSoft: 'audio/tap-soft.wav',
-  toggleOn: 'audio/toggle-on.wav',
-  toggleOff: 'audio/toggle-off.wav',
-  countdown: 'audio/countdown.wav',
-  countdownGo: 'audio/countdown-go.wav',
+  tap: '/game/audio/tap.wav',
+  tapSoft: '/game/audio/tap-soft.wav',
+  toggleOn: '/game/audio/toggle-on.wav',
+  toggleOff: '/game/audio/toggle-off.wav',
+  countdown: '/game/audio/countdown.wav',
+  countdownGo: '/game/audio/countdown-go.wav',
   /* v3 补充：分层质感与情绪音（腾讯工作室级的那一层） */
-  impactLow: 'audio/impact-low.wav',        // 低频冲击层，给"重"的动作垫底
-  shakerMetal: 'audio/shaker-metal.wav',    // 金属骰盅（大话骰用）
-  diceTumbleWood: 'audio/dice-tumble-wood.wav', // 木质骰子（摇骰子用）
-  combo1: 'audio/combo-1.wav',              // 连击（音高逐级递增）
-  combo2: 'audio/combo-2.wav',
-  combo3: 'audio/combo-3.wav',
-  combo4: 'audio/combo-4.wav',
-  failDrop: 'audio/fail-drop.wav',          // 失败下坠（比 lose 更重）
-  chargeUp: 'audio/charge-up.wav',          // 蓄力（揭晓前的紧张）
-  revealHit: 'audio/reveal-hit.wav',        // 揭晓重击（明亮+冲击+金属尾音）
-  countdownUrgent: 'audio/countdown-urgent.wav', // 最后三秒的急促
-  chipBet: 'audio/chip-bet.wav',            // 筹码声（酒桌氛围）
-  gulp: 'audio/gulp.wav',                   // 咽酒声
+  impactLow: '/game/audio/impact-low.wav',        // 低频冲击层，给"重"的动作垫底
+  shakerMetal: '/game/audio/shaker-metal.wav',    // 金属骰盅（大话骰用）
+  diceTumbleWood: '/game/audio/dice-tumble-wood.wav', // 木质骰子（摇骰子用）
+  combo1: '/game/audio/combo-1.wav',              // 连击（音高逐级递增）
+  combo2: '/game/audio/combo-2.wav',
+  combo3: '/game/audio/combo-3.wav',
+  combo4: '/game/audio/combo-4.wav',
+  failDrop: '/game/audio/fail-drop.wav',          // 失败下坠（比 lose 更重）
+  chargeUp: '/game/audio/charge-up.wav',          // 蓄力（揭晓前的紧张）
+  revealHit: '/game/audio/reveal-hit.wav',        // 揭晓重击（明亮+冲击+金属尾音）
+  countdownUrgent: '/game/audio/countdown-urgent.wav', // 最后三秒的急促
+  chipBet: '/game/audio/chip-bet.wav',            // 筹码声（酒桌氛围）
+  gulp: '/game/audio/gulp.wav',                   // 咽酒声
   /* ★ 碰杯（2026-10-28 新增）：35 个音效里原来**一个杯子都没有**，
      只有"咽酒"。而"碰一杯"才是酒桌上最有仪式感的那一下。
      素材来自 Kenney Impact Sounds（CC0），真实玻璃碰撞，起音 0ms。 */
-  glassClink: 'audio/glass-clink.wav',      // 碰杯（罚酒/干杯那一刻）
-  confetti: 'audio/confetti.wav',           // 撒花（赢了）
+  glassClink: '/game/audio/glass-clink.wav',      // 碰杯（罚酒/干杯那一刻）
+  confetti: '/game/audio/confetti.wav',           // 撒花（赢了）
   /* v4 骰盅组：一个完整的摇盅流程，按现实顺序拆成五声。
      改造前只有"摇"这一声，且是一次性播放 —— 缺的正是扣盅那一下，
      而它恰恰是"真实现场"和"电子游戏"差别最大的地方。 */
-  diceIntoCup: 'audio/dice-into-cup.wav',   // ① 骰子入盅（弹跳声，间隔递减）
-  cupShake: 'audio/cup-shake.wav',          // ② 摇盅（带 3.5Hz 手摇起伏）
-  cupSlam: 'audio/cup-slam.wav',            // ③ ★ 扣盅闷响（含盅内骰子被震跳）
-  cupLift: 'audio/cup-lift.wav',            // ④ 揭盅（口沿离桌的摩擦）
-  diceOnTable: 'audio/dice-on-table.wav',   // ⑤ 骰子在桌上滚两下才停
+  diceIntoCup: '/game/audio/dice-into-cup.wav',   // ① 骰子入盅（弹跳声，间隔递减）
+  cupShake: '/game/audio/cup-shake.wav',          // ② 摇盅（带 3.5Hz 手摇起伏）
+  cupSlam: '/game/audio/cup-slam.wav',            // ③ ★ 扣盅闷响（含盅内骰子被震跳）
+  cupLift: '/game/audio/cup-lift.wav',            // ④ 揭盅（口沿离桌的摩擦）
+  diceOnTable: '/game/audio/dice-on-table.wav',   // ⑤ 骰子在桌上滚两下才停
 
   /* ---------- 纸牌组（梦幻金花）----------
      和骰子音色完全不同：纸是薄片，几乎没有低频，
      拿骰子音效代替会"厚重得不像纸"。
      cardDeal 发牌 / cardFlip 翻牌 / cardSpread 摊牌比牌 */
-  cardDeal: 'audio/card-deal.wav',
-  cardFlip: 'audio/card-flip.wav',
-  cardSpread: 'audio/card-spread.wav'
+  cardDeal: '/game/audio/card-deal.wav',
+  cardFlip: '/game/audio/card-flip.wav',
+  cardSpread: '/game/audio/card-spread.wav'
 }
 
 /* 每个音效一个可复用实例 */

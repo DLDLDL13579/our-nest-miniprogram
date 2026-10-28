@@ -885,7 +885,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       sfxSrc.indexOf('}', sfxSrc.indexOf('const FILES = {')))
     const subFiles = subSfxSrc.slice(subSfxSrc.indexOf('const FILES = {'),
       subSfxSrc.indexOf('}', subSfxSrc.indexOf('const FILES = {')))
-    const re = /^\s*([\w]+):\s*'\/?(audio\/[\w-]+\.wav)'/gm
+    const re = /^\s*([\w]+):\s*'\/?((?:game\/)?audio\/[\w-]+\.wav)'/gm
     let m
     while ((m = re.exec(mainFiles))) soundKeys[m[1]] = m[2]
     while ((m = re.exec(subFiles))) soundKeys[m[1]] = m[2]
