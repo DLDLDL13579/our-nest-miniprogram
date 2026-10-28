@@ -724,6 +724,27 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.actbar {
+  margin-top: 15px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.actrow {
+  display: flex; gap: 9px;
+}
+.actrow .btn { flex: 1; height: 38px; font-size: 13.5px; border-radius: 9px }
+
+
+.textbtn {
+  height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(255,255,255,.38);
+  letter-spacing: 0.5px;
+}
+.textbtn:active { color: rgba(255,255,255,.6) }
+
+.actrow .textbtn { flex: 1; height: 38px; font-size: 13px }
+
+
 
 
 .gamepage.rolling {
@@ -843,16 +864,22 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 
+
 .cdbox {
   position: relative; overflow: hidden;
-  text-align: center; padding: 35px 15px 32px;
-  border-radius: var(--r-3); margin-bottom: var(--gap-3);
-  background: linear-gradient(150deg, #4A3630 0%, #2E211C 100%);
+  min-height: calc(100vh - 120px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center; padding: 20px 15px;
+  border-radius: var(--r-3);
+  background:
+    radial-gradient(ellipse 70% 46% at 50% 46%, rgba(232,179,60,.13) 0%, rgba(232,179,60,0) 72%),
+    linear-gradient(150deg, #4A3630 0%, #2E211C 100%);
   box-shadow: var(--sh-3);
 }
 .cd-glow {
-  position: absolute; width: 230px; height: 230px; border-radius: 50%;
-  left: 50%; top: 50%; margin-left: -115px; margin-top: -115px;
+  position: absolute; width: 320px; height: 320px; border-radius: 50%;
+  left: 50%; top: 50%; margin-left: -160px; margin-top: -160px;
   background: radial-gradient(circle, rgba(232,179,60,.3) 0%, rgba(232,179,60,0) 70%);
   animation: cdPulse 1s ease-in-out infinite;
 }
@@ -863,10 +890,11 @@ view, text, button, input, textarea { box-sizing: border-box }
 .cd-in { position: relative }
 .cd-lbl { font-size: 11px; color: rgba(255,255,255,.5); letter-spacing: 2px }
 .cd-num {
-  font-size: 70px; font-weight: 700; color: #F6E7C3;
-  line-height: 1.05; margin: 7px 0 5px;
-  letter-spacing: -1px;
-  text-shadow: 0 3px 15px rgba(232,179,60,.45);
+  
+  font-size: 100px; font-weight: 700; color: #F6E7C3;
+  line-height: 1.02; margin: 10px 0 7px;
+  letter-spacing: -2px;
+  text-shadow: 0 4px 22px rgba(232,179,60,.5);
 }
 
 .cd-num.pop-a { animation: cdPopA .82s cubic-bezier(.22, 1.45, .5, 1) both }
@@ -884,7 +912,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .cd-num.go {
-  font-size: 60px;
+  font-size: 75px;
   color: #FFF3D6;
   text-shadow: 0 0 20px rgba(255,210,140,.9), 0 4px 17px rgba(232,179,60,.6);
   animation: cdGoBurst .5s cubic-bezier(.16, 1.3, .4, 1) both;
@@ -1201,7 +1229,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   
   flex: 0 0 48.5%;
   box-sizing: border-box;
-  padding: 12px 10px;
+  
+  padding: 8.5px 10px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 10px;
@@ -1441,10 +1470,17 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
 .pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+
 .pkr-c {
-  font-size: 11px; font-weight: 700; color: #2C2822;
-  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 42px;
+  flex: none;
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  letter-spacing: -0.5px;
 }
+.pkr-c.pk-red { color: #C4432F }
 
 
 @keyframes slamIn {
@@ -1628,6 +1664,56 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-radius: 9px;
   animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
 }
+
+
+.uw-cmp {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px dashed rgba(160, 130, 210, .45);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: rgba(200, 180, 235, .95);
+}
+
+
+.pk-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(232, 179, 60, .85);
+  letter-spacing: 0.5px;
+  margin: -5px 0 var(--gap-2);
+}
+
+
+.pk-pcups {
+  font-size: 9.5px;
+  color: rgba(150, 170, 190, .8);
+  margin-right: 4px;
+}
+
+
+.revealbox .die-img {
+  opacity: .62;
+  transition: opacity .18s ease-out;
+}
+.revealbox .die-img.hit {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(232, 179, 60, .9), 0 2px 7px rgba(232, 179, 60, .35);
+  border-radius: 5px;
+  transform: scale(1.08);
+  transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
+}
+
+
+.rv-row.win {
+  background: rgba(232, 179, 60, .12);
+  border-radius: 7px;
+  padding-left: 8px;
+  padding-right: 6px;
+  box-shadow: inset 2px 0 0 rgba(232, 179, 60, .85);
+}
+.rv-row.win .rv-name { color: #F6E7C3; font-weight: 700 }
+.rv-row.win .rv-total { color: #FFD98A }
 
 </style>
 </head><body>
