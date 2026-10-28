@@ -111,3 +111,7 @@
 
 /* 错误记录那一行：可点，给一点提示色 */
 .errline { color: #E8A08C }
+
+/* 诊断信息那一行 */
+.diagline { color: rgba(255,255,255,.52) }
+.diagline:active { opacity: .6 }

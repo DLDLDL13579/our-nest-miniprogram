@@ -72,6 +72,12 @@
       <view wx:if="{{errCount > 0}}" class="ab-line errline" bindtap="copyErrLog">
         最近有 {{errCount}} 条错误记录 · 点这里复制
       </view>
+      <!--
+        诊断信息（2026-10-28）：用户说"卡"的时候，机型/基础库/屏幕这几个数字
+        决定了我该往哪查（是老机型掉帧、还是基础库不支持某个 API）。
+        没有它，我只能问一堆问题。
+      -->
+      <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息</view>
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
       <view class="ab-ver">v{{version}}</view>
     </view>

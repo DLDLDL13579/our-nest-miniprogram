@@ -104,6 +104,36 @@ Page({
    * 复制错误记录（2026-10-28）。
    * 给的是**可粘进聊天窗口的纯文本**，不是 JSON —— 用户在手机上不会看 JSON。
    */
+  /**
+   * 复制诊断信息（2026-10-28）。
+   *
+   * 用户说"卡"的时候，机型 / 基础库 / 屏幕这三样决定了我该往哪查：
+   *   · 老机型掉帧 → 砍 drop-shadow 这类贵的效果
+   *   · 基础库版本低 → 某个 API 可能不支持（如 vibrateShort 的 type）
+   *   · 屏幕比例怪 → 布局可能错位
+   * 没有这些数字，我只能一个个问，而用户往往会说"就是普通手机"。
+   */
+  copyDiag() {
+    sfx.play('tick')
+    var info = {}
+    try { info = wx.getSystemInfoSync() } catch (e) {}
+    var cfg = require('../../config.js')
+    var lines = [
+      '酒桌 诊断信息',
+      '版本: ' + (cfg.version || '?'),
+      '机型: ' + (info.model || '?'),
+      '系统: ' + (info.system || '?'),
+      '微信: ' + (info.version || '?'),
+      '基础库: ' + (info.SDKVersion || '?'),
+      '屏幕: ' + (info.windowWidth || '?') + 'x' + (info.windowHeight || '?') + ' @' + (info.pixelRatio || '?') + 'x',
+      '网络: ' + ((info.networkType || '?').toLowerCase())
+    ]
+    wx.setClipboardData({
+      data: lines.join('\n'),
+      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) }
+    })
+  },
+
   copyErrLog() {
     /* me 页是主包页面，只能用主包的 tick 试听音（音效资源在分包） */
     sfx.play('tick')
