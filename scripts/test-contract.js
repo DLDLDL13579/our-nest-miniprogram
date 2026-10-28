@@ -1539,6 +1539,88 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
     ok(`动画曲线收敛到 ${bezKinds.size} 种，一次性动画无裸 ease`)
 
+  /* ============ ④f wxml 表达式只能用"微信支持的那一小撮语法" ============ */
+  console.log('\n=== ④f wxml 里不许出现函数调用 / 可选链 / 模板字符串 ===')
+  /*
+   * ★★ 2026-10-28，用真机付出代价换来的一条。
+   *
+   *   牌面红黑本来在模板里这么写：
+   *       class="pkr-c {{item.indexOf('♥') >= 0 ? 'pk-red' : ''}}"
+   *   而**微信 wxml 的表达式不支持函数调用**。后果不是"这一处渲染不对"，
+   *   而是**整个 wxml 编译失败**：
+   *       Bad attr `class` with message: unexpected token `.`
+   *   —— 上传/预览直接过不去，用户扫到的码是旧的，而开发者工具里
+   *   本地渲染一切正常（本项目自己的渲染器是宽松的，会把它当 JS 求值）。
+   *
+   *   也就是说：**这条错误在本地、在断言、在截图里都看不见**，
+   *   只有真的点"预览"时才炸。所以必须专门锁一条。
+   *
+   *   wxml 的表达式只支持：属性访问、下标、字面量、算术、比较、逻辑、
+   *   三元、以及少数全局（如 Math 的个别方法都不行）。函数调用一律要挪到
+   *   JS 里算好（decorate / 云函数），模板只负责取值。
+   */
+  {
+    const wxmlBad = []
+    const walkExpr = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { walkExpr(fp); continue }
+        if (!f.name.endsWith('.wxml')) continue
+        const raw = fs.readFileSync(fp, 'utf8')
+        const t = raw.replace(/<!--[\s\S]*?-->/g, '')
+        let mm
+        const re = /\{\{([\s\S]*?)\}\}/g
+        while ((mm = re.exec(t))) {
+          const e = mm[1]
+          const line = t.slice(0, mm.index).split('\n').length
+          if (/[A-Za-z_$][\w$]*\s*\(/.test(e)) {
+            wxmlBad.push(path.relative(ROOT, fp) + ':' + line + ' 函数调用 → ' + e.trim().slice(0, 70))
+          } else if (e.indexOf('?.') >= 0) {
+            wxmlBad.push(path.relative(ROOT, fp) + ':' + line + ' 可选链 → ' + e.trim().slice(0, 70))
+          } else if (e.indexOf('`') >= 0) {
+            wxmlBad.push(path.relative(ROOT, fp) + ':' + line + ' 模板字符串 → ' + e.trim().slice(0, 70))
+          }
+        }
+      }
+    }
+    walkExpr(path.join(ROOT, 'miniprogram', 'pages'))
+    assert.deepStrictEqual(wxmlBad, [],
+      'wxml 表达式里出现了微信不支持的语法（**会让整个文件编译失败、上传直接过不去**）：\n    ' +
+      wxmlBad.join('\n    ') +
+      '\n    修法：挪到 JS 里算好（decorate / 云函数），模板只取值。')
+    ok('wxml 表达式里没有函数调用 / 可选链 / 模板字符串')
+  }
+
+  /* ============ ④g wx:key 必须是字面量（不能 {{ }}） ============ */
+  /*
+   * `wx:key="{{this}}"` 是另一个"只在上传时报错"的坑（社区大量踩过）：
+   * 开发者工具本地能跑，预览时报 `Bad attr wx:key ... unexpected token`。
+   * 另外 wx:key 取字符串本身还有个隐患 —— 列表里出现重复值时，
+   * 微信会用重复 key 复用节点，导致渲染错乱（本项目记过"房间号含重复字符"的事故）。
+   */
+  {
+    const badKey = []
+    const walkKey = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { walkKey(fp); continue }
+        if (!f.name.endsWith('.wxml')) continue
+        const t = fs.readFileSync(fp, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+        let km
+        const kre = /wx:key="([^"]*)"/g
+        while ((km = kre.exec(t))) {
+          if (/\{\{/.test(km[1])) {
+            badKey.push(path.relative(ROOT, fp) + ' → wx:key="' + km[1] + '"')
+          }
+        }
+      }
+    }
+    walkKey(path.join(ROOT, 'miniprogram', 'pages'))
+    assert.deepStrictEqual(badKey, [],
+      'wx:key 用了 {{ }}（预览时会编译报错）：\n    ' + badKey.join('\n    '))
+    ok('wx:key 全部是字面量（不是 {{ }}）')
+  }
+
   /* ============ ④d 每个可点的东西都要有按压反馈 ============ */
   console.log('\n=== ④d 可点击元素必须有 :active 按压反馈 ===')
   /*
