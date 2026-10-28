@@ -259,7 +259,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   position: absolute; top: 2.5px; left: 2.5px;
   width: 19px; height: 19px; border-radius: 50%;
   background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18);
-  transition: transform .2s cubic-bezier(.22, 1, .36, 1);
+  transition: transform .2s cubic-bezier(0, 0, .2, 1);
 }
 .sw.on .swdot { transform: translateX(18px) }
 
@@ -290,6 +290,10 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-top: 9px; font-size: 10px; color: var(--ink3);
   line-height: 1.6;
 }
+
+
+.rline { transition: background .12s }
+.rline:active { background: rgba(0,0,0,.045) }
 
 </style>
 </head><body>

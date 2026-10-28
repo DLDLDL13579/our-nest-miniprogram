@@ -1538,6 +1538,64 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(bareEase, [],
       '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
     ok(`动画曲线收敛到 ${bezKinds.size} 种，一次性动画无裸 ease`)
+
+  /* ============ ④d 每个可点的东西都要有按压反馈 ============ */
+  console.log('\n=== ④d 可点击元素必须有 :active 按压反馈 ===')
+  /*
+   * ★ 2026-10-28。原来全仓 37 处 bindtap，只有 14 条 :active ——
+   *   缺的那些里有选玩法、选题卡、换玩法、题类型这些**高频点按**的东西。
+   *   按下没任何变化，手感直接掉到网页级：用户会怀疑"是不是没点中"，
+   *   于是再点一次，就有了重复提交。
+   *
+   * 判据：
+   *   ① 每个绑定 bindtap 的元素，它的 class 里至少要有一个在 wxss 里出现过 `.<class>:active`
+   *   ② 或者它带着已知有反馈的基类（btn 系列）
+   *   ③ 白名单只放"点空白关闭"这类**不该有视觉反馈**的（mask）
+   */
+  {
+    const cssAll = (() => {
+      const out = []
+      const walk = (d) => {
+        for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+          const fp = path.join(d, f.name)
+          if (f.isDirectory()) walk(fp)
+          else if (f.name.endsWith('.wxss')) out.push(fs.readFileSync(fp, 'utf8'))
+        }
+      }
+      walk(path.join(ROOT, 'miniprogram'))
+      return out.join('\n')
+    })()
+    const hasActive = (cls) => new RegExp('\\.' + cls + '\\s*:active').test(cssAll)
+    /* 白名单：这些点下去本来就不该有视觉变化 */
+    const NO_FEEDBACK_OK = new Set(['mask'])
+    /* 已知带按压反馈的基类：元素只要带其中一个就够了 */
+    const BASE = ['btn', 'gcard', 'optbtn', 'uw-p', 'uw-btn', 'textbtn', 'pk-p', 'pk-fold', 'codecard', 'join-btn', 'lb-sw']
+    const noFeedback = []
+    const walkWxml = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) { walkWxml(fp); continue }
+        if (!f.name.endsWith('.wxml')) continue
+        const t = fs.readFileSync(fp, 'utf8')
+        const re = /<(\w+)([^>]*?)bind(?:tap|longpress)="([^"]+)"([^>]*)>/g
+        let m
+        while ((m = re.exec(t))) {
+          const attrs = (m[2] || '') + (m[4] || '')
+          const cm = /class="([^"]*)"/.exec(attrs)
+          if (!cm) { noFeedback.push(path.relative(ROOT, fp) + ' → ' + m[3] + '（没有 class）'); continue }
+          const cls = cm[1].replace(/\{\{[\s\S]*?\}\}/g, ' ').split(/\s+/).filter(Boolean)
+          if (!cls.length) continue
+          if (cls.some(c => NO_FEEDBACK_OK.has(c))) continue
+          if (cls.some(c => BASE.indexOf(c) >= 0 || hasActive(c))) continue
+          noFeedback.push(path.relative(ROOT, fp) + ' → ' + m[3] + '（' + cls.join('.') + '）')
+        }
+      }
+    }
+    walkWxml(path.join(ROOT, 'miniprogram', 'pages'))
+    assert.deepStrictEqual(noFeedback, [],
+      '这些可点的东西按下没有任何视觉反馈（用户会以为没点中）：\n    ' + noFeedback.join('\n    '))
+    ok('全部可点击元素都有按压反馈（或属于点空白关闭的白名单）')
+  }
   }
   }
 

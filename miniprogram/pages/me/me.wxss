@@ -81,3 +81,7 @@
   margin-top: 18rpx; font-size: 20rpx; color: var(--ink3);
   line-height: 1.6;
 }
+
+/* 设置行按下反馈（2026-10-28 补）：这一页每行都可点，原来按下去毫无变化 */
+.rline { transition: background .12s }
+.rline:active { background: rgba(0,0,0,.045) }
