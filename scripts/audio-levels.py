@@ -51,7 +51,13 @@ import sys
 import wave
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-AUDIO_DIR = os.path.normpath(os.path.join(HERE, '..', 'miniprogram', 'audio'))
+# 音频 2026-10-28 拆成两处：主包只留 tick（「我的」页试听），
+# 其余 34 个在分包 game/audio/。响度层级要看**播放时真正用的那份**，
+# 所以两处都扫，按文件名合并。
+AUDIO_DIRS = [
+    os.path.normpath(os.path.join(HERE, '..', 'miniprogram', 'game', 'audio')),
+    os.path.normpath(os.path.join(HERE, '..', 'miniprogram', 'audio')),
+]
 
 FULL_SCALE = 32768.0
 
@@ -220,17 +226,20 @@ def envelope_profile(vals, sr, step_ms=10):
 # ---------------------------------------------------------------------------
 def main():
     verbose = '-v' in sys.argv or '--verbose' in sys.argv
-    if not os.path.isdir(AUDIO_DIR):
-        print('找不到音频目录：%s' % AUDIO_DIR)
+    if not any(os.path.isdir(d) for d in AUDIO_DIRS):
+        print('找不到音频目录：%s' % AUDIO_DIRS)
         return 1
-    files = sorted(f for f in os.listdir(AUDIO_DIR) if f.endswith('.wav'))
+    files = sorted({f for d in AUDIO_DIRS if os.path.isdir(d)
+                    for f in os.listdir(d) if f.endswith('.wav')})
     if not files:
-        print('音频目录里没有 wav：%s' % AUDIO_DIR)
+        print('音频目录里没有 wav：%s' % AUDIO_DIRS)
         return 1
 
     data = {}
     for f in files:
-        data[f[:-4]] = measure(os.path.join(AUDIO_DIR, f))
+        path = next(os.path.join(d, f) for d in AUDIO_DIRS
+                    if os.path.exists(os.path.join(d, f)))
+        data[f[:-4]] = measure(path)
 
     fails = []
 

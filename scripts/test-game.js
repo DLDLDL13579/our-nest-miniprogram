@@ -31,7 +31,7 @@ const ROOT = path.join(__dirname, '..')
  *   ⑧ 要比较的是"实际生效的时刻"，只有加载真模块才算数 ——
  *   从源码正则抓数字会在实现一改之后就静默失效（AGENTS.md 记过五次）。
  */
-const feedback = require(path.join(ROOT, 'miniprogram/utils/feedback.js'))
+const feedback = require(path.join(ROOT, 'miniprogram/game/feedback.js'))
 
 let n = 0
 function ok(msg) { n++; console.log('  ✓ ' + msg) }
@@ -188,9 +188,9 @@ function extractBuildSectors(src) {
    * 所以这里把五步的顺序和音效键都锁死。
    */
   const feedbackJs = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/utils/feedback.js'), 'utf8')
+    path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
   const sfxJs = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/utils/sfx.js'), 'utf8')
+    path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
 
   const STEPS = [
     ['diceIn', 'diceIntoCup', '① 骰子入盅'],

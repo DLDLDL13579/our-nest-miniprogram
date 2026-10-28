@@ -36,7 +36,7 @@ global.wx = {
 }
 
 const ROOT = path.join(__dirname, '..')
-const feedback = require(path.join(ROOT, 'miniprogram', 'utils', 'feedback.js'))
+const feedback = require(path.join(ROOT, 'miniprogram', 'game', 'feedback.js'))
 const { FEEDBACK, timeline } = feedback
 
 let n = 0
@@ -328,8 +328,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   }
   storage['hapticOn'] = true
   /* 重新加载模块以清掉内部缓存 */
-  delete require.cache[require.resolve(path.join(ROOT, 'miniprogram', 'utils', 'feedback.js'))]
-  const fb2 = require(path.join(ROOT, 'miniprogram', 'utils', 'feedback.js'))
+  delete require.cache[require.resolve(path.join(ROOT, 'miniprogram', 'game', 'feedback.js'))]
+  const fb2 = require(path.join(ROOT, 'miniprogram', 'game', 'feedback.js'))
   await sleep(70)
   fb2.vibrate('heavy')
   await sleep(40)

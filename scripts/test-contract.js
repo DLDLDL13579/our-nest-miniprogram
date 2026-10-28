@@ -342,8 +342,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    * 这条断言把三个 key 的实际值钉住。
    */
   {
-    const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/sfx.js'), 'utf8')
-    const fbSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/feedback.js'), 'utf8')
+    const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+    const fbSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
     const meSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.js'), 'utf8')
     const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
     const appSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/app.js'), 'utf8')
@@ -352,9 +352,11 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       const m = new RegExp('const ' + name + " = '([^']+)'").exec(src)
       return m ? m[1] : null
     }
+    const haSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/haptic.js'), 'utf8')
     const checks = [
       ['MUTE_KEY', val(sfxSrc, 'MUTE_KEY'), 'gameMute'],
-      ['HAPTIC_KEY', val(fbSrc, 'HAPTIC_KEY'), 'hapticOn'],
+      /* HAPTIC_KEY 2026-10-28 从 feedback.js 挪到了 utils/haptic.js（拆分主包/分包） */
+      ['HAPTIC_KEY', val(haSrc, 'HAPTIC_KEY'), 'hapticOn'],
       ['NICK_KEY', val(meSrc, 'NICK_KEY'), 'nick']
     ]
     const bad = []
@@ -869,16 +871,35 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'utils', 'sfx.js'), 'utf8')
   const filesBlock = sfxSrc.slice(sfxSrc.indexOf('const FILES = {'), sfxSrc.indexOf('\n}', sfxSrc.indexOf('const FILES = {')))
+  /*
+   * ★★ 音效注册表 2026-10-28 拆成了两份：
+   *   主包 utils/sfx.js（只有 tick，给「我的」页试听）
+   *   分包 game/sfx.js（其余 34 个）
+   *   所以这里要把两份合起来看 —— 否则分包里的 play('diceSettle') 会被
+   *   误报成"没注册"（假阳性会让我去改对的代码）。
+   */
+  const subSfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
   const soundKeys = {}
   {
-    const re = /^\s*([\w]+):\s*'(audio\/[\w-]+\.wav)'/gm
+    const mainFiles = sfxSrc.slice(sfxSrc.indexOf('const FILES = {'),
+      sfxSrc.indexOf('}', sfxSrc.indexOf('const FILES = {')))
+    const subFiles = subSfxSrc.slice(subSfxSrc.indexOf('const FILES = {'),
+      subSfxSrc.indexOf('}', subSfxSrc.indexOf('const FILES = {')))
+    const re = /^\s*([\w]+):\s*'\/?(audio\/[\w-]+\.wav)'/gm
     let m
-    while ((m = re.exec(filesBlock))) soundKeys[m[1]] = m[2]
+    while ((m = re.exec(mainFiles))) soundKeys[m[1]] = m[2]
+    while ((m = re.exec(subFiles))) soundKeys[m[1]] = m[2]
   }
 
   /* ① 注册的音效必须有对应文件 */
-  const noFile = Object.keys(soundKeys).filter(k =>
-    !fs.existsSync(path.join(ROOT, 'miniprogram', soundKeys[k])))
+  /*
+   * 文件可能在主包 audio/ 或分包 game/audio/ —— 两边都找一遍。
+   * （拆分后主包只剩 tick，其余 34 个在分包里。）
+   */
+  const noFile = Object.keys(soundKeys).filter(k => ![
+    path.join(ROOT, 'miniprogram', soundKeys[k]),
+    path.join(ROOT, 'miniprogram', 'game', soundKeys[k])
+  ].some(p => fs.existsSync(p)))
   assert.deepStrictEqual(noFile, [],
     '这些音效注册了但文件不存在（播放时静默失败）：\n    ' + noFile.join('\n    '))
   ok(`${Object.keys(soundKeys).length} 个音效全部有对应文件`)

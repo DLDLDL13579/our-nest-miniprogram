@@ -18,7 +18,7 @@
  *   ?code=123    直接加入这个房间（不用再输一遍号）
  */
 const sfx = require('../../utils/sfx.js')
-const feedback = require('../../utils/feedback.js')
+const haptic = require('../../utils/haptic.js')
 const icons = require('../../utils/icons.js')
 const iconSet = require('../../utils/iconSet.js')
 const { CATS, GAMES } = require('../../utils/games.js')
@@ -117,7 +117,7 @@ Page({
   },
 
   onLoad() {
-    this.setData({ muted: sfx.isMuted(), hapticOn: feedback.isHapticOn() })
+    this.setData({ muted: sfx.isMuted(), hapticOn: haptic.isHapticOn() })
   },
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */
@@ -127,7 +127,7 @@ Page({
     warmup()
     this.setData({
       muted: sfx.isMuted(),
-      hapticOn: feedback.isHapticOn(),
+      hapticOn: haptic.isHapticOn(),
       stats: this.statsText(),
       list: sortByRecent(buildList())
     })
@@ -155,7 +155,7 @@ Page({
   /* 震动开关 —— 和静音分开：
      公共场合（酒桌旁边有人）可能想留声音但不震，反之亦然。 */
   toggleHaptic() {
-    const h = feedback.setHapticOn(!this.data.hapticOn)
+    const h = haptic.setHapticOn(!this.data.hapticOn)
     this.setData({ hapticOn: h })
   },
 
@@ -170,7 +170,6 @@ Page({
    */
   openGame(e) {
     const id = e.currentTarget.dataset.id
-    sfx.play('whoosh')
     /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
     try { wx.setStorageSync('lastGame', id) } catch (err) {}
     /* 玩法次数统计：只记"开过几次桌"，不做胜率之类（酒桌上没有可靠的胜负归属） */
@@ -204,7 +203,6 @@ Page({
       this.setData({ err: '房间号是 3 位数字' })
       return
     }
-    sfx.play('whoosh')
     wx.navigateTo({ url: '/game/room/room?code=' + encodeURIComponent(code) })
   },
 

@@ -10,7 +10,7 @@
  *   换设备就重新起个名字 —— 这对酒桌场景是优点，不是缺陷。
  */
 const sfx = require('../../utils/sfx.js')
-const feedback = require('../../utils/feedback.js')
+const haptic = require('../../utils/haptic.js')
 const iconSet = require('../../utils/iconSet.js')
 const { GAMES } = require('../../utils/games.js')
 
@@ -41,7 +41,7 @@ Page({
     this.setData({
       nick: wx.getStorageSync(NICK_KEY) || '',
       muted: sfx.isMuted(),
-      hapticOn: feedback.isHapticOn()
+      hapticOn: haptic.isHapticOn()
     })
   },
 
@@ -64,7 +64,7 @@ Page({
 
   /* 从房间回来时同步开关（房间页里也能改） */
   onShow() {
-    this.setData({ muted: sfx.isMuted(), hapticOn: feedback.isHapticOn() })
+    this.setData({ muted: sfx.isMuted(), hapticOn: haptic.isHapticOn() })
     this.loadStats()
   },
 
@@ -85,9 +85,9 @@ Page({
   },
 
   toggleHaptic() {
-    const h = feedback.setHapticOn(!this.data.hapticOn)
+    const h = haptic.setHapticOn(!this.data.hapticOn)
     this.setData({ hapticOn: h })
-    if (h) feedback.vibrate('light')
+    if (h) haptic.vibrate('light')
   },
 
   /* ⚠️ 这里原来有个 `goLobby()`（switchTab 到大厅）—— tabBar 已经有入口，
@@ -119,7 +119,7 @@ Page({
         /* 开关走各自的 setter，别直接写 storage —— 内存里的状态也要跟着变，
            否则界面显示"开着"、实际已被清掉。 */
         sfx.setMuted(false)
-        feedback.setHapticOn(true)
+        haptic.setHapticOn(true)
         this.setData({ nick: '', muted: false, hapticOn: true })
         this.loadStats()
         wx.showToast({ title: '清好了', icon: 'success' })

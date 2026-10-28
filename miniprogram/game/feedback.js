@@ -39,6 +39,13 @@
  * 所以分级严格按「重要性」分配，逐颗落定只能 light。
  */
 const sfx = require('./sfx.js')
+/*
+ * ★ 震动/开关的**状态**从主包 utils/haptic.js 来（2026-10-28 拆分）。
+ *   不能让这一份再自己读一遍 storage —— 两份状态各记各的，
+ *   用户在大厅关掉震动、进房间又响了，这种 bug 最难查。
+ *   时间轴（本文件）只负责"什么时候震/什么时候响"。
+ */
+const haptic = require('../utils/haptic.js')
 
 /* ============================================================
    时间轴表
@@ -352,88 +359,18 @@ function timeline(key) {
 
 /* 节流：同一动作在这么短时间内不重复震。
    骰子密集落定时几次调用会挤在一起，不节流会变成连续嗡嗡。 */
-const HAPTIC_THROTTLE_MS = 60
-let _lastHapticAt = 0
-/* 用户总开关（和静音合并成一个「反馈」开关，但独立记忆） */
-const HAPTIC_KEY = 'hapticOn'
-let _hapticOn = null
-
-function _initHaptic() {
-  if (_hapticOn !== null) return
-  try {
-    const v = wx.getStorageSync(HAPTIC_KEY)
-    /* 默认开 —— 大多数游戏默认开震动，且用户能关 */
-    _hapticOn = v === '' || v === undefined || v === null ? true : !!v
-  } catch (e) {
-    _hapticOn = true
-  }
-}
-
-/**
- * 触发震动。
+/*
+ * 震动 = **薄包装**，真正的状态在 utils/haptic.js（主包）。
  *
- * ★ 降级策略：`type` 参数（heavy/medium/light）需要 2.13.0+，
- *   且在部分平台被忽略。所以：
- *     · 先试带 type 的调用
- *     · 失败（或 type 不被支持）就退化成无参调用
- *   绝不能因为震动失败而抛错影响游戏流程。
+ * ★ 2026-10-28 拆分时的重要决定：这里**不重新实现**，只转发。
+ *   否则会出现"大厅关掉震动、进房间又响了"——两份 storage 各记各的，
+ *   而这类 bug 在真机上极难查（用户只会说"震动有时灵有时不灵"）。
  */
-function vibrate(kind) {
-  _initHaptic()
-  if (!_hapticOn || !kind) return
+function vibrate(kind) { return haptic.vibrate(kind) }
 
-  const now = Date.now()
-  if (now - _lastHapticAt < HAPTIC_THROTTLE_MS) return
-  _lastHapticAt = now
+function isHapticOn() { return haptic.isHapticOn() }
 
-  const safeShort = (t) => {
-    try {
-      if (t) {
-        wx.vibrateShort({ type: t, fail: () => { try { wx.vibrateShort({}) } catch (e) {} } })
-      } else {
-        wx.vibrateShort({ fail: () => {} })
-      }
-    } catch (e) { /* 完全不支持就算了，不能影响玩法 */ }
-  }
-
-  if (kind === 'long') {
-    try { wx.vibrateLong({ fail: () => safeShort('heavy') }) }
-    catch (e) { safeShort('heavy') }
-    return
-  }
-
-  if (kind === 'double') {
-    /*
-     * 微信只提供「震一次」，双击靠排期 —— 120ms 间隔听感上是两次。
-     *
-     * ★ 这个定时器必须进 `_timers`（2026-10-09 修）：
-     *   原来是裸 setTimeout，`clear()` 清不掉。触发 double 后 120ms 内
-     *   离开页面/退到后台，第二次震动仍会响 —— 用户已经不在那个场景里了。
-     *   后果轻（只多震一下，无 setData、无实例泄漏），
-     *   但**凡是"延迟副作用"都该能被打断**，这是同一类问题。
-     */
-    safeShort('light')
-    _timers.push(setTimeout(() => {
-      _lastHapticAt = 0        // 绕过节流，双击的第二次必须响
-      safeShort('light')
-    }, 120))
-    return
-  }
-
-  safeShort(kind)
-}
-
-function isHapticOn() {
-  _initHaptic()
-  return !!_hapticOn
-}
-
-function setHapticOn(v) {
-  _hapticOn = !!v
-  try { wx.setStorageSync(HAPTIC_KEY, _hapticOn) } catch (e) {}
-  if (_hapticOn) vibrate('light')   // 给个反馈：能感觉到就是开了
-  return _hapticOn
-}
+function setHapticOn(v) { return haptic.setHapticOn(v) }
 
 /* ============================================================
    统一触发

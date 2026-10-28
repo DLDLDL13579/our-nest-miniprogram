@@ -25,8 +25,8 @@
 const { call } = require('../../utils/cloud.js')
 /* 测试开关（soloTest）：一个人也能开局，见 config.js 的说明 */
 const CFG = require('../../config.js')
-const sfx = require('../../utils/sfx.js')
-const feedback = require('../../utils/feedback.js')
+const sfx = require('../sfx.js')
+const feedback = require('../feedback.js')
 /*
  * 酒桌题卡库。★ 前端这份**只用来渲染"有哪些场合可选"**（名字/说明），
  * 真正的抽题在服务端做 —— 见 cloudfunctions/room/index.js 的 spin。
