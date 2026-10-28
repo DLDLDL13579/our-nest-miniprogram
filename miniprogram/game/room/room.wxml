@@ -42,7 +42,12 @@
   <view wx:if="{{confetti.length}}" class="confetti">
     <view wx:for="{{confetti}}" wx:key="*this" class="cf cf-{{item % 5}}"></view>
   </view>
-  <view class="gbar">
+  <!--
+    倒计时那 3 秒**隐藏顶栏**（2026-10-28）。
+    倒计时是"要开始了"的仪式时刻，全屏只有一个数字 —— 而顶栏的房间号、
+    喇叭图标一直挂着，像一张贴在舞台上的标签。那 3 秒里没人需要看房间号。
+  -->
+  <view class="gbar" wx:if="{{stage !== 'countdown'}}">
     <view class="gbar-l" bindtap="goBack">
       <text class="gbar-back">‹</text>
       <text class="gbar-t">大厅</text>
