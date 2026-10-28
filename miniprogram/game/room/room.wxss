@@ -231,6 +231,23 @@
   from { opacity: 0; transform: translateX(-24rpx) }
   to   { opacity: 1; transform: translateX(0) }
 }
+/*
+ * 首字头像：圆形色块 + 名字第一个字。
+ * 颜色按座位号取模（4 种），同一个人在不同界面颜色一致 ——
+ * 12 人局里"那个紫色的"比"座位 7"好记得多。
+ */
+.pav {
+  flex: none;
+  width: 44rpx; height: 44rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24rpx; font-weight: 700; color: #241A16;
+  margin-right: 10rpx;
+}
+.pav.s0 { background: #E8B33C }
+.pav.s1 { background: #E0714F }
+.pav.s2 { background: #7FA890 }
+.pav.s3 { background: #9AA8C8 }
+
 .pseat {
   width: 52rpx; height: 52rpx; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;

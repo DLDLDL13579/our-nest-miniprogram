@@ -1400,6 +1400,22 @@ Page({
      * 服务端又拦"不能投自己" → 卡死。服务端按 games.js 的 soloMin 拦，
      * 前端据此把按钮说清楚，别让玩家点了才被拒。
      */
+    /*
+     * 首字头像（2026-10-28）。
+     * 多人局里每个玩家只有名字，12 个人一串中文名很难快速对上人 ——
+     * 给一个首字圆形就像有了"脸"。字在数据层取好：
+     * wxml 的表达式能力有限（不支持函数调用），`name[0]` 虽然能写，
+     * 但空名字会取到 undefined，模板里再兜一次不如这里一次算清。
+     */
+    ;(room.players || []).forEach(p => {
+      p.initial = String(p.name || '?').trim().charAt(0) || '?'
+    })
+    if (room.uw && Array.isArray(room.uw.candidates)) {
+      room.uw.candidates.forEach(c => {
+        c.initial = String(c.name || '?').trim().charAt(0) || '?'
+      })
+    }
+
     room.soloMinPlayers = (gmeta && gmeta.soloMin) ? gmeta.soloMin : 1
     room.soloOk = (room.count || 0) >= room.soloMinPlayers
     room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)

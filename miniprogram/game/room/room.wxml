@@ -185,6 +185,8 @@
       <view wx:for="{{room.players}}" wx:key="openid"
             class="pitem {{item.isMe ? 'me' : ''}} {{item.isMe ? 'canedit' : ''}}"
             data-me="{{item.isMe}}" bindtap="renameMe">
+        <!-- 首字头像：多人局里"认人"比"认编号"快得多 -->
+        <view class="pav s{{item.seat % 4}}">{{item.initial}}</view>
         <view class="pseat">{{item.seat}}</view>
         <view class="pname">
           {{item.name}}

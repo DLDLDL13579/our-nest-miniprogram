@@ -758,8 +758,13 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         const css = stripCss(fs.existsSync(cssFile) ? fs.readFileSync(cssFile, 'utf8') : '') + appCss
         const defined = new Set(Array.from(css.matchAll(/\.([a-zA-Z][\w-]*)/g)).map(m => m[1]))
         for (const m of wxml.matchAll(/class="([^"]*)"/g)) {
-          /* 只留静态部分：把 {{...}} 整体换成空格 */
-          const staticPart = m[1].replace(/\{\{[\s\S]*?\}\}/g, ' ')
+          /*
+           * 只留静态部分。★★ 关键：把 {{...}} 换成**占位符**而不是空格 ——
+           * `class="pav s{{item.seat % 4}}"` 里的 `s` 是动态类名的前缀，
+           * 换成空格后它就成了一个独立的 token `s`，被误报"缺少 .s 样式"。
+           * 换成占位符，后面就能识别出"这个 token 是拼出来的，跳过"。
+           */
+          const staticPart = m[1].replace(/\{\{[\s\S]*?\}\}/g, '\u0000')
           for (const tok of staticPart.split(/\s+/)) {
             if (!tok) continue
             if (!/^[a-zA-Z][\w-]*$/.test(tok)) continue   // 中文文案、插值残留一律跳过
@@ -771,6 +776,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
              *   而假阳性会让我去改本来就对的代码。
              */
             if (tok.endsWith('-') || tok.startsWith('-')) continue
+            /* 动态拼接的另一半（如 s{{i}} 的 s）：真类名由各自样式覆盖 */
+            if (tok.indexOf('\u0000') >= 0) continue
             if (!defined.has(tok)) undef.push(pg + '/' + f + ' → .' + tok)
           }
         }

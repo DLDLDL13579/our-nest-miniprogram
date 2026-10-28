@@ -8,17 +8,17 @@ const IC = iconSet.build(['speakerOn', 'speakerOff', 'bulb'], '#E8B33C')
 const GAME_SWITCH = GAMES.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g.desc }))
 
 const PLAYERS = [
-  { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 5 },
-  { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 5 },
-  { openid: 'c', name: '老王', seat: 3, isMe: false, isHost: false, online: false, inRound: true, score: 0, diceCount: 5 }
+  { openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 5 },
+  { openid: 'b', name: '倩萍', initial: '倩', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 5 },
+  { openid: 'c', name: '老王', initial: '老', seat: 3, isMe: false, isHost: false, online: false, inRound: true, score: 0, diceCount: 5 }
 ]
 
 /* 卧底局的四人 */
 const UW_PLAYERS = [
-  { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false },
-  { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
-  { openid: 'c', name: '阿杰', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
-  { openid: 'd', name: '老王', seat: 4, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
+  { openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+  { openid: 'b', name: '倩萍', initial: '倩', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+  { openid: 'c', name: '阿杰', initial: '阿', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+  { openid: 'd', name: '老王', initial: '老', seat: 4, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
 ]
 
 /* 三手固定的牌（用来稳定截图）：♠A ♥K ♠Q = 顺金；♦9 ♣9 ♥3 = 对 9；♠7 ♥5 ♣2 = 单张 */
@@ -31,11 +31,11 @@ const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
 function pkRoom(r) {
   return Object.assign({
     id: 'r3', code: '627', count: 3,
-    me: { seat: 1, name: '邓林', dice: [] },
+    me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     players: [
-      { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '' },
-      { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '1.5 杯' },
-      { openid: 'c', name: '阿杰', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
+      { openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '' },
+      { openid: 'b', name: '倩萍', initial: '倩', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '1.5 杯' },
+      { openid: 'c', name: '阿杰', initial: '阿', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
     ],
     round: 1, bid: null, lastResult: null, spin: null, deck: 'friends',
     myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [], uw: null,
@@ -52,7 +52,7 @@ function pkRoom(r) {
 
 function uwRoom(r) {
   return Object.assign({
-    me: { seat: 1, name: '邓林', dice: [] },
+    me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     turn: 0, round: 1, bid: null, lastResult: null, spin: null, deck: 'food',
     myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: []
   }, r)
@@ -84,7 +84,7 @@ module.exports = {
         gameName: '大话骰',
         howList: GAMES.filter(g => g.id === 'liar')[0].how,
         id: 'r1', code: '352', game: 'liar', phase: 'lobby', host: true,
-        me: { seat: 1, name: '邓林', dice: [] },
+        me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
         players: PLAYERS, count: 3, turn: 0, round: 0,
         bid: null, lastResult: null, spin: null, deck: 'friends',
         myTurn: false, turnName: '', waitingCount: 0, waitingNames: '',
@@ -127,17 +127,17 @@ module.exports = {
         need: 5, face: 3, actual: 5, bidderWins: true,
         loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
         allDice: [
-          { name: '邓林', seat: 1, dice: [3, 5, 1, 2, 6] },
-          { name: '倩萍', seat: 2, dice: [3, 4, 2, 6, 5] },
-          { name: '阿杰', seat: 3, dice: [3, 1, 4, 2, 6] }
+          { name: '邓林', initial: '邓', seat: 1, dice: [3, 5, 1, 2, 6] },
+          { name: '倩萍', initial: '倩', seat: 2, dice: [3, 4, 2, 6, 5] },
+          { name: '阿杰', initial: '阿', seat: 3, dice: [3, 1, 4, 2, 6] }
         ]
       },
       room: pkRoom({
         game: 'liar', phase: 'over', host: true, count: 3,
         players: [
-          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
-          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
-          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 }
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 }
         ]
       })
     }),
@@ -157,9 +157,9 @@ module.exports = {
         turnName: '邓林', count: 3,
         bid: { bySeat: 2, byName: '倩萍', n: 3, face: 4, zhai: false, mult: 2, piBy: '阿杰' },
         players: [
-          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, diceCount: 5 },
-          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, diceCount: 5 },
-          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, diceCount: 5 }
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, diceCount: 5 }
         ],
         options: ['4个4', '4个5', '4个6', '5个2', '5个3', '5个4']
       })
@@ -175,9 +175,9 @@ module.exports = {
         game: 'dice', phase: 'playing', host: true, turn: 0, myTurn: false,
         turnName: '', count: 3,
         players: [
-          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, diceCount: 0 },
-          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, diceCount: 5 },
-          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, diceCount: 5 }
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, diceCount: 0 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, diceCount: 5 }
         ]
       })
     }),
@@ -218,7 +218,7 @@ module.exports = {
         room: pkRoom({
           game: 'poker', phase: 'over', host: true, turn: 0, count: 6,
           players: names.map((n, i) => ({
-            seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+            seat: i + 1, name: n, initial: String(n).charAt(0), isMe: i === 0, isHost: i === 0, online: true,
             diceCount: 0, inRound: true, out: i > 0
           })),
           settleFoot: '邓林 没换过牌就赢了',
@@ -349,9 +349,9 @@ module.exports = {
            *   而真实运行是对的。这类 mock 与逻辑的重复是渲染器的固有局限。
            */
           drinks: [
-            { name: '邓林', cups: 0, out: false },
-            { name: '倩萍', cups: 1.5, out: false },
-            { name: '阿杰', cups: 0, out: false }
+            { name: '邓林', initial: '邓', cups: 0, out: false },
+            { name: '倩萍', initial: '倩', cups: 1.5, out: false },
+            { name: '阿杰', initial: '阿', cups: 0, out: false }
           ], log: [],
           last: null, winner: null
         }
@@ -399,9 +399,9 @@ module.exports = {
       result: {
         kind: 'poker', winner: '邓林',
         hands: [
-          { name: '邓林', cards: PK_MINE, out: false },
-          { name: '倩萍', cards: PK_OTHER, out: true },
-          { name: '阿杰', cards: PK_THIRD, out: true }
+          { name: '邓林', initial: '邓', cards: PK_MINE, out: false },
+          { name: '倩萍', initial: '倩', cards: PK_OTHER, out: true },
+          { name: '阿杰', initial: '阿', cards: PK_THIRD, out: true }
         ]
       },
       room: pkRoom({
@@ -414,9 +414,9 @@ module.exports = {
           kind: 'poker', winner: '邓林',
           winText: '邓林 赢',
           hands: [
-            { name: '邓林', out: false, cardsText: ['♣Q', '♥K', '♠Q'] },
-            { name: '倩萍', out: true, cardsText: ['♣Q', '♦9', '♣9'] },
-            { name: '阿杰', out: true, cardsText: ['♣Q', '♠7', '♥5'] }
+            { name: '邓林', initial: '邓', out: false, cardsText: ['♣Q', '♥K', '♠Q'] },
+            { name: '倩萍', initial: '倩', out: true, cardsText: ['♣Q', '♦9', '♣9'] },
+            { name: '阿杰', initial: '阿', out: true, cardsText: ['♣Q', '♠7', '♥5'] }
           ]
         },
         poker: {
@@ -600,7 +600,7 @@ module.exports = {
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
           lastOut: {
-            name: '老王', word: '梨', role: 'spy', tie: false, votes: 3,
+            name: '老王', initial: '老', word: '梨', role: 'spy', tie: false, votes: 3,
             ballots: [
               { by: '邓林', to: '老王' }, { by: '倩萍', to: '老王' },
               { by: '阿杰', to: '老王' }, { by: '老王', to: '倩萍' }
@@ -620,17 +620,17 @@ module.exports = {
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
           lastOut: {
-            name: '老王', word: '梨', role: 'spy', tie: false, votes: 3,
+            name: '老王', initial: '老', word: '梨', role: 'spy', tie: false, votes: 3,
             ballots: [
               { by: '邓林', to: '老王' }, { by: '倩萍', to: '老王' },
               { by: '阿杰', to: '老王' }, { by: '老王', to: '倩萍' }
             ]
           },
           reveal: [
-            { name: '邓林', word: '苹果', role: 'civilian', out: false },
-            { name: '倩萍', word: '苹果', role: 'civilian', out: false },
-            { name: '阿杰', word: '苹果', role: 'civilian', out: false },
-            { name: '老王', word: '梨', role: 'spy', out: true }
+            { name: '邓林', initial: '邓', word: '苹果', role: 'civilian', out: false },
+            { name: '倩萍', initial: '倩', word: '苹果', role: 'civilian', out: false },
+            { name: '阿杰', initial: '阿', word: '苹果', role: 'civilian', out: false },
+            { name: '老王', initial: '老', word: '梨', role: 'spy', out: true }
           ]
         }
       })
