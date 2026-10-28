@@ -174,6 +174,25 @@ const TAG_MAP = {
   'scroll-view': 'div', picker: 'div', navigator: 'div', button: 'button'
 }
 
+/**
+ * 把小程序里的资源绝对路径（`/images/dice/dice-5.png`）解析成 **file:// 绝对路径**。
+ *
+ * ★ 为什么必须做：预览页是用 `file://` 打开一个临时 HTML，
+ *   而 `/images/...` 这种以 `/` 开头的路径在 file:// 下指向**文件系统根目录**，
+ *   于是所有图片都变成碎图 —— 而且页面不报错，只是"图不显示"。
+ *   这个缺陷让"骰盅 / 骰子"这类必须看图的预览**一直不可信**。
+ */
+const MINIPROGRAM_ROOT = require('path').resolve(__dirname, '..', '..', 'miniprogram')
+function resolveAsset(src) {
+  if (!src || typeof src !== 'string') return src
+  /* data: / http(s) / 已经是 file: 的原样返回 */
+  if (/^(data:|https?:|file:|blob:)/.test(src)) return src
+  if (src.startsWith('/')) {
+    return 'file://' + require('path').join(MINIPROGRAM_ROOT, src)
+  }
+  return src
+}
+
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -281,7 +300,7 @@ function renderNodeSingular(node, scope, out) {
 
   if (tag === 'img') {
     const src = clean.src ? String(attrVal(clean.src, scope) || '') : ''
-    if (src) parts.push(`src="${esc(src)}"`)
+    if (src) parts.push(`src="${esc(resolveAsset(src))}"`)
     // 小程序 <image mode> 的语义映射到 CSS
     const mode = clean.mode ? String(attrVal(clean.mode, scope) || '') : 'scaleToFill'
     const fit = { aspectFit: 'contain', aspectFill: 'cover', scaleToFill: 'fill', widthFix: 'contain' }[mode] || 'fill'

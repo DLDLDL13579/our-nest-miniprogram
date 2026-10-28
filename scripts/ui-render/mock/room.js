@@ -112,6 +112,65 @@ module.exports = {
       })
     }),
 
+    /* 金花满员 6 人摊牌：6 行牌面会不会挤（金花 max=6） */
+    pk6: () => {
+      const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘']
+      const suits = ['♠', '♥', '♦', '♣']
+      const hands = names.map((n, i) => ({
+        name: n, out: i > 0,
+        cardsText: [
+          '♣Q',
+          suits[i % 4] + (12 - i),
+          suits[(i + 1) % 4] + (9 - i)
+        ]
+      }))
+      return {
+        stage: 'over',
+        room: pkRoom({
+          game: 'poker', phase: 'over', host: true, turn: 0, count: 6,
+          players: names.map((n, i) => ({
+            seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+            diceCount: 0, inRound: true, out: i > 0
+          })),
+          settleFoot: '邓林 没换过牌就赢了',
+          lastResult: {
+            kind: 'poker', winner: '邓林', winText: '邓林 赢',
+            hands: hands
+          },
+          poker: {
+            step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+            myKnown: PK_MINE[0], myKnownText: poker.cardText(PK_MINE[0]),
+            folded: false, aliveCount: 1, myDrink: 0, log: [], last: null, winner: '邓林'
+          }
+        })
+      }
+    },
+
+    /* 比大小满员 8 人：8 行骰子墙会不会超屏（比大小 max=8） */
+    dice8: () => {
+      const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎']
+      const ranked = names.map((n, i) => ({
+        name: n, seat: i + 1, total: 6 + ((i * 7) % 25),
+        dice: [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1]
+      })).sort((a, b) => b.total - a.total)
+      return {
+        stage: 'over',
+        /*
+         * ⚠️ `result` 在**顶层**（this.data.result），不是 room.result ——
+         *    模板读的是 `wx:elif="{{room.game === 'dice' && result}}"`。
+         *    第一版放进了 room 里，渲染出来整块是空的（但页面不报错）。
+         */
+        result: { ranked: ranked, winners: [ranked[0].name], top: ranked[0].total },
+        room: pkRoom({
+          game: 'dice', phase: 'over', host: true, turn: 0, count: 8,
+          players: names.map((n, i) => ({
+            seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+            diceCount: 5, inRound: true, out: false
+          }))
+        })
+      }
+    },
+
     /* 卧底满员 12 人：座位条与投票列表会不会挤爆 */
     uw12: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎', '晓雯', '老陈', '阿凯', '小鱼']
