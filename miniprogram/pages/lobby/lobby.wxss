@@ -161,3 +161,30 @@
   animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .78s backwards;
 }
 .tip-line { display: block }
+
+/* ---------- 卡片上的两个新元素 ---------- */
+
+/* "上次"：金色小标签，比置顶更进一步 ——
+   玩家会想"为什么它在第一个"，标签直接回答这个问题。 */
+.gc-recent {
+  font-size: 17rpx; padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  background: var(--goldsoft);
+  color: #8A6A22;
+  flex: none;
+}
+
+/* 右侧 CTA："开桌 ▸"。
+   原来只有一个 .38 透明度的箭头 —— 像"可以点"但不说"点了会怎样"。
+   现在把动作写出来，同时用玩法身份色，和左侧色条呼应。 */
+.gc-cta {
+  display: flex; align-items: center; gap: 4rpx;
+  flex: none;
+  padding: 10rpx 6rpx 10rpx 14rpx;
+}
+.gc-cta-t {
+  font-size: 21rpx; font-weight: 600;
+  color: var(--accent, var(--brand2));
+  opacity: .9;
+}
+.gcard:active .gc-cta-t { opacity: 1 }

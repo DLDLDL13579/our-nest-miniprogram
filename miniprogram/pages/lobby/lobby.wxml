@@ -42,11 +42,20 @@
       <view class="gc-main">
         <view class="gc-top">
           <text class="gc-name">{{item.name}}</text>
+          <!-- "上次玩的"：比置顶更进一步，让玩家知道"为什么它在第一个" -->
+          <text wx:if="{{item.recent}}" class="gc-recent">上次</text>
           <text class="gc-people">{{item.players}}</text>
         </view>
         <view class="gc-desc">{{item.desc}}</view>
       </view>
-      <image class="gc-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
+      <!--
+        右侧 CTA：原来只有一个箭头（opacity .38），像"可以点"但不说明"点了会怎样"。
+        现在写成"开桌 ▸" —— 点这张卡就是开一桌，语义明确。
+      -->
+      <view class="gc-cta">
+        <text class="gc-cta-t">开桌</text>
+        <image class="gc-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
+      </view>
     </view>
   </view>
 

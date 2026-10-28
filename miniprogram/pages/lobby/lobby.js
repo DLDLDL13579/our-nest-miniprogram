@@ -74,6 +74,7 @@ function sortByRecent(list) {
   try { last = wx.getStorageSync('lastGame') || '' } catch (e) {}
   if (!last) return list
   const hit = list.filter(g => g.id === last)
+    .map(g => Object.assign({}, g, { recent: true }))
   if (!hit.length) return list
   return hit.concat(list.filter(g => g.id !== last))
 }
