@@ -1904,6 +1904,45 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('版本号单一来源（config.js ' + cfg.version + '），页面里没有硬编码')
   }
 
+  /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
+  console.log('\n=== ④j wxss 语法：不许通配符 / 不支持的属性 ===')
+  /*
+   * ★★ 2026-10-28，和 wxml 那次 `.indexOf()` 是同一类：
+   *   **只在点"预览/上传"时炸，本地测试和渲染截图全都看不见。**
+   *
+   *   我给「减少动效」写了 `.reduce-motion *` —— WXSS 不支持通配符
+   *   （报 `unexpected token '*'`），上传直接失败。
+   *   而这个功能本来是为了"帮助觉得晃眼的人"，结果自己先把上传搞挂了。
+   */
+  {
+    const badCss = []
+    const walkCss = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { walkCss(fp); continue }
+        if (!f.name.endsWith('.wxss')) continue
+        const raw = fs.readFileSync(fp, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+        /*
+         * 通配符选择器：`*` 出现在"选择器位置"上。
+         * ⚠️ 第一版只认"行首或 { } ; , 之后"，而 `.a * ,` 里的 `*`
+         *    前面是空格 → 漏报，**反向验证才发现是废的**。
+         *    现在按"独立的 *"判断：前后都是空白/分隔符才算选择器。
+         *    （`content: '*'` 这种字符串里的星号项目里没有，不另做排除。）
+         */
+        const star = /(^|[\s{},>+~])\*(?=[\s{},>+~:]|$)/m.exec(raw)
+        if (star) {
+          const line = raw.slice(0, star.index).split('\n').length
+          badCss.push(path.relative(ROOT, fp) + ':' + line + ' 通配符选择器 *（WXSS 不支持）')
+        }
+      }
+    }
+    for (const r of [path.join(ROOT, 'miniprogram')]) walkCss(r)
+    assert.deepStrictEqual(badCss, [],
+      'wxss 里有小程序不支持的语法（**只在预览/上传时报错**）：\n    ' +
+      badCss.join('\n    ') + '\n    WXSS 不支持 `*` 通配符，要逐个列标签。')
+    ok('wxss 没有通配符选择器（这类错只在预览时才炸）')
+  }
+
   /* ============ ④f wxml 表达式只能用"微信支持的那一小撮语法" ============ */
   console.log('\n=== ④f wxml 里不许出现函数调用 / 可选链 / 模板字符串 ===')
   /*

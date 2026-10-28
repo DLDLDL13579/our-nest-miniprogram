@@ -70,9 +70,16 @@
       （告诉你发生了什么）不能没有，但可以快。
    ⚠️ `!important` 是少数正当场景（无障碍覆盖要压过各选择器里的时长）。
    ============================================================ */
-.reduce-motion *,
-.reduce-motion *::before,
-.reduce-motion *::after {
+/*
+ * ⚠️ **不能用 `*` 通配符** —— 小程序 WXSS 不支持，编译直接报
+ *    `unexpected token '*'`。而这个错误**只在点"预览/上传"时才炸**，
+ *    本地测试、渲染截图全都看不见（和 wxml 里写 `.indexOf()` 那次一样）。
+ *    所以只能逐个标签列出来。
+ */
+.reduce-motion view,
+.reduce-motion text,
+.reduce-motion image,
+.reduce-motion scroll-view {
   animation-duration: .12s !important;
   animation-delay: 0s !important;
   transition-duration: .1s !important;
