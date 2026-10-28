@@ -1676,3 +1676,21 @@
   color: rgba(150, 170, 190, .8);
   margin-right: 8rpx;
 }
+
+/* ---------- 开盅结算：命中的骰子高亮 ----------
+   一眼看出"是哪几颗让叫骰成立"——这是大话骰开盅最有意思的一刻。
+   用金色外环 + 轻微放大，不改变骰子本身的图（那会破坏真实感）。
+
+   ⚠️ 判据必须带 .revealbox 前缀：`.die-img` 在**游戏进行中**也在用
+      （自己的骰子、偷看的骰子），全局压暗会让那些界面一起变灰。 */
+.revealbox .die-img {
+  opacity: .62;
+  transition: opacity .18s ease-out;
+}
+.revealbox .die-img.hit {
+  opacity: 1;
+  box-shadow: 0 0 0 4rpx rgba(232, 179, 60, .9), 0 4rpx 14rpx rgba(232, 179, 60, .35);
+  border-radius: 10rpx;
+  transform: scale(1.08);
+  transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
+}

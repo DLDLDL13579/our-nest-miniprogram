@@ -735,8 +735,16 @@
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
+            <!--
+              命中高亮：这一颗算进了"实际有几个"。
+              ★ 规则细节：1 是万能（除非叫的就是 1）—— 和云端统计 actual 的口径
+                必须完全一致，否则会出现"显示 5 颗高亮、结算却说 4 个"的裂痕。
+                判据：d === face 或 (d === 1 且 face !== 1)
+            -->
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
-                   src="/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />
+                   src="/images/dice/dice-{{d}}.png"
+                   class="die-img {{(d === result.face || (d === 1 && result.face !== 1)) ? 'hit' : ''}}"
+                   mode="aspectFit" />
           </view>
         </view>
       </view>

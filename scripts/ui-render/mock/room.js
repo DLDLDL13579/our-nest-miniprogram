@@ -120,6 +120,28 @@ module.exports = {
       })
     }),
 
+    /* 大话骰开盅结算：命中高亮的预览 */
+    liarOver: () => ({
+      stage: 'over',
+      result: {
+        need: 5, face: 3, actual: 5, bidderWins: true,
+        loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
+        allDice: [
+          { name: '邓林', seat: 1, dice: [3, 5, 1, 2, 6] },
+          { name: '倩萍', seat: 2, dice: [3, 4, 2, 6, 5] },
+          { name: '阿杰', seat: 3, dice: [3, 1, 4, 2, 6] }
+        ]
+      },
+      room: pkRoom({
+        game: 'liar', phase: 'over', host: true, count: 3,
+        players: [
+          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 }
+        ]
+      })
+    }),
+
     /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
 
     /* 大话骰：扣盅后轮到我叫骰 */
