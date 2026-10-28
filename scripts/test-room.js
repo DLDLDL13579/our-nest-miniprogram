@@ -733,10 +733,26 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   OPENID = A
   const soloRoom = await room.main({ action: 'create', name: 'SOLO', game: 'liar' })
   assert.ok(soloRoom.ok, '前置：单人房应能创建')
-  const soloStart = await room.main({ action: 'start', id: soloRoom.room.id })
-  assert.strictEqual(soloStart.ok, true, '★ 单人应该能开局（用户要求，便于调试）')
+
+  /*
+   * ★★ 2026-10-28 改了这里的语义，两件事都要锁：
+   *
+   *   ① **不传 solo** → 必须被拒，而且要说清还差几个人。
+   *      （改造前服务端只查"房间不是空的"，人数下限只有前端在拦 ——
+   *       两边判据不一致：前端挡着的时候服务端其实早就放行了。）
+   *   ② **传 solo: true**（测试开关，config.js 的 soloTest）→ 一个人也能开。
+   *      验收要跑遍 5 个玩法，每个都要求 2~3 人，没有这个开关每验一屏都要
+   *      拉两台手机。
+   */
+  const soloDenied = await room.main({ action: 'start', id: soloRoom.room.id })
+  assert.strictEqual(soloDenied.ok, false, '★ 不传 solo 时，人数不足必须被拒（服务端是唯一判据）')
+  assert.ok(/还差|要 \d+ 个人/.test(soloDenied.msg || ''),
+    '拒绝时要说清还差几个人，实际：' + (soloDenied.msg || ''))
+
+  const soloStart = await room.main({ action: 'start', id: soloRoom.room.id, solo: true })
+  assert.strictEqual(soloStart.ok, true, '★ 带 solo 开关时单人应该能开局（测试期便于验证）')
   assert.strictEqual(soloStart.room.phase, 'countdown', '单人开局应进入倒计时')
-  ok('单人能开局（旧规则"至少两人"已按用户要求放开）')
+  ok('单人开局：不传开关会被拒并说清差几人；传 solo 可开（测试开关）')
 
   /* ============ ⑨b 中途加入：只观战，下一局参与 ============ */
   console.log('\n=== ⑨b 中途加入（下一局才参与）===')
@@ -1684,9 +1700,15 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.strictEqual(E.inRound, true,
       '★ 接任房主的观战者必须被纳入本局 —— 否则他点开始后没人参与（一个人时直接卡死）')
 
-    /* 而他确实能开局，并且拿到骰子 */
+    /*
+     * 而他确实能开局，并且拿到骰子。
+     * ⚠️ 这里必须带 solo:true —— 2026-10-28 起服务端会按玩法下限拦人数，
+     *    而这个用例是"一个人靠接任房主留下来"的场景，本来就凑不够 2 人。
+     *    （这条不是"为了方便而放行"：它测的是**接任房主后还能不能开局**，
+     *      人数够不够是另一件事，已在 ⑨ 单独锁过。）
+     */
     OPENID = 'E'
-    const st = await room.main({ action: 'start', id: RID })
+    const st = await room.main({ action: 'start', id: RID, solo: true })
     assert.ok(st.ok, '接任房主应该能开局：' + (st.msg || ''))
     doc = store.rooms.filter(x => x._id === RID)[0]
     const E2 = doc.players.filter(p => p.openid === 'E')[0]

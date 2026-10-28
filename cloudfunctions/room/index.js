@@ -809,13 +809,29 @@ exports.main = async (event) => {
       if (err) return { ok: false, msg: err }
       if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能开局' }
       /*
-       * ★ 允许单人开局（2026-10-10 用户要求：两个人才能玩，没法调试）。
+       * ★★ 人数下限由**服务端**判，前端只负责把开关状态传上来（2026-10-28）。
        *
-       * 真实场景也说得通：一个人想先看看自己摇到什么、熟悉一下玩法。
-       * 唯一要保证的是**不因此产生非法状态** —— 下面所有按人数算的东西
-       * （骰子上限、轮次）在 1 人时都要成立。
+       * 改造前：前端按 `shortBy > 0` 拦，服务端只查"房间不是空的"——
+       * 于是"到底几个人能开"有两个判据，而且两边不一致：
+       * 前端挡着的时候服务端其实早就放行了（反之亦然）。
+       * 现在收敛成一处：
+       *   · event.solo === true（测试期，config.js 的 soloTest）→ 一个人也能开
+       *   · 否则必须达到注册表里这个玩法的 min 人数
+       * 这样测试期能一个人跑遍 5 个玩法，正式上线把开关关掉就自动恢复。
        */
-      if ((room.players || []).length < 1) return { ok: false, msg: '房间是空的' }
+      const nPlayers = (room.players || []).length
+      if (nPlayers < 1) return { ok: false, msg: '房间是空的' }
+      {
+        const gm = gameOf(room.game)
+        const need = gm ? gm.min : 2
+        const solo = event.solo === true
+        if (nPlayers < need && !solo) {
+          return {
+            ok: false,
+            msg: '这个玩法要 ' + need + ' 个人，还差 ' + (need - nPlayers) + ' 个'
+          }
+        }
+      }
       /*
        * ★ 必须把 countdown 也拦掉（2026-10-09 安全审计发现）。
        *

@@ -23,6 +23,8 @@
  * 悬念恰恰来自"看不见"。改造前让骰子在空中翻，所以看着假。
  */
 const { call } = require('../../utils/cloud.js')
+/* 测试开关（soloTest）：一个人也能开局，见 config.js 的说明 */
+const CFG = require('../../config.js')
 const sfx = require('../../utils/sfx.js')
 const feedback = require('../../utils/feedback.js')
 /*
@@ -160,6 +162,13 @@ Page({
     games: GAMES,
     /* 建房表单 */
     myName: '',
+    /*
+     * 测试开关（config.js 的 soloTest）：一个人也能开局。
+     * ⚠️ 放 data 而不是塞进 decorate —— decorate 的职责是"补齐服务端房间数据"，
+     *    而它是**纯函数**（测试会把函数体抽出来注入执行，见 test-room-ui.js）。
+     *    在里面引用模块级配置会直接 ReferenceError，而且语义上也越界了。
+     */
+    soloTest: !!CFG.soloTest,
     pickGame: 'liar',
     pickGameName: '大话骰',
     /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
@@ -1762,13 +1771,20 @@ Page({
      * 人数不够就直接说，别让请求发出去再被服务端拒 ——
      * 服务端允许单开（调试用），所以它**不会**帮我们拦这个。
      */
-    const rm = this.data.room
-    if (rm && rm.shortBy > 0) {
-      wx.showToast({ title: '还差 ' + rm.shortBy + ' 个人才能开' + (rm.gameName || ''), icon: 'none', duration: 2000 })
-      return
-    }
+    /*
+     * ★ 人数不再在前端拦（2026-10-28）。
+     *   前端拦一道只会让"到底能不能开"有两个判据，且两边容易不同步
+     *   （服务端放开了、前端还挡着，用户看到的就是"按钮点不动"）。
+     *   现在：前端只是把开关状态传给服务端，**能不能开由服务端判**，
+     *   被拒时用服务端的原话提示 —— 一处判据、一句话。
+     */
+
     if (!this.specGuard()) return
-    const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
+    const r = await call('room', {
+      action: 'start', id: this.data.room.id,
+      /* 测试期允许单人开局；服务端认这个参数，正式版把它变成 false 即可 */
+      solo: !!CFG.soloTest
+    }, { loading: '开始' })
       .catch((e) => {
         wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' })
         this.resyncAfterFail()

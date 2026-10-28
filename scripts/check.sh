@@ -110,3 +110,11 @@ console.log('  ✓ '+checked+' 处云函数调用都有对应的 action（本地
 
 echo
 echo "全部检查通过，可以部署 ✓"
+
+echo "═══ 6/6 测试开关提醒 ═══"
+if grep -q "soloTest: true" miniprogram/config.js; then
+  echo "  ⚠️  config.js 里 soloTest = true：现在**一个人也能开局**。"
+  echo "     验收完记得改成 false，否则正式版用户可以单人开始任何玩法。"
+else
+  echo "  ✓ soloTest 已关闭（人数按玩法下限拦）"
+fi
