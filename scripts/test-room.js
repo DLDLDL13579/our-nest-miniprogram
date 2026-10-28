@@ -450,6 +450,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     await room.main({ action: 'leave', id: store.rooms.filter(x => x.code === CODES[i])[0]._id }).catch(() => {})
   }
 
+  /* ============ ⑦b 摇过不能重摇（后端必须拦，不能只靠前端藏按钮） ============ */
+  /*
+   * 2026-10-28 补。前端摇完会把"摇盅"藏起来，但云函数是公开接口 ——
+   * 再调一次就会**覆盖同一个人的骰子**。这和"偷看过的骰子突然变了"是同一类事故：
+   * 玩家不会觉得是 bug，会觉得 App 在作弊。
+   */
+  {
+    OPENID = A
+    const rr = await room.main({ action: 'create', name: 'R1', game: 'dice' })
+    const rrId = rr.room.id
+    OPENID = 'oid_r2'
+    await room.main({ action: 'join', code: rr.room.code, name: 'R2' })
+    OPENID = A
+    await room.main({ action: 'start', id: rrId })
+    store.rooms.filter(x => x._id === rrId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: rrId })
+
+    const first = await room.main({ action: 'roll', id: rrId })
+    assert.ok(first.ok, '首次摇骰应成功')
+    const dice1 = JSON.stringify((first.room.me.dice || []).slice())
+
+    const again = await room.main({ action: 'roll', id: rrId })
+    assert.strictEqual(again.ok, false, '★ 摇过之后不能再摇（后端必须拦）')
+    assert.ok(/摇过/.test(again.msg || ''), '提示要说清"已经摇过了"，实际：' + (again.msg || ''))
+
+    /* 再读一次，确认点数**没被覆盖** */
+    const after = await room.main({ action: 'status', id: rrId })
+    assert.strictEqual(JSON.stringify((after.room.me.dice || []).slice()), dice1,
+      '★ 被拒的那次不能改动骰子（否则玩家看到点数变了）')
+    ok('★ 摇过不能重摇，且被拒时点数不变')
+  }
+
   /* ============ ⑧ 人数上限 ============ */
   console.log('\n=== ⑧ 人数上限 ===')
   OPENID = A

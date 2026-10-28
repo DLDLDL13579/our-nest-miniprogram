@@ -1317,6 +1317,26 @@ exports.main = async (event) => {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
       if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      /*
+       * ★★ 已经摇过就不能再摇（2026-10-28 补的缺口）。
+       *
+       * 前端摇完会把按钮藏起来，但**云函数是公开接口** ——
+       * 直接调用（或前端状态没同步到）就能再摇一次，结果是
+       * **同一个人的骰子被覆盖成新的点数**。
+       *
+       * 这和"偷看过的骰子突然变了"是同一类事故：玩家不会觉得是 bug，
+       * 会觉得 App 在作弊。AGENTS.md 记过这条判据 ——
+       * "前端藏了、后端没拦的缺口必须后端补"。
+       *
+       * 注意不要和 again（再来一局）混淆：那里会把 dice 清空，
+       * 所以下一局照样能摇。
+       */
+      {
+        const meNow = (room.players || []).filter(p => p.openid === OPENID)[0]
+        if (meNow && Array.isArray(meNow.dice) && meNow.dice.length) {
+          return { ok: false, msg: '你已经摇过了' }
+        }
+      }
 
       /* 每人自己摇自己的 —— 服务端摇，前端只拿结果 */
       /*
