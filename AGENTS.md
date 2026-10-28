@@ -24,9 +24,13 @@
 
 **当前结构**：tabBar 两页「大厅 / 我的」，加一个房间页。
 
-    pages/lobby/lobby   大厅：输房间号进房 + 玩法卡（点一张就一步建好房）
-    pages/room/room     房间：entry → lobby → countdown → playing → over
-    pages/me/me         我的：昵称、音效/震动开关、关于
+    pages/lobby/lobby   主包 · 大厅：输房间号进房 + 玩法卡（点一张就一步建好房）
+    pages/me/me         主包 · 我的：昵称、音效/震动开关、关于
+    game/room/room      **分包** · 房间：entry → lobby → countdown → playing → over
+
+⚠️ 2026-10-28 拆了分包：房间页 + 它的美术资源（牌面/骰子/骰盅 664KB）都在
+   `miniprogram/game/` 下，主包只剩 750KB（其中音频占 580KB —— 移不走，
+   见下面"分包"那一节）。`app.json` 里配了 preloadRule：进大厅就预下载分包。
 
 云函数只剩 3 个：`room`（全部游戏逻辑）、`initdb`、`bootstrap`。
 集合只剩 `rooms`。
