@@ -89,6 +89,8 @@ const PATHS = {
   mask: '<path d="M4 8.6c2.6-1 5.3-1.5 8-1.5s5.4.5 8 1.5c0 4.6-3.6 8.2-8 8.2S4 13.2 4 8.6z"/><circle cx="8.7" cy="10.9" r="1.15" fill="currentColor" stroke="none"/><circle cx="15.3" cy="10.9" r="1.15" fill="currentColor" stroke="none"/>',
   /* 两张叠起来的扑克 = 牌类玩法 */
   cards: '<rect x="3.6" y="6.4" width="11" height="15.2" rx="2" transform="rotate(-9 9.1 14)"/><rect x="9.4" y="4.2" width="11" height="15.2" rx="2"/><path d="M14.9 9.4l1.1 2.4 2.4 1.1-2.4 1.1-1.1 2.4-1.1-2.4-2.4-1.1 2.4-1.1z" fill="currentColor" stroke="none"/>',
+  /* 眼睛 = 观战 / 只能看 */
+  eye: '<path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3.1"/>',
   /* 投票箱 */
   vote: '<path d="M5 11.5h14v8H5z"/><path d="M8.6 11.5V6.6a3.4 3.4 0 0 1 6.8 0v4.9"/><path d="M9.9 8.9l2.1 2.1 2.1-2.1"/>',
 

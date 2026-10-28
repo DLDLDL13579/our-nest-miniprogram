@@ -402,6 +402,59 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    *   **知道边界在哪，比假装它全能更有用。**
    */
 
+  /* ============ ⑪ ★ 写操作的入口必须有观战守卫 ============
+   *
+   * 中途加入的人这一局只能看。服务端会拒，但那是**冷冰冰的错误**，
+   * 玩家不知道"为什么只有我不行"。
+   *
+   * ★ 为什么必须用断言锁：守卫是在每个操作方法里逐个加的 ——
+   *   加漏一个**不报错**，只是那个操作会绕过友好提示、直接吃服务端的拒绝。
+   *   而"漏一个"正是逐个添加最容易发生的事（本项目栽过多次）。
+   *
+   * 判据：凡是 `call('room', { action: '<写操作>' })` 的方法，
+   *      方法体里必须有 specGuard()。只读的（status）和入口流程
+   *      （create/join/leave/again/game）不要求 —— 那时还没有 room 或本来就该允许。
+   */
+  {
+    const src = fs.readFileSync(JS, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    /*
+     * 'card'（加自定义题）刻意放行：那是往**题池**里加题，为下一局准备，
+       不属于"这一局的动作" —— 旁观的人想出个题完全合理。
+     */
+    const READONLY = new Set(['status', 'create', 'join', 'leave', 'again', 'game', 'deck', 'cardDel', 'card'])
+
+    // 抽方法体：从 "  async xxx(" 或 "  xxx(" 开始，按大括号配平
+    const methods = []
+    const re = /\n  (?:async )?([a-zA-Z_][\w]*)\s*\(([^)]*)\)\s*\{/g
+    let m
+    while ((m = re.exec(src))) {
+      const open = src.indexOf('{', m.index + m[0].length - 1)
+      if (open < 0) continue
+      let depth = 0, end = -1
+      for (let k = open; k < src.length; k++) {
+        if (src[k] === '{') depth++
+        else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+      }
+      if (end < 0) continue
+      methods.push({ name: m[1], body: src.slice(open, end + 1) })
+    }
+
+    const missing = []
+    for (const md of methods) {
+      const acts = Array.from(md.body.matchAll(/action\s*:\s*['"](\w+)['"]/g)).map(x => x[1])
+      const writes = acts.filter(a => !READONLY.has(a))
+      if (!writes.length) continue
+      if (!/specGuard\s*\(/.test(md.body)) missing.push(md.name + '（' + writes.join(',') + '）')
+    }
+    assert.deepStrictEqual(missing, [],
+      '★ 这些写操作方法没有观战守卫 —— 中途加入的人会绕过友好提示，直接吃服务端的拒绝：\n    ' +
+      missing.join('\n    ') +
+      '\n    修法：方法开头加 `if (!this.specGuard()) return`')
+    ok(`写操作入口 ${methods.length ? '' : ''}全部有观战守卫`)
+  }
+
   /* ============ ⑩ ★ 延迟回调里改 stage 必须有守卫 ============
    *
    * 2026-10-28 的真实竞态：比大小结算有一段

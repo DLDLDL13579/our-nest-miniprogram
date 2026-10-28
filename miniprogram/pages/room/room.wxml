@@ -205,6 +205,16 @@
 
   <!-- ============ 游戏中 ============ -->
   <block wx:elif="{{stage === 'playing'}}">
+    <!--
+      观战提示：中途加入的人这一局只能看。
+      放在**所有玩法分支之前**、且不参与 wx:if/elif 链 —— 一处覆盖五个玩法。
+      （逐个玩法各加一条必然漏，而且漏了还不报错。）
+    -->
+    <view wx:if="{{room.spectating}}" class="specbar">
+      <image class="specbar-i" src="{{ic.eye}}" mode="aspectFit" />
+      <text class="specbar-t">这一局你只能看 · 下一局自动加入</text>
+    </view>
+
     <!-- 大话骰 -->
     <block wx:if="{{room.game === 'liar'}}">
       <view class="bidbar">
@@ -540,7 +550,8 @@
       </block>
 
       <block wx:elif="{{room.poker.folded}}">
-        <view class="pk-wait">你已弃牌 · 在旁边看这局</view>
+        <!-- 观战者不是"弃牌"：他压根没参与这一局（顶部已有观战条说明） -->
+        <view wx:if="{{!room.spectating}}" class="pk-wait">你已弃牌 · 在旁边看这局</view>
       </block>
 
       <block wx:else>

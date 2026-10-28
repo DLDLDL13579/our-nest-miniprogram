@@ -961,6 +961,20 @@ Page({
     room.waitingNames = waiting.map(p => p.name).join('、')
 
     /*
+     * 我是不是"中途加入、这局只能看"。
+     *
+     * ★ 原来 `inRound` 只用来**过滤别人**（列表里不显示未入局的人），
+     *   从来没有一处告诉玩家"**你自己**现在是观战"。
+     *   于是中途进来的人会看到别人在玩、自己点了却被服务端拒
+     *   （"你是中途进来的，下一局才能参与"）—— 完全不知道为什么。
+     *   一个字段算清，所有玩法共用一条提示。
+     */
+    {
+      const mePlayer = (room.players || []).filter(p => p.isMe)[0]
+      room.spectating = !!(mePlayer && mePlayer.inRound === false)
+    }
+
+    /*
      * 玩法名与规则 —— 从注册表取，不在这里重写一遍文案。
      * ★ 注册表里每个玩法都有 `how: [4 条规则]`，但这一版之前**从来没被渲染过**
      *   （grep `.how` 全仓为 0）—— 16 条文案白写在数据里。
@@ -1029,6 +1043,24 @@ Page({
     }
   },
 
+  /**
+   * 观战守卫：中途加入的人这一局只能看。
+   *
+   * 服务端本来就会拒（"你是中途进来的，下一局才能参与"），
+   * 但那是**冷冰冰的错误**，玩家不知道"为什么只有我不行"。
+   * 所有操作入口统一在开头调它 —— 一处逻辑覆盖所有玩法，
+   * 比在五个分支里各写一遍 if 可靠（那种写法必然漏）。
+   *
+   * @returns {boolean} true = 可以继续操作
+   */
+  specGuard() {
+    if (this.data.room && this.data.room.spectating) {
+      wx.showToast({ title: '这一局你只能看，下一局自动加入', icon: 'none', duration: 1800 })
+      return false
+    }
+    return true
+  },
+
   /* ================= 谁是卧底 ================= */
 
   /*
@@ -1052,6 +1084,7 @@ Page({
 
   /* 房主切换环节：说完了→投票 / 结算完→下一轮 */
   async uwSay() {
+    if (!this.specGuard()) return
     if (!this.data.room || this.data._uwBusy) return
     this.data._uwBusy = true
     sfx.play('tapSoft')
@@ -1065,6 +1098,7 @@ Page({
      ★ 目标跟着 data-oid 走，不依赖逻辑层的派生列表 ——
      "视图层比逻辑层旧一拍"时按下标取会投错人，而且不报错。 */
   async uwVote(e) {
+    if (!this.specGuard()) return
     if (!this.data.room || this.data._uwBusy) return
     const target = String(e.currentTarget.dataset.oid || '')
     if (!target) return
@@ -1098,6 +1132,7 @@ Page({
    * 按钮上直接把代价写出来 —— 让人在按之前就知道要喝多少。
    */
   async pkSwap(e) {
+    if (!this.specGuard()) return
     if (!this.data.room || this.data._pkBusy) return
     const what = e.currentTarget.dataset.what
     if (what !== 'public' && what !== 'mine') return
@@ -1127,6 +1162,7 @@ Page({
 
   /* 弃牌：认输，喝一杯 */
   async pkFold() {
+    if (!this.specGuard()) return
     if (!this.data.room || this.data._pkBusy) return
     const ok = await new Promise((res) => {
       wx.showModal({
@@ -1149,6 +1185,7 @@ Page({
   /* 比牌：点一个人跟他比。
      ★ 目标跟着 data-oid 走，不依赖派生列表 —— 视图层旧一拍时按下标会点错人。 */
   async pkVs(e) {
+    if (!this.specGuard()) return
     if (!this.data.room || this.data._pkBusy) return
     const target = String(e.currentTarget.dataset.oid || '')
     if (!target) return
@@ -1339,6 +1376,7 @@ Page({
   /* ================= 开局 / 再来 ================= */
 
   async doStart() {
+    if (!this.specGuard()) return
     const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
       .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
     if (r && r.ok) {
@@ -1428,6 +1466,7 @@ Page({
      ================= */
 
   async doRoll() {
+    if (!this.specGuard()) return
     if (this.data.rolling || this.data.myRolled) return
     this.clearCupTimers()
     this.setData({ rolling: true })
@@ -1616,6 +1655,7 @@ Page({
   /* ================= 大话骰 ================= */
 
   async doBid(e) {
+    if (!this.specGuard()) return
     const ds = e.currentTarget.dataset
     const i = Number(ds.i)
     /*
@@ -1715,6 +1755,8 @@ Page({
   },
 
   async doOpen() {
+    /* 观战者不该能开别人的盅 —— 这是断言扫出来的真漏 */
+    if (!this.specGuard()) return
     /* 开骰只有轮到自己才有意义 —— 先拦，别让玩家白等一次网络往返 */
     if (!this.data.room.myTurn) {
       sfx.play('tapSoft')
@@ -1772,6 +1814,7 @@ Page({
      ================= */
 
   async doSpin() {
+    if (!this.specGuard()) return
     if (this.data.wheelSpinning) return
     if (!this.data.room || !this.data.room.host) return
 

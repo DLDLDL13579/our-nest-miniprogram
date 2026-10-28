@@ -87,6 +87,20 @@ module.exports = {
     cd: () => ({ stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
     cdGo: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
 
+    /* 中途加入只能观战 */
+    spectate: () => ({
+      stage: 'playing',
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: false, turn: 2, myTurn: false, turnName: '倩萍',
+        spectating: true,
+        poker: {
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: null, myKnownText: '', folded: true, aliveCount: 3, myDrink: 0,
+          log: [], last: null, winner: null
+        }
+      })
+    }),
+
     /* 断线态（连续失败 3 次以上） */
     netdown: () => ({
       stage: 'lobby',
