@@ -1354,6 +1354,21 @@ Page({
       room.poker.myKnownRed = isRed(room.poker.myKnownText)
     }
 
+    /*
+     * 比大小结算：把赢家的骰子单独拎出来给"英雄区"用。
+     * 服务端只给 ranked（所有人的），前端取点数最高那一行 —— 纯派生，不动服务端。
+     */
+    if (room.game === 'dice' && room.lastResult && Array.isArray(room.lastResult.ranked)) {
+      const lr = room.lastResult
+      const hero = lr.ranked.filter(x => x.total === lr.top)[0]
+      lr.topDice = (hero && hero.dice) ? hero.dice : []
+      /*
+       * 列表里**去掉赢家**：他已经在大图里了，再列一遍既是重复、又白占一行 ——
+       * 8 人局那一行正好把底部的「再来一局」挤下屏。
+       */
+      lr.restRanked = lr.ranked.filter(x => x.total !== lr.top)
+    }
+
     room.settleFoot = ''
     if (room.phase === 'over') {
       const lr = room.lastResult || {}

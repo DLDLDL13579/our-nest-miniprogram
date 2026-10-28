@@ -246,7 +246,12 @@ module.exports = {
          *    模板读的是 `wx:elif="{{room.game === 'dice' && result}}"`。
          *    第一版放进了 room 里，渲染出来整块是空的（但页面不报错）。
          */
-        result: { ranked: ranked, winners: [ranked[0].name], top: ranked[0].total },
+        result: {
+          ranked: ranked, winners: [ranked[0].name], top: ranked[0].total,
+          /* 英雄区用（decorate 里算，mock 要手工给） */
+          topDice: ranked[0].dice,
+          restRanked: ranked.slice(1)
+        },
         room: pkRoom({
           game: 'dice', phase: 'over', host: true, turn: 0, count: 8,
           players: names.map((n, i) => ({

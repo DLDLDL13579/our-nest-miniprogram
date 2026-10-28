@@ -626,6 +626,69 @@
   box-shadow: 0 8rpx 24rpx rgba(206,87,56,.4);
 }
 
+/* ============================================================
+   结算"英雄区"：赢家独占顶部
+   ------------------------------------------------------------
+   一局的高光时刻。原来赢家只是列表里底色变金色的一行 ——
+   和旁边 7 个人一样高，看不出"是他赢了"。
+   现在：大骰子 + 大点数 + 光晕，其他人缩到下面的列表里。
+   ============================================================ */
+.over-hero {
+  position: relative; overflow: hidden;
+  width: 100%;
+  padding: 34rpx 24rpx 30rpx;
+  border-radius: var(--r-3);
+  display: flex; flex-direction: column; align-items: center;
+  background: linear-gradient(165deg, rgba(232,179,60,.16) 0%, rgba(232,179,60,.04) 60%, rgba(0,0,0,0) 100%);
+  border: 2rpx solid rgba(232,179,60,.30);
+  animation: heroWin .52s cubic-bezier(.34, 1.4, .64, 1) backwards;
+}
+@keyframes heroWin {
+  0%   { opacity: 0; transform: scale(.92) translateY(14rpx) }
+  100% { opacity: 1; transform: scale(1) translateY(0) }
+}
+.oh-glow {
+  position: absolute; width: 420rpx; height: 420rpx; border-radius: 50%;
+  left: 50%; top: 40%; margin-left: -210rpx; margin-top: -210rpx;
+  background: radial-gradient(circle, rgba(232,179,60,.30) 0%, rgba(232,179,60,0) 70%);
+  animation: ohPulse 2.2s ease-in-out infinite;
+}
+@keyframes ohPulse {
+  0%, 100% { opacity: .75; transform: scale(1) }
+  50%      { opacity: 1;   transform: scale(1.08) }
+}
+.oh-crown {
+  position: relative;
+  font-size: 18rpx; letter-spacing: 8rpx;
+  color: rgba(232,179,60,.9);
+}
+.oh-name {
+  position: relative;
+  margin-top: 6rpx;
+  font-size: 44rpx; font-weight: 700; color: #FFE9B8;
+  letter-spacing: 3rpx;
+  text-shadow: 0 4rpx 20rpx rgba(232,179,60,.45);
+}
+.oh-dice {
+  position: relative;
+  margin-top: 18rpx;
+  display: flex; gap: 10rpx;
+}
+.oh-die {
+  width: 66rpx; height: 72rpx;
+  animation: ohDie .46s cubic-bezier(.34, 1.4, .64, 1) backwards;
+  animation-delay: calc(var(--i) * 60ms);
+}
+@keyframes ohDie {
+  0%   { opacity: 0; transform: translateY(-24rpx) rotate(-14deg) scale(.8) }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
+}
+.oh-total {
+  position: relative;
+  margin-top: 12rpx;
+  font-size: 30rpx; font-weight: 700; color: #F6E7C3;
+}
+
 /* ---------- 结算 ---------- */
 .center-box { display: flex; flex-direction: column; align-items: center; padding: 40rpx 10rpx }
 

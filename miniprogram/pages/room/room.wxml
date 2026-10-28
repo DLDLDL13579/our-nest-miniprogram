@@ -880,14 +880,30 @@
       现在显式只认比大小。**这是"else 兜底"的第五次变体，别再用兜底。**
     -->
     <view wx:elif="{{room.game === 'dice' && result}}" class="center-box">
-      <view class="over-tag ok">结果出来了</view>
+      <!--
+        ★★ 结算页的**层级**（2026-10-28）。
+        改造前是 8 行等大的列表：赢家只是行底色变金色，和其他人一样高 ——
+        一局的高光时刻看起来像一张"成绩单"，而不是"有人赢了"。
+        现在分两层：
+          ① 赢家独占顶部：大骰子 + 大点数 + 光晕，一眼就知道是谁
+          ② 其余人缩成小行排在下面（信息还在，但不再和赢家平级）
+        ⚠️ 外层循环的 index 要改名（wx:for-index="ri"）——
+           内层骰子循环也用自己的 index，同名的两个会互相覆盖。
+      -->
+      <view class="over-hero">
+        <view class="oh-glow"></view>
+        <view class="oh-crown">赢 家</view>
+        <view class="oh-name">{{result.winners}}</view>
+        <view class="oh-dice">
+          <image wx:for="{{result.topDice}}" wx:for-item="d" wx:key="index"
+                 src="/images/dice/dice-{{d}}.png" class="oh-die" mode="aspectFit"
+                 style="--i:{{index}}" />
+        </view>
+        <view class="oh-total">{{result.top}} 点</view>
+      </view>
+
       <view class="revealbox">
-        <!--
-          视觉层次：赢家在顶上、点数最高的那行给金色；垫底的给一句"喝一杯"。
-          ⚠️ 外层循环的 index 要改名（wx:for-index="ri"）——
-             内层骰子循环也用自己的 index，同名的两个会互相覆盖。
-        -->
-        <view wx:for="{{result.ranked}}" wx:key="seat" wx:for-index="ri"
+        <view wx:for="{{result.restRanked}}" wx:key="seat" wx:for-index="ri"
               class="rv-row {{item.total === result.top ? 'win' : ''}}">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
@@ -897,7 +913,6 @@
           <text class="rv-total">{{item.total}} 点</text>
         </view>
       </view>
-      <view class="loserbox">赢的是 {{result.winners}}</view>
     </view>
 
     <!-- 今晚谁输最多：用 score（每输一局 -1），只在 ≤ -2 时出现 -->

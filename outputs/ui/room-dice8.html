@@ -77,7 +77,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   box-shadow: var(--sh-1);
 }
 .card.hl { border: 1.5px solid var(--brand); box-shadow: var(--sh-2) }
-.card.flat { background: #F5F1EB; box-shadow: none }
+
+.card.flat { background: rgba(255, 255, 255, .05); box-shadow: none }
 
 .lbl {
   font-size: 10.5px;
@@ -410,15 +411,31 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.cs-felt-img {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%; height: 100%;
+  
+  opacity: .92;
+}
+
+
+.cs-prop {
+  position: absolute;
+  width: 23px; height: 25px;
+  opacity: .5;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.55));
+  pointer-events: none;
+}
+.cs-prop.p1 { left: 13px; bottom: 23px; transform: rotate(-18deg) }
+.cs-prop.p2 { right: 15px; bottom: 38px; transform: rotate(24deg); opacity: .38 }
+
+
 .cs-felt {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
   background:
-    repeating-linear-gradient(45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    repeating-linear-gradient(-45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    radial-gradient(ellipse 80% 60% at 50% 45%,
-      #3A2E24 0%, #2A211A 45%, #1F1713 100%);
+    
+    radial-gradient(ellipse 78% 58% at 50% 42%,
+      rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 
 .cs-spot {
@@ -679,6 +696,63 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: linear-gradient(135deg, #E88060, #CE5738);
   color: #fff; font-size: 16px; font-weight: 700;
   box-shadow: 0 4px 12px rgba(206,87,56,.4);
+}
+
+
+.over-hero {
+  position: relative; overflow: hidden;
+  width: 100%;
+  padding: 17px 12px 15px;
+  border-radius: var(--r-3);
+  display: flex; flex-direction: column; align-items: center;
+  background: linear-gradient(165deg, rgba(232,179,60,.16) 0%, rgba(232,179,60,.04) 60%, rgba(0,0,0,0) 100%);
+  border: 1px solid rgba(232,179,60,.30);
+  animation: heroWin .52s cubic-bezier(.34, 1.4, .64, 1) backwards;
+}
+@keyframes heroWin {
+  0%   { opacity: 0; transform: scale(.92) translateY(7px) }
+  100% { opacity: 1; transform: scale(1) translateY(0) }
+}
+.oh-glow {
+  position: absolute; width: 210px; height: 210px; border-radius: 50%;
+  left: 50%; top: 40%; margin-left: -105px; margin-top: -105px;
+  background: radial-gradient(circle, rgba(232,179,60,.30) 0%, rgba(232,179,60,0) 70%);
+  animation: ohPulse 2.2s ease-in-out infinite;
+}
+@keyframes ohPulse {
+  0%, 100% { opacity: .75; transform: scale(1) }
+  50%      { opacity: 1;   transform: scale(1.08) }
+}
+.oh-crown {
+  position: relative;
+  font-size: 9px; letter-spacing: 4px;
+  color: rgba(232,179,60,.9);
+}
+.oh-name {
+  position: relative;
+  margin-top: 3px;
+  font-size: 22px; font-weight: 700; color: #FFE9B8;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 10px rgba(232,179,60,.45);
+}
+.oh-dice {
+  position: relative;
+  margin-top: 9px;
+  display: flex; gap: 5px;
+}
+.oh-die {
+  width: 33px; height: 36px;
+  animation: ohDie .46s cubic-bezier(.34, 1.4, .64, 1) backwards;
+  animation-delay: calc(var(--i) * 60ms);
+}
+@keyframes ohDie {
+  0%   { opacity: 0; transform: translateY(-12px) rotate(-14deg) scale(.8) }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
+}
+.oh-total {
+  position: relative;
+  margin-top: 6px;
+  font-size: 15px; font-weight: 700; color: #F6E7C3;
 }
 
 
@@ -1472,6 +1546,13 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.pk-face {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  display: block;
+}
+
+
 .pk-back {
   opacity: 1;
   background:
@@ -1852,16 +1933,19 @@ view, text, button, input, textarea { box-sizing: border-box }
   
     
     <div class="center-box">
-      <div class="over-tag ok">结果出来了</div>
+      
+      <div class="over-hero">
+        <div class="oh-glow"></div>
+        <div class="oh-crown">赢 家</div>
+        <div class="oh-name">胖虎</div>
+        <div class="oh-dice">
+          <img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;--i:0"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:1"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;--i:2"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:3"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;--i:4">
+        </div>
+        <div class="oh-total">30 点</div>
+      </div>
+
       <div class="revealbox">
-        
-        <div class="rv-row win">
-          <span class="rv-name">胖虎</span>
-          <div class="dicebox mini">
-            <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
-          </div>
-          <span class="rv-total">30 点</span>
-        </div><div class="rv-row">
+        <div class="rv-row">
           <span class="rv-name">老王</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-2.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;">
@@ -1905,7 +1989,6 @@ view, text, button, input, textarea { box-sizing: border-box }
           <span class="rv-total">6 点</span>
         </div>
       </div>
-      <div class="loserbox">赢的是 胖虎</div>
     </div><div class="actbar">
       <div class="btn main bigbtn">再来一局</div><div class="actrow">
         <div class="btn ghostb">换个玩法</div><div class="textbtn">离开房间</div>
