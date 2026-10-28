@@ -1352,8 +1352,8 @@ Page({
       game: this.data.pickGame,
       /* 场合只有转盘用得到，但一起传过去无害 —— 房主中途换游戏也不用重开房 */
       deck: this.data.pickDeck
-    }, { loading: '开房间' })
-      .catch((e) => { this.setData({ err: (e && e.friendly) || '开房间失败' }); return null })
+    }, { loading: '开一桌' })
+      .catch((e) => { this.setData({ err: (e && e.friendly) || '开不了这一桌' }); return null })
 
     this.setData({ creating: false })
     if (r && r.ok) {

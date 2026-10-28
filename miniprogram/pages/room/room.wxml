@@ -42,7 +42,7 @@
       <view class="eh-in">
         <view class="eh-lbl">各自用自己手机</view>
         <view class="eh-t">联网一起玩</view>
-        <view class="eh-s">一个人开房间拿到 3 位房间号，其他人输号进来</view>
+        <view class="eh-s">一个人开一桌拿到 3 位房间号，其他人输号进来</view>
       </view>
     </view>
 
@@ -55,7 +55,7 @@
 
     <!-- 建房 -->
     <view class="card hl">
-      <view class="lbl">开一个房间 · 点一下就有房间号</view>
+      <view class="lbl">开一桌 · 点一下就有房间号</view>
       <view class="chiprow">
         <view wx:for="{{games}}" wx:key="k"
               class="pill {{pickGame === item.k ? '' : 'ghost'}}"
