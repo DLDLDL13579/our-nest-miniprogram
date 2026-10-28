@@ -733,6 +733,53 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     ok(`注册表 ${GAMES.length} 个玩法都有对应的界面分支（没有 else 兜底）`)
   }
 
+  /* ============ ⑩ 结算前必须定格 300ms（hitstop） ============ */
+  console.log('\n=== ⑩ 结算前定格：最激动的一秒不能被跳过 ===')
+  /*
+   * 2026-10-28 加。原来 playing → over 是**直接换屏**：
+   * 上一帧还在看骰盅/牌，下一帧已经变成结算列表。
+   * 而"结果出来的那一刻"恰恰是一局里最值钱的部分。
+   *
+   * 实现上的三个要点，缺一个就不是定格、是卡死：
+   *   ① 拦截点只在 over（其它阶段不能拦，否则游戏根本走不动）
+   *   ② 定格期间到达的响应要**存起来**，不能丢
+   *      —— 那可能是最后一次带结算数据的响应，服务端不会再推
+   *   ③ 定时器到点后必须**重入 applyRoom** 走完整流程
+   *      （结算音效、事件流、stage 切换都在里面）
+   *
+   * ⚠️ 判据用 applyRoom 的**函数体**，不看整文件：整文件里 'over' 出现几十次，
+   *    删掉这段照样能过。这是本项目反复栽过的"判据失效"形态。
+   */
+  const apBody = (() => {
+    const i = src.indexOf('  applyRoom(raw, extra) {')
+    if (i < 0) return ''
+    let depth = 0, end = -1
+    const open = src.indexOf('{', i)
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    return end > open ? src.slice(open, end) : ''
+  })()
+  assert.ok(apBody, '⑩ 找不到 applyRoom 函数体')
+
+  assert.ok(/raw\.phase\s*===\s*'over'/.test(apBody),
+    '⑩ applyRoom 里必须有 over 阶段的拦截（否则直接换屏，定格不存在）')
+  assert.ok(/300/.test(apBody) && /setTimeout/.test(apBody),
+    '⑩ 定格必须有 300ms 的定时器')
+  assert.ok(/_pendingOver\s*=\s*raw/.test(apBody),
+    '⑩ 定格期间的响应必须存起来（不能丢，那可能是最后一次带结算数据的响应）')
+  assert.ok(/if\s*\(p\)\s*this\.applyRoom\(p\)/.test(apBody),
+    '⑩ 定时器到点后必须重入 applyRoom（结算音效/事件流/stage 切换都在里面）')
+  assert.ok(/clearTimeout\(this\._htTimer\)/.test(src),
+    '⑩ 定格定时器必须在 onUnload 里清掉（否则卸载后还会 setData）')
+
+  /* 模板上真的挂了这个 class —— 否则逻辑写了、样式也有了，画面一动不动 */
+  const rootM = /class="gamepage[^"]*\{\{\s*freeze\s*\?/.exec(tpl)
+  assert.ok(rootM, '⑩ 页面根容器的 class 里必须绑上 freeze')
+  assert.ok(/\.gamepage\.freeze\s*\{/.test(css), '⑩ .gamepage.freeze 必须有样式定义')
+  ok('结算前定格 300ms：不丢响应、会重入、定时器可清理、模板真的挂上了')
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

@@ -197,6 +197,18 @@ Page({
     cdTick: 0,
 
     /*
+     * 结算前 300ms 的**定格**（hitstop）。
+     *
+     * 一局打到最后，最值钱的是"结果出来的那一刻"：骰盅掀开、牌摊在桌上。
+     * 而原来的实现是**直接换屏** —— 上一帧还在看骰子，下一帧已经变成结算列表，
+     * 中间那一下"啊？！"被整个跳过去了。
+     *
+     * 现在从 playing 走到 over 时，画面先冻住 300ms（只提亮，不动、不响），
+     * 再让结算展开。竞品拆解里这条排在最前面 —— 它不花钱，只花时间。
+     */
+    freeze: false,
+
+    /*
      * 事件流：**别人做了什么**。
      *
      * 这是多人游戏最容易缺、又最影响"像不像在跟人玩"的一件东西。
@@ -348,6 +360,7 @@ Page({
     clearTimeout(this._pkDealTimer)
     clearTimeout(this._pkDealTimer2)
     clearTimeout(this._pkDealTimer3)
+    clearTimeout(this._htTimer)
     /* ★ 第一件事就是标记"这个页面没了" —— 之后所有 await 回来都会提前返回。
        必须在清理之前设，否则清理期间飞行中的响应仍可能 setData */
     this._dead = true
@@ -996,6 +1009,40 @@ Page({
   applyRoom(raw, extra) {
     if (!raw) return
     if (this._dead) return
+
+    /* ---------- 结算前的 300ms 定格 ---------- */
+    if (raw.phase === 'over') {
+      if (this._htUntil && Date.now() < this._htUntil) {
+        /* 定格期间到达的响应先存着，等定时器到了再落 —— 不能直接丢：
+           那可能是"最后一次带结算数据的响应"（服务端不会再推）。 */
+        this._pendingOver = raw
+        return
+      }
+      if (!this._htArmed) {
+        this._htArmed = true
+        this._htUntil = Date.now() + 300
+        this._pendingOver = raw
+        this.setData({ freeze: true })
+        this._htTimer = setTimeout(() => {
+          if (this._dead) return
+          this._htArmed = false
+          this._htUntil = 0
+          this.setData({ freeze: false })
+          const p = this._pendingOver
+          this._pendingOver = null
+          /* ★ 重入自己，走一遍完整流程（事件流、结算音效、stage 切换都在里面）。
+             这样"定格"只加了一处拦截，不必把 applyRoom 拆成两半。 */
+          if (p) this.applyRoom(p)
+        }, 300)
+        return
+      }
+    } else {
+      /* 回到非 over（重开一局）时把定格状态清干净 */
+      this._htArmed = false
+      this._htUntil = 0
+      if (this.data.freeze) this.setData({ freeze: false })
+    }
+
     /* 事件流要在 setData 之前比对 —— 之后 this.data.room 已经是新的一帧了 */
     this._evDiff(this.data.room, raw)
     /*

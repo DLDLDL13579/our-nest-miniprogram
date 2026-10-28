@@ -24,7 +24,7 @@
   </view>
 
   <!-- ============ 入口：建房 / 加入 ============ -->
-<view class="gamepage {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}}">
+<view class="gamepage {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
   <view class="gbar">
     <view class="gbar-l" bindtap="goBack">
       <text class="gbar-back">‹</text>
