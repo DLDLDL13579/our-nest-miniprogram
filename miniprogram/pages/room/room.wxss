@@ -1147,17 +1147,36 @@
 }
 
 /* ---------- 投票列表 ---------- */
-.uw-list { display: flex; flex-direction: column; gap: 14rpx }
+/*
+ * 投票列表用**两列网格**而不是竖排单列。
+ * 为什么：卧底最多 12 人（注册表 max=12），单列时 12 个名字要滚好一会儿
+ * 才能看到最后一个人 —— 而酒桌上"点一个人"应该一眼扫完。
+ * 两列 → 12 人只要 6 行，基本一屏能放下。
+ */
+.uw-list {
+  display: flex; flex-wrap: wrap; gap: 14rpx;
+}
 .uw-p {
   display: flex; align-items: center; gap: 14rpx;
-  padding: 28rpx 26rpx;
+  /*
+   * 两列。用 flex-basis 百分比而不是 `calc(50% - 7rpx)` ——
+   * calc 与 flex gap 组合在部分渲染环境里会算出偏差（实测右边缘出现缺口）。
+   * `flex: 0 0 48.5%` + gap 14rpx 的视觉效果一样，且没有计算风险。
+   */
+  flex: 0 0 48.5%;
+  box-sizing: border-box;
+  padding: 24rpx 20rpx;
   background: rgba(255,255,255,.06);
   border: 2rpx solid rgba(255,255,255,.08);
   border-radius: 20rpx;
   transition: background .14s, border-color .14s;
 }
 .uw-p:active { background: rgba(255,255,255,.12) }
-.uw-pn { flex: 1; font-size: 30rpx; font-weight: 600; color: #fff }
+.uw-pn {
+  flex: 1; min-width: 0;            /* min-width:0 才能让 flex 子项真正收缩 */
+  font-size: 27rpx; font-weight: 600; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .uw-tag {
   font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.25); color: #F6E7C3;

@@ -112,6 +112,23 @@ module.exports = {
       })
     }),
 
+    /* 卧底满员 12 人：座位条与投票列表会不会挤爆 */
+    uw12: () => {
+      const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎', '晓雯', '老陈', '阿凯', '小鱼']
+      const players = names.map((n, i) => ({
+        seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+        diceCount: 0, inRound: true, out: false
+      }))
+      return {
+        stage: 'playing',
+        room: uwRoom({
+          id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
+          count: 12, players: players, gameName: '谁是卧底',
+          uw: { step: 'vote', word: '豆浆', myDone: true, myVote: '', voteCount: 5, voterCount: 12, reveal: [], lastOut: null }
+        })
+      }
+    },
+
     /* 断线态（连续失败 3 次以上） */
     netdown: () => ({
       stage: 'lobby',

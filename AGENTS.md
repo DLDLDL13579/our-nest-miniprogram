@@ -512,6 +512,30 @@ cd ~/.dsh && python3 weixin_push.py "消息内容"
 
 **用完如果是我开的，要主动关掉**（`cli quit`，或确认 48980/9420 端口释放）。
 
+### ⚠️ 修正：`cli cloud ...` 自己会**拉起** IDE 后台进程（2026-10-28 实测）
+
+上面写「部署云函数 `cli cloud functions deploy` 不需要 IDE 在跑」——
+**准确说法是「不需要你先开 IDE，但它会自己起一个」**。
+
+实测：只跑了一条
+```bash
+cli cloud functions list --project <p> --env <env>
+```
+就冒出来一个
+```
+wechatwebdevtools.app/Contents/MacOS/Electron --cli --remote-port 3799
+```
+占用 **48980** 端口。它启动的时刻就是命令发出的那一秒 ——
+**不是用户开的，是这条命令拉起来的**（`--cli` 参数是证据）。
+
+结论：
+1. 任何 `cli cloud ...` / `cli auto` 命令都可能在用户不知情时**起一个 Electron 进程**，
+   而用户明确要求过别在他电脑上起 GUI 进程。
+2. **跑完立刻 `cli quit --project <p>`**，并用 `ps` + `lsof` 确认进程与端口都已释放
+   （`lsof -nP -iTCP:48980 -sTCP:LISTEN` 无输出即释放）。
+3. 登录态过期时报 `[error] { code: 10, ... }` —— 这一步只能用户在 IDE 里扫码，
+   没有 CLI 办法绕过。**在登录态未知时不要反复重试**（每条命令都会再拉一次 IDE）。
+
 ### 自动化端口（9420）与 automator 的实测结论
 
 - 端口可用 `cli auto --project <路径> --auto-port 9420` 开（不需要点 IDE 设置）
