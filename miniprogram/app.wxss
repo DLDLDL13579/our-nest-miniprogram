@@ -45,7 +45,7 @@ page {
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
-  font-size: 28rpx;
+  font-size: 27rpx;
   line-height: 1.6;
 }
 
@@ -63,7 +63,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .card.flat { background: #F5F1EB; box-shadow: none }
 
 .lbl {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: var(--ink3);
   letter-spacing: 1rpx;
   display: flex;
@@ -72,8 +72,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-bottom: 14rpx;
 }
 .q { font-size: 32rpx; font-weight: 600; line-height: 1.5 }
-.note { font-size: 23rpx; color: var(--ink2); line-height: 1.7 }
-.sm { font-size: 23rpx }
+.note { font-size: 24rpx; color: var(--ink2); line-height: 1.7 }
+.sm { font-size: 24rpx }
 .xs { font-size: 21rpx; color: var(--ink3); line-height: 1.6 }
 
 /* ---------- 主色块（今日页顶部那块红） ---------- */
@@ -85,7 +85,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-bottom: 24rpx;
 }
 .hero .big { font-size: 76rpx; font-weight: 700; line-height: 1.1; letter-spacing: -2rpx }
-.hero .sub { font-size: 23rpx; opacity: .9; margin-top: 10rpx }
+.hero .sub { font-size: 24rpx; opacity: .9; margin-top: 10rpx }
 
 /* ---------- 按钮 ---------- */
 .btn {
@@ -94,7 +94,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 600;
   background: #F0EAE1;
   color: var(--ink2);
@@ -108,7 +108,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 /* ---------- 小标签 ---------- */
 .pill {
-  font-size: 22rpx;
+  font-size: 21rpx;
   padding: 8rpx 20rpx;
   border-radius: 999rpx;
   background: var(--brandsoft);
@@ -131,10 +131,10 @@ view, text, button, input, textarea { box-sizing: border-box }
 .av.b { background: var(--blue); margin-left: -14rpx; box-shadow: 0 0 0 4rpx var(--bg) }
 
 /* ---------- 左右对白（解锁后读对方答案的样式） ---------- */
-.side { border-radius: 20rpx; padding: 22rpx 24rpx; font-size: 26rpx; line-height: 1.75 }
+.side { border-radius: 20rpx; padding: 22rpx 24rpx; font-size: 27rpx; line-height: 1.75 }
 .side.ta { background: var(--bluesoft) }
 .side.me { background: var(--brandsoft) }
-.side .n { font-size: 22rpx; color: var(--ink2); margin-bottom: 8rpx; display: flex; align-items: center; gap: 8rpx }
+.side .n { font-size: 21rpx; color: var(--ink2); margin-bottom: 8rpx; display: flex; align-items: center; gap: 8rpx }
 .rd { width: 12rpx; height: 12rpx; border-radius: 50%; background: var(--brand); display: inline-block }
 .rd.b { background: var(--blue) }
 
@@ -142,7 +142,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .lockbar {
   display: flex; align-items: center; gap: 14rpx;
   background: #F5F1EB; border-radius: 20rpx;
-  padding: 20rpx 22rpx; font-size: 23rpx; color: var(--ink2);
+  padding: 20rpx 22rpx; font-size: 24rpx; color: var(--ink2);
   margin-bottom: 22rpx;
 }
 
@@ -158,14 +158,14 @@ view, text, button, input, textarea { box-sizing: border-box }
 /* ---------- 列表行 ---------- */
 .row2 { display: flex; align-items: center; gap: 20rpx; padding: 18rpx 0; border-bottom: 2rpx solid var(--line) }
 .row2:last-child { border-bottom: none }
-.ico { width: 64rpx; height: 64rpx; border-radius: 50%; background: #F2ECE4; display: flex; align-items: center; justify-content: center; font-size: 28rpx; flex-shrink: 0 }
-.gt { font-size: 26rpx; font-weight: 600 }
+.ico { width: 64rpx; height: 64rpx; border-radius: 50%; background: #F2ECE4; display: flex; align-items: center; justify-content: center; font-size: 27rpx; flex-shrink: 0 }
+.gt { font-size: 27rpx; font-weight: 600 }
 .cd { font-size: 21rpx; font-weight: 700; color: var(--brand2); background: var(--brandsoft); padding: 8rpx 14rpx; border-radius: 14rpx; flex-shrink: 0 }
 .cd.far { background: #F2ECE4; color: var(--ink2); font-weight: 400 }
 
 /* ---------- 里程碑 ---------- */
 .mile { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 6rpx }
-.m { display: flex; flex-direction: column; align-items: center; gap: 10rpx; font-size: 20rpx; color: var(--ink3); flex: 1 }
+.m { display: flex; flex-direction: column; align-items: center; gap: 10rpx; font-size: 21rpx; color: var(--ink3); flex: 1 }
 .m .bar { width: 100%; height: 6rpx; background: var(--line); border-radius: 3rpx }
 .m .dot { width: 18rpx; height: 18rpx; border-radius: 50%; background: var(--line) }
 .m.done .dot { background: var(--gold) }
@@ -183,7 +183,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 /* 底部要留出 tabBar 的高度，否则最后一块卡片会被压在下面。
    100rpx 是 tabBar 本身，再加 40rpx 呼吸感。 */
 .page { padding: 28rpx 28rpx calc(140rpx + env(safe-area-inset-bottom)) }
-.empty { text-align: center; padding: 80rpx 40rpx; color: var(--ink3); font-size: 25rpx; line-height: 1.8 }
+.empty { text-align: center; padding: 80rpx 40rpx; color: var(--ink3); font-size: 24rpx; line-height: 1.8 }
 .divider { height: 2rpx; background: var(--line); margin: 24rpx 0 }
 
 

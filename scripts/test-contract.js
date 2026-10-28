@@ -1595,6 +1595,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(noFeedback, [],
       '这些可点的东西按下没有任何视觉反馈（用户会以为没点中）：\n    ' + noFeedback.join('\n    '))
     ok('全部可点击元素都有按压反馈（或属于点空白关闭的白名单）')
+
+  /* ============ ④e 字号阶梯不能散 ============ */
+  console.log('\n=== ④e 全仓字号必须收敛到阶梯上 ===')
+  /*
+   * ★ 2026-10-28。改造前全仓有 **30 种**字号（17/18/19/20/21/22/23/24/25/26/27/28/30/31/32…）。
+   *   每一种单看都"合理"，合起来就是没有排版系统 —— 标题和正文的关系
+   *   全靠每一处凭手感挑一个数，改一次页面就多一个字号。
+   *
+   *   现在收敛到 15 种：正文四阶（18/21/24/27）+ 小标题 32 +
+   *   强调 36/44 + 展示级 52/56/64/76/92/104 + 超大 150/200（倒计时与大数字）。
+   *   收敛只归并"相差 ≤2rpx"的簇，每处视觉变化 ≤1px，所以截图上看不出差异 ——
+   *   这类改动只能靠断言守（和曲线那条同理）。
+   */
+  {
+    const sizes = new Map()
+    const walkSize = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) walkSize(fp)
+        else if (f.name.endsWith('.wxss')) {
+          const t = fs.readFileSync(fp, 'utf8')
+          ;(t.match(/font-size:\s*(\d+)rpx/g) || []).forEach(x => {
+            const n = Number(/(\d+)rpx/.exec(x)[1])
+            sizes.set(n, (sizes.get(n) || 0) + 1)
+          })
+        }
+      }
+    }
+    walkSize(path.join(ROOT, 'miniprogram'))
+    assert.ok(sizes.size <= 16,
+      '字号又散开了（当前 ' + sizes.size + ' 种，上限 16）：' +
+      [...sizes.keys()].sort((a, b) => a - b).join(' / ') +
+      '\n    加新字号前先问：能不能用已有的那一阶？')
+    ok(`字号收敛到 ${sizes.size} 种：${[...sizes.keys()].sort((a, b) => a - b).join(' / ')}`)
+  }
   }
   }
   }
