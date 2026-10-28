@@ -23,6 +23,7 @@ node scripts/test-room-ui.js
 # ★ 音效抖动：一局里同一音效播很多次，不能每次都完全一样（打点机感）
 echo "═══ 6/9 反馈时间轴 + 错误反馈（音画同步 / 不许静默吞错）═══"
 node scripts/test-pitch.js
+node scripts/test-pool.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 
