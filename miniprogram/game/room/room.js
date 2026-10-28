@@ -449,6 +449,7 @@ Page({
     this.clearCountdown()
     this.clearCupTimers()
     feedback.clear()
+    sfx.stopAmbient && sfx.stopAmbient()
     sfx.destroy()
     /* 主动离开房间 —— 不然会一直占着座位，
        而且别人会看到"永远在线"的幽灵玩家 */
@@ -1201,6 +1202,18 @@ Page({
       const before = this.data.room && this.data.room.myTurn
       const after = this._myTurnOf(raw)
       if (after && !before) feedback.fire('yourTurn')
+    }
+
+    /*
+     * 环境底噪：进游戏播、离开停（2026-10-28，调研第 10 条）。
+     * 只在 playing / over 有底噪 —— lobby 和 entry 是"还没坐下"，
+     * 那时候的安静是对的。
+     */
+    {
+      const st = stageOf(raw.phase)
+      const wantAmbient = (st === 'playing' || st === 'over') && !this.data.spectating
+      if (wantAmbient) sfx.playAmbient && sfx.playAmbient()
+      else sfx.stopAmbient && sfx.stopAmbient()
     }
 
     /* 事件流要在 setData 之前比对 —— 之后 this.data.room 已经是新的一帧了 */

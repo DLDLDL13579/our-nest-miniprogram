@@ -26,7 +26,12 @@ import struct
 import wave
 
 SR = 22050
-OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'miniprogram', 'audio')
+# ★ 2026-10-28：音效 2026-10-28 拆进了分包（主包只留 tick 给「我的」页试听）。
+#   这个脚本原来还往主包写 —— 分包改造时漏改了，一跑就把 35 个音效
+#   全生成回主包（主包从 228KB 涨回 800KB+）。
+#   现在输出到分包，tick 在 main 里单独复制回主包。
+OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'miniprogram', 'game', 'audio')
+MAIN_AUDIO_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'miniprogram', 'audio')
 
 # 体积控制：按音效的最高有效频率挑输出采样率。
 #
@@ -1583,6 +1588,56 @@ def dice_on_table():
 # 加了反而显得拖沓。
 # ============================================================
 
+def ambient_room():
+    """房间底噪：4 秒可循环的极低音量环境声（调研第 10 条）。
+
+    为什么不做 BGM：酒桌上大家在说话，一段有旋律的曲子会和聊天抢。
+    而"绝对安静"又不像真实的房间 —— Jackbox 给每个游戏都配了专属曲目，
+    我们做不到，但可以做到"有一层底噪"。
+
+    做法：白噪声过两级一阶低通（砍掉高频的"嘶"），叠一层很慢的振幅起伏
+    （模拟远处人声的嗡嗡）。归一化到峰值的 8% —— 低到"关掉才知道刚才有"。
+    首尾各 250ms 淡入淡出，否则循环接缝处会听到"咔"。
+
+    ⚠️ 这个文件是**纯标准库**（math/random/struct/wave），没有 numpy ——
+       第一版我按 numpy 写，运行直接 NameError。要在本文件里加函数，
+       只能用 list 和 for 循环。
+    """
+    sr = SR
+    n = int(sr * 4.0)
+    rng = random.Random(99)
+
+    # 两级一阶低通：y += a * (x - y)
+    # 系数按 SR 折算（原 8k 下的 0.06/0.16 ≈ 76Hz/200Hz 截止）
+    a1, a2 = 0.011, 0.029
+    y1 = y2 = 0.0
+    buf = []
+    for _ in range(n):
+        x = rng.gauss(0.0, 1.0)
+        y1 += a1 * (x - y1)
+        y2 += a2 * (y1 - y2)
+        buf.append(y2)
+
+    # 远处人声的缓慢起伏：两个不相干的低频正弦
+    for i in range(n):
+        t = i / sr
+        env = 0.72 + 0.18 * math.sin(2 * math.pi * 0.31 * t) \
+            + 0.10 * math.sin(2 * math.pi * 0.73 * t + 1.7)
+        buf[i] *= env
+
+    # 归一化到峰值的 8%
+    peak = max(abs(v) for v in buf) or 1.0
+    k = 0.08 / peak
+    buf = [v * k for v in buf]
+
+    # 循环接缝：首尾各 250ms 线性淡入淡出
+    fade = int(sr * 0.25)
+    for i in range(fade):
+        buf[i] *= i / fade
+        buf[n - 1 - i] *= i / fade
+    return buf
+
+
 ALL_V3 = [
     ('impact-low',        _sp(impact_low, tail_ms=120, seed=27), SR_LO),
     ('shaker-metal',      _sp(shaker_metal, tail_ms=260, seed=23), SR_HI),
@@ -1608,6 +1663,8 @@ ALL_V3 = [
     ('card-deal',         _sp(card_deal, tail_ms=120, seed=71), SR_HI),
     ('card-flip',         _sp(card_flip, tail_ms=90, seed=73), SR_HI),
     ('card-spread',       _sp(card_spread, tail_ms=140, seed=75), SR_HI),
+    # v6 环境底噪（调研第 10 条）
+    ('ambient-room',      ambient_room,      SR_LO),
 ]
 
 
@@ -1622,6 +1679,15 @@ if __name__ == '__main__':
     all_specs = ALL + ALL_V3
     for name, fn, sr in all_specs:
         write_wav(name, fn(), sr)
+    # tick 要留在主包（「我的」页的音效开关试听用）——
+    # 分包可以引用主包，主包不能引用分包，所以这一个必须复制过去。
+    src_tick = os.path.join(OUT_DIR, 'tick.wav')
+    if os.path.exists(src_tick):
+        os.makedirs(MAIN_AUDIO_DIR, exist_ok=True)
+        import shutil
+        shutil.copyfile(src_tick, os.path.join(MAIN_AUDIO_DIR, 'tick.wav'))
+        print('  → tick.wav 复制回主包')
+
     files = [f for f in os.listdir(OUT_DIR) if f.endswith('.wav')]
     tot = sum(os.path.getsize(os.path.join(OUT_DIR, f)) for f in files)
     print(f'\n共 {len(files)} 个音效，合计 {tot/1024:.1f} KB')

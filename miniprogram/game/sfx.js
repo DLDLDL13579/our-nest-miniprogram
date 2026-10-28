@@ -20,6 +20,8 @@ const FILES = {
   diceSettle: '/game/audio/dice-settle.wav',
   // 转盘
   tick: '/audio/tick.wav',
+  /* 环境底噪（4 秒循环）—— 房间不该是绝对安静的 */
+  ambientRoom: '/game/audio/ambient-room.wav',
   wheelStart: '/game/audio/wheel-start.wav',
   wheelStop: '/game/audio/wheel-stop.wav',
   // 情绪
@@ -265,4 +267,39 @@ function preload() {
   })
 }
 
-module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, preload, FILES }
+/* ============================================================
+   环境底噪（2026-10-28，调研第 10 条）
+   ------------------------------------------------------------
+   "房间里是绝对安静，只有操作时有声" —— 而真实的酒桌一直有背景噪音。
+
+   不做 BGM（有旋律会和聊天抢），做一层极低的底噪：
+   文件本身已经归一化到峰值的 8%，播放时再压到一半 —— 低到"关掉才知道刚才有"。
+
+   独立一个实例：它要一直循环，不能跟着一次性的音效池走。
+   ============================================================ */
+let _ambient = null
+
+function playAmbient() {
+  if (isMuted()) return
+  if (_ambient) return
+  try {
+    const a = wx.createInnerAudioContext()
+    a.src = FILES.ambientRoom
+    a.loop = true
+    a.obeyMuteSwitch = false
+    a.volume = 0.5
+    a.play()
+    _ambient = a
+  } catch (e) {
+    /* 播不了就不播 —— 底噪是氛围，不是功能 */
+  }
+}
+
+function stopAmbient() {
+  if (!_ambient) return
+  try { _ambient.stop(); _ambient.destroy() } catch (e) {}
+  _ambient = null
+}
+
+module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, preload,
+  playAmbient, stopAmbient, FILES }
