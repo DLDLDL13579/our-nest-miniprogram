@@ -1565,7 +1565,16 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       walk(path.join(ROOT, 'miniprogram'))
       return out.join('\n')
     })()
-    const hasActive = (cls) => new RegExp('\\.' + cls + '\\s*:active').test(cssAll)
+    /*
+     * 匹配"以这个 class 开头的选择器 + :active"，允许后面再跟别的 class：
+     *   `.pitem:active`           ✓
+     *   `.pitem.canedit:active`   ✓（组合选择器 —— 动态 class 无法静态判定，
+     *                                元素在 wxml 里是 `pitem {{isMe?'canedit':''}}`，
+     *                                只有自己那行才有反馈，这是**刻意的**）
+     *   `.pitem .other:active`    ✗（那是子元素，不是它自己）
+     */
+    const hasActive = (cls) =>
+      new RegExp('\\.' + cls + '(?=[.:\\s,>])[^{},]*:active').test(cssAll)
     /* 白名单：这些点下去本来就不该有视觉变化 */
     const NO_FEEDBACK_OK = new Set(['mask'])
     /* 已知带按压反馈的基类：元素只要带其中一个就够了 */

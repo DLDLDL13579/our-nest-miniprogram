@@ -141,13 +141,24 @@
       <text class="xs">{{room.count}} 人</text>
     </view>
 
+    <!--
+      ★ 自己那一行可点 → 改名字（2026-10-28）。
+        之前没有昵称输入（进房不用输名字），于是没设过名字的人一律叫「玩家」，
+        桌上对不上人。现在默认名带座位号兜底（玩家2），**想改随时点一下**——
+        用一个点击换"桌上叫得出名字"，值得；不想改也完全不影响玩。
+        用 wx.showModal({editable}) 而不是自绘弹窗：这是系统原生输入框，
+        键盘、确定/取消都是现成的，代码和出错面都小得多。
+    -->
     <view class="plist">
-      <view wx:for="{{room.players}}" wx:key="openid" class="pitem {{item.isMe ? 'me' : ''}}">
+      <view wx:for="{{room.players}}" wx:key="openid"
+            class="pitem {{item.isMe ? 'me' : ''}} {{item.isMe ? 'canedit' : ''}}"
+            data-me="{{item.isMe}}" bindtap="renameMe">
         <view class="pseat">{{item.seat}}</view>
         <view class="pname">
           {{item.name}}
           <text wx:if="{{item.isMe}}" class="ptag">我</text>
           <text wx:if="{{item.isHost}}" class="ptag host">房主</text>
+          <text wx:if="{{item.isMe}}" class="pedit">改</text>
         </view>
         <view class="pdot {{item.online ? 'on' : ''}}"></view>
       </view>

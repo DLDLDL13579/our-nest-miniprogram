@@ -1215,6 +1215,13 @@
 .uw-seat.out { opacity: .34 }
 .uw-seat.out .uw-seat-t { text-decoration: line-through }
 
+/* ---------- 「改」名字的小提示（自己那行才有） ---------- */
+.pitem.canedit:active { background: rgba(255,255,255,.1) }
+.pedit {
+  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 6rpx;
+  background: rgba(232,179,60,.2); color: #E8B33C;
+}
+
 /* ---------- 金花：桌上的人（换牌量是公开的读牌线索） ---------- */
 .pk-seats {
   /* 上贴牌型提示、下贴"轮到你" —— 两头都要留气口，

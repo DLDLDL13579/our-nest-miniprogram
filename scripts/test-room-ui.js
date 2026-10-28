@@ -548,8 +548,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     /*
      * 'card'（加自定义题）刻意放行：那是往**题池**里加题，为下一局准备，
        不属于"这一局的动作" —— 旁观的人想出个题完全合理。
+     *
+     * 'rename'（改自己的名字）同理放行：它是**身份设置**，不是游戏动作。
+     * 中途进来只能看的人，照样应该能把自己叫什么改对 ——
+     * 拦掉反而荒谬（桌上正要点名，而你的名字改不了）。
      */
-    const READONLY = new Set(['status', 'create', 'join', 'leave', 'again', 'game', 'deck', 'cardDel', 'card'])
+    const READONLY = new Set(['status', 'create', 'join', 'leave', 'again', 'game', 'deck',
+      'cardDel', 'card', 'rename'])
 
     // 抽方法体：从 "  async xxx(" 或 "  xxx(" 开始，按大括号配平
     const methods = []

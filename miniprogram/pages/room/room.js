@@ -2078,6 +2078,46 @@ Page({
     this.pollTick()
   },
 
+  /**
+   * 改自己的名字。
+   *
+   * 为什么值得做：这个房间**不让玩家输昵称**（进房就该一步到位，见 entry 的注释），
+   * 于是没设过名字的人一律是「玩家N」。酒桌上最常发生的对话是
+   * 「该谁喝」——名字对不上，这句话就说不下去。
+   *
+   * 一个点击 + 系统原生输入框（`wx.showModal` 的 editable，基础库 2.17.1+），
+   * 不想改的人完全不受影响。
+   */
+  renameMe(e) {
+    if (!e.currentTarget.dataset.me) return      // 只能改自己
+    const room = this.data.room
+    if (!room) return
+    const cur = (room.me && room.me.name) || ''
+    if (typeof wx.showModal !== 'function') return
+    wx.showModal({
+      title: '你叫什么',
+      editable: true,
+      placeholderText: '桌上怎么叫你',
+      content: cur,
+      success: async (r) => {
+        if (!r.confirm) return
+        const name = String(r.content || '').trim()
+        if (!name) return
+        if (name === cur) return
+        const res = await call('room', { action: 'rename', id: room.id, name: name }, { silent: true })
+          .catch((err) => {
+            wx.showToast({ title: (err && err.friendly) || '没改成，再试一次', icon: 'none' })
+            this.resyncAfterFail()
+            return null
+          })
+        if (res && res.ok) {
+          sfx.play('tap')
+          this.applyRoom(res.room)
+        }
+      }
+    })
+  },
+
   async doBid(e) {
     if (!this.specGuard()) return
     const ds = e.currentTarget.dataset

@@ -535,7 +535,18 @@ exports.main = async (event) => {
       const code = normCode(event.code)
       if (code.length !== CODE_LEN) return { ok: false, msg: '房间号是 3 位数字' }
 
-      const name = String(event.name || '').trim().slice(0, 12) || ('玩家')
+      /*
+       * ★★ 默认名要**唯一**（2026-10-28）。
+       *
+       * 原来没设昵称的人一律叫「玩家」—— 两个人同时进房就是两个「玩家」，
+       * 桌上完全对不上人：别人屏幕上写「玩家 叫了 3 个 4」，
+       * 而屏幕前坐着的是谁、该谁喝，谁也说不清。
+       *
+       * 但座位号要等原子 push 之后重编号才知道（见下面的 `_.push` 竞态说明），
+       * 所以这里先给占位名 —— 真正唯一的默认名在座位定下来之后再补。
+       */
+      const rawName = String(event.name || '').trim().slice(0, 12)
+      const name = rawName || '玩家'
       const sec = await safe(name, OPENID)
       if (!sec.pass) return { ok: false, msg: sec.msg }
 
@@ -694,7 +705,54 @@ exports.main = async (event) => {
         }
       }
 
+      /*
+       * ★★ 座位定下来之后，把"没起名"的人补成**唯一**的默认名（2026-10-28）。
+       *
+       * 默认名必须等座位号出来才补 —— 上面 push 的那一刻 seat 还是占位的 0
+       * （并发追加要靠重编号兜底），那时算不出"玩家几"。
+       *
+       * 为什么值得单独一步：两人都没设昵称时，原来都叫「玩家」，
+       * 桌上完全对不上号；而座位号是唯一且一直显示在列表里的。
+       * 判定用 `name === '玩家'`（就是 join 入口给的占位名），
+       * 用户自己填的名字（哪怕也叫"玩家"）不会被改 —— 那种情况在前面就被 rawName 接住了。
+       */
+      {
+        const needName = finalPlayers.filter(p => p.name === '玩家' && p.openid === OPENID)
+        if (needName.length) {
+          finalPlayers = finalPlayers.map(p =>
+            (p.openid === OPENID && p.name === '玩家') ? Object.assign({}, p, { name: '玩家' + p.seat }) : p)
+          await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } })
+        }
+      }
+
       return { ok: true, room: shape(Object.assign({}, rr.data, { players: finalPlayers }), OPENID) }
+    }
+
+    /* ================= 改自己的名字 ================= */
+    /*
+     * 为什么有这个 action：进房**不要求输昵称**（一步到位，见 entry 的注释），
+     * 所以没设过名字的人一开始是「玩家N」。而酒桌上最常说的是「该谁喝」——
+     * 名字对不上这句话就说不下去。所以给一个随时能改的入口，
+     * 一个点击 + 系统原生输入框，不强制。
+     *
+     * 约束（都是能想到的滥用面）：
+     *   · 只能改**自己**（按 OPENID 定位，event.name 只是新名字）
+     *   · 长度截断到 12（与服务端其它地方一致）
+     *   · 必须过内容安全（UGC，多人可见；项目里所有 UGC 都过这一道）
+     *   · 重名不拦 —— 酒桌上本来就可能有同名，拦了反而让人觉得坏了
+     */
+    if (action === 'rename') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      const raw = String(event.name || '').trim().slice(0, 12)
+      if (!raw) return { ok: false, msg: '名字不能是空的' }
+      const sec = await safe(raw, OPENID)
+      if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
+      const players = (room.players || []).map(p =>
+        p.openid === OPENID ? Object.assign({}, p, { name: raw }) : p)
+      await rooms.doc(room._id).update({ data: { players: players, updatedAt: ts } })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
     }
 
     /* ================= 房间状态（轮询用） ================= */

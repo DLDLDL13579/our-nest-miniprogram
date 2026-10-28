@@ -1331,6 +1331,51 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(uwAfter.room.uw.myRole, 'spy', '⑫ 结束后应能知道自己就是卧底')
   ok('结束后玩家能看到自己的真实身份（复盘用）')
 
+  /* ============ ⑫c 默认名必须唯一 + 随时能改名字 ============ */
+  /*
+   * 2026-10-28。原来进房不输昵称，没设过名字的人一律叫「玩家」——
+   * 两个人同时进房就是两个「玩家」，桌上完全对不上人：
+   * 别人屏幕上写「玩家 叫了 3 个 4」，而屏幕前坐着的是谁、该谁喝，谁也说不清。
+   *
+   * 两件事都要锁：
+   *   ① 默认名带座位号（唯一，且座位号本来就显示在列表里）
+   *   ② 自己能改（rename），且**改不了别人**
+   */
+  {
+    const N1 = 'oid_n1', N2 = 'oid_n2'
+    OPENID = N1
+    /* 故意不传 name —— 模拟"没设过昵称"的人 */
+    const nr = await room.main({ action: 'create', game: 'liar' })
+    assert.ok(nr.ok, '⑫c 不传名字也应能建房：' + (nr.msg || ''))
+    const nrId = nr.room.id
+    OPENID = N2
+    const nj = await room.main({ action: 'join', code: nr.room.code })
+    assert.ok(nj.ok, '⑫c 不传名字也应能进房：' + (nj.msg || ''))
+
+    const nst = await room.main({ action: 'status', id: nrId })
+    assert.ok(nst.ok && nst.room.players.length === 2, '⑫c 房间里应有 2 人')
+    const names = nst.room.players.map(p => p.name)
+    assert.strictEqual(new Set(names).size, names.length,
+      '⑫c ★★ 默认名不能重复（否则桌上对不上人），实际：' + names.join(' / '))
+    assert.ok(names[1].indexOf(String(nst.room.players[1].seat)) >= 0,
+      '⑫c 默认名要带座位号，实际：' + names[1])
+
+    /* 改名：只能改自己 */
+    OPENID = N2
+    const rn = await room.main({ action: 'rename', id: nrId, name: '阿杰' })
+    assert.ok(rn.ok, '⑫c 改名应成功：' + (rn.msg || ''))
+    const after = await room.main({ action: 'status', id: nrId })
+    const meRow = after.room.players.filter(p => p.isMe)[0]
+    const otherRow = after.room.players.filter(p => !p.isMe)[0]
+    assert.strictEqual(meRow.name, '阿杰', '⑫c 自己的名字应改掉')
+    assert.notStrictEqual(otherRow.name, '阿杰', '⑫c ★ 不能改到别人的名字上')
+
+    /* 空名字要拒绝（而不是"改成空"这种静默失败） */
+    const rn0 = await room.main({ action: 'rename', id: nrId, name: '   ' })
+    assert.ok(!rn0.ok, '⑫c ★ 空名字应被拒绝')
+    ok('★ 默认名唯一（带座位号），且只能改自己的名字')
+  }
+
   /* ============ ⑫b 平票：不淘汰，重投一次；两次平票卧底赢 ============ */
   /*
    * 2026-10-28 改的规则。原来平票是**随机**挑一个人出局 ——
