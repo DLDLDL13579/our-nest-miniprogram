@@ -23,3 +23,11 @@ cloudfunctions/*/node_modules/
 # ---------- Python 缓存（音效生成脚本用）----------
 __pycache__/
 *.pyc
+
+# ---------- 验证产物 ----------
+# 离线渲染的截图、联系表、预览码 —— 都是**能重新生成**的：
+#   node scripts/render-ui.js room
+#   python3 scripts/contact-sheet.py room
+# 单个 PNG 1~2MB，167 个文件共 32MB，不该占仓库。
+# ⚠️ 仍然留在工作区（本地能看到），只是不进 git。
+outputs/
