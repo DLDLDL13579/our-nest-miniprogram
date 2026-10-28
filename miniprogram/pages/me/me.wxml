@@ -57,30 +57,29 @@
     <view class="stat-tip">只记开桌次数，不算胜负 —— 酒桌上的输赢本来就没法可靠地记</view>
   </view>
 
-  <!-- ④ 关于 -->
+  <!--
+    ④ 诊断（2026-10-28 从"关于"里挪出来）
+    ------------------------------------------------------------
+    原来放在"关于"卡片的最下面 —— 要滑一段才看得到。
+    而这个入口的**唯一使用场景**就是"出问题了，我要找人反馈"，
+    那时候找不到等于没有。挪到玩法统计下面，第一屏滑一下就够。
+  -->
+  <view class="card">
+    <view class="lbl">反馈问题的时候</view>
+    <view wx:if="{{errCount > 0}}" class="ab-line errline" bindtap="copyErrLog">
+      最近有 {{errCount}} 条错误记录 · 点这里复制
+    </view>
+    <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
+    <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误。</view>
+  </view>
+
+  <!-- ⑤ 关于 -->
   <view class="card flat">
     <view class="lbl">关于</view>
     <view class="about">
       <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</view>
       <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</view>
-      <!--
-        错误记录（2026-10-28）。
-        出问题时只弹一个 toast，弹完就没了 —— 用户来反馈"操作失败了"，
-        开发者只能猜。存最近 20 条在本地，点一下复制，粘给开发者就有真相。
-        ⚠️ 只记技术信息（函数名 / action / 原始错误），不记昵称、房间号、词题。
-      -->
-      <view wx:if="{{errCount > 0}}" class="ab-line errline" bindtap="copyErrLog">
-        最近有 {{errCount}} 条错误记录 · 点这里复制
-      </view>
-      <!--
-        诊断信息（2026-10-28）：用户说"卡"的时候，机型/基础库/屏幕这几个数字
-        决定了我该往哪查（是老机型掉帧、还是基础库不支持某个 API）。
-        没有它，我只能问一堆问题。
-      -->
-      <!--
-        一次复制全部（诊断信息 + 最近错误）。原来分两个入口，用户不知道该点哪个。
-      -->
-      <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
+
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
       <view class="ab-ver">v{{version}}</view>
     </view>
