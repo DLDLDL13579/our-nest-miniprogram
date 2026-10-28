@@ -29,6 +29,27 @@ App({
      */
     this.globalData = this.globalData || {}
     this.globalData.bootAt = Date.now()
+
+    /*
+     * 内存警告监听（2026-10-28）。
+     *
+     * 酒桌游戏要同时活着：骰盅大图 + 20 片撒花 + 35 个音频实例（池化）。
+     * 低端机上内存吃紧会先报警告、再丢帧 —— 而"丢帧"用户只会说"卡"。
+     * 记一条进同一个错误日志，「我的」页复制诊断信息时会一起带出来。
+     *
+     * ⚠️ 这条不代表一定出问题：小程序在内存紧张时会自动回收后台页面，
+     *    收到警告只说明"该看看了"，不是崩溃。
+     */
+    if (wx.onMemoryWarning) {
+      wx.onMemoryWarning(function () {
+        try {
+          var log = wx.getStorageSync('errLog') || []
+          log.push({ t: Date.now(), fn: 'app', act: 'memory', raw: '内存警告（系统提示内存紧张）' })
+          if (log.length > 20) log = log.slice(log.length - 20)
+          wx.setStorageSync('errLog', log)
+        } catch (e) {}
+      })
+    }
     if (!wx.cloud) {
       wx.showModal({
         title: '微信版本过低',
