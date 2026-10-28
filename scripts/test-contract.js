@@ -1523,8 +1523,17 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         const bound = new Set()
         ;(tpl.matchAll(/(?:bind|catch)[a-z]*="([a-zA-Z_]\w*)"/g)).forEach(m => bound.add(m[1]))
         const clean = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+        /*
+         * ⚠️ 必须排除 JS 关键字 —— 否则 `if (!Array.isArray(arr)) {` 这种
+         *    在行首缩进两格的语句会被当成"名叫 if() 的页面方法"，
+         *    报成死功能（2026-10-28 真实误报）。
+         *    这类误报的代价是：我会去删一段本来正确的代码。
+         */
+        const JS_KW = new Set(['if', 'for', 'while', 'switch', 'catch', 'return',
+          'function', 'else', 'try', 'do', 'new', 'typeof', 'await', 'delete'])
         const defs = []
-        ;(clean.matchAll(/\n  (?:async )?([a-zA-Z_]\w*)\s*\([^)]*\)\s*\{/g)).forEach(m => defs.push(m[1]))
+        ;(clean.matchAll(/\n  (?:async )?([a-zA-Z_]\w*)\s*\([^)]*\)\s*\{/g))
+          .forEach(m => { if (!JS_KW.has(m[1])) defs.push(m[1]) })
         for (const name of defs) {
           if (LIFECYCLE.has(name)) continue
           if (name.startsWith('_')) continue

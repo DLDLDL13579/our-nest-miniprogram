@@ -70,14 +70,48 @@ function buildList() {
  * ⚠️ 只做**置顶**，不做"按频率排序" —— 后者会让列表顺序莫名其妙地变，
  *   玩家找不到东西比多找一下更烦。
  */
+/**
+ * 按"最近玩过"排序（2026-10-28 从只记 1 个改成记 3 个）。
+ *
+ * 原来只记 `lastGame` 一个 —— 一桌人常玩的往往是两三个（"再来把大话骰"、
+ * "换金花"），而只有最后一个会被顶上来，其余散在后面。
+ *
+ * ⚠️ 兼容老数据：`lastGame` 还在，把它并进最近列表的第一位 ——
+ *    否则升级后"上次玩的"标记会全没了。
+ */
+function recentList() {
+  let arr = []
+  try { arr = wx.getStorageSync('recentGames') || [] } catch (e) {}
+  if (!Array.isArray(arr)) arr = []
+  if (!arr.length) {
+    try {
+      const last = wx.getStorageSync('lastGame') || ''
+      if (last) arr = [last]
+    } catch (e) {}
+  }
+  return arr.slice(0, 3)
+}
+
 function sortByRecent(list) {
-  let last = ''
-  try { last = wx.getStorageSync('lastGame') || '' } catch (e) {}
-  if (!last) return list
-  const hit = list.filter(g => g.id === last)
+  const recent = recentList()
+  if (!recent.length) return list
+  const hit = recent
+    .map(id => list.filter(g => g.id === id)[0])
+    .filter(Boolean)
     .map(g => Object.assign({}, g, { recent: true }))
   if (!hit.length) return list
-  return hit.concat(list.filter(g => g.id !== last))
+  const rest = list.filter(g => recent.indexOf(g.id) < 0)
+  return hit.concat(rest)
+}
+
+/** 记一次"玩过这个"（保留最近 3 个，新的在前） */
+function pushRecent(id) {
+  try {
+    const arr = recentList().filter(x => x !== id)
+    arr.unshift(id)
+    wx.setStorageSync('recentGames', arr.slice(0, 3))
+    wx.setStorageSync('lastGame', id)   // 老字段继续写，防回滚后丢标记
+  } catch (e) {}
 }
 
 Page({
@@ -210,8 +244,8 @@ Page({
       this.setData({ firstHint: false })
     }
     const id = e.currentTarget.dataset.id
-    /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
-    try { wx.setStorageSync('lastGame', id) } catch (err) {}
+    /* 记住最近玩过的几个 —— 酒桌上常玩的是两三个，只有最后一个被顶上来不够用 */
+    pushRecent(id)
     /* 玩法次数统计：只记"开过几次桌"，不做胜率之类（酒桌上没有可靠的胜负归属） */
     try {
       const st = wx.getStorageSync('gameStats') || {}
