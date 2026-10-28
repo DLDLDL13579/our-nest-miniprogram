@@ -288,14 +288,40 @@ function extractBuildSectors(src) {
    */
   const rcSrc = fs.readFileSync(
     path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
-  const rcStart = rcSrc.indexOf('roomChanged(prev, room)')
-  const rcEnd = rcSrc.indexOf('/** 拉一次房间状态', rcStart)
-  assert.ok(rcStart >= 0 && rcEnd > rcStart, '没找到 roomChanged 函数')
-  /* 剥掉注释再抽函数体，避免文档里的示例代码混进来 */
-  const rcBody = rcSrc.slice(rcStart, rcEnd)
+  /*
+   * ★ 抽取方式：按**大括号配平**截到函数结束，而不是"找下一个注释"。
+   *
+   *   原来的写法是 `indexOf('/** 拉一次房间状态', start)` 当结束标记 ——
+   *   它假设"roomChanged 后面紧接着就是 refresh"。2026-10-28 我在两者之间
+   *   插了一个 retryNow 方法，抽出来的代码就多了半个方法体，
+   *   `new Function` 直接报 `Unexpected token ','`。
+   *
+   *   **测试不能依赖"函数之间的排列顺序"** —— 那是代码长相，不是语义
+   *   （同类翻车本文档已记过多次：判据不能依赖代码长什么样）。
+   */
+  function extractFnBody(src, marker) {
+    const i = src.indexOf(marker)
+    if (i < 0) return null
+    const open = src.indexOf('{', i)
+    if (open < 0) return null
+    let depth = 0
+    for (let k = open; k < src.length; k++) {
+      const ch = src[k]
+      if (ch === '{') depth++
+      else if (ch === '}') {
+        depth--
+        if (depth === 0) return src.slice(open, k + 1)
+      }
+    }
+    return null
+  }
+  /* 先剥注释，避免注释里的花括号干扰配平 */
+  const rcClean = rcSrc
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
-  const roomChanged = new Function('prev', 'room', rcBody.slice(rcBody.indexOf('{'), rcBody.lastIndexOf('}') + 1))
+  const rcBody = extractFnBody(rcClean, 'roomChanged(prev, room)')
+  assert.ok(rcBody, '没找到 roomChanged 函数体（抽取逻辑可能失效了）')
+  const roomChanged = new Function('prev', 'room', rcBody)
 
   /* 基线：两个完全一样的房间 → 判定为「没变」 */
   const base = {
