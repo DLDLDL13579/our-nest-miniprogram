@@ -494,7 +494,13 @@ exports.main = async (event) => {
        */
       const deck = decks.deckOf(String(event.deck || '')).k
 
-      const sec = await safe(name, OPENID)
+      /*
+       * ★ 只有**用户自己写的名字**才需要过内容安全（2026-10-28）。
+       *   默认名「房主 / 玩家N」是系统生成的字符串，不可能违规，
+       *   却白白多吃一次 openapi 往返（实测几百毫秒）——
+       *   而云函数默认超时只有 3 秒，这一下足够把开局拖到超时。
+       */
+      const sec = await safe(String(event.name || '').trim().slice(0, 12), OPENID)
       /*
        * 这里原来写的是 `_debug: sec._debug` —— 而 safe() 返回的字段叫 **`_code`**
        * （见 safe 里 `return { pass:false, code:'SEC_UNAVAILABLE', _code: code }`）。
@@ -564,7 +570,8 @@ exports.main = async (event) => {
        */
       const rawName = String(event.name || '').trim().slice(0, 12)
       const name = rawName || '玩家'
-      const sec = await safe(name, OPENID)
+      /* 同 create：只有用户自己写的名字才过内容安全 */
+      const sec = await safe(rawName, OPENID)
       if (!sec.pass) return { ok: false, msg: sec.msg }
 
       /*

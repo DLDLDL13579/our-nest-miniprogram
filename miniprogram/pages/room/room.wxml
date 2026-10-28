@@ -297,8 +297,25 @@
            ★ 「扣盅后才能看」不是装饰 —— 真实的大话骰必须先扣稳盅再抬一条缝看，
              否则骰子会被看到。这一步的仪式感正是这个游戏的一半。 -->
       <view class="cupscene">
+        <!--
+          真实桌面材质（Poly Haven，CC0）：皮革暗纹 + 木纹。
+          ★ 用 <image> 而不是 wxss 的 background-image —— 小程序 WXSS
+            **不支持本地图片路径**（只认网络地址和 base64），
+            而 base64 进 wxss 会白白胖 +33%。用 <image> 铺满再叠渐变遮罩，
+            既能用本地图，也能保证文字可读。
+        -->
+        <image class="cs-felt-img" src="/images/bg/felt.jpg" mode="aspectFill" />
         <view class="cs-felt"></view>
         <view class="cs-spot"></view>
+        <!--
+          桌面上散落的两颗骰子（纯装饰，不参与游戏）。
+          为什么加：只有一只盅立在空桌上，看起来像"产品图"而不是"酒桌"。
+          真实桌上总有几颗随手放的骰子 —— 这是场景设计里的"道具层"，
+          让人一眼认出这是什么东西的场合。
+          刻意压到很小、很暗、带旋转：装饰不能和主角（盅）抢注意力。
+        -->
+        <image class="cs-prop p1" src="/images/dice/dice-5.png" mode="aspectFit" />
+        <image class="cs-prop p2" src="/images/dice/dice-2.png" mode="aspectFit" />
 
         <!-- 骰子：压在盅底下（z-index 更低），只有偷看/揭盅时才露出来 -->
         <view class="cs-dice {{diceShown ? 'show' : ''}}">
@@ -391,6 +408,14 @@
     <block wx:elif="{{room.game === 'dice'}}">
       <!-- 自己的盅：摇 → 扣 → 揭，全流程和现实一致 -->
       <view class="cupscene">
+        <!--
+          真实桌面材质（Poly Haven，CC0）：皮革暗纹 + 木纹。
+          ★ 用 <image> 而不是 wxss 的 background-image —— 小程序 WXSS
+            **不支持本地图片路径**（只认网络地址和 base64），
+            而 base64 进 wxss 会白白胖 +33%。用 <image> 铺满再叠渐变遮罩，
+            既能用本地图，也能保证文字可读。
+        -->
+        <image class="cs-felt-img" src="/images/bg/felt.jpg" mode="aspectFill" />
         <view class="cs-felt"></view>
         <view class="cs-spot"></view>
 
@@ -556,7 +581,17 @@
           <view class="pk-flip">
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front {{room.poker.publicCard ? '' : 'pk-empty'}}">
-              <text class="{{room.poker.publicRed ? 'pk-red' : ''}}">{{room.poker.publicText}}</text>
+              <!--
+                真实牌面（Kenney Board Game Pack，CC0）。
+                原来这里是 CSS 画的白底 +「♠Q」两个字 —— 60px 宽的牌上，
+                文字是唯一的信息，一点"牌"的质感都没有。
+                尺寸 136×192rpx 与真实扑克 2.5:3.5 的宽高比一致，所以直接
+                scaleToFill 不会变形。
+              -->
+              <image wx:if="{{room.poker.publicCard}}" class="pk-face"
+                     src="/images/card/c{{room.poker.publicCard.s}}-{{room.poker.publicCard.r}}.png"
+                     mode="scaleToFill" />
+              <text wx:else class="pk-red">{{room.poker.publicText}}</text>
             </view>
           </view>
         </view>
@@ -568,7 +603,10 @@
           <view class="pk-flip {{showCards ? 'flipped' : ''}}">
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front {{room.poker.myKnown ? '' : 'pk-empty'}}">
-              <text class="{{room.poker.myKnownRed ? 'pk-red' : ''}}">{{room.poker.myKnownText}}</text>
+              <image wx:if="{{room.poker.myKnown}}" class="pk-face"
+                     src="/images/card/c{{room.poker.myKnown.s}}-{{room.poker.myKnown.r}}.png"
+                     mode="scaleToFill" />
+              <text wx:else class="pk-red">{{room.poker.myKnownText}}</text>
             </view>
           </view>
         </view>

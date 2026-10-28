@@ -410,15 +410,31 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.cs-felt-img {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%; height: 100%;
+  
+  opacity: .92;
+}
+
+
+.cs-prop {
+  position: absolute;
+  width: 23px; height: 25px;
+  opacity: .5;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.55));
+  pointer-events: none;
+}
+.cs-prop.p1 { left: 13px; bottom: 23px; transform: rotate(-18deg) }
+.cs-prop.p2 { right: 15px; bottom: 38px; transform: rotate(24deg); opacity: .38 }
+
+
 .cs-felt {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
   background:
-    repeating-linear-gradient(45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    repeating-linear-gradient(-45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    radial-gradient(ellipse 80% 60% at 50% 45%,
-      #3A2E24 0%, #2A211A 45%, #1F1713 100%);
+    
+    radial-gradient(ellipse 78% 58% at 50% 42%,
+      rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 
 .cs-spot {
@@ -1472,6 +1488,13 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.pk-face {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  display: block;
+}
+
+
 .pk-back {
   opacity: 1;
   background:
@@ -1861,8 +1884,8 @@ view, text, button, input, textarea { box-sizing: border-box }
           <div class="pk-flip">
             <div class="pk-side pk-back"></div>
             <div class="pk-side pk-front">
-              <span >♣Q</span>
-            </div>
+              
+              <img class="pk-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-12.png" data-mode="scaleToFill" style="object-fit:fill;"></div>
           </div>
         </div>
 
@@ -1872,8 +1895,7 @@ view, text, button, input, textarea { box-sizing: border-box }
           <div class="pk-flip flipped">
             <div class="pk-side pk-back"></div>
             <div class="pk-side pk-front">
-              <span >♠Q</span>
-            </div>
+              <img class="pk-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c0-12.png" data-mode="scaleToFill" style="object-fit:fill;"></div>
           </div>
         </div>
 

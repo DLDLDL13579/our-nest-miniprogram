@@ -246,16 +246,37 @@
   overflow: hidden;
 }
 
+/* 真实材质层（Poly Haven CC0）：铺满场景，靠 opacity 和上层渐变压暗，
+   保证它有质感但不抢骰盅的注意力 */
+.cs-felt-img {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%; height: 100%;
+  /* .55 时实测几乎看不见（上层渐变把它压没了）—— 材质的意义就在于看得见 */
+  opacity: .92;
+}
+
+/* 桌面上的装饰骰子：小、暗、带旋转和投影，像随手放在桌上 */
+.cs-prop {
+  position: absolute;
+  width: 46rpx; height: 50rpx;
+  opacity: .5;
+  filter: drop-shadow(0 4rpx 8rpx rgba(0,0,0,.55));
+  pointer-events: none;
+}
+.cs-prop.p1 { left: 26rpx; bottom: 46rpx; transform: rotate(-18deg) }
+.cs-prop.p2 { right: 30rpx; bottom: 76rpx; transform: rotate(24deg); opacity: .38 }
+
 /* 绒布桌面 */
 .cs-felt {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
   background:
-    repeating-linear-gradient(45deg,
-      rgba(255,255,255,.014) 0 2rpx, rgba(0,0,0,.014) 2rpx 4rpx),
-    repeating-linear-gradient(-45deg,
-      rgba(255,255,255,.014) 0 2rpx, rgba(0,0,0,.014) 2rpx 4rpx),
-    radial-gradient(ellipse 80% 60% at 50% 45%,
-      #3A2E24 0%, #2A211A 45%, #1F1713 100%);
+    /*
+     * ★ 有真实材质之后，这一层只负责"打光"：中心留一点亮、四周压暗（暗角）。
+     *   原来那两道 repeating-linear-gradient 是拿 CSS 模拟布纹的 ——
+     *   有了真材质就该删掉，留着只会和真纹理打架、显出摩尔纹。
+     */
+    radial-gradient(ellipse 78% 58% at 50% 42%,
+      rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 /* 顶部聚光 */
 .cs-spot {
@@ -1523,6 +1544,13 @@
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6rpx 16rpx rgba(0,0,0,.3);
   transition: opacity .16s ease-out, transform .26s cubic-bezier(.34, 1.2, .64, 1);
+}
+
+/* 真实牌面图：铺满牌身（宽高比与真实扑克一致，不会变形） */
+.pk-face {
+  width: 100%; height: 100%;
+  border-radius: 12rpx;
+  display: block;
 }
 
 /* 牌背：菱形格 + 内框。用 CSS 画，不引图 ——

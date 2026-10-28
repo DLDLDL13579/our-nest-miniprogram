@@ -22,6 +22,7 @@ const feedback = require('../../utils/feedback.js')
 const icons = require('../../utils/icons.js')
 const iconSet = require('../../utils/iconSet.js')
 const { CATS, GAMES } = require('../../utils/games.js')
+const { warmup } = require('../../utils/cloud.js')
 
 /* 图标：内联 SVG 替代 emoji（跨机型渲染不一致、颜色不可控，见 utils/icons.js）。
    玩法图标由 iconSet 自动并入注册表里的全部玩法 —— 加玩法不用改这里。 */
@@ -96,6 +97,9 @@ Page({
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */
   onShow() {
+    /* 大厅停留时就先把云函数叫醒 —— 等用户点玩法卡时容器已经是热的，
+       否则第一次操作会撞上 1~3 秒冷启动，而云函数超时只有 3 秒 */
+    warmup()
     this.setData({
       muted: sfx.isMuted(),
       hapticOn: feedback.isHapticOn(),

@@ -410,15 +410,31 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.cs-felt-img {
+  position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+  width: 100%; height: 100%;
+  
+  opacity: .92;
+}
+
+
+.cs-prop {
+  position: absolute;
+  width: 23px; height: 25px;
+  opacity: .5;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.55));
+  pointer-events: none;
+}
+.cs-prop.p1 { left: 13px; bottom: 23px; transform: rotate(-18deg) }
+.cs-prop.p2 { right: 15px; bottom: 38px; transform: rotate(24deg); opacity: .38 }
+
+
 .cs-felt {
   position: absolute; left: 0; right: 0; top: 0; bottom: 0;
   background:
-    repeating-linear-gradient(45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    repeating-linear-gradient(-45deg,
-      rgba(255,255,255,.014) 0 1px, rgba(0,0,0,.014) 1px 2px),
-    radial-gradient(ellipse 80% 60% at 50% 45%,
-      #3A2E24 0%, #2A211A 45%, #1F1713 100%);
+    
+    radial-gradient(ellipse 78% 58% at 50% 42%,
+      rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 
 .cs-spot {
@@ -1211,6 +1227,13 @@ view, text, button, input, textarea { box-sizing: border-box }
 .uw-seat.out .uw-seat-t { text-decoration: line-through }
 
 
+.pitem.canedit:active { background: rgba(255,255,255,.1) }
+.pedit {
+  font-size: 9px; padding: 1px 5px; border-radius: 3px;
+  background: rgba(232,179,60,.2); color: #E8B33C;
+}
+
+
 .pk-seats {
   
   margin: 7px 0 9px;
@@ -1863,8 +1886,13 @@ view, text, button, input, textarea { box-sizing: border-box }
           <span class="ev-t">倩萍 叫 3 个 4</span>
         </div>
       </div><div class="cupscene">
+        
+        <img class="cs-felt-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/bg/felt.jpg" data-mode="aspectFill" style="object-fit:cover;">
         <div class="cs-felt"></div>
         <div class="cs-spot"></div>
+        
+        <img class="cs-prop p1" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
+        <img class="cs-prop p2" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-2.png" data-mode="aspectFit" style="object-fit:contain;">
 
         
         <div class="cs-dice show">
