@@ -115,3 +115,6 @@
 /* 诊断信息那一行 */
 .diagline { color: rgba(255,255,255,.52) }
 .diagline:active { opacity: .6 }
+
+/* 玩法统计那一行可点（直接开桌） */
+.stat-row:active { background: rgba(255,255,255,.05) }

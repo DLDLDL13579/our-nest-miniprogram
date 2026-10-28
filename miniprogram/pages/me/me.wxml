@@ -46,7 +46,11 @@
       玩法 · 一共 {{gameCount}} 个<text wx:if="{{nightGames > 0}}" class="night-n"> · 今晚 {{nightGames}} 局</text>
     </view>
     <block wx:for="{{gameRows}}" wx:key="id">
-      <view class="rline stat-row">
+      <!--
+        点一下直接开桌（2026-10-28）。原来这一行只能看 —— 想再玩要绕回大厅、
+        再找到那张卡。而"我上周玩金花最多"和"再来一把金花"本来就是同一件事。
+      -->
+      <view class="rline stat-row" data-id="{{item.id}}" bindtap="openFromMe">
         <view class="stat-dot" style="background:{{item.color}}"></view>
         <view class="rl-main">
           <view class="rl-t">{{item.name}}</view>

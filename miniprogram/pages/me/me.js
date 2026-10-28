@@ -99,6 +99,26 @@ Page({
     this.setData({ nightGames: n, errCount: errs })
   },
 
+  /**
+   * 从「我的」直接开桌（2026-10-28）。
+   *
+   * 玩法统计原来只能看。而"我上周玩金花最多"和"再来一把金花"是同一件事 ——
+   * 让用户为这个差别绕回大厅、再找那张卡，没必要。
+   */
+  openFromMe(e) {
+    const id = e.currentTarget.dataset.id
+    if (!id) return
+    sfx.play('tick')
+    /* 和老字段保持一致：从「我的」进也算"最近玩过" */
+    try {
+      const arr = (wx.getStorageSync('recentGames') || []).filter(x => x !== id)
+      arr.unshift(id)
+      wx.setStorageSync('recentGames', arr.slice(0, 3))
+      wx.setStorageSync('lastGame', id)
+    } catch (err) {}
+    wx.navigateTo({ url: '/game/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
+  },
+
   onNick(e) { this.setData({ nick: e.detail.value }) },
 
   /* 失焦才落盘：边打字边写 storage 是没必要的 IO，
