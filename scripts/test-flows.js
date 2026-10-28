@@ -366,6 +366,36 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 所有人都走了：房间要失效，号码能回收 ---------- */
+  /*
+   * ★ 2026-10-28。3 位号码只有 1000 个 —— 空房间如果一直占着号，
+   *   玩一晚上能撞号撞到"没号可用"。代码里 `if (!players.length) active = false`
+   *   就是干这个的，但从来没有测试验证过"走光之后真的失效"。
+   *
+   *   判据不看内部字段，看**行为**：拿原房间号再进一次，必须进不去。
+   */
+  {
+    OPENID = A
+    const er = await room.main({ action: 'create', name: 'E1', game: 'dice' })
+    const ecode = er.room.code
+    const eid = er.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: ecode, name: 'E2' })
+
+    /* 两个人都走 */
+    OPENID = A
+    await room.main({ action: 'leave', id: eid })
+    OPENID = B
+    await room.main({ action: 'leave', id: eid })
+
+    /* 拿原号再进 —— 应该进不去（房间已经空了） */
+    OPENID = 'oid_newcomer'
+    const again = await room.main({ action: 'join', code: ecode, name: '路人' })
+    assert.strictEqual(again.ok, false,
+      '★ 人都走光的房间必须失效（否则号码池只减不增，玩一晚上就没号了）')
+    ok('★ 所有人退出后房间失效（号码可回收）')
+  }
+
   /* ---------- 房主中途走了：房间不能变死局 ---------- */
   /*
    * ★ 2026-10-28。真实场景：房主去上厕所/接电话，直接退出。
