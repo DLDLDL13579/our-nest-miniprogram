@@ -570,6 +570,23 @@
       <view wx:if="{{room.poker.hintText}}" class="pk-hint">{{room.poker.hintText}}</view>
 
       <!-- 我的账：为了换牌喝掉多少 -->
+      <!--
+        桌上的人：谁的换牌量、谁已经出局。
+        ★ 服务端一直在返回 `poker.drinks`（shape 里的注释写着"这是公开信息，
+          换得多说明手里不好，或者很拼"），但模板从来没渲染过它 ——
+          等于一条**读牌线索**白算出来。而且金花这一屏下半截本来就是空的。
+        它不增加任何操作，只是把桌上已经看得见的事摆出来。
+      -->
+      <view wx:if="{{room.poker.drinks.length}}" class="pk-seats">
+        <view wx:for="{{room.poker.drinks}}" wx:key="name"
+              class="pk-seat {{item.out ? 'out' : ''}} {{item.name === room.me.name ? 'me' : ''}}">
+          <text class="pk-seat-n">{{item.name}}</text>
+          <text wx:if="{{item.out}}" class="pk-seat-s out">出局</text>
+          <text wx:elif="{{item.cups > 0}}" class="pk-seat-s drank">换牌 {{item.cups}} 杯</text>
+          <text wx:else class="pk-seat-s">没换过</text>
+        </view>
+      </view>
+
       <view wx:if="{{room.poker.drinkText}}" class="pk-owe">
         换牌已经喝了 <text class="pk-owe-n">{{room.poker.drinkText}}</text>
       </view>

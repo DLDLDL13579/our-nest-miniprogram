@@ -729,6 +729,14 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.gamepage.freeze {
+  filter: brightness(1.07) saturate(1.06);
+  transition: filter .12s ease-out;
+  
+  pointer-events: none;
+}
+
+
 .actbar {
   margin-top: 15px;
   display: flex; flex-direction: column; gap: 9px;
