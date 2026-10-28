@@ -42,6 +42,12 @@ App({
      *   （不阻塞启动流程，失败静默 —— 它只是优化，不是功能）
      */
     require('./utils/cloud.js').warmup()
+    /*
+     * 数字字体（2026-10-28）。
+     * 只影响数字/大写的字形，加载失败会回退系统字体 —— 所以不 await、不报错。
+     * 放在 warmup 之后：预热云函数更影响操作手感，字体只是好看。
+     */
+    require('./utils/fonts.js').load()
     this.bootstrap()
   },
 

@@ -78,6 +78,8 @@
   background: rgba(255,255,255,.06);
 }
 .gbar-code {
+  /* 数字用 Bebas（失败自动回退系统字体） */
+  font-family: 'BebasNum', -apple-system, sans-serif;
   font-size: 32rpx; font-weight: 700; color: #F6E7C3;
   letter-spacing: 4rpx;
 }
@@ -261,7 +263,9 @@
   padding: 22rpx 0 16rpx;
 }
 .bid-lbl { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 3rpx }
-.bid-val { font-size: 44rpx; font-weight: 700; color: #F6E7C3; margin-top: 6rpx; letter-spacing: 2rpx }
+.bid-val {
+  /* 数字用 Bebas（失败自动回退系统字体） */
+  font-family: 'BebasNum', -apple-system, sans-serif; font-size: 44rpx; font-weight: 700; color: #F6E7C3; margin-top: 6rpx; letter-spacing: 2rpx }
 .bid-val.hint { font-size: 27rpx; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
 .bid-by { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
 
@@ -875,6 +879,8 @@
 }
 
 .oh-total {
+  /* 数字用 Bebas（失败自动回退系统字体） */
+  font-family: 'BebasNum', -apple-system, sans-serif;
   position: relative;
   margin-top: 12rpx;
   font-size: 32rpx; font-weight: 700; color: #F6E7C3;
@@ -1184,6 +1190,8 @@
 .cd-in { position: relative }
 .cd-lbl { font-size: 21rpx; color: rgba(255,255,255,.5); letter-spacing: 4rpx }
 .cd-num {
+  /* 数字用 Bebas（失败自动回退系统字体） */
+  font-family: 'BebasNum', -apple-system, sans-serif;
   /* 全屏之后数字要撑住这个屏幕 —— 140rpx 在 753px 高的画布里只是一小块 */
   font-size: 200rpx; font-weight: 700; color: #F6E7C3;
   line-height: 1.02; margin: 20rpx 0 14rpx;
