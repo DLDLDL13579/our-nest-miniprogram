@@ -1216,6 +1216,18 @@ Page({
       else sfx.stopAmbient && sfx.stopAmbient()
     }
 
+    /*
+     * 房主催了一下（2026-10-28）。
+     * 比对 nudgeAt 的变化来播一声 —— 不能每轮都播（轮询 1.5 秒一次），
+     * 只有"变了"才说明房主真的刚点了一下。房主自己不用再听。
+     */
+    if (!room.host && room.uw && room.uw.nudgeAt &&
+        room.uw.nudgeAt !== (this._lastNudgeAt || 0)) {
+      this._lastNudgeAt = room.uw.nudgeAt
+      sfx.play('tapSoft')
+      wx.showToast({ title: '房主在催了', icon: 'none', duration: 1500 })
+    }
+
     /* 事件流要在 setData 之前比对 —— 之后 this.data.room 已经是新的一帧了 */
     this._evDiff(this.data.room, raw)
     /*
@@ -1820,6 +1832,22 @@ Page({
       return null
     })
     if (r && r.ok) this.setData({ room: this.decorate(r.room) })
+  },
+
+  /**
+   * 催一下（2026-10-28，调研第 2 条后半）。
+   * 服务端限流：一轮投票最多两次、间隔 15 秒。
+   */
+  async doNudge() {
+    if (!this.specGuard()) return
+    const r = await call('room', { action: 'nudge', id: this.data.room.id }, { silent: true })
+      .catch((e) => {
+        wx.showToast({ title: (e && (e.friendly || e.message)) || '催不动', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    if (r && !r.ok) wx.showToast({ title: r.msg || '催不动', icon: 'none' })
+    if (r && r.ok) this.applyRoom(r.room)
   },
 
   /**

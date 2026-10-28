@@ -487,6 +487,42 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 重开一局把卧底的全部局内状态清干净（不依赖下一次 start 兜底）')
   }
 
+  /* ============ ⑦f 催一下：必须限流 ============ */
+  /*
+   * 2026-10-28（调研第 2 条后半）。限流是这条的命门 ——
+   * 没有它，房主会一直点，其他人就变成"每 1.5 秒被催一次"。
+   */
+  {
+    OPENID = A
+    const nr = await room.main({ action: 'create', name: 'N1', game: 'undercover' })
+    const nrId = nr.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: nr.room.code, name: 'N2' })
+    OPENID = 'oid_n3'
+    await room.main({ action: 'join', code: nr.room.code, name: 'N3' })
+    OPENID = A
+    await room.main({ action: 'start', id: nrId })
+    store.rooms.filter(x => x._id === nrId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: nrId })
+    await room.main({ action: 'uwSay', id: nrId })   // 进入投票
+
+    /* 非房主不能催 */
+    OPENID = B
+    const notHost = await room.main({ action: 'nudge', id: nrId })
+    assert.ok(!notHost.ok, '非房主不能催')
+
+    /* 房主第一次能催 */
+    OPENID = A
+    const first = await room.main({ action: 'nudge', id: nrId })
+    assert.ok(first.ok, '房主第一次催应成功：' + (first.msg || ''))
+    assert.ok(first.room.uw.nudgeAt > 0, 'shape 要把 nudgeAt 透给前端')
+
+    /* 紧接着再催被拦（15 秒间隔） */
+    const second = await room.main({ action: 'nudge', id: nrId })
+    assert.ok(!second.ok, '★ 15 秒内重复催必须被拦（否则别人每 1.5 秒被催一次）')
+    ok('★ 催一下：非房主不能催、15 秒内重复催被拦')
+  }
+
   /* ============ ⑦e 锁房：房主能拦人，别人进不来 ============ */
   /*
    * 2026-10-28（调研第 25 条）：3 位房间号，任何人知道号就能进 ——

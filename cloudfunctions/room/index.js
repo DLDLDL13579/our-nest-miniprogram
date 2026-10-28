@@ -420,6 +420,8 @@ function shape(room, openid) {
          * 见 uwVote 里的说明 —— 这里只负责把状态透给前端。
          */
         tieBreak: !!room.uwTieBreak,
+        /* 催一下的时间戳：前端比对变化来播提示音（不改就不播） */
+        nudgeAt: room.uwNudgeAt || 0,
         tieNames: room.uwTieNames || '',
         aliveCount: alive.length,
         /* 上一轮出局的人：公开他的词和身份 —— 这是全场最想看的一刻 */
@@ -823,6 +825,34 @@ exports.main = async (event) => {
      * 只在 lobby 能切：玩到一半锁房没有意义（已经在里面的人不受影响），
      * 反而会让"想拉个朋友进来"的人困惑为什么进不来。
      */
+    /* ================= 催一下 =================
+     *
+     * ★ 2026-10-28（调研第 2 条的后半）。
+     *
+     *   「投票类没有'还差谁'这一层，桌上只能干等，没有催的手段」——
+     *   前半段（还差谁）已经做了，这是后半段：房主得能拍一下桌子。
+     *
+     * 服务端只做两件事：记时间戳、限流。限流是必要的 ——
+     * 没有它，房主会一直点，其他人就变成"每 1.5 秒被催一次"。
+     */
+    if (action === 'nudge') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能催' }
+      if (room.game !== 'undercover' || room.uwStep !== 'vote') {
+        return { ok: false, msg: '现在不用催' }
+      }
+      /* 限流：一轮投票最多催两次，间隔至少 15 秒 */
+      const last = room.uwNudgeAt || 0
+      if (ts - last < 15000) return { ok: false, msg: '刚催过，等一会儿' }
+      if ((room.uwNudgeCount || 0) >= 2) return { ok: false, msg: '催了两次了，再等等' }
+      await rooms.doc(room._id).update({
+        data: { uwNudgeAt: ts, uwNudgeCount: (room.uwNudgeCount || 0) + 1, updatedAt: ts }
+      })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
     if (action === 'lock') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
@@ -1712,7 +1742,7 @@ exports.main = async (event) => {
         if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能切换环节' }
         if (step === 'talk') {
           await rooms.doc(room._id).update({
-            data: { uwStep: 'vote', votes: [], updatedAt: ts }
+            data: { uwStep: 'vote', votes: [], uwNudgeAt: 0, uwNudgeCount: 0, updatedAt: ts }
           })
           const rr = await rooms.doc(room._id).get()
           return { ok: true, room: shape(rr.data, OPENID) }

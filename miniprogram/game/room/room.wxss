@@ -1728,6 +1728,14 @@
   font-size: 21rpx; color: rgba(255,255,255,.52);
 }
 
+/* 催一下：一个小小的文字按钮，只在还差人时出现 */
+.uw-nudge {
+  display: inline-block; margin: 14rpx auto 0;
+  padding: 8rpx 22rpx; border-radius: 999rpx;
+  font-size: 21rpx; color: #F0C860;
+  background: rgba(232,179,60,.16);
+}
+
 .uw-wait {
   margin-top: 22rpx; text-align: center;
   font-size: 21rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.7;

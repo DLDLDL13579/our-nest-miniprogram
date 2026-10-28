@@ -627,6 +627,13 @@
         <view wx:if="{{room.uw.waitingCount > 0}}" class="uw-waiting">
           还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}
         </view>
+        <!--
+          催一下（2026-10-28）：知道在等谁之后，房主还得有个"拍桌子"的手段。
+          服务端限流（一轮最多两次、间隔 15 秒）—— 没有它房主会一直点。
+        -->
+        <view wx:if="{{room.host && room.uw.waitingCount > 0}}" class="uw-nudge" bindtap="doNudge">
+          催一下
+        </view>
       </block>
 
       <!-- ③ 结算：谁出局、他是什么身份（全场最想看的一刻） -->
