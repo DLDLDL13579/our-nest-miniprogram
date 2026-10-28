@@ -1000,6 +1000,32 @@ Page({
     return room
   },
 
+  /**
+   * 转发小程序卡片 —— 酒桌上最自然的动作是"把房间号发到群里"，
+   * 而不是"复制一串数字再手动粘贴"。
+   *
+   * ★ 在此之前本页**完全没有 onShareAppMessage**，
+   *   微信右上角菜单里的「转发」是灰的 —— 一个多人游戏不能转发，
+   *   等于每次开局都要教一遍"怎么把号发出去"。
+   *
+   * path 里带房间号：对方点开小程序**直接落到这个房间**，
+   * 不需要再手输一遍（这就是微信分享比"发一串数字"强的地方）。
+   */
+  onShareAppMessage() {
+    const r = this.data.room
+    if (r && r.code) {
+      const g = gameOf(r.game)
+      return {
+        title: '来玩' + (g ? g.name : '酒桌游戏') + '，房间号 ' + r.code,
+        path: '/pages/room/room?code=' + r.code
+      }
+    }
+    return {
+      title: '一起来玩酒桌游戏',
+      path: '/pages/lobby/lobby'
+    }
+  },
+
   /* ================= 谁是卧底 ================= */
 
   /*

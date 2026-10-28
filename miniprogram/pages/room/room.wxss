@@ -1565,3 +1565,23 @@
   font-weight: 600;
 }
 .nettip-retry:active { opacity: .7 }
+
+/* ---------- 转发按钮 ----------
+   微信只允许 <button open-type="share"> 唤起转发面板，
+   而 button 自带背景、边框、圆角和内边距，必须全部重置成普通块。 */
+.cc-share {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%;
+  margin: 0 0 var(--gap-2);
+  padding: 26rpx 0;
+  background: rgba(255,255,255,.08);
+  border: 2rpx solid rgba(255,255,255,.14);
+  border-radius: 20rpx;
+  /* button 的默认边框画在 ::after 上，去掉这条就干净了 */
+}
+.cc-share::after { border: none }
+.cc-share-t {
+  font-size: 26rpx; font-weight: 600;
+  color: rgba(255,255,255,.85);
+}
+.cc-share-on { background: rgba(255,255,255,.16) }

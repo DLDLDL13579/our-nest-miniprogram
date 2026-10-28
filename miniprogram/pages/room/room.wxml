@@ -116,8 +116,17 @@
     <view class="codecard" bindtap="copyCode">
       <view class="cc-lbl">房间号 · 点一下复制</view>
       <view class="cc-code">{{room.code}}</view>
-      <view class="cc-hint">把这个号发给要一起玩的人</view>
+      <view class="cc-hint">点上面复制，或者直接转发到群里 —— 点开就自动进这个房间</view>
     </view>
+
+    <!--
+      ★ 转发按钮必须是 <button open-type="share">，不能是 view。
+        这是微信的硬要求：只有 button 才能唤起转发面板。
+        （button 自带默认边框/背景，样式要在 wxss 里重置，见 .cc-share）
+    -->
+    <button class="cc-share" open-type="share" hover-class="cc-share-on">
+      <text class="cc-share-t">把房间号发给朋友</text>
+    </button>
 
     <view class="sechead">
       <text>已经进来的人</text>
