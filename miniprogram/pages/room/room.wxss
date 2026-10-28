@@ -308,6 +308,13 @@
   width: 360rpx; height: 560rpx;
   margin-left: -180rpx;
   z-index: 3;
+  /*
+   * 投影：骰盅原图是"上深下浅"的光照（合法的），但舞台背景也是深褐 ——
+   * 结果下半部分对比度太低，看起来像**半透明**，盅"没坐在桌上"。
+   * 加一层 drop-shadow 把轮廓压出来，立刻有重量。
+   * （filter 在老基础库可能不生效，那只是少一层阴影，不会有副作用。）
+   */
+  filter: drop-shadow(0 10rpx 22rpx rgba(0, 0, 0, .5));
   transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
               opacity .3s ease;
 }

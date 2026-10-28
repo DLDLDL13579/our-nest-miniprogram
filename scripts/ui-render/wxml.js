@@ -158,7 +158,17 @@ function evalExpr(expr, scope) {
 /** 把含 {{}} 的字符串求值：整串就是一个表达式时保留原型，否则拼接成字符串 */
 function interpolate(raw, scope) {
   if (typeof raw !== 'string') return raw
-  const whole = /^\{\{([\s\S]*?)\}\}$/.exec(raw.trim())
+  /*
+   * ★ 只有当整串**就是一个**插值时才走"直接求值"分支。
+   *
+   * 原来的正则 `/^\{\{([\s\S]*?)\}\}$/` 只要求首尾是 {{ 和 }} ——
+   * 于是 `{{a}} 个 {{b}}` 这种"多段混排"也被当成"整串是一个表达式"，
+   * 捕获到的是 `a}} 个 {{b` 这种乱码 → evalExpr 抛错 →
+   * **整段文字在预览里凭空消失**，而且只打一条警告。
+   *
+   * 修法：捕获内容里禁止出现 `}}`，也就是真的只有一个插值才命中。
+   */
+  const whole = /^\{\{((?:(?!\}\})[\s\S])*)\}\}$/.exec(raw.trim())
   if (whole) return evalExpr(whole[1], scope)
 
   return raw.replace(/\{\{([\s\S]*?)\}\}/g, (_, e) => {

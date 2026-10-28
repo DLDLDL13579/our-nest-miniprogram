@@ -112,6 +112,44 @@ module.exports = {
       })
     }),
 
+    /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
+
+    /* 大话骰：扣盅后轮到我叫骰 */
+    liarPlay: () => ({
+      stage: 'playing',
+      cupSrc: 'cup-down', cupCls: '', cupHint: '该你了，摇盅',
+      myRolled: true, diceShown: true, rolling: false, liarReady: true,
+      myDice: [3, 5, 1, 6, 3],
+      room: pkRoom({
+        game: 'liar', phase: 'playing', host: true, turn: 1, myTurn: true,
+        turnName: '邓林', count: 3,
+        bid: { bySeat: 2, byName: '倩萍', n: 3, face: 4, zhai: false },
+        players: [
+          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, diceCount: 5 }
+        ],
+        options: ['4个4', '4个5', '4个6', '5个2', '5个3', '5个4']
+      })
+    }),
+
+    /* 比大小：摇盅中 */
+    diceRoll: () => ({
+      stage: 'playing',
+      cupSrc: 'cup-shake', cupCls: 'shaking', cupHint: '摇盅中…',
+      myRolled: false, diceShown: false, rolling: true,
+      myDice: [],
+      room: pkRoom({
+        game: 'dice', phase: 'playing', host: true, turn: 0, myTurn: false,
+        turnName: '', count: 3,
+        players: [
+          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, diceCount: 0 },
+          { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', isMe: false, isHost: false, online: true, diceCount: 5 }
+        ]
+      })
+    }),
+
     /* 金花满员 6 人摊牌：6 行牌面会不会挤（金花 max=6） */
     pk6: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘']
