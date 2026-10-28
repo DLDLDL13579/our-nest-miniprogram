@@ -1013,6 +1013,11 @@
 .actrow .btn { flex: 1; height: 76rpx; font-size: 27rpx; border-radius: 18rpx }
 
 /* 破坏性操作：只留文字。不做点击高亮，反而更退后 */
+/* 底部一行两个小字按钮（看规则 / 离开房间） */
+.footrow { display: flex; justify-content: center; gap: 40rpx }
+/* 浮层里的规则列表：可滚动（12 条规则也不会撑破） */
+.how-sheet-list { max-height: 620rpx; overflow-y: auto }
+
 .textbtn {
   height: 64rpx;
   display: flex; align-items: center; justify-content: center;

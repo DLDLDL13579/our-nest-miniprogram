@@ -278,6 +278,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(255,255,255,.06);
 }
 .gbar-code {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
   font-size: 16px; font-weight: 700; color: #F6E7C3;
   letter-spacing: 2px;
 }
@@ -445,7 +447,9 @@ view, text, button, input, textarea { box-sizing: border-box }
   padding: 11px 0 8px;
 }
 .bid-lbl { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); letter-spacing: 1.5px }
-.bid-val { font-size: 22px; font-weight: 700; color: #F6E7C3; margin-top: 3px; letter-spacing: 1px }
+.bid-val {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif; font-size: 22px; font-weight: 700; color: #F6E7C3; margin-top: 3px; letter-spacing: 1px }
 .bid-val.hint { font-size: 13.5px; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
 .bid-by { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 4px }
 
@@ -887,6 +891,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 .oh-total {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
   position: relative;
   margin-top: 6px;
   font-size: 16px; font-weight: 700; color: #F6E7C3;
@@ -978,6 +984,11 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 .actrow .btn { flex: 1; height: 38px; font-size: 13.5px; border-radius: 9px }
 
+
+
+.footrow { display: flex; justify-content: center; gap: 20px }
+
+.how-sheet-list { max-height: 310px; overflow-y: auto }
 
 .textbtn {
   height: 32px;
@@ -1131,6 +1142,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 .cd-in { position: relative }
 .cd-lbl { font-size: 10.5px; color: rgba(255,255,255,.5); letter-spacing: 2px }
 .cd-num {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
   
   font-size: 100px; font-weight: 700; color: #F6E7C3;
   line-height: 1.02; margin: 10px 0 7px;
@@ -2201,7 +2214,10 @@ view, text, button, input, textarea { box-sizing: border-box }
           开！我不信（3 个 4）
         </div>
         
-        <div class="btn pibtn">劈！</div></div><div class="textbtn">离开房间</div>
+        <div class="btn pibtn">劈！</div></div><div class="footrow">
+      <div class="textbtn">看规则</div>
+      <div class="textbtn">离开房间</div>
+    </div>
   </div>
 
 

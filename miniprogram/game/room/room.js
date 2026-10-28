@@ -180,6 +180,8 @@ Page({
      *    在里面引用模块级配置会直接 ReferenceError，而且语义上也越界了。
      */
     soloTest: !!CFG.soloTest,
+    /* 局内规则浮层（点"看规则"打开） */
+    howOpen: false,
     pickGame: 'liar',
     pickGameName: '大话骰',
     /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
@@ -1771,6 +1773,14 @@ Page({
     })
     if (r && r.ok) this.setData({ room: this.decorate(r.room) })
   },
+
+  /*
+   * 局内看规则（2026-10-28）。
+   * lobby 里有一整套「怎么玩」，但开局就撤掉了 ——
+   * 而酒桌上最常发生的是"开局前扫了一眼、轮到自己忘了"。
+   */
+  showHow() { this.setData({ howOpen: true }) },
+  closeHow() { if (this.data.howOpen) this.setData({ howOpen: false }) },
 
   /* ================= 建房 ================= */
 

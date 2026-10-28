@@ -861,7 +861,16 @@
       <view wx:else class="waiting">等房主转</view>
     </block>
 
-    <view class="textbtn" bindtap="leave">离开房间</view>
+    <!--
+      局内「看规则」（2026-10-28）。
+      lobby 里有一整套「怎么玩」，但**开局之后就撤掉了** ——
+      而酒桌上最常见的场景恰恰是：开局前扫了一眼，轮到自己时忘了。
+      这里给一条随时能翻的路，和"离开房间"并排的小字，不占地方。
+    -->
+    <view class="footrow">
+      <view class="textbtn" bindtap="showHow">看规则</view>
+      <view class="textbtn" bindtap="leave">离开房间</view>
+    </view>
   </block>
 
   <!-- ============ 加题面板 ============
@@ -869,6 +878,21 @@
        为什么值得做：酒桌上"我刚想到一个梗"是真实的高频瞬间，
        内置题库再全也覆盖不到你们那一桌的梗。
        加进去的题与内置题**同等机会**被抽到（服务端把两个题池合并后再抽）。 -->
+  <!-- 规则浮层：内容和 lobby 的「怎么玩」同源（room.howList），不另写一份 -->
+  <view wx:if="{{howOpen}}" class="mask" bindtap="closeHow">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-t">{{room.gameName}} · 怎么玩</view>
+      <view class="sheet-s">记住了就关掉，接着玩</view>
+      <view class="ht-list how-sheet-list">
+        <view wx:for="{{room.howList}}" wx:key="*this" class="ht-item">
+          <text class="ht-n">{{index + 1}}</text>
+          <text class="ht-t">{{item}}</text>
+        </view>
+      </view>
+      <view class="btn main" style="margin-top:24rpx" bindtap="closeHow">知道了</view>
+    </view>
+  </view>
+
   <view wx:if="{{cardPanel}}" class="mask" bindtap="closeCards">
     <!-- catchtap 阻止冒泡：点面板内部不该把它关掉 -->
     <view class="sheet" catchtap="noop">
