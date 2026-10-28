@@ -314,8 +314,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   border: 1px solid rgba(255,255,255,.09);
 }
 .gamepage .card.hl { border-color: rgba(232,179,60,.4) }
-.gamepage .lbl { color: rgba(255,255,255,.45) }
-.gamepage .hint { color: rgba(255,255,255,.35) }
+.gamepage .lbl { color: rgba(255, 255, 255, 0.52) }
+.gamepage .hint { color: rgba(255, 255, 255, 0.52) }
 .gamepage .tin {
   background: rgba(255,255,255,.08);
   border-color: rgba(255,255,255,.14);
@@ -324,7 +324,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .gamepage .ph { color: rgba(255,255,255,.28) }
 .gamepage .chiprow .pill { background: rgba(232,179,60,.22); color: #F6E7C3 }
 .gamepage .chiprow .pill.ghost {
-  background: transparent; color: rgba(255,255,255,.45);
+  background: transparent; color: rgba(255, 255, 255, 0.52);
   border-color: rgba(255,255,255,.18);
 }
 
@@ -337,8 +337,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 .pill.ghost .pill-icon { opacity: .55 }
-.gamepage .sechead { color: rgba(255,255,255,.4) }
-.gamepage .xs { color: rgba(255,255,255,.35) }
+.gamepage .sechead { color: rgba(255, 255, 255, 0.52) }
+.gamepage .xs { color: rgba(255, 255, 255, 0.52) }
 
 .tin {
   width: 100%; height: 44px; border-radius: 9px;
@@ -359,7 +359,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .entry-tip {
   margin-top: 13px; font-size: 10.5px;
-  color: rgba(255,255,255,.3); line-height: 1.9; text-align: center;
+  color: rgba(255, 255, 255, 0.52); line-height: 1.9; text-align: center;
 }
 
 
@@ -422,7 +422,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .waiting {
   text-align: center; padding: 15px;
-  font-size: 12px; color: rgba(255,255,255,.45);
+  font-size: 12px; color: rgba(255, 255, 255, 0.52);
 }
 
 
@@ -431,10 +431,10 @@ view, text, button, input, textarea { box-sizing: border-box }
   
   padding: 11px 0 8px;
 }
-.bid-lbl { font-size: 10.5px; color: rgba(255,255,255,.4); letter-spacing: 1.5px }
+.bid-lbl { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); letter-spacing: 1.5px }
 .bid-val { font-size: 22px; font-weight: 700; color: #F6E7C3; margin-top: 3px; letter-spacing: 1px }
-.bid-val.hint { font-size: 13.5px; color: rgba(255,255,255,.4); font-weight: 400 }
-.bid-by { font-size: 10.5px; color: rgba(255,255,255,.35); margin-top: 4px }
+.bid-val.hint { font-size: 13.5px; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
+.bid-by { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 4px }
 
 
 
@@ -611,7 +611,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   font-size: 10.5px; color: rgba(255,255,255,.8); margin-top: 4px;
   max-width: 70px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
-.oc-stat { font-size: 9px; color: rgba(255,255,255,.4); margin-top: 2px }
+.oc-stat { font-size: 9px; color: rgba(255, 255, 255, 0.52); margin-top: 2px }
 
 .oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
 
@@ -619,7 +619,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .waitline {
   text-align: center;
   font-size: 12px;
-  color: rgba(255,255,255,.45);
+  color: rgba(255, 255, 255, 0.52);
   margin-top: 8px;
   line-height: 1.6;
 }
@@ -826,6 +826,22 @@ view, text, button, input, textarea { box-sizing: border-box }
   0%   { opacity: 0; transform: translateY(-12px) rotate(-14deg) scale(.8) }
   100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
 }
+.oh-badge {
+  position: relative;
+  margin-top: 5px;
+  padding: 2px 10px;
+  border-radius: 499.5px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 1px;
+  color: #2C1A08;
+  background: linear-gradient(135deg, #FFE9A8, #E8B33C);
+  box-shadow: 0 0 9px rgba(232, 179, 60, .55);
+  animation: badgePop .5s cubic-bezier(.34, 1.56, .64, 1) .18s backwards;
+}
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(.4) rotate(-8deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0) }
+}
+
 .oh-total {
   position: relative;
   margin-top: 6px;
@@ -856,7 +872,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   animation: codeIn .5s cubic-bezier(.34, 1.56, .64, 1) .06s backwards;
 }
 .on-unit { font-size: 13.5px; color: rgba(255,255,255,.6) }
-.over-need { font-size: 10.5px; color: rgba(255,255,255,.45); margin-top: 6px }
+.over-need { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 6px }
 
 .revealbox {
   width: 100%; margin-top: 15px;
@@ -878,6 +894,11 @@ view, text, button, input, textarea { box-sizing: border-box }
 .rv-row:last-child { border-bottom: none }
 .rv-name { font-size: 12px; color: rgba(255,255,255,.6); min-width: 55px }
 .rv-total { font-size: 13.5px; font-weight: 700; color: #F6E7C3; margin-left: auto }
+
+.rv-leopard {
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  background: rgba(232,179,60,.22); color: #F0C860; flex: none;
+}
 
 .loserbox {
   margin: 15px 0 13px;
@@ -917,7 +938,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .textbtn {
   height: 32px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; color: rgba(255,255,255,.38);
+  font-size: 12px; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 0.5px;
 }
 .textbtn:active { color: rgba(255,255,255,.6) }
@@ -1102,7 +1123,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   55%  { transform: scale(1.1); opacity: 1 }
   100% { transform: scale(1);   opacity: 1 }
 }
-.cd-sub { font-size: 12px; color: rgba(255,255,255,.45); margin-top: 9px }
+.cd-sub { font-size: 12px; color: rgba(255, 255, 255, 0.52); margin-top: 9px }
 
 
 .cardbox {
@@ -1138,7 +1159,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   padding: 3px 9px;
 }
 .cardbox.dare .cb-type { color: #9FC0DD; background: rgba(94,127,166,.22) }
-.cb-deck { font-size: 10.5px; color: rgba(255,255,255,.4) }
+.cb-deck { font-size: 10.5px; color: rgba(255, 255, 255, 0.52) }
 
 .cb-text {
   font-size: 16px;
@@ -1178,7 +1199,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 .dc-name { font-size: 13.5px; font-weight: 600; color: rgba(255,255,255,.88) }
 .deckcard.on .dc-name { color: #F6E7C3 }
-.dc-desc { font-size: 10.5px; color: rgba(255,255,255,.42); margin-top: 3px; line-height: 1.4 }
+.dc-desc { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 3px; line-height: 1.4 }
 
 
 .deckrow {
@@ -1215,7 +1236,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex; flex-direction: column; gap: 3px;
 }
 .ce-t { font-size: 13.5px; color: rgba(246,231,195,.85); font-weight: 600 }
-.ce-s { font-size: 10.5px; color: rgba(255,255,255,.4) }
+.ce-s { font-size: 10.5px; color: rgba(255, 255, 255, 0.52) }
 
 
 .mask {
@@ -1242,7 +1263,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   100% { transform: translateY(0); opacity: 1 }
 }
 .sheet-t { font-size: 16px; font-weight: 700; color: #F6E7C3 }
-.sheet-s { font-size: 10.5px; color: rgba(255,255,255,.45); margin-top: 4px; line-height: 1.5 }
+.sheet-s { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 4px; line-height: 1.5 }
 
 
 .typerow { display: flex; gap: 8px; margin: 13px 0 9px }
@@ -1271,7 +1292,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   line-height: 1.5;
 }
 
-.mine-t { font-size: 10.5px; color: rgba(255,255,255,.4); margin: 15px 0 7px }
+.mine-t { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin: 15px 0 7px }
 .minelist { display: flex; flex-direction: column; gap: 6px }
 .mineitem {
   padding: 9px 11px;
@@ -1281,7 +1302,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex; gap: 7px; align-items: baseline;
 }
 .mineitem.dare { background: rgba(94,127,166,.16); border-left-color: #5E7FA6 }
-.mi-type { font-size: 10.5px; color: rgba(255,255,255,.45); flex: none }
+.mi-type { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); flex: none }
 .mi-text { font-size: 12px; color: rgba(255,255,255,.82); line-height: 1.45 }
 
 
@@ -1292,7 +1313,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(255,255,255,.04);
   border: 1px solid rgba(255,255,255,.10);
 }
-.gs-lbl { font-size: 10.5px; color: rgba(255,255,255,.45); margin-bottom: 8px }
+.gs-lbl { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-bottom: 8px }
 .gs-row { display: flex; gap: 7px }
 .gspill {
   flex: 1;
@@ -1351,8 +1372,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin: 8px 0 5px; line-height: 1.15; letter-spacing: 3px;
   text-shadow: 0 2px 9px rgba(180, 140, 240, .45);
 }
-.uw-wsub { font-size: 10.5px; color: rgba(255,255,255,.4) }
-.uw-wtip { font-size: 10.5px; color: rgba(255,255,255,.35); margin-top: 7px }
+.uw-wsub { font-size: 10.5px; color: rgba(255, 255, 255, 0.52) }
+.uw-wtip { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 7px }
 
 
 .uw-seats {
@@ -1404,7 +1425,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pk-seat.me { border-color: rgba(232,179,60,.42) }
 .pk-seat.out { opacity: .42 }
 .pk-seat-n { font-size: 10.5px; color: rgba(255,255,255,.82); font-weight: 600 }
-.pk-seat-s { font-size: 9px; color: rgba(255,255,255,.42) }
+.pk-seat-s { font-size: 9px; color: rgba(255, 255, 255, 0.52) }
 
 .pk-seat-s.drank { color: #E8B33C }
 .pk-seat-s.out { color: #F0A38C }
@@ -1431,7 +1452,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-top: 5px; font-size: 12px; color: rgba(255,255,255,.82); line-height: 1.6;
 }
 .uw-tie-x {
-  margin-top: 4px; font-size: 10.5px; color: rgba(255,255,255,.45);
+  margin-top: 4px; font-size: 10.5px; color: rgba(255, 255, 255, 0.52);
 }
 
 
@@ -1461,7 +1482,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .uw-wait {
   margin-top: 11px; text-align: center;
-  font-size: 10.5px; color: rgba(255,255,255,.4); line-height: 1.7;
+  font-size: 10.5px; color: rgba(255, 255, 255, 0.52); line-height: 1.7;
 }
 
 
@@ -1527,7 +1548,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
   background: rgba(232,179,60,.25); color: #F6E7C3;
 }
-.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255,255,255,.4) }
+.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255, 255, 255, 0.52) }
 
 .uw-p.picked {
   background: rgba(122, 92, 168, .38);
@@ -1553,11 +1574,11 @@ view, text, button, input, textarea { box-sizing: border-box }
 .uw-ow { font-size: 12px; color: rgba(255,255,255,.62); margin-top: 7px; line-height: 1.6 }
 .uw-spy { color: #FFB4A0; font-weight: 700 }
 .uw-good { color: #9AD3A8; font-weight: 700 }
-.uw-otie { font-size: 10.5px; color: rgba(255,255,255,.38); margin-top: 5px }
+.uw-otie { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 5px }
 
 .uw-alive {
   text-align: center; margin-top: 8px;
-  font-size: 10.5px; color: rgba(255,255,255,.42); letter-spacing: 0.5px;
+  font-size: 10.5px; color: rgba(255, 255, 255, 0.52); letter-spacing: 0.5px;
 }
 
 
@@ -1639,7 +1660,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pk-slot:nth-child(3) { transition-delay: 140ms }
 
 .pk-tagline {
-  font-size: 9px; color: rgba(255,255,255,.45);
+  font-size: 9px; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 1px; height: 13px;
 }
 .pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
@@ -1719,13 +1740,13 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pkl-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap }
 .pkl-who { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.7) }
 .pkl-who.win { color: #9AD3A8 }
-.pkl-who.lose { color: rgba(255,255,255,.38); text-decoration: line-through }
+.pkl-who.lose { color: rgba(255, 255, 255, 0.52); text-decoration: line-through }
 .pkl-cards { display: flex; gap: 3px }
 .pkl-c {
   font-size: 12px; font-weight: 700; color: #2C2822;
   background: #FFFDF9; border-radius: 4px; padding: 2px 5px;
 }
-.pkl-vs { font-size: 10.5px; color: rgba(255,255,255,.35) }
+.pkl-vs { font-size: 10.5px; color: rgba(255, 255, 255, 0.52) }
 .pkl-note { text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5); margin-top: 6px }
 
 
@@ -1733,7 +1754,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   text-align: center; font-size: 16px; font-weight: 700; color: #F6E7C3;
 }
 .pk-note {
-  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.45);
+  text-align: center; font-size: 10.5px; color: rgba(255, 255, 255, 0.52);
   margin-top: 5px; margin-bottom: var(--gap-2); line-height: 1.7;
 }
 .pk-list { display: flex; flex-direction: column; gap: 7px }
@@ -1760,7 +1781,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .pk-wait {
   text-align: center; padding: 22px 0;
-  font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.8;
+  font-size: 12px; color: rgba(255, 255, 255, 0.52); line-height: 1.8;
 }
 
 
@@ -1894,7 +1915,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .rl-t {
   font-size: 13.5px; font-weight: 600; color: #F6E7C3; letter-spacing: 1px;
 }
-.rl-s { font-size: 10.5px; color: rgba(255,255,255,.4) }
+.rl-s { font-size: 10.5px; color: rgba(255, 255, 255, 0.52) }
 
 
 .nettip {
@@ -2060,8 +2081,9 @@ view, text, button, input, textarea { box-sizing: border-box }
         <div class="oh-glow"></div>
         <div class="oh-crown">赢 家</div>
         <div class="oh-name">邓林</div>
-        <div class="oh-dice">
-          <img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;--i:0"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;--i:1"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;--i:2"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;--i:3"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;--i:4">
+        
+        <div class="oh-badge">豹 子 · 五个 6</div><div class="oh-dice">
+          <img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:0"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:1"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:2"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:3"><img class="oh-die" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;--i:4">
         </div>
         <div class="oh-total">26 点</div>
       </div>
@@ -2070,13 +2092,13 @@ view, text, button, input, textarea { box-sizing: border-box }
         <div class="rv-row" style="--i:0">
           <span class="rv-name">倩萍</span>
           <div class="dicebox mini">
-            <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
+            <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">19 点</span>
         </div><div class="rv-row" style="--i:1">
           <span class="rv-name">老王</span>
           <div class="dicebox mini">
-            <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;">
+            <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/game/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">12 点</span>
         </div>

@@ -62,6 +62,7 @@ const { pickPair } = require('./words.js')
  * 否则会出现"我这边显示我大、服务端判我输"（同一份代码算的才对得上）。
  */
 const poker = require('./poker.js')
+const dicerank = require('./dicerank.js')
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -1224,17 +1225,19 @@ exports.main = async (event) => {
 
       /* 每人自己摇自己的 —— 服务端摇，前端只拿结果 */
       /*
-       * 每人几颗：大话骰 5 颗；摇骰子比大小 2 颗。
+       * 每人几颗：**两个玩法都是 5 颗**（2026-10-28 改）。
        *
-       * ⚠️ 原来写的是 `(room.diceCount || 2)` —— 但 `room.diceCount` **从未被赋值**
-       *    （房间文档里没这个字段；第 206 行的 diceCount 是 shape() 给**每个 player**
-       *    的，不是房间顶层的）。所以它恒为 undefined、恒回退 2。
+       * 原来比大小是 2 颗，理由是"骰子房本来就该 2 颗"——但那个数字其实来自
+       * 一个 bug：`room.diceCount` 从未被赋值，恒为 undefined，恒回退 2。
+       * 也就是说"2 颗"是**回退值**，不是设计值。
        *
-       * 行为**恰好是对的**（dice 房本就该 2 颗），但这个写法有误导性：
-       * 读的人会以为"房间可以配置骰子数"，而实际上没有这个能力。
-       * 已改成明确的常量表达式 —— 若将来真要做可配置，再引字段也不迟。
+       * 为什么改成 5：
+       *   · 真实骰盅就装 5 颗，玩家对这个数量有直觉
+       *   · 2 颗只有 12 种结果，分布挤中间，比大小几乎没有悬念
+       *   · 5 颗才能有"豹子"（五同，1/1296），那才是摇盅时的心跳来源
+       *   · 结算页 8 人 × 5 颗也放得下（已用预览验证）
        */
-      const n = room.game === 'liar' ? 5 : 2
+      const n = 5
       const dice = []
       for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
 
@@ -1254,14 +1257,13 @@ exports.main = async (event) => {
 
       let result = null
       if (allRolled) {
-        /* 全员摇完 → 算点数排名 */
-        const ranked = players.map(p => ({
-          name: p.name, seat: p.seat,
-          dice: p.dice,
-          total: (p.dice || []).reduce((a, b) => a + b, 0)
-        })).sort((a, b) => b.total - a.total)
-        const top = ranked[0].total
-        const winnerSeats = ranked.filter(r => r.total === top).map(r => r.seat)
+        /* 全员摇完 → 算点数排名。
+           规则（含豹子、并列）全在 dicerank.js 里 —— 那是**纯函数**，
+           可以脱离房间直接单测；内联在这里就只能靠"真摇一把"来验。 */
+        const rk = dicerank.rankPlayers(players)
+        const ranked = rk.ranked
+        const top = rk.top
+        const winnerSeats = rk.winnerSeats
 
         /* ★ 连庄（streak）：记录每个人连续赢了几局。
            这是酒桌游戏的真实机制 —— "你又赢了？连庄两把了，加倍喝"。
@@ -1276,7 +1278,9 @@ exports.main = async (event) => {
 
         result = {
           ranked: ranked,
-          winners: ranked.filter(r => r.total === top).map(r => r.name),
+          winners: rk.winners,
+          leopardWin: rk.leopardWin,
+          leopardFace: rk.leopardFace,
           top: top,
           streaks: streaks,
           /* 连庄次数（1 = 刚赢一局，2 = 连庄，3+ = 连庄多次） */

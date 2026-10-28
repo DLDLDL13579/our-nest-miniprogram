@@ -1225,7 +1225,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(!rollA.result,
     `只摇了一个时不该出结果（要等全员），实际: ${JSON.stringify(rollA.result)}`)
   /* 自己的骰子要点数，且**别人的点数不能出现** */
-  assert.ok((rollA.room.me.dice || []).length === 2, '摇骰子每人 2 颗')
+  assert.ok((rollA.room.me.dice || []).length === 5, '摇骰子每人 5 颗（真实骰盅就是这个数）')
   const leaked = (rollA.room.players || []).some(p => !p.isMe && Array.isArray(p.dice) && p.dice.length)
   assert.ok(!leaked, '★ 不能把别人的骰子点数发到前端（抓到就等于作弊）')
   ok('★ A 摇完：有自己的点数、别人的不可见、暂不出结果')
@@ -1235,6 +1235,65 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(rollB.result, '★ 全员摇完必须自动出结果（这是「已摇完自动开结果」的入口）')
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
+
+  /* ============ ⑪b 比大小：5 颗骰子 + 豹子直接赢（纯函数直测） ============ */
+  /*
+   * 2026-10-28 改。两件事：
+   *   ① 每人从 2 颗改成 5 颗（原来那个 2 是 `room.diceCount` 恒为 undefined
+   *      的回退值，不是设计值）。2 颗只有 12 种结果，比大小几乎没有悬念。
+   *   ② 五颗同点 = 豹子，**直接赢**，不看总点数。
+   *
+   * ★ 规则抽成了纯函数 utils/dicerank.js（云端有一份拷贝）。
+   *   原来它内联在 roll 分支里 —— 想验一条规则只能"真把房间跑起来摇一把"，
+   *   而骰子是随机的，**根本没法构造"某人有豹子"这种场面**。
+   *   现在直接喂数组，规则的每个分支都能测。
+   */
+  const { rankPlayers } = require('../miniprogram/utils/dicerank.js')
+  {
+    /* ① 豹子赢：五个 1（总 5 点）压过对方的 22 点 */
+    const r1 = rankPlayers([
+      { name: '甲', seat: 1, dice: [1, 1, 1, 1, 1] },
+      { name: '乙', seat: 2, dice: [6, 6, 6, 2, 2] }
+    ])
+    assert.deepStrictEqual(r1.winners, ['甲'],
+      '★ 五颗同点（豹子）必须直接赢，不看总点数：' + JSON.stringify(r1.winners))
+    assert.strictEqual(r1.leopardWin, true, '要标出"赢家里有豹子"')
+    assert.strictEqual(r1.leopardFace, 1, '豹子的点数要带出来（界面要喊"五个 1"）')
+    ok('★ 豹子（五同）直接赢 —— 5 点压过 22 点')
+
+    /* ② 两个豹子：点数大的赢 */
+    const r2 = rankPlayers([
+      { name: '甲', seat: 1, dice: [1, 1, 1, 1, 1] },
+      { name: '乙', seat: 2, dice: [6, 6, 6, 6, 6] }
+    ])
+    assert.deepStrictEqual(r2.winners, ['乙'], '★ 两个豹子时点数大的赢（六个 6 > 五个 1）')
+    ok('★ 两个豹子：点数大的赢')
+
+    /* ③ 没有豹子时按总点数 */
+    const r3 = rankPlayers([
+      { name: '甲', seat: 1, dice: [1, 2, 3, 4, 5] },
+      { name: '乙', seat: 2, dice: [6, 6, 6, 6, 2] }
+    ])
+    assert.deepStrictEqual(r3.winners, ['乙'], '没有豹子时按总点数排')
+    assert.strictEqual(r3.leopardWin, false, '没有豹子时 leopardWin 应为 false')
+    ok('没有豹子时按总点数')
+
+    /* ④ 并列：都算赢（酒桌上并列不用分胜负，反正都要喝） */
+    const r4 = rankPlayers([
+      { name: '甲', seat: 1, dice: [3, 3, 3, 3, 3] },
+      { name: '乙', seat: 2, dice: [3, 3, 3, 3, 3] }
+    ])
+    assert.strictEqual(r4.winners.length, 2, '点数完全一样时两个都算赢')
+    ok('并列：都算赢')
+
+    /* ⑤ 脏数据不能把整局搞崩：非法点数剔掉再算 */
+    const r5 = rankPlayers([
+      { name: '甲', seat: 1, dice: [1, 2, 3, 4, 99] },
+      { name: '乙', seat: 2, dice: [2, 2, 2, 2, 2] }
+    ])
+    assert.strictEqual(r5.ranked[0].total, 10, '非法点数要剔除（1+2+3+4=10）')
+    ok('脏数据（非法点数）被剔除，不会污染排名')
+  }
 
   /* ============ ⑫ 谁是卧底：秘密词 + 匿名身份 + 投票结算 ============ */
   /*

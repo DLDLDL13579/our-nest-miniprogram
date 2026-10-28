@@ -244,9 +244,15 @@ module.exports = {
         return {
           confetti: Array.from({ length: 20 }, (_, i) => i),
           result: {
-            ranked: names.map((n, i) => ({ name: n, seat: i + 1, total: 26 - i * 7,
-              dice: [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1] })),
-            winners: ['邓林'], top: 26
+            ranked: names.map((n, i) => ({
+              name: n, seat: i + 1,
+              /* 第一个是豹子（五个 6），其余是普通牌 */
+              total: i === 0 ? 30 : 26 - i * 7,
+              leopard: i === 0,
+              dice: i === 0 ? [6, 6, 6, 6, 6]
+                : [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1]
+            })),
+            winners: ['邓林'], top: 30, leopardWin: true, leopardFace: 6
           }
         }
       })()

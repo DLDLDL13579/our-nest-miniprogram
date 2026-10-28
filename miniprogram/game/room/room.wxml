@@ -892,6 +892,7 @@
       <view class="revealbox">
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
           <text class="rv-name">{{item.name}}</text>
+          <text wx:if="{{item.leopard}}" class="rv-leopard">豹子</text>
           <view class="dicebox mini">
             <!--
               命中高亮：这一颗算进了"实际有几个"。
@@ -932,6 +933,8 @@
         <view class="oh-glow"></view>
         <view class="oh-crown">赢 家</view>
         <view class="oh-name">{{result.winners}}</view>
+        <!-- 豹子：比总点数更硬的赢法，必须单独喊出来 -->
+        <view wx:if="{{result.leopardWin}}" class="oh-badge">豹 子 · 五个 {{result.leopardFace}}</view>
         <view class="oh-dice">
           <image wx:for="{{result.topDice}}" wx:for-item="d" wx:key="index"
                  src="/game/images/dice/dice-{{d}}.png" class="oh-die" mode="aspectFit"

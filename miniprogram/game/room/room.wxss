@@ -788,6 +788,22 @@
   0%   { opacity: 0; transform: translateY(-24rpx) rotate(-14deg) scale(.8) }
   100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
 }
+.oh-badge {
+  position: relative;
+  margin-top: 10rpx;
+  padding: 4rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 21rpx; font-weight: 700; letter-spacing: 2rpx;
+  color: #2C1A08;
+  background: linear-gradient(135deg, #FFE9A8, #E8B33C);
+  box-shadow: 0 0 18rpx rgba(232, 179, 60, .55);
+  animation: badgePop .5s cubic-bezier(.34, 1.56, .64, 1) .18s backwards;
+}
+@keyframes badgePop {
+  0%   { opacity: 0; transform: scale(.4) rotate(-8deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0) }
+}
+
 .oh-total {
   position: relative;
   margin-top: 12rpx;
@@ -851,6 +867,11 @@
 .rv-row:last-child { border-bottom: none }
 .rv-name { font-size: 24rpx; color: rgba(255,255,255,.6); min-width: 110rpx }
 .rv-total { font-size: 27rpx; font-weight: 700; color: #F6E7C3; margin-left: auto }
+/* 列表里标一下谁摸到豹子（它是这局真正的稀有点，值得被看见） */
+.rv-leopard {
+  font-size: 18rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 6rpx;
+  background: rgba(232,179,60,.22); color: #F0C860; flex: none;
+}
 
 .loserbox {
   margin: 30rpx 0 26rpx;

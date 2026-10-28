@@ -46,3 +46,5 @@ sync_one miniprogram/utils/games.js "games.js" cloudfunctions/*/games.js
 sync_one miniprogram/utils/decks.js "decks.js" cloudfunctions/*/decks.js
 sync_one miniprogram/utils/words.js "words.js" cloudfunctions/*/words.js
 sync_one miniprogram/utils/poker.js "poker.js" cloudfunctions/*/poker.js
+# 2026-10-28：比大小的结算规则抽成纯函数 —— 内联在 roll 分支里的规则根本没法单测
+sync_one miniprogram/utils/dicerank.js "dicerank.js" cloudfunctions/*/dicerank.js
