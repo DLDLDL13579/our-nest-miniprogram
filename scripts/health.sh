@@ -35,6 +35,11 @@ echo "② 测试"
 if bash scripts/test-all.sh >/tmp/health-test.log 2>&1; then
   N=$(grep -c "✓" /tmp/health-test.log || echo 0)
   echo "   ✓ 全绿（$N 项）"
+  # ★ README 里写的断言数也会过时（和版本号同一类问题）——顺手指出来
+  RMS=$(grep -oE '[0-9]+ 项' README.md 2>/dev/null | head -1 | grep -oE '[0-9]+' || echo '')
+  if [ -n "$RMS" ] && [ "$RMS" != "$N" ]; then
+    echo "   ⚠️ README 写的是 $RMS 项，实际 $N 项"
+  fi
 else
   echo "   ✗ 有失败 —— 看 /tmp/health-test.log"
   tail -20 /tmp/health-test.log

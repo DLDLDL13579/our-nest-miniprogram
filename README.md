@@ -23,7 +23,7 @@ $CLI cloud functions deploy --project "$(pwd)" --env cloudbase-d4goh1zdtc8eb9708
 **改完代码先跑测试，再部署：**
 
 ```bash
-bash scripts/test-all.sh    # 9 组 / 249 项，全部离线（不启动 GUI）
+bash scripts/test-all.sh    # 9 组 / 258 项，全部离线（不启动 GUI）
 bash scripts/check.sh       # 前后端一致 + 部署前检查
 ```
 
@@ -90,7 +90,7 @@ bash scripts/test-all.sh
 | 4 | 骰盅几何（偷看时骰子真的露得出来） |
 | 5 | 房间页状态机（phase→stage 唯一出口） |
 | 6 | 反馈时间轴 + 错误反馈（音画同步、不许静默吞错） |
-| 7 | 字段契约（图标尺寸 / 死绑定 / 幽灵字段 / 死功能 / 对比度） |
+| 7 | 字段契约（图标尺寸 / 死绑定 / 幽灵字段 / 死功能 / 对比度 / 文案数字与代码一致） |
 | 8 | 音效响度层级（扣盅必须压过铺垫） |
 | 9 | **五个玩法各跑一局到结算** |
 
