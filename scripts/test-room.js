@@ -1236,6 +1236,79 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
+  /* ============ ⑪g 单人大话骰：能不能"叫自己再开自己" ============ */
+  /*
+   * 单人局的回合是循环回自己的（1 人时 `(seat % n) + 1` 还是 1），
+   * 所以"叫完之后开自己"是唯一能走完的路径 —— 必须能走通，
+   * 而不是被"不能开自己叫的骰"之类的规则挡住（那样单人局永无出口）。
+   */
+  {
+    OPENID = A
+    const lr = await room.main({ action: 'create', name: 'L1', game: 'liar' })
+    const lrId = lr.room.id
+    await room.main({ action: 'start', id: lrId, solo: true })
+    store.rooms.filter(x => x._id === lrId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: lrId })
+
+    /* 单人必须先偷看才给叫骰 —— 这条规则单人局同样适用 */
+    const st0 = await room.main({ action: 'status', id: lrId })
+    assert.ok(st0.room.me.dice && st0.room.me.dice.length === 5, '单人局也要发 5 颗')
+
+    const bid = await room.main({ action: 'bid', id: lrId, n: 2, face: 3 })
+    assert.ok(bid.ok, '单人叫骰应成功：' + (bid.msg || ''))
+
+    /* 叫完之后回合回到自己（1 人循环），此时必须能开 */
+    const opened = await room.main({ action: 'open', id: lrId })
+    assert.ok(opened.ok, '★ 单人必须能"开自己的骰"走完一局：' + (opened.msg || ''))
+    assert.strictEqual(opened.room.phase, 'over', '开完应结算')
+    assert.ok(opened.result && opened.result.loserName, '结算要说清谁输（单人就是自己）')
+    ok('★ 单人大话骰：叫自己再开自己，能走完一局')
+  }
+
+  /* ============ ⑪f 单人金花：没有可比的人，能不能走完 ============ */
+  /*
+   * 同 ⑪e 的思路：soloTest 下一个人也要能把一局走完，否则就是"能开但卡住"。
+   * 金花的单人路径只有一条：**弃牌**（没有别人可以比）。
+   * 所以判据是：单人局点弃牌必须能结算，而不是回到"轮到你了"。
+   */
+  {
+    OPENID = A
+    const pr = await room.main({ action: 'create', name: 'K1', game: 'poker' })
+    const prId = pr.room.id
+    const pStart = await room.main({ action: 'start', id: prId, solo: true })
+    assert.ok(pStart.ok, '单人金花应能开局：' + (pStart.msg || ''))
+    store.rooms.filter(x => x._id === prId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: prId })
+
+    /* 单人时"能比的人"列表应为空 —— 界面据此只给弃牌 */
+    const pSt = await room.main({ action: 'status', id: prId })
+    const others = (pSt.room.players || []).filter(x => !x.isMe && !x.out)
+    assert.strictEqual(others.length, 0, '单人局不该有可以比的人')
+
+    /* 弃牌必须能推进（而不是回到"轮到你了"） */
+    const folded = await room.main({ action: 'pkAct', act: 'fold', id: prId })
+    assert.ok(folded.ok, '★ 单人金花弃牌应成功：' + (folded.msg || ''))
+    assert.ok(folded.room.poker.folded || folded.room.phase === 'over',
+      '★ 弃牌后必须真的弃了（否则界面回到"轮到你了"，单人局无处可去）')
+    ok('★ 单人金花：没有可比的人，弃牌能走完')
+  }
+
+  /* ============ ⑪h 单人比大小：摇完就能出结果 ============ */
+  /* 同一类判据：soloTest 下一个人点也能看到完整的一局，不能卡在"等别人摇"。 */
+  {
+    OPENID = A
+    const dr = await room.main({ action: 'create', name: 'D1', game: 'dice' })
+    const drId = dr.room.id
+    await room.main({ action: 'start', id: drId, solo: true })
+    store.rooms.filter(x => x._id === drId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: drId })
+    const rolled = await room.main({ action: 'roll', id: drId })
+    assert.ok(rolled.ok, '单人摇骰应成功：' + (rolled.msg || ''))
+    assert.ok(rolled.result, '★ 单人摇完必须立刻出结果（不能卡在"等别人摇"）')
+    assert.strictEqual(rolled.room.phase, 'over', '单人摇完应结算')
+    ok('★ 单人比大小：摇完立刻出结果')
+  }
+
   /* ============ ⑪e 单人卧底：不能"能开局但玩不了" ============ */
   /*
    * ★★ 2026-10-28 发现。soloTest 打开后一个人也能开局，
