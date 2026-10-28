@@ -366,6 +366,55 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 房主中途走了：房间不能变死局 ---------- */
+  /*
+   * ★ 2026-10-28。真实场景：房主去上厕所/接电话，直接退出。
+   *
+   *   代码里做了顺位转移，还有一段很隐蔽的处理（注释里写着）：
+   *   接任者如果是"中途加入、本局观战"的人，**必须同时把他纳入本局** ——
+   *   否则会出现这条死路：
+   *     原有参与者都走光 → 房主落到观战者头上，而他 inRound 仍是 false
+   *     → 点"开始"时按 inRound 过滤，没人发骰子 → **一个人卡死，且不报错**。
+   *
+   *   所以这里测的不只是"有人接手"，而是"**接手的人能不能真的开局**"。
+   */
+  {
+    OPENID = A
+    const hr = await room.main({ action: 'create', name: 'H1', game: 'dice' })
+    const hid = hr.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: hr.room.code, name: 'H2' })
+    OPENID = C
+    await room.main({ action: 'join', code: hr.room.code, name: 'H3' })
+
+    /* 房主直接走人（lobby 阶段） */
+    OPENID = A
+    const lv = await room.main({ action: 'leave', id: hid })
+    assert.ok(lv.ok, '房主退出应成功')
+    const after = await room.main({ action: 'status', id: hid })
+    assert.strictEqual(after.room.host, false, '走掉的人不该还是房主')
+    assert.ok(after.room.count === 2, '应剩 2 人')
+
+    /* 有人接手了 —— 用"谁能开局"来判，而不是猜是谁 */
+    let newHost = null
+    for (const who of [B, C]) {
+      OPENID = who
+      const st = await room.main({ action: 'start', id: hid })
+      if (st.ok) { newHost = who; break }
+    }
+    assert.ok(newHost, '★ 房主走后必须有一个人能接手（否则这桌人废了）')
+
+    /* ★ 关键：接手的人要能把这局**真的开起来并打完** */
+    await enterPlaying(hid)
+    for (const who of [B, C]) {
+      OPENID = who
+      await room.main({ action: 'roll', id: hid })
+    }
+    const fin = await room.main({ action: 'status', id: hid })
+    assert.strictEqual(fin.room.phase, 'over', '★ 新房的这一局必须能正常结算')
+    ok('★ 房主中途走了：有人顺位接手，且这一局能真的开起来打完')
+  }
+
   /* ---------- 有人来晚了：这一局观战，下一局参与 ---------- */
   /*
    * ★ 2026-10-28。真实场景：饭局中途有人赶到。
