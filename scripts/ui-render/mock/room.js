@@ -406,6 +406,38 @@ module.exports = {
         uw: { step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 2, voterCount: 4, aliveCount: 4, lastOut: null, reveal: null }
       })
     }),
+    /*
+     * 平票重投（2026-10-28 新规则）：第一次平票不淘汰，让平票的人补一句。
+     * 这块界面是新增的，必须单独渲染一张看 —— 它包含"平票是谁 / 接下来做什么 /
+     * 再平票什么后果"三层信息，最容易写成一段看不懂的文字。
+     */
+    uwTie: () => ({
+      stage: 'playing',
+      showWord: false,
+      room: uwRoom({
+        id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
+        players: UW_PLAYERS, count: 4,
+        uw: {
+          step: 'talk', word: '苹果', myRole: '', myVote: '', voteCount: 0, voterCount: 4,
+          aliveCount: 4, lastOut: null, reveal: null,
+          tieBreak: true, tieNames: '倩萍、阿杰'
+        }
+      })
+    }),
+    /* 决胜投票：同一批人，提示语必须比普通投票更硬 */
+    uwRunoff: () => ({
+      stage: 'playing',
+      showWord: false,
+      room: uwRoom({
+        id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
+        players: UW_PLAYERS, count: 4,
+        uw: {
+          step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 1, voterCount: 4,
+          aliveCount: 4, lastOut: null, reveal: null,
+          tieBreak: true, tieNames: ''
+        }
+      })
+    }),
     uwResult: () => ({
       stage: 'playing',
       showWord: false,

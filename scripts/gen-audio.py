@@ -736,21 +736,9 @@ def wheel_spin_loop():
     return out
 
 
-def wheel_slowdown():
-    """减速：咔哒间隔越来越长 —— 这个"变慢"是转盘最爽的部分。"""
-    total = int(SR * 1.6)
-    out = [0.0] * total
-    t, gap, k = 0, 0.035, 0
-    while t < total:
-        hit = tick(1.0 + k * 0.012)
-        for j, v in enumerate(hit):
-            if t + j < total:
-                out[t + j] += v
-        t += int(SR * gap)
-        gap *= 1.13          # 间隔按比例拉长 → 听感上"越来越慢"
-        k += 1
-    return out
-
+# wheel-slow（转盘慢转）已于 2026-10-28 删除：全仓零引用的死音效，
+# 34KB 白占体积。若以后转盘玩法需要"转盘慢下来"的过程音，
+# 重新写这里并把文件加进 ALL_V3 与 sfx.js 的 FILES 清单。
 
 def wheel_stop():
     """停稳：一声清亮的"叮"。"""
@@ -927,7 +915,6 @@ ALL = [
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
     # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
     # 这一串咔哒的本体是中频撞击，降采样率听感无损、体积减半（原 68.9 KB → 约 34 KB）
-    ('wheel-slow',   wheel_slowdown,          SR_MID),
     ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_MID),
     # 情绪
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
@@ -1308,7 +1295,6 @@ def grainize(seconds, seed, density_hz=900, grain_ms=1.8, amp_jitter=0.55, seed_
 #     咽酒 drink      -5.5 dB  ← 比摊牌还响 17 dB，喧宾夺主
 #     摊牌 card-spread -23.2 dB ← 全场焦点反而最轻之一
 #     入盅 dice-into-cup -26.2 dB ← 摇盅第一步几乎听不见
-#     转盘慢转 wheel-slow -12.9 dB ← 背景音太响，长音会累
 #     蓄力 charge-up  -9.2 dB  ← 氛围音成了全场最响
 #
 # ★ 只修这 5 处，**不做全局重排**。
@@ -1385,7 +1371,6 @@ LOUDNESS_FIX = {
     'combo-3':    -14.9,
     'combo-4':    -14.9,
     'wheel-stop': -13.0,   # 转盘停稳：转盘玩法的高潮，但全局看是"结果音"档
-    'wheel-slow': -20.0,   # 转盘慢转：1.6 秒长音，太响会累
     'charge-up':  -17.0,   # 蓄力：氛围铺垫，不是主角
 }
 

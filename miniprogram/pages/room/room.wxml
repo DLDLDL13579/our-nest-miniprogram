@@ -443,14 +443,31 @@
 
       <!-- ① 说描述：手机上不需要任何操作 -->
       <block wx:if="{{room.uw.step === 'talk'}}">
-        <view class="uw-note">轮流说一句话描述它 —— 别说出词本身，也别说得太明显</view>
-        <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">都说完了，开始投票</view>
-        <view wx:else class="uw-wait">等房主开投票</view>
+        <!--
+          平票重投：第一次平票**不淘汰任何人**，让平票的几个人各补一句再投。
+          这个口径比"随机挑一个出局"好在桌上讲得清 —— 后者被选中的人
+          一定会问"凭什么是我"，而服务端唯一能答的就是"随机"。
+        -->
+        <block wx:if="{{room.uw.tieBreak}}">
+          <view class="uw-tie">
+            <view class="uw-tie-t">平票了</view>
+            <view class="uw-tie-s">{{room.uw.tieNames}} 各补说一句，然后重投一次</view>
+            <view class="uw-tie-x">再平票，卧底就算赢了</view>
+          </view>
+          <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">说完了，重投</view>
+          <view wx:else class="uw-wait">等房主开始重投</view>
+        </block>
+        <block wx:else>
+          <view class="uw-note">轮流说一句话描述它 —— 别说出词本身，也别说得太明显</view>
+          <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">都说完了，开始投票</view>
+          <view wx:else class="uw-wait">等房主开投票</view>
+        </block>
       </block>
 
       <!-- ② 投票：每轮唯一的手机操作 -->
       <block wx:elif="{{room.uw.step === 'vote'}}">
-        <view class="uw-note">谁的描述最可疑？点一个人</view>
+        <view wx:if="{{room.uw.tieBreak}}" class="uw-note strong">决胜投票 —— 这一次必须投出结果，再平票卧底就赢了</view>
+        <view wx:else class="uw-note">谁的描述最可疑？点一个人</view>
         <view class="uw-list">
           <block wx:for="{{room.players}}" wx:key="openid">
             <view wx:if="{{!item.out && item.inRound !== false}}"
@@ -473,7 +490,7 @@
             他的词是「{{room.uw.lastOut.word}}」 ·
             <text class="{{room.uw.lastOut.role === 'spy' ? 'uw-spy' : 'uw-good'}}">{{room.uw.lastOut.role === 'spy' ? '是卧底' : '不是卧底'}}</text>
           </view>
-          <view wx:if="{{room.uw.lastOut.tie}}" class="uw-otie">平票，随机定的</view>
+
           <!-- 对比自己的词：这是这个玩法最核心的一步推理，省一次按住的操作 -->
           <view wx:if="{{room.uwCompare}}" class="uw-cmp">{{room.uwCompare}}</view>
         </view>
@@ -711,6 +728,8 @@
     <!-- 谁是卧底：全员摊牌 -->
     <view wx:if="{{room.game === 'undercover' && room.uw.reveal}}" class="uw-reveal">
       <view class="uw-rt">{{result.winner === 'spy' ? '卧底赢了' : '好人赢了'}}</view>
+      <!-- 两轮都平票：没人被投出去，卧底拖着就赢了（规则说清楚，不然像是 bug） -->
+      <view wx:if="{{result.tieDeadlock}}" class="uw-dead">两轮投票都平票，一个人都没投出去 —— 卧底拖赢了</view>
       <view class="uw-rw">
         <text>好人词「{{result.civilianWord}}」</text>
         <text class="uw-rvs">卧底词「{{result.spyWord}}」</text>
