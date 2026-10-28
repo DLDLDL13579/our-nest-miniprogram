@@ -303,57 +303,98 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
-.glist { display: flex; flex-direction: column }
+.ggrid {
+  display: flex; flex-wrap: wrap; gap: 9px;
+}
 
 .gcard {
-  display: flex; align-items: center; gap: 11px;
-  padding: 13px 12px 13px 11px; margin-bottom: var(--gap-2);
+  position: relative; overflow: hidden;
+  flex: 0 0 48.5%; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 13px 11px 11px;
+  
+  min-height: 161px;
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-1);
   
-  border-left: 4px solid var(--accent, var(--brand));
+  border-top: 2.5px solid var(--accent, var(--brand));
   transition: transform .12s, box-shadow .12s;
-  
-  animation: cardSlideIn .5s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: cardRise .46s cubic-bezier(.22, 1, .36, 1) backwards;
 }
-.gcard:nth-of-type(1) { animation-delay: .32s }
-.gcard:nth-of-type(2) { animation-delay: .40s }
-.gcard:nth-of-type(3) { animation-delay: .48s }
-.gcard:nth-of-type(4) { animation-delay: .56s }
-.gcard:nth-of-type(5) { animation-delay: .64s }
-.gcard:nth-of-type(6) { animation-delay: .72s }
-@keyframes cardSlideIn {
-  0%   { opacity: 0; transform: translateX(20px) }
-  100% { opacity: 1; transform: translateX(0) }
+.gcard:nth-of-type(1) { animation-delay: .28s }
+.gcard:nth-of-type(2) { animation-delay: .34s }
+.gcard:nth-of-type(3) { animation-delay: .40s }
+.gcard:nth-of-type(4) { animation-delay: .46s }
+.gcard:nth-of-type(5) { animation-delay: .52s }
+.gcard:nth-of-type(6) { animation-delay: .58s }
+.gcard:nth-of-type(7) { animation-delay: .64s }
+.gcard:nth-of-type(8) { animation-delay: .70s }
+@keyframes cardRise {
+  0%   { opacity: 0; transform: translateY(13px) scale(.97) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
 }
-.gcard:active { transform: scale(.985); box-shadow: var(--sh-2) }
+.gcard:active { transform: scale(.965); box-shadow: var(--sh-2) }
 
+
+.gc-spot {
+  position: absolute; width: 110px; height: 110px; border-radius: 50%;
+  right: -35px; top: -45px; pointer-events: none;
+  background: radial-gradient(circle, var(--accent, var(--brand)) 0%, transparent 68%);
+  opacity: .16;
+}
+
+.gc-head {
+  position: relative;
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
 .gc-icon {
-  width: 46px; height: 46px; border-radius: 12px; flex: none;
+  width: 39px; height: 39px; border-radius: 11px; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #F6E9D8, #EBD8C0);
   border: 1px solid rgba(200, 160, 120, .28);
   box-shadow: inset 0 1px 2px rgba(255,255,255,.7);
-  padding: 9px; box-sizing: border-box;
+  padding: 7.5px; box-sizing: border-box;
   transition: transform .2s;
 }
-.gcard:active .gc-icon { transform: scale(1.1) rotate(-6deg) }
+.gcard:active .gc-icon { transform: scale(1.12) rotate(-7deg) }
 
 .gc-img { width: 100%; height: 100% }
 
-.gc-main { flex: 1; min-width: 0 }
-.gc-top { display: flex; align-items: center; gap: 7px }
-.gc-name { font-size: 16px; font-weight: 700; color: var(--ink) }
+.gc-name {
+  position: relative;
+  font-size: 15px; font-weight: 700; color: var(--ink);
+  margin-top: 8px; letter-spacing: 0.25px;
+}
+.gc-desc {
+  position: relative;
+  font-size: 10.5px; color: var(--ink2); margin-top: 4px; line-height: 1.5;
+  
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.gc-foot {
+  position: relative;
+  margin-top: auto; padding-top: 7px;
+  display: flex; align-items: center; justify-content: space-between;
+}
 .gc-people {
-  font-size: 9.5px; padding: 1.5px 6px; border-radius: 499.5px;
+  font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
   background: var(--brandsoft); color: var(--brand2); flex: none;
 }
-.gc-desc { font-size: 11.5px; color: var(--ink2); margin-top: 4px; line-height: 1.55 }
-.gc-arrow {
-  width: 16px; height: 16px; flex: none; opacity: .38;
-  transition: transform .2s;
+
+.gc-cta-t {
+  font-size: 10px; font-weight: 600;
+  color: var(--accent, var(--brand2)); opacity: .92; flex: none;
 }
-.gcard:active .gc-arrow { transform: translateX(3px) }
+
+
+.gc-recent {
+  font-size: 8.5px; padding: 1.5px 5px;
+  border-radius: 3px;
+  background: var(--goldsoft);
+  color: #8A6A22;
+  flex: none;
+}
 
 
 .lb-tip {
@@ -417,91 +458,76 @@ view, text, button, input, textarea { box-sizing: border-box }
     <input class="join-in" value="" placeholder="3 位房间号" data-maxlength="3">
     <div class="join-btn">进去</div>
   </div>
-  <div class="glist">
+  <div class="ggrid">
     <div class="gcard" style="--accent:#C4573A">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.8%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.4%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">大话骰</span>
-          
-          <span class="gc-recent">上次</span><span class="gc-people">2–8 人</span>
+      <div class="gc-spot"></div>
+      <div class="gc-head">
+        <div class="gc-icon">
+          <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.8%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.4%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
         </div>
-        <div class="gc-desc">轮流往上叫，不信就开</div>
-      </div>
-      
-      <div class="gc-cta">
+        
+        <span class="gc-recent">上次</span></div>
+      <div class="gc-name">大话骰</div>
+      <div class="gc-desc">轮流往上叫，不信就开</div>
+      <div class="gc-foot">
+        <span class="gc-people">2–8 人</span>
         <span class="gc-cta-t">开桌</span>
-        <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
     </div><div class="gcard" style="--accent:#5E7FA6">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.5%22%20width%3D%2217%22%20height%3D%2217%22%20rx%3D%223.4%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">比大小</span>
-          
-          <span class="gc-people">2–8 人</span>
+      <div class="gc-spot"></div>
+      <div class="gc-head">
+        <div class="gc-icon">
+          <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.5%22%20width%3D%2217%22%20height%3D%2217%22%20rx%3D%223.4%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
         </div>
-        <div class="gc-desc">一起摇一盅，点数大的赢</div>
-      </div>
-      
-      <div class="gc-cta">
+        
+        </div>
+      <div class="gc-name">比大小</div>
+      <div class="gc-desc">一起摇一盅，点数大的赢</div>
+      <div class="gc-foot">
+        <span class="gc-people">2–8 人</span>
         <span class="gc-cta-t">开桌</span>
-        <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
     </div><div class="gcard" style="--accent:#7A5CA8">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%208.6c2.6-1%205.3-1.5%208-1.5s5.4.5%208%201.5c0%204.6-3.6%208.2-8%208.2S4%2013.2%204%208.6z%22%2F%3E%3Ccircle%20cx%3D%228.7%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.3%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">谁是卧底</span>
-          
-          <span class="gc-people">3–12 人</span>
+      <div class="gc-spot"></div>
+      <div class="gc-head">
+        <div class="gc-icon">
+          <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%208.6c2.6-1%205.3-1.5%208-1.5s5.4.5%208%201.5c0%204.6-3.6%208.2-8%208.2S4%2013.2%204%208.6z%22%2F%3E%3Ccircle%20cx%3D%228.7%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.3%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
         </div>
-        <div class="gc-desc">有一个人拿到的词和你不一样</div>
-      </div>
-      
-      <div class="gc-cta">
+        
+        </div>
+      <div class="gc-name">谁是卧底</div>
+      <div class="gc-desc">有一个人拿到的词和你不一样</div>
+      <div class="gc-foot">
+        <span class="gc-people">3–12 人</span>
         <span class="gc-cta-t">开桌</span>
-        <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
     </div><div class="gcard" style="--accent:#B8863C">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.6%22%20y%3D%226.4%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%20transform%3D%22rotate(-9%209.1%2014)%22%2F%3E%3Crect%20x%3D%229.4%22%20y%3D%224.2%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M14.9%209.4l1.1%202.4%202.4%201.1-2.4%201.1-1.1%202.4-1.1-2.4-2.4-1.1%202.4-1.1z%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">梦幻金花</span>
-          
-          <span class="gc-people">2–6 人</span>
+      <div class="gc-spot"></div>
+      <div class="gc-head">
+        <div class="gc-icon">
+          <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.6%22%20y%3D%226.4%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%20transform%3D%22rotate(-9%209.1%2014)%22%2F%3E%3Crect%20x%3D%229.4%22%20y%3D%224.2%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M14.9%209.4l1.1%202.4%202.4%201.1-2.4%201.1-1.1%202.4-1.1-2.4-2.4-1.1%202.4-1.1z%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
         </div>
-        <div class="gc-desc">一张亮着，一张自己看，一张靠猜</div>
-      </div>
-      
-      <div class="gc-cta">
+        
+        </div>
+      <div class="gc-name">梦幻金花</div>
+      <div class="gc-desc">一张亮着，一张自己看，一张靠猜</div>
+      <div class="gc-foot">
+        <span class="gc-people">2–6 人</span>
         <span class="gc-cta-t">开桌</span>
-        <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
     </div><div class="gcard" style="--accent:#7A5CA8">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Cpath%20d%3D%22M12%203.5v17M3.5%2012h17M6%206l12%2012M18%206L6%2018%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">命运转盘</span>
-          
-          <span class="gc-people">1–8 人</span>
+      <div class="gc-spot"></div>
+      <div class="gc-head">
+        <div class="gc-icon">
+          <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Cpath%20d%3D%22M12%203.5v17M3.5%2012h17M6%206l12%2012M18%206L6%2018%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
         </div>
-        <div class="gc-desc">转一下，真心话还是喝一杯</div>
-      </div>
-      
-      <div class="gc-cta">
+        
+        </div>
+      <div class="gc-name">命运转盘</div>
+      <div class="gc-desc">转一下，真心话还是喝一杯</div>
+      <div class="gc-foot">
+        <span class="gc-people">1–8 人</span>
         <span class="gc-cta-t">开桌</span>
-        <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
     </div>
   </div>

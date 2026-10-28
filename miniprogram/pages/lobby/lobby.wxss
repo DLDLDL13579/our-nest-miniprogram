@@ -97,59 +97,117 @@
 }
 
 /* ============================================================
-   ④ 玩法卡
+   ④ 玩法卡（两列网格）
+   ------------------------------------------------------------
+   为什么是两列：这一版的产品目标就是**不断加玩法**。
+   单列时一张 240rpx，5 个就占满一屏；加到 8 个要滚两屏。
+   两列后一屏 6 个，加玩法不再动布局。
+
+   为什么用 `flex: 0 0 48.5%` 而不是 `calc(50% - 9rpx)`：
+   calc 和 flex gap 一起用时，个别渲染环境会算出偏差
+   （卧底投票列表踩过同一个坑，实测右边缘出现缺口）。
+   48.5% × 2 + 18rpx gap = 97% + 18rpx，严格小于容器宽度。
    ============================================================ */
-.glist { display: flex; flex-direction: column }
+.ggrid {
+  display: flex; flex-wrap: wrap; gap: 18rpx;
+}
 
 .gcard {
-  display: flex; align-items: center; gap: 22rpx;
-  padding: 26rpx 24rpx 26rpx 22rpx; margin-bottom: var(--gap-2);
+  position: relative; overflow: hidden;
+  flex: 0 0 48.5%; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  padding: 26rpx 22rpx 22rpx;
+  /* 卡片内边距 + 内容高度 ≈ 330rpx；给 min-height 让两列永远对齐 */
+  min-height: 322rpx;
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-1);
-  /* 左侧色条 = 这个玩法的身份色，一眼区分 */
-  border-left: 8rpx solid var(--accent, var(--brand));
+  /*
+   * 身份色从"左侧竖条"改成"顶部一条"：
+   * 两列布局下左竖条太窄（一张卡只有 166px），顶部横条更容易一眼归色。
+   */
+  border-top: 5rpx solid var(--accent, var(--brand));
   transition: transform .12s, box-shadow .12s;
-  /* 入场：逐张滑入（靠 animation-delay 错开） */
-  animation: cardSlideIn .5s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: cardRise .46s cubic-bezier(.22, 1, .36, 1) backwards;
 }
-.gcard:nth-of-type(1) { animation-delay: .32s }
-.gcard:nth-of-type(2) { animation-delay: .40s }
-.gcard:nth-of-type(3) { animation-delay: .48s }
-.gcard:nth-of-type(4) { animation-delay: .56s }
-.gcard:nth-of-type(5) { animation-delay: .64s }
-.gcard:nth-of-type(6) { animation-delay: .72s }
-@keyframes cardSlideIn {
-  0%   { opacity: 0; transform: translateX(40rpx) }
-  100% { opacity: 1; transform: translateX(0) }
+.gcard:nth-of-type(1) { animation-delay: .28s }
+.gcard:nth-of-type(2) { animation-delay: .34s }
+.gcard:nth-of-type(3) { animation-delay: .40s }
+.gcard:nth-of-type(4) { animation-delay: .46s }
+.gcard:nth-of-type(5) { animation-delay: .52s }
+.gcard:nth-of-type(6) { animation-delay: .58s }
+.gcard:nth-of-type(7) { animation-delay: .64s }
+.gcard:nth-of-type(8) { animation-delay: .70s }
+@keyframes cardRise {
+  0%   { opacity: 0; transform: translateY(26rpx) scale(.97) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
 }
-.gcard:active { transform: scale(.985); box-shadow: var(--sh-2) }
+.gcard:active { transform: scale(.965); box-shadow: var(--sh-2) }
 
+/*
+ * 卡片右上角的身份色柔光。
+ * 作用不只是好看：两列卡片底色一样时，扫视靠的是"哪一块泛什么色"，
+ * 比读名字快 —— 酒桌上人是边聊边点的。
+ */
+.gc-spot {
+  position: absolute; width: 220rpx; height: 220rpx; border-radius: 50%;
+  right: -70rpx; top: -90rpx; pointer-events: none;
+  background: radial-gradient(circle, var(--accent, var(--brand)) 0%, transparent 68%);
+  opacity: .16;
+}
+
+.gc-head {
+  position: relative;
+  display: flex; align-items: flex-start; justify-content: space-between;
+}
 .gc-icon {
-  width: 92rpx; height: 92rpx; border-radius: 24rpx; flex: none;
+  width: 78rpx; height: 78rpx; border-radius: 22rpx; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #F6E9D8, #EBD8C0);
   border: 2rpx solid rgba(200, 160, 120, .28);
   box-shadow: inset 0 2rpx 4rpx rgba(255,255,255,.7);
-  padding: 18rpx; box-sizing: border-box;
+  padding: 15rpx; box-sizing: border-box;
   transition: transform .2s;
 }
-.gcard:active .gc-icon { transform: scale(1.1) rotate(-6deg) }
+.gcard:active .gc-icon { transform: scale(1.12) rotate(-7deg) }
 /* <image> 必须显式给宽高：font-size 对它完全无效，不给就会撑满容器 */
 .gc-img { width: 100%; height: 100% }
 
-.gc-main { flex: 1; min-width: 0 }
-.gc-top { display: flex; align-items: center; gap: 14rpx }
-.gc-name { font-size: 32rpx; font-weight: 700; color: var(--ink) }
+.gc-name {
+  position: relative;
+  font-size: 30rpx; font-weight: 700; color: var(--ink);
+  margin-top: 16rpx; letter-spacing: .5rpx;
+}
+.gc-desc {
+  position: relative;
+  font-size: 21rpx; color: var(--ink2); margin-top: 8rpx; line-height: 1.5;
+  /* 两行封顶：两列宽度只有 166px，一句话必须能一眼读完 */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.gc-foot {
+  position: relative;
+  margin-top: auto; padding-top: 14rpx;
+  display: flex; align-items: center; justify-content: space-between;
+}
 .gc-people {
-  font-size: 19rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: var(--brandsoft); color: var(--brand2); flex: none;
 }
-.gc-desc { font-size: 23rpx; color: var(--ink2); margin-top: 8rpx; line-height: 1.55 }
-.gc-arrow {
-  width: 32rpx; height: 32rpx; flex: none; opacity: .38;
-  transition: transform .2s;
+/* "开桌"两个字：整个卡片就是按钮，它只负责说清"点了会怎样" */
+.gc-cta-t {
+  font-size: 20rpx; font-weight: 600;
+  color: var(--accent, var(--brand2)); opacity: .92; flex: none;
 }
-.gcard:active .gc-arrow { transform: translateX(6rpx) }
+
+/* "上次"：金色小标签，比置顶更进一步 ——
+   玩家会想"为什么它在第一个"，标签直接回答这个问题。 */
+.gc-recent {
+  font-size: 17rpx; padding: 3rpx 10rpx;
+  border-radius: 6rpx;
+  background: var(--goldsoft);
+  color: #8A6A22;
+  flex: none;
+}
 
 /* ============================================================
    ⑤ 底部提示

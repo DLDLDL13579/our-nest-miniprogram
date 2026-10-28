@@ -32,29 +32,36 @@
     酒桌上一屏就这几个玩法，多一层筛选只是让用户多点一次（见 lobby.js 头注释）。
   -->
 
-  <!-- ④ 玩法卡：**点一下就直接开好房**，不用再走一遍选择流程 -->
-  <view class="glist">
+  <!--
+    ④ 玩法卡：**点一下就直接开好房**，不用再走一遍选择流程。
+
+    ★★ 2026-10-28 从「竖排单列」改成「两列网格」。
+      原因是这一版本身的目标就是**不断加玩法**：
+      单列一张 240rpx，5 个就占满一屏（实测 5 张 + hero + 输入框 = 需要滚动），
+      加到第 6 个、第 8 个只会更糟，而且每加一个都要往下多滚一屏。
+      两列之后一屏能放 6 个，第 8 个才需要滚一次 —— 加玩法不再改布局。
+
+      卡片内部跟着改：图标挪到左上角当"封面"，名字独占一行（两列下宽度只有
+      166px，名字和人数挤一行会折行），一句话最多两行，人数和"开桌"沉到底部。
+      不再保留右侧那条竖排的"开桌 ▸"：整个卡片就是按钮，右下角那两个字
+      只负责说清"点了会怎样"。
+  -->
+  <view class="ggrid">
     <view wx:for="{{list}}" wx:key="id" class="gcard"
           style="--accent:{{item.color}}" data-id="{{item.id}}" bindtap="openGame">
-      <view class="gc-icon">
-        <image class="gc-img" src="{{item.iconUri}}" mode="aspectFit" />
-      </view>
-      <view class="gc-main">
-        <view class="gc-top">
-          <text class="gc-name">{{item.name}}</text>
-          <!-- "上次玩的"：比置顶更进一步，让玩家知道"为什么它在第一个" -->
-          <text wx:if="{{item.recent}}" class="gc-recent">上次</text>
-          <text class="gc-people">{{item.players}}</text>
+      <view class="gc-spot"></view>
+      <view class="gc-head">
+        <view class="gc-icon">
+          <image class="gc-img" src="{{item.iconUri}}" mode="aspectFit" />
         </view>
-        <view class="gc-desc">{{item.desc}}</view>
+        <!-- "上次玩的"：比置顶更进一步，让玩家知道"为什么它在第一个" -->
+        <text wx:if="{{item.recent}}" class="gc-recent">上次</text>
       </view>
-      <!--
-        右侧 CTA：原来只有一个箭头（opacity .38），像"可以点"但不说明"点了会怎样"。
-        现在写成"开桌 ▸" —— 点这张卡就是开一桌，语义明确。
-      -->
-      <view class="gc-cta">
+      <view class="gc-name">{{item.name}}</view>
+      <view class="gc-desc">{{item.desc}}</view>
+      <view class="gc-foot">
+        <text class="gc-people">{{item.players}}</text>
         <text class="gc-cta-t">开桌</text>
-        <image class="gc-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
       </view>
     </view>
   </view>
