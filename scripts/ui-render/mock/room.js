@@ -320,6 +320,7 @@ module.exports = {
         settleFoot: '你为了换牌喝了 1.5 杯',
         streaks: { 1: 3, 2: 0, 3: 0 },
         streakText: '邓林 连赢 3 把',
+        loserBoard: '倩萍 今晚已经输了 4 局',
         lastResult: {
           kind: 'poker', winner: '邓林',
           winText: '邓林 赢',

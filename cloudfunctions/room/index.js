@@ -885,7 +885,6 @@ exports.main = async (event) => {
 
       const n = Number(event.n)
       const face = Number(event.face)
-      const zhai = !!event.zhai
       /*
        * ★ 必须校验**整数**，不只是范围（2026-10-09 安全审计发现）。
        *
@@ -927,7 +926,7 @@ exports.main = async (event) => {
         : ring[(myIdx + 1 + ring.length) % ring.length]
       await rooms.doc(room._id).update({
         data: {
-          bid: { n: n, face: face, zhai: zhai, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
+          bid: { n: n, face: face, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
           turn: nextSeat,
           updatedAt: ts
         }
@@ -951,12 +950,20 @@ exports.main = async (event) => {
       if (!cur) return { ok: false, msg: '还没人叫骰' }
       if (room.turn !== mySeat.seat) return { ok: false, msg: '还没轮到你' }
 
-      /* 统计全场骰子（1 是否万能由 zhai 决定） */
+      /*
+       * 统计全场骰子：**1 恒为万能**（可以当任何点数）。
+       *
+       * ★ 这里原本还有一套「斋」规则（叫斋时 1 不万能）—— 已移除：
+       *   · 前端从来没有叫斋的入口（永远传 zhai: false），是死逻辑；
+       *   · 斋 / 破斋的数量换算是大话骰里最容易吵架的规则；
+       *   · 用户明确要求「游戏不能太烧脑，简单一些」。
+       *   现在规则只有一句好记的：1 是万能。
+       */
       let actual = 0
       ;(room.players || []).forEach(p => {
         (p.dice || []).forEach(d => {
           if (d === cur.face) actual++
-          else if (d === 1 && !cur.zhai && cur.face !== 1) actual++
+          else if (d === 1 && cur.face !== 1) actual++
         })
       })
 
@@ -965,7 +972,7 @@ exports.main = async (event) => {
       const loserSeat = bidderWins ? mySeat.seat : cur.bySeat
 
       const result = {
-        need: cur.n, face: cur.face, zhai: cur.zhai,
+        need: cur.n, face: cur.face,
         actual: actual, bidderWins: bidderWins,
         loserSeat: loserSeat,
         loserName: ((room.players || []).filter(p => p.seat === loserSeat)[0] || {}).name || '?',

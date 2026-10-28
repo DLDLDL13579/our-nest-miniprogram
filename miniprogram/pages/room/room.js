@@ -405,7 +405,7 @@ Page({
     /* 叫骰：整体比（at 是服务端时间戳，只有真的有人叫才会变） */
     const a = prev.bid, b = room.bid
     if (!!a !== !!b) return true
-    if (a && b && (a.n !== b.n || a.face !== b.face || a.zhai !== b.zhai || a.at !== b.at)) return true
+    if (a && b && (a.n !== b.n || a.face !== b.face || a.at !== b.at)) return true
 
     /* 结算结果 */
     const ra = prev.lastResult, rb = room.lastResult
@@ -1032,6 +1032,24 @@ Page({
     room.maxPlayers = gmeta ? gmeta.max : 8
     room.shortBy = Math.max(0, room.minPlayers - (room.count || 0))
     room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)
+
+    /*
+     * 「今晚谁输最多」—— 用服务端的 score（每输一局 -1）。
+     *
+     * ★ 这个字段一直在，但从没被展示过（前端 grep 不到），等于死数据；
+     *   而"他今晚已经输 3 局了"在酒桌上是最有杀伤力的一句话。
+     *   只在 ≤ -2 时显示：输一局就说"今晚输最多"没意义。
+     *
+     * ⚠️ 这是**局数**不是杯数 —— 喝多少现场自己清楚，
+     *   而且记杯数容易被质疑（谁赖账、谁喝的是水），记输赢局数没有争议。
+     */
+    room.loserBoard = ''
+    if (room.phase === 'over') {
+      const worst = (room.players || [])
+        .filter(p => (Number(p.score) || 0) <= -2)
+        .sort((a, b) => (Number(a.score) || 0) - (Number(b.score) || 0))[0]
+      if (worst) room.loserBoard = worst.name + ' 今晚已经输了 ' + Math.abs(Number(worst.score)) + ' 局'
+    }
 
     /*
      * 连庄提示：找出"连赢 2 把以上"的人。
@@ -1815,7 +1833,7 @@ Page({
      *    正确做法：catch 里把 `e.friendly`（cloud.js 已经整理好的人话）提示出来。
      */
     const r = await call('room', {
-      action: 'bid', id: this.data.room.id, n: n, face: face, zhai: false
+      action: 'bid', id: this.data.room.id, n: n, face: face
     }, { silent: true }).catch((e) => {
       wx.showToast({
         title: (e && (e.friendly || e.message)) || '这一叫不行，换一个',

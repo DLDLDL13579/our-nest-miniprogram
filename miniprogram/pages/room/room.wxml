@@ -235,7 +235,7 @@
       <view class="bidbar">
         <block wx:if="{{room.bid}}">
           <view class="bid-lbl">现在叫到</view>
-          <view class="bid-val">{{room.bid.n}} 个 {{room.bid.face}}{{room.bid.zhai ? ' 斋' : ''}}</view>
+          <view class="bid-val">{{room.bid.n}} 个 {{room.bid.face}}</view>
           <view class="bid-by">{{room.bid.byName}} 叫的</view>
         </block>
         <block wx:else>
@@ -719,7 +719,7 @@
         <text class="on-big">{{result.actual}}</text>
         <text class="on-unit">个 {{result.face}}</text>
       </view>
-      <view class="over-need">叫的是 {{result.need}} 个{{result.zhai ? '（斋）' : ''}}</view>
+      <view class="over-need">叫的是 {{result.need}} 个</view>
 
       <view class="revealbox">
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
@@ -755,6 +755,9 @@
       </view>
       <view class="loserbox">赢的是 {{result.winners}}</view>
     </view>
+
+    <!-- 今晚谁输最多：用 score（每输一局 -1），只在 ≤ -2 时出现 -->
+    <view wx:if="{{room.loserBoard}}" class="loser-board">{{room.loserBoard}}</view>
 
     <!-- 连庄：酒桌上最能带动气氛的一句话，单独一行、更高调 -->
     <view wx:if="{{room.streakText && stage === 'over'}}" class="streak-bar">

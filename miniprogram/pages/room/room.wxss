@@ -1619,3 +1619,18 @@
   color: #FFD98A;
   letter-spacing: 1rpx;
 }
+
+/* ---------- 今晚谁输最多 ----------
+   和"连赢 N 把"是一对：一个夸、一个损，酒桌上都很有用。
+   用冷色（蓝灰）以示"这不是好事"，但也不做成警告红 —— 是玩笑不是说教。 */
+.loser-board {
+  margin: 20rpx 0 0;
+  padding: 20rpx 24rpx;
+  text-align: center;
+  font-size: 25rpx; font-weight: 600;
+  color: rgba(200, 215, 235, .9);
+  background: rgba(94, 127, 166, .13);
+  border: 2rpx solid rgba(94, 127, 166, .3);
+  border-radius: 18rpx;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}

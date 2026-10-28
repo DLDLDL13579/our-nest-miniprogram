@@ -1616,14 +1616,28 @@ view, text, button, input, textarea { box-sizing: border-box }
   letter-spacing: 0.5px;
 }
 
-.phx1::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}
-.phx2::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}</style>
+
+.loser-board {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  color: rgba(200, 215, 235, .9);
+  background: rgba(94, 127, 166, .13);
+  border: 1px solid rgba(94, 127, 166, .3);
+  border-radius: 9px;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}
+
+</style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
 <div style="height:44px;display:flex;align-items:center;justify-content:center;
             font-size:17px;font-weight:600;color:#2C2822;background:#F5F0EA;
             position:sticky;top:0;z-index:9">房间</div>
-<div class="gamepage">
+
+  
+  <div class="gamepage">
   <div class="gbar">
     <div class="gbar-l">
       <span class="gbar-back">‹</span>
@@ -1655,7 +1669,7 @@ view, text, button, input, textarea { box-sizing: border-box }
           <span class="pkr-c">♣Q</span><span class="pkr-c">♠7</span><span class="pkr-c pk-red">♥5</span>
         </div>
       
-    </div><div class="streak-bar">
+    </div><div class="loser-board">倩萍 今晚已经输了 4 局</div><div class="streak-bar">
       <span class="streak-t">邓林 连赢 3 把</span>
     </div><div class="settle-foot">你为了换牌喝了 1.5 杯</div><div class="btn main bigbtn">再来一局</div><div class="btn ghostb" style="margin-top:20rpx">换个玩法</div><div class="btn ghostb" style="margin-top:20rpx">离开房间</div>
   </div>
