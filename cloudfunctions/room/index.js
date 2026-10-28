@@ -97,6 +97,13 @@ const CODE_SPACE = 1000
    酒桌游戏一局最多几十分钟，2 小时足够宽松。 */
 const TTL_MS = 2 * 3600 * 1000
 
+/*
+ * 每人几颗骰（2026-10-28 从函数里的 `const n = 5` 提上来）。
+ * 提成常量是为了让"文案里的颗数"能被断言核对 —— 改了这个数，
+ * games.js 里写的「每人 5 颗」如果不跟着改，测试会报。
+ */
+const DICE_PER_PLAYER = 5
+
 /* 单房间人数上限 —— 一部手机传着玩，人太多轮不过来 */
 /*
  * ⚠️ 这个常量曾经是**全局上限 8**，而注册表里每个玩法写着各自的 max ——
@@ -1485,7 +1492,7 @@ exports.main = async (event) => {
        *   · 5 颗才能有"豹子"（五同，1/1296），那才是摇盅时的心跳来源
        *   · 结算页 8 人 × 5 颗也放得下（已用预览验证）
        */
-      const n = 5
+      const n = DICE_PER_PLAYER
       const dice = []
       for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
 

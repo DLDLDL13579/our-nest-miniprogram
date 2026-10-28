@@ -1939,6 +1939,25 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(bad, [],
       '文案里的小时数和 TTL_MS 对不上：\n    ' + bad.join('\n    '))
     ok('房间过期时长文案与 TTL_MS 一致（' + ttlHours + ' 小时）')
+
+    /*
+     * 同一个判据的另一半：每人几颗骰。
+     * 服务端从 DICE_PER_PLAYER 读，文案里写「每人 N 颗」——
+     * 改了颗数而忘了改文案，玩家会按错误的规则理解豹子概率。
+     */
+    const dm = /const DICE_PER_PLAYER\s*=\s*(\d+)/.exec(srv)
+    assert.ok(dm, '找不到 DICE_PER_PLAYER 的定义')
+    const perPlayer = Number(dm[1])
+    const gsrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+    const badDice = []
+    for (const mm of gsrc.matchAll(/每人\s*(\d+)\s*颗/g)) {
+      if (Number(mm[1]) !== perPlayer) {
+        badDice.push('games.js 写「每人 ' + mm[1] + ' 颗」，代码是 ' + perPlayer + ' 颗')
+      }
+    }
+    assert.deepStrictEqual(badDice, [],
+      '规则文案里的颗数和 DICE_PER_PLAYER 对不上：\n    ' + badDice.join('\n    '))
+    ok('规则文案里的骰子颗数与 DICE_PER_PLAYER 一致（' + perPlayer + ' 颗）')
   }
 
   /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
