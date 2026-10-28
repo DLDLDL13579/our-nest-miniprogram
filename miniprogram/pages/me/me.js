@@ -126,7 +126,13 @@ Page({
       '微信: ' + (info.version || '?'),
       '基础库: ' + (info.SDKVersion || '?'),
       '屏幕: ' + (info.windowWidth || '?') + 'x' + (info.windowHeight || '?') + ' @' + (info.pixelRatio || '?') + 'x',
-      '网络: ' + ((info.networkType || '?').toLowerCase())
+      '网络: ' + ((info.networkType || '?').toLowerCase()),
+      '上次启动: ' + (function () {
+        try {
+          var ms = wx.getStorageSync('lastBootMs')
+          return ms ? (ms / 1000).toFixed(1) + ' 秒（加载+首屏渲染）' : '还没记录'
+        } catch (e) { return '?' }
+      })()
     ]
     wx.setClipboardData({
       data: lines.join('\n'),

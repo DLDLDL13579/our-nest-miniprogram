@@ -123,6 +123,27 @@ Page({
   },
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */
+  /**
+   * 首屏渲染完，记一笔启动耗时（2026-10-28）。
+   *
+   * 判据用的是「onLaunch → onReady」的差值 —— 它**不等于**用户感知的"点开到看见"，
+   * 因为 onLaunch 之前还有小程序的启动/下载阶段（那部分拿不到）。
+   * 但它能反映**主包大小 + 首屏渲染**的变化，而这个正是我能改的部分：
+   * 拆分包前后这个数字应该明显不同。
+   *
+   * ⚠️ 只在**冷启动**时记（热启动没啥参考价值），所以用 globalData 里的起点，
+   *    取不到就不记。
+   */
+  onReady() {
+    const app = getApp()
+    const t0 = app && app.globalData && app.globalData.bootAt
+    if (!t0) return
+    const ms = Date.now() - t0
+    /* 超过 30 秒的肯定是异常（切后台回来之类），不记 */
+    if (ms <= 0 || ms > 30000) return
+    try { wx.setStorageSync('lastBootMs', ms) } catch (e) {}
+  },
+
   onShow() {
     /* 首次进来给一个指向 —— 之后再也不出现（storage 记着） */
     try {

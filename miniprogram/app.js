@@ -21,6 +21,14 @@ App({
   },
 
   onLaunch() {
+    /*
+     * 启动计时的起点（2026-10-28）。
+     * 「首屏几秒」是用户最关心、而我唯一能量化的性能指标 ——
+     * 之前一直被问"多快"，我只能说"应该还行"。
+     * 现在大厅首屏渲染完会记一笔，「我的」页能看到。
+     */
+    this.globalData = this.globalData || {}
+    this.globalData.bootAt = Date.now()
     if (!wx.cloud) {
       wx.showModal({
         title: '微信版本过低',
