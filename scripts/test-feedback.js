@@ -54,7 +54,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     const f = FEEDBACK[k]
     assert.strictEqual(typeof f.animMs, 'number', k + ' 缺 animMs')
     assert.strictEqual(typeof f.impactAt, 'number', k + ' 缺 impactAt')
-    assert.ok(f.animMs > 0, k + ' 的 animMs 必须为正')
+    /*
+     * animMs 允许为 0 = **这个动作没有配套动画**（纯音效 / 纯震动提示，
+     * 比如"房主转移到我头上"只是一声提示 + 一句 toast）。
+     *
+     * 三个通道本来就是可选的：fire() 里 sfx / haptic 都能缺省，
+     * 动画自然也能缺。要求"必须为正"等于逼着人为了过测试硬凑一个假动画。
+     * 但有动画时必须是正的 —— 下面 impactAt 的区间检查会兜住。
+     */
+    assert.ok(f.animMs >= 0, k + ' 的 animMs 不能为负')
+    if (f.animMs === 0) {
+      assert.ok(!f.impactAt, k + ' 没有动画时 impactAt 应为 0（否则冲击帧指向不存在的动画）')
+    }
     assert.ok(f.impactAt >= 0, k + ' 的 impactAt 不能为负')
     /* impactAt 必须在动画时长内，否则冲击帧永远不会到来 */
     assert.ok(f.impactAt <= f.animMs, `${k}: impactAt(${f.impactAt}) 超出了 animMs(${f.animMs})`)

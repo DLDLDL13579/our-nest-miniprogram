@@ -570,9 +570,7 @@ Page({
      */
     if (prev && !prev.host && room.host) {
       wx.showToast({ title: '你是房主了，可以开一局', icon: 'none', duration: 2400 })
-      sfx.play('toggleOn')
-      /* 房主转移往往发生在别人离开时，给一次轻震让"这件事发生了"被感知到 */
-      feedback.vibrate('light')
+      feedback.fire('becomeHost')
     }
 
     /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见。
@@ -821,8 +819,8 @@ Page({
        * 读秒用 countdown（嗒），开始用 countdownGo（重击）+ 重震。
        * 原来两拍都用 countdownUrgent，听觉上分不出"最后一秒"和"开始"。
        */
-      sfx.play(isLast ? 'countdownGo' : 'countdown')
-      if (isLast) feedback.vibrate('heavy')
+      if (isLast) feedback.fire('countdownGo')
+      else sfx.play('countdown')
       this.setData({
         cdText: isLast ? '开始！' : String(sec),
         cdTick: (this.data.cdTick || 0) + 1
@@ -931,8 +929,7 @@ Page({
     const uwOutKey = raw.uw && raw.uw.lastOut ? JSON.stringify(raw.uw.lastOut) : ''
     if (uwOutKey && uwOutKey !== (this._lastUwOut || '')) {
       this._lastUwOut = uwOutKey
-      sfx.play('revealHit')
-      feedback.vibrate('medium')
+      feedback.fire('uwReveal')
     }
     if (!uwOutKey) this._lastUwOut = ''
 
@@ -950,8 +947,7 @@ Page({
       if (win !== (this._lastPkWin || '')) {
         this._lastPkWin = win
         const iWon = raw.me && win === raw.me.name
-        sfx.play(iWon ? 'confetti' : 'failDrop')
-        if (iWon) feedback.vibrate('long')
+        feedback.fire(iWon ? 'win' : 'lose')
       }
     } else if (raw.game !== 'poker') {
       this._lastPkWin = ''
@@ -964,8 +960,7 @@ Page({
         this._lastUwWin = key
         const iAmSpy = raw.uw.myRole === 'spy'
         const iWon = (uwRes.winner === 'spy') === iAmSpy
-        sfx.play(iWon ? 'confetti' : 'failDrop')
-        if (iWon) feedback.vibrate('long')
+        feedback.fire(iWon ? 'win' : 'lose')
       }
     } else if (!uwRes) {
       this._lastUwWin = ''
@@ -1115,8 +1110,8 @@ Page({
    *   这和骰盅"按住偷看"是同一个设计理由。
    */
   uwShowWord() {
-    sfx.play('cardFlip')
-    feedback.vibrate('light')
+    /* 和"翻开自己的牌"是同一个动作语义，复用同一条时间轴 */
+    feedback.fire('pkFlip')
     this.setData({ showWord: true })
   },
   uwHideWord() {
@@ -1151,8 +1146,8 @@ Page({
       return
     }
     this.data._uwBusy = true
-    sfx.play('chipBet')
-    feedback.vibrate('medium')
+    /* 走统一时间轴：音效与震动的错开补偿由表决定，不在这里手写 */
+    feedback.fire('uwVote')
     const r = await call('room', { action: 'uwVote', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' }); return null })
     this.data._uwBusy = false
@@ -1163,8 +1158,7 @@ Page({
 
   /* 按住才显示三张牌 —— 理由同卧底看词：同桌的人就坐在旁边 */
   pkShow() {
-    sfx.play('cardFlip')
-    feedback.vibrate('light')
+    feedback.fire('pkFlip')
     this.setData({ showCards: true })
   },
   pkHide() {
@@ -1194,8 +1188,7 @@ Page({
     })
     if (!ok) return
     this.data._pkBusy = true
-    sfx.play('cardFlip')
-    feedback.vibrate('light')
+    feedback.fire('pkFlip')
     const r = await call('room',
       { action: 'pkAct', act: what === 'public' ? 'swapPublic' : 'swapMine', id: this.data.room.id },
       { silent: true })
@@ -1234,10 +1227,8 @@ Page({
     const target = String(e.currentTarget.dataset.oid || '')
     if (!target) return
     this.data._pkBusy = true
-    /* 摊牌：三张牌拍在桌上 —— 这是全场最想看的一刻，声音要给足 */
-    sfx.play('cardSpread')
-    setTimeout(() => { if (!this._dead) sfx.play('revealHit') }, 160)
-    feedback.vibrate('medium')
+    /* 摊牌：三张牌拍在桌上 + 160ms 后一下揭示重击 —— 两层音在表里定义 */
+    feedback.fire('pkSpread')
     const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
     this.data._pkBusy = false
@@ -1827,6 +1818,9 @@ Page({
     if (r && r.ok) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.decorate(r.room), result: r.result, stage: 'over' })
+      /* ⚠️ 这处**刻意不走 feedback.fire**：它和 bump()（整屏震动动画）
+         是同一拍的两件事，顺序被 cupOpen 表里的 110ms 延迟会打乱。
+         例外要有理由，写在代码里而不是记在脑子里。 */
       sfx.play('revealHit')
       this.bump()
       feedback.vibrate('heavy')
@@ -1837,8 +1831,7 @@ Page({
         if (this._dead) return
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
-        sfx.play(iLost ? 'failDrop' : 'confetti')
-        feedback.vibrate(iLost ? 'long' : 'double')
+        feedback.fire(iLost ? 'lose' : 'win')
       }, 340))
       this._cupTimers.push(setTimeout(() => {
         if (this._dead) return

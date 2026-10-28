@@ -204,7 +204,91 @@ const FEEDBACK = {
     sfxDelay: 0,
     haptic: 'light',
     hapticDelay: 40
-  }
+  },
+
+  /* ================= 全场通用 ================= */
+
+  /* 房主转移到我头上：不是"好消息"，是一声"该你了"，语气别太跳 */
+  becomeHost: {
+    animMs: 0,
+    impactAt: 0,
+    sfx: 'toggleOn',
+    sfxDelay: 0,
+    haptic: 'light',
+    hapticDelay: 20
+  },
+
+  /* 赢：撒花 + 长震（长震是"这局结束了"的体感信号） */
+  win: {
+    animMs: 0,
+    impactAt: 0,
+    sfx: 'confetti',
+    sfxDelay: 0,
+    haptic: 'long',
+    hapticDelay: 20
+  },
+
+  /* 输：下坠 + 长震 */
+  lose: {
+    animMs: 0,
+    impactAt: 0,
+    sfx: 'failDrop',
+    sfxDelay: 0,
+    haptic: 'long',
+    hapticDelay: 20
+  },
+
+  /* ================= 谁是卧底 ================= */
+
+  /* 投票落定：轻，落一颗子 */
+  uwVote: {
+    animMs: 220,
+    impactAt: 40,
+    sfx: 'chipBet',
+    sfxDelay: 70,
+    haptic: 'light',
+    hapticDelay: 90
+  },
+
+  /* 出局揭晓：全场焦点，重一些（配 slamIn 的 .44s 入场） */
+  uwReveal: {
+    animMs: 440,
+    impactAt: 120,
+    sfx: 'revealHit',
+    sfxDelay: 150,
+    haptic: 'medium',
+    hapticDelay: 170
+  },
+
+  /* ================= 梦幻金花 ================= */
+
+  /* 翻开自己的牌：最轻，像用指头拨一下 */
+  pkFlip: {
+    animMs: 260,
+    impactAt: 30,
+    sfx: 'cardFlip',
+    sfxDelay: 60,
+    haptic: 'light',
+    hapticDelay: 80
+  },
+
+  /*
+   * 摊牌比牌：全场焦点。
+   * ★ 这里是**两层音**：牌拍在桌上（cardSpread）+ 160ms 后一下揭示重击
+   *   （revealHit）。表里为此加了 sfx2 字段 —— 之前只能放一个音效，
+   *   于是第二层靠调用处手写 setTimeout，补偿就成了各写各的。
+   */
+  pkSpread: {
+    animMs: 420,
+    impactAt: 80,
+    sfx: 'cardSpread',
+    sfxDelay: 110,
+    sfx2: 'revealHit',
+    sfx2Delay: 270,
+    haptic: 'medium',
+    hapticDelay: 130
+  },
+
 }
 
 /* ============================================================
@@ -329,6 +413,14 @@ function fire(key, opt) {
     } else {
       playIt()
     }
+  }
+
+  /* 第二层音效（如"牌落桌 + 揭示重击"这种两层设计） */
+  if (f.sfx2) {
+    const d2 = opt.sfx2Delay !== undefined ? opt.sfx2Delay : f.sfx2Delay
+    const play2 = () => sfx.play(f.sfx2, opt)
+    if (d2) _timers.push(setTimeout(play2, d2))
+    else play2()
   }
 
   /* 震动 */
