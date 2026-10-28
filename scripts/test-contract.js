@@ -258,6 +258,66 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ⑤f app.json 与实际文件必须对得上 ============ *
+   *
+   * 微信对"配置指向不存在的文件"是**静默**的：
+   *   · pages 里写了但文件缺失 → 那个页面不存在，跳转时才报错
+   *   · tabBar 的 pagePath 不在 pages 里 → 整个 tabBar 不显示
+   *   · tabBar 的 iconPath 缺失 → 图标静默空白
+   *   · 项目里有页面但没注册 → 那个页面根本进不了包
+   * 这些只有真机看得出来，而本项目规定不启动开发者工具 —— 只能静态核对。
+   */
+  {
+    const MP = path.join(ROOT, 'miniprogram')
+    const app = JSON.parse(fs.readFileSync(path.join(MP, 'app.json'), 'utf8'))
+    const bad = []
+
+    /* ① 每个注册的页面必须有 js + wxml */
+    for (const pg of app.pages || []) {
+      for (const ext of ['js', 'wxml']) {
+        const f = path.join(MP, pg + '.' + ext)
+        if (!fs.existsSync(f)) bad.push(pg + '.' + ext + ' 不存在（页面进不了包）')
+      }
+    }
+
+    /* ② tabBar 的 pagePath 必须在 pages 里；有 iconPath 就必须存在 */
+    for (const item of (app.tabBar && app.tabBar.list) || []) {
+      if (!(app.pages || []).includes(item.pagePath)) {
+        bad.push('tabBar 的 pagePath 《' + item.pagePath + '》不在 pages 列表里（整个 tabBar 会不显示）')
+      }
+      for (const key of ['iconPath', 'selectedIconPath']) {
+        if (item[key] && !fs.existsSync(path.join(MP, item[key]))) {
+          bad.push('tabBar ' + key + ' 文件不存在：' + item[key])
+        }
+      }
+    }
+
+    /* ③ 反向：项目里有 .wxml 的页面目录必须都注册在 app.json */
+    const dirs = new Set()
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) { if (f.name !== 'components') walk(fp); continue }
+        if (f.name.endsWith('.wxml') && fp.startsWith(path.join(MP, 'pages'))) {
+          dirs.add(path.relative(MP, fp).replace(/\.wxml$/, ''))
+        }
+      }
+    }
+    walk(MP)
+    for (const d of dirs) {
+      if (!(app.pages || []).includes(d)) bad.push(d + ' 有 wxml 但没在 app.json 的 pages 里（进不了包）')
+    }
+
+    /* ④ sitemap 文件 */
+    if (app.sitemapLocation && !fs.existsSync(path.join(MP, app.sitemapLocation))) {
+      bad.push('sitemapLocation 指向的文件不存在：' + app.sitemapLocation)
+    }
+
+    assert.deepStrictEqual(bad, [],
+      '★ app.json 与实际文件对不上（微信不会报错，只是静默缺失）：\n    ' + bad.join('\n    '))
+    ok(`app.json 与文件一致（${(app.pages || []).length} 个页面、${((app.tabBar && app.tabBar.list) || []).length} 个 tab）`)
+  }
+
   /* ============ ⑤e 存储 key 的读写必须指向同一个字符串 ============ *
    *
    * 存储 key 是字符串，改名**不会有任何编译期报错** ——
