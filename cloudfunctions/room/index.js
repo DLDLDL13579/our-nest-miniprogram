@@ -1396,7 +1396,7 @@ exports.main = async (event) => {
 
       const type = event.type === 'dare' ? 'dare' : 'truth'
       const text = String(event.text || '').trim().slice(0, MAX_CARD)
-      if (!text) return { ok: false, msg: '写点什么' }
+      if (!text) return { ok: false, msg: '题目不能是空的' }
 
       /*
        * ★★ 自定义题目也是 UGC，**必须过内容安全**。

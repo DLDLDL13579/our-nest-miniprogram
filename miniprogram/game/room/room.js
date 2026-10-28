@@ -1712,7 +1712,8 @@ Page({
    */
   async addCard() {
     const text = (this.data.cardText || '').trim()
-    if (!text) return wx.showToast({ title: '写点什么', icon: 'none' })
+    /* "写点什么"太笼统 —— 用户不知道写多长、写什么算合格 */
+    if (!text) return wx.showToast({ title: '先写一句，比如「说出你手机里最近一张截图」', icon: 'none', duration: 2600 })
     sfx.play('tap')
     const r = await call('room', {
       action: 'card', id: this.data.room.id, type: this.data.cardType, text: text
