@@ -762,11 +762,23 @@
 }
 
 /* 劈：和"开"并排。开是主操作（红），劈是次操作（金）—— 两者视觉重量不同 */
-.liar-acts { display: flex; gap: 14rpx; align-items: stretch }
+/*
+ * 「开」和「劈」并排 —— 但**两者后果完全不同，必须防误触**。
+ *
+ * 2026-10-28 之前间距只有 14rpx（7px），而两个按钮都是 96rpx 高的大块：
+ * 想劈却点到开，或者反过来，都是不可撤销的（一局直接结束 / 赌注翻倍）。
+ *
+ * 改法（不是加二次确认 —— 酒桌上要快，确认会打断节奏）：
+ *   ① 间距 14 → 28rpx（一个拇指宽度的一半以上）
+ *   ② 劈按钮收窄到 132rpx，且**不与开按钮等高**（96 → 88）：
+ *      高度差会产生一条明确的边界，手指落点更不容易跨过去
+ *   ③ 视觉重量继续分开：开是红色实心（主动作），劈是金色次级
+ */
+.liar-acts { display: flex; gap: 28rpx; align-items: center }
 .liar-acts .openbtn { flex: 1; margin-top: 0 }
 .pibtn {
   flex: none;
-  width: 150rpx; height: 96rpx;
+  width: 132rpx; height: 88rpx;
   margin-top: 0;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #E8B33C, #C08A18);
