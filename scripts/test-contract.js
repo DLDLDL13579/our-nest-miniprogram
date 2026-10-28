@@ -1614,6 +1614,46 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
     ok(`动画曲线收敛到 ${bezKinds.size} 种，一次性动画无裸 ease`)
 
+  /* ============ ④i 死动画：@keyframes 定义了却没人用 ============ */
+  console.log('\n=== ④i 有没有"定义了却没人引用"的 keyframes ===')
+  /*
+   * ★ 动画的**过程**在离线渲染里完全看不到 —— 渲染器为了让截图稳定，
+   *   会把 animation 瞬间拨到终态。所以"这个动画到底跑没跑"只能靠结构判据。
+   *
+   *   死 keyframes 的后果不是报错，而是**下一个人会以为某个效果已经做了**
+   *   （和死字段、死方法同一类问题）。这条补上它们。
+   */
+  {
+    const walkAnim = (dir, out) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) walkAnim(fp, out)
+        else if (f.name.endsWith('.wxss')) out.push(fp)
+      }
+      return out
+    }
+    const files = walkAnim(path.join(ROOT, 'miniprogram'), [])
+    const defined = new Map()   // name → file
+    const used = new Set()
+    for (const f of files) {
+      const css = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      ;(css.matchAll(/@keyframes\s+([a-zA-Z_][\w-]*)/g)).forEach(m => defined.set(m[1], path.relative(ROOT, f)))
+      /* animation: name ... 或 animation-name: name；也可能一次写多个（逗号分隔） */
+      ;(css.matchAll(/animation(?:-name)?\s*:\s*([^;}]+)/g)).forEach(m => {
+        m[1].split(',').forEach(part => {
+          const tok = part.trim().split(/\s+/)[0]
+          if (tok && /^[a-zA-Z_][\w-]*$/.test(tok)) used.add(tok)
+        })
+      })
+    }
+    const dead = []
+    defined.forEach((file, name) => { if (!used.has(name)) dead.push(file + ' → @keyframes ' + name) })
+    assert.deepStrictEqual(dead, [],
+      '这些动画定义了但没有任何 animation 引用（下一个人会以为效果已经做了）：\n    ' +
+      dead.join('\n    '))
+    ok(`${defined.size} 个 keyframes 全部被引用（无死动画）`)
+  }
+
   /* ============ ④h 正文文字对比度必须过 WCAG AA ============ */
   console.log('\n=== ④h 白色文字对比度 ≥ 4.5（酒桌是暗光场景）===')
   /*

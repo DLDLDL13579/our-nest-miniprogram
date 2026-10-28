@@ -353,6 +353,18 @@
       rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 /* 顶部聚光 */
+/*
+ * 顶光（现在是"烛光"）。
+ *
+ * ★★ 2026-10-28：加了**缓慢摇曳**。
+ *   静态的顶光看起来像"设计稿上打的柔光"，而真实的酒桌光源是暖的、会动的
+ *   （吊灯、烛台、旁边人的手机屏）。一点缓慢的亮度/位置变化，
+ *   整块桌面就从"图片"变成"有光的地方"。
+ *
+ *   刻意**不匀速**：关键帧之间用不等间隔（0/28/52/74/100），
+ *   匀速呼吸会像机器，真实的光是随机的、偶尔一亮。
+ *   4.8 秒一轮，慢到不会让人分心，但会察觉"那里有东西在动"。
+ */
 .cs-spot {
   position: absolute; left: 50%; top: -30%;
   width: 150%; height: 130%;
@@ -362,6 +374,14 @@
     rgba(255, 220, 150, .07) 38%,
     rgba(255, 210, 140, 0) 68%);
   pointer-events: none;
+  animation: candle 4.8s ease-in-out infinite;
+}
+@keyframes candle {
+  0%   { opacity: .86; transform: scale(1)     translateX(0) }
+  28%  { opacity: 1;   transform: scale(1.03)  translateX(-6rpx) }
+  52%  { opacity: .82; transform: scale(.99)   translateX(4rpx) }
+  74%  { opacity: .96; transform: scale(1.015) translateX(-3rpx) }
+  100% { opacity: .86; transform: scale(1)     translateX(0) }
 }
 
 /*
@@ -1052,11 +1072,13 @@
   100% { opacity: 1; transform: translateY(0) scale(1); letter-spacing: 14rpx }
 }
 
-/* 自己的骰子：逐个翻出来 */
-@keyframes mineDieIn {
-  0%   { opacity: 0; transform: rotateY(-180deg) scale(.5) }
-  100% { opacity: 1; transform: rotateY(0deg) scale(1) }
-}
+/*
+ * ⚠️ 这里原来有个 @keyframes mineDieIn（"自己的骰子逐个翻出来"）——
+ *   但骰子实际用的是 .cs-die 的 dieDrop，这个从来没被任何 animation 引用。
+ *   2026-10-28 由「死动画」断言扫出来并删除。
+ *   （它用 rotateY 做翻转 —— 那套 3D 在小程序上不可靠，AGENTS.md 里记过，
+ *    当年就是因为这个才改成 dieDrop 的。）
+ */
 
 /* 叫骰按钮：逐个入场（几十个按钮一起出现会显得杂乱） */
 .optbtn {
