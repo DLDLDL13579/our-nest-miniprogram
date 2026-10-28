@@ -400,7 +400,13 @@ Page({
     if (prev.round !== room.round) return true
     if (prev.game !== room.game) return true
     if (prev.host !== room.host) return true
-    if (prev.countdownMs !== room.countdownMs) return true
+    /*
+     * ⚠️ countdownMs **不参与比较**（2026-10-28）。
+     * 它是"服务端此刻还剩多少毫秒"，每 1.5 秒轮询必然不同 ——
+     * 把它当变化源等于**每次轮询都 setData 一次**，而界面上真正要变的
+     * 只有 cdText，那个由本地倒计时表自己驱动（见 startCountdown）。
+     * 倒计时的同步靠 applyRoom 里的偏差校正，不靠这里触发重绘。
+     */
 
     /* 叫骰：整体比（at 是服务端时间戳，只有真的有人叫才会变） */
     const a = prev.bid, b = room.bid
@@ -808,10 +814,26 @@ Page({
     if (this._cdTimers) this._cdTimers.forEach(t => clearTimeout(t))
     this._cdTimers = []
 
-    /* 每 1 秒一声，最后一声用 countdownUrgent */
-    let left = total
+    /*
+     * ★★ 倒计时用**挂钟**算，不用 `left -= 1000` 累减（2026-10-28）。
+     *
+     * 累减的误差会累积：每次 setTimeout 实际可能晚 10~40ms，
+     * 三拍下来能漂掉 100ms 以上；而倒计时的作用恰恰是
+     * "让所有人同时知道要开始了" —— 漂移直接破坏这个目的。
+     *
+     * 改成记一个起点时刻 `_cdT0` 与总时长 `_cdLeft`，每次都由
+     * `Date.now() - _cdT0` 反推 —— setTimeout 晚多少都不影响显示。
+     *
+     * 另一个作用是给 applyRoom 里的**服务端校正**留了锚点：
+     * 收到 poll 时若发现"本地剩余"与"服务端剩余"差超过 400ms，
+     * 就把起点拽回去（JC 的 count-in 补偿就是解决同一件事）。
+     */
+    this._cdLeft = total
+    this._cdT0 = Date.now()
+
     const tick = () => {
       if (!this.data.room || this.data.room.phase !== 'countdown') return
+      const left = (this._cdLeft || 0) - (Date.now() - (this._cdT0 || Date.now()))
       const sec = Math.max(1, Math.ceil(left / 1000))
       const isLast = left <= 1000
       /*
@@ -825,7 +847,6 @@ Page({
         cdText: isLast ? '开始！' : String(sec),
         cdTick: (this.data.cdTick || 0) + 1
       })
-      left -= 1000
       if (left > -200) {
         this._cdTimers.push(setTimeout(tick, 1000))
       }
@@ -898,6 +919,23 @@ Page({
   applyRoom(raw, extra) {
     if (!raw) return
     if (this._dead) return
+    /*
+     * 倒计时的服务端校正。
+     *
+     * 每台手机的"3 秒"都从**自己收到响应**那一刻起算 ——
+     * 网络快慢不同，两台手机能差出几百毫秒到一秒（轮询 1.5 秒）。
+     * 而倒计时存在的全部意义就是"所有人同时开始"。
+     *
+     * 所以：poll 回来带着服务端剩余时间，偏差超过 400ms 就把本地起点拽过去。
+     * ★ 只校正、不重置 —— 重置会让数字跳（3 → 3 → 2），比不同步更难看。
+     */
+    if (raw.phase === 'countdown' && this._cdT0 && raw.countdownMs > 0) {
+      const localLeft = (this._cdLeft || 0) - (Date.now() - this._cdT0)
+      if (Math.abs(localLeft - raw.countdownMs) > 400) {
+        this._cdLeft = raw.countdownMs
+        this._cdT0 = Date.now()
+      }
+    }
     const prevStep = (this.data.room && this.data.room.uw && this.data.room.uw.step) || ''
     const patch = Object.assign({}, extra || {}, {
       room: this.decorate(raw),

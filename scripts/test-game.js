@@ -374,7 +374,13 @@ function extractBuildSectors(src) {
     ['round（新一局）', (r) => { r.round = 2 }, base],
     ['game', (r) => { r.game = 'dice' }, base],
     ['host（房主转移了）', (r) => { r.host = false }, base],
-    ['countdownMs（倒计时在走）', (r) => { r.countdownMs = 1500 }, base],
+    /*
+     * ← 这里原来有一条 `countdownMs（倒计时在走）`。
+     *   2026-10-28 移除了：倒计时已改成**本地挂钟驱动**（见 startCountdown），
+     *   界面刷新由本地 tick 负责，服务端 countdownMs 每 1.5 秒必然不同，
+     *   留着它等于每次轮询都 setData 一次，纯浪费跨线程拷贝。
+     *   取而代之的是下面 ⑯ 那一组：直接测"挂钟驱动"和"服务端校正"是否还在。
+     */
     ['bid 从无到有（有人第一次叫）', (r) => { r.bid = { n: 3, face: 4, zhai: false, at: 999 } }, base],
     /* ↓ 下面三个：两侧都有对象，只改内部 —— 才能测到具体那一行 */
     ['bid 的数量变了', (r) => { r.bid.n = 5 }, withBid],
@@ -398,6 +404,38 @@ function extractBuildSectors(src) {
   })
   assert.deepStrictEqual(missed, [],
     '这些变化没被认出来 → 界面不会更新（游戏卡死）：\n    ' + missed.join('\n    '))
+
+  /* ============ ⑯ 倒计时：挂钟驱动 + 服务端校正 ============ */
+  /*
+   * 为什么单独锁这一组：
+   *   倒计时存在的全部意义是"所有人同时开始"。而每台手机的 3 秒都从
+   *   **自己收到响应**那一刻起算 —— 网络快慢能让两台手机差出几百毫秒
+   *   到一秒（轮询 1.5 秒）。竞品（Jackbox）的 count-in 就是为这件事。
+   *
+   *   两件事必须同时成立：
+   *     ① 本地用**挂钟**算剩余（`Date.now() - _cdT0`），不能 `left -= 1000` 累减
+   *        —— 累减会累积 setTimeout 的误差，三拍能漂 100ms 以上；
+   *     ② 收到 poll 后若"本地剩余"与"服务端剩余"差超过阈值，把起点拽回去
+   *        （只校正不重置，重置会让数字跳 3→3→2，比不同步更难看）。
+   *
+   * ⚠️ 判据用**函数体**而不是整文件正则：整文件里 Date.now() 到处都是，
+   *    那种判据删掉目标代码也照样通过（本项目栽过多次）。
+   */
+  const cdBody = extractFnBody(rcClean, 'startCountdown(remainMs)')
+  assert.ok(cdBody, '⑯ 没找到 startCountdown 函数体')
+  assert.ok(/\._cdT0\s*=/.test(cdBody), '⑯ 倒计时必须记一个本地起点 _cdT0（挂钟锚点）')
+  assert.ok(/Date\.now\(\)\s*-\s*\(?this\._cdT0/.test(cdBody),
+    '⑯ 剩余时间必须由 Date.now() 与 _cdT0 反推，不能累减')
+  assert.ok(!/left\s*-=\s*1000/.test(cdBody),
+    '⑯ 不能再出现 `left -= 1000` 的累减（setTimeout 误差会累积）')
+
+  const applyBody = extractFnBody(rcClean, 'applyRoom(raw, extra)')
+  assert.ok(applyBody, '⑯ 没找到 applyRoom 函数体')
+  assert.ok(/raw\.countdownMs/.test(applyBody) && /Math\.abs\(/.test(applyBody),
+    '⑯ applyRoom 里必须有"本地剩余 vs 服务端剩余"的偏差校正')
+  assert.ok(/_cdT0\s*=\s*Date\.now\(\)/.test(applyBody),
+    '⑯ 校正时要把 _cdT0 拽到当前时刻（只校正不重置计时器）')
+  ok('倒计时：挂钟驱动 + 服务端偏差校正（两台手机不会各走各的）')
   ok(MUTATIONS.length + ' 种状态变化全部能识别（漏一个就会卡死）')
 
   /* updatedAt 每轮都在变，绝不能参与比较，否则优化完全失效 */
