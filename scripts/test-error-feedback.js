@@ -131,6 +131,34 @@ function walkJs(dir, out) {
     '\n    修法：catch 里用 `e.friendly || e.message` 给用户一句提示。')
   ok(`${checkedCalls} 处云函数调用都会把失败原因告诉用户（无静默吞错）`)
 
+  /* ============ ② 常见失败要翻成人话（不能把英文原文甩给用户） ============ */
+  console.log('\n=== 常见失败要翻成人话 ===')
+  /*
+   * ★ 2026-10-28。云函数默认 3 秒，冷启动吃掉全部时间时 errMsg 是
+   *   `cloud.callFunction:fail timeout` —— 直接显示就是一句英文。
+   *   用户只能反馈"操作失败"，而我看不到具体是什么。
+   *
+   *   判据：这几类最常见的失败，cloud.js 里必须有对应的**中文**分支。
+   */
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/cloud.js'), 'utf8')
+    /*
+     * ⚠️ 这里用**真正的前缀匹配**，不要写 `\|` —— 那是正则里的字面量竖线，
+     *   第一版写成 /network\|request:fail/ 匹配的是"network|request:fail"
+     *   这 23 个字符连在一起的样子，而 cloud.js 里实际是 /network|ERR_|request:fail/，
+     *   中间隔着 ERR_ → 报"断网没有中文分支"的假阳性。
+     */
+    const need = [
+      { re: /timeout/i, label: '超时' },
+      { re: /request:fail/i, label: '断网' },
+      { re: /FunctionName|not found/, label: '云函数没部署' }
+    ]
+    const miss = need.filter(x => !x.re.test(src)).map(x => x.label)
+    assert.deepStrictEqual(miss, [],
+      '这些失败没有中文提示分支（用户会看到英文原文）：' + miss.join('、'))
+    ok('超时 / 断网 / 未部署 三类都有中文提示')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  错误反馈：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

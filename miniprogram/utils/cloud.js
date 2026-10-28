@@ -34,6 +34,20 @@ function call(name, data, opt) {
         err.testAccount = true
       } else if (/FunctionName|not found|invalid|env/i.test(raw) && !err.code) {
         msg = '云函数 ' + name + ' 还没部署，或云环境不对。先在开发者工具里上传部署。'
+      } else if (/timeout|timed out|超时/i.test(raw)) {
+        /*
+         * ★★ 超时要说人话（2026-10-28）。
+         *
+         * 云函数默认只给 3 秒，冷启动就可能吃掉全��。这时 errMsg 是
+         * `cloud.callFunction:fail timeout` —— 直接显示给用户就是一句英文，
+         * 他只能反馈"操作失败"，而我看不到具体是什么。
+         *
+         * 所以这里翻成中文，并且**把"再点一次"写进文案**：
+         * 冷启动只吃掉第一次，第二次通常就热了。
+         */
+        msg = '这次等太久了（服务刚启动），再点一次就好'
+      } else if (/network|ERR_|request:fail/i.test(raw)) {
+        msg = '网络断了，连上再试'
       }
       msg = msg || '网络不太好，再试一次'
       err.friendly = msg
