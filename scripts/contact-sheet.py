@@ -12,6 +12,7 @@
 """
 import os
 import sys
+import time
 import glob
 from PIL import Image, ImageDraw, ImageFont
 
@@ -62,6 +63,13 @@ def main():
         k = TW / im.width
         im = im.resize((TW, max(1, int(im.height * k))), Image.LANCZOS)
         name = os.path.basename(f).replace(f'{page}-', '').replace('.png', '') or 'default'
+        # ⚠️ 这个目录里可能躺着**历史遗留的旧截图**（比如某次改版前的状态），
+        # glob 会把它们一起拼进来 —— 2026-10-28 我差点把一张过期的空白图
+        # 当成"大厅 dice 状态的 bug"。
+        # 超过 1 小时的文件在标签上标记出来，避免看过期图下结论。
+        age_h = (time.time() - os.path.getmtime(f)) / 3600
+        if age_h > 1:
+            name = '⏰' + name
         thumbs.append((name, im))
 
     rows = (len(thumbs) + cols - 1) // cols

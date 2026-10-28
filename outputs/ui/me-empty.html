@@ -9,8 +9,23 @@
   div { display:block; }
   input, textarea { font-family:inherit; font-size:inherit; border:none; outline:none; background:none; }
   input::placeholder, textarea::placeholder { color:#A39B90; }
-  /* 小程序 view 默认 flex-direction:column */
-  .wx-hint, .hint { }
+  /*
+   * ★ 动画必须"立即跑完"，否则截图拍到的是**初始态**。
+   *
+   * 本项目大量用 animation: x .5s ... backwards 做入场编排，
+   * backwards 填充意味着 t=0 时元素就是 opacity:0 / translateY(...)。
+   * 无头 Chrome 截图不等动画 → 拍出来整页空白
+   *（第一版就是：只剩 hero 的色块底，一个字都没有）。
+   *
+   * 用 duration:0s + delay:0s 让动画瞬间到 100%，
+   * 保留"最终态"，不改变任何布局结果。
+   */
+  *, *::before, *::after {
+    animation-duration: .001s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
 </style>
 <style> body {
   --brand: #E0714F;        
@@ -249,9 +264,6 @@ view, text, button, input, textarea { box-sizing: border-box }
 .sw.on .swdot { transform: translateX(18px) }
 
 
-.row2-main { flex: 1; min-width: 0 }
-.row2-arrow { width: 14px; height: 14px; opacity: .4; flex: none }
-.mi-icon { width: 18px; height: 18px }
 
 
 .about { font-size: 11.5px; color: var(--ink2); line-height: 1.9 }
@@ -262,6 +274,23 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-top: 9px; text-align: center;
   font-size: 10px; color: var(--ink3); line-height: 1.7;
 }
+
+
+.stat-row { gap: 7px }
+.stat-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  opacity: .85;
+}
+.stat-n {
+  flex: none; font-size: 11px; color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+.stat-n.zero { color: var(--ink3) }
+.stat-tip {
+  margin-top: 9px; font-size: 10px; color: var(--ink3);
+  line-height: 1.6;
+}
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -273,7 +302,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   <div class="meprof">
     <div class="meav">酒</div>
     <div class="meinfo">
-      <div class="mein"></div>
+      <input class="mein" value="" placeholder="起个名字" data-maxlength="12">
       <div class="meprof-s">房间里别人看到的就是这个名字</div>
     </div>
   </div>
@@ -299,15 +328,49 @@ view, text, button, input, textarea { box-sizing: border-box }
 
   
   <div class="card">
-    <div class="lbl">玩法</div>
-    <div class="row2">
-      <div class="ico"><img class="mi-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23C4553F%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.5%22%20width%3D%2217%22%20height%3D%2217%22%20rx%3D%223.4%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;"></div>
-      <div class="row2-main">
-        <div class="gt">一共 4 个玩法</div>
-        <div class="xs">大话骰 · 比大小 · 命运转盘 · 我有你没有</div>
+    <div class="lbl">玩法 · 一共 5 个</div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#B8863C"></div>
+        <div class="rl-main">
+          <div class="rl-t">梦幻金花</div>
+        </div>
+        <span class="stat-n">开过 7 次</span>
       </div>
-      <img class="row2-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23C4553F%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-    </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#C4573A"></div>
+        <div class="rl-main">
+          <div class="rl-t">大话骰</div>
+        </div>
+        <span class="stat-n">开过 4 次</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#7A5CA8"></div>
+        <div class="rl-main">
+          <div class="rl-t">谁是卧底</div>
+        </div>
+        <span class="stat-n">开过 2 次</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#5E7FA6"></div>
+        <div class="rl-main">
+          <div class="rl-t">比大小</div>
+        </div>
+        <span class="stat-n zero">还没玩过</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#7A5CA8"></div>
+        <div class="rl-main">
+          <div class="rl-t">命运转盘</div>
+        </div>
+        <span class="stat-n zero">还没玩过</span>
+      </div>
+    
+    <div class="stat-tip">只记开桌次数，不算胜负 —— 酒桌上的输赢本来就没法可靠地记</div>
   </div>
 
   
@@ -316,8 +379,8 @@ view, text, button, input, textarea { box-sizing: border-box }
     <div class="about">
       <div class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</div>
       <div class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</div>
-      <div class="ab-line">点数、题卡、身份都由服务端出，别人看不到你的牌。</div>
-      <div class="ab-ver">v3.0.0</div>
+      <div class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</div>
+      <div class="ab-ver">v3.7.4</div>
     </div>
   </div>
 
@@ -325,7 +388,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   <div class="foot-tip">清理只会清掉昵称和开关状态，不影响任何对局数据</div>
 </div>
 
-<div style="position:fixed;left:0;right:0;bottom:0;height:50px;display:flex;
+<div style="position:fixed;left:0;bottom:0;width:375px;height:50px;display:flex;
     background:#FFFDF9;border-top:1px solid #EDE6DC;z-index:20"><div style="flex:1;text-align:center;font-size:11px;padding:10px 0;letter-spacing:1px;
       color:#9A9188;font-weight:400">大厅</div><div style="flex:1;text-align:center;font-size:11px;padding:10px 0;letter-spacing:1px;
       color:#E0714F;font-weight:600">我的</div></div>

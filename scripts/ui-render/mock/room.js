@@ -161,13 +161,18 @@ module.exports = {
     /* 金花满员 6 人摊牌：6 行牌面会不会挤（金花 max=6） */
     pk6: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘']
-      const suits = ['♠', '♥', '♦', '♣']
+      /*
+       * ★ 必须走 poker.cardText() 生成牌面文字，不能自己拼 `花色 + 数字`：
+       *   直拼会显示成「♥12」，而真实界面是「♥Q」——
+       *   这种 mock 失真会让我误判"牌面太宽放不下"之类根本不存在的问题。
+       * （真实数据里 cardsText 就是服务端用 cardText 生成的。）
+       */
       const hands = names.map((n, i) => ({
         name: n, out: i > 0,
         cardsText: [
-          '♣Q',
-          suits[i % 4] + (12 - i),
-          suits[(i + 1) % 4] + (9 - i)
+          poker.cardText({ r: 12, s: 0 }),
+          poker.cardText({ r: 12 - i, s: i % 4 }),
+          poker.cardText({ r: 9 - i, s: (i + 1) % 4 })
         ]
       }))
       return {
