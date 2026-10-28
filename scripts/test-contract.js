@@ -1446,6 +1446,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '模板引用了服务端从未返回的字段（幽灵字段，界面上会静默变空）：\n    ' + ghost.join('\n    '))
   ok('模板引用的 room.* 字段都由真实响应提供')
 
+  /* ============ ④b 嵌套引用也要有来源（room.a.b） ============ */
+  console.log('\n=== ④b room.a.b 这种两层引用必须真的有来源 ===')
+  /*
+   * ★★ 为什么必须补这一条（2026-10-28 真实事故）：
+   *   ④ 只检查 `room.xxx` 的**第一层**，于是
+   *       模板：{{room.poker.last.noteText}}
+   *       云函数：从来只返回 `pkLast`，里面有 kind/winner/byType… 没有 noteText
+   *   从缝里漏过去了 —— 比牌区下面那行说明**永远空白**，
+   *   玩家看得到"谁出局"，看不到"凭什么"，而且不会报错。
+   *
+   *   判据：两层引用的第二层名字，必须在**云函数源码**里作为对象键出现过，
+   *   或者在 room.js 里被赋过值。
+   *   ⚠️ 这是个**弱判据**（名字在别处出现过就算有来源），
+   *      它抓不到"同一个名字在别的对象里"的情况。
+   *      但它能抓住最严重的那种：**全仓只有模板记得这个字段**，
+   *      而那正是本次事故的形态。宁可精确也不要宽的例外是"别放宽到无效"，
+   *      而一个从不报错的更强判据需要构造带比牌历史的房间响应，成本不成比例。
+   */
+  {
+    const roomJsSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'pages', 'room', 'room.js'), 'utf8')
+    const cloudSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'room', 'index.js'), 'utf8')
+    const knownKey = (k) =>
+      new RegExp('(^|[\\s,{])' + k + '\\s*:').test(cloudSrc) ||
+      new RegExp('\\.' + k + '\\b').test(roomJsSrc) ||
+      new RegExp('(^|[\\s,{])' + k + '\\s*:').test(roomJsSrc)
+    const nestGhost = []
+    walkGhost(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+      const tpl = stripComments(fs.readFileSync(wxml, 'utf8'))
+      const re = /\broom\.([a-zA-Z_]\w*)\.([a-zA-Z_]\w*)/g
+      let mm
+      const seen = new Set()
+      while ((mm = re.exec(tpl))) {
+        const path2 = mm[1] + '.' + mm[2]
+        if (seen.has(path2)) continue
+        seen.add(path2)
+        if (!knownKey(mm[2])) nestGhost.push(path.relative(ROOT, wxml) + ' → room.' + path2)
+      }
+    })
+    assert.deepStrictEqual(nestGhost, [],
+      '模板引用了两层字段，但云函数与前端都不产生它（界面上静默变空）：\n    ' +
+      nestGhost.join('\n    '))
+    ok('两层引用 room.a.b 的第二层都有来源（不是只有模板记得它）')
+  }
+
   /* ============================================================
      * ⑦ 全仓扫描：缩略图 / 存活守卫 / 无限循环
      * ============================================================

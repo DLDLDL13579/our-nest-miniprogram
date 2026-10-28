@@ -1424,6 +1424,23 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(pkVs.room.poker.last.byCards.length, 3, '⑬ 摊牌要给出挑战者的三张牌')
   assert.strictEqual(pkVs.room.poker.last.targetCards.length, 3, '⑬ 摊牌要给出被挑战者的三张牌')
   ok('★ 比牌：用「公共牌+明牌+暗牌」裁决，摊牌亮出三张')
+  /*
+   * ★★ 比牌说明文字（noteText）—— 2026-10-28 发现的真 bug。
+   *
+   * 模板 room.wxml 的 .pkl-note 一直渲染 `{{room.poker.last.noteText}}`，
+   * 而云函数**从来没生成过这个字段**（全仓只有 wxml 里出现过这个词）。
+   * 于是比牌区只有四张牌，下面一行永远是空的 ——
+   * 玩家看得到"谁出局了"，但看不到"凭什么"。
+   *
+   * 这类"模板引用、服务端不给"的字段就是幽灵字段，界面只会静默变空，
+   * 而 ④ 那条断言只查顶层 `room.xxx`，两层路径 `room.poker.last.noteText`
+   * 正好从它的缝里漏过去了。
+   */
+  assert.strictEqual(typeof pkVs.room.poker.last.noteText, 'string',
+    '⑬ ★ 比牌必须给一句文字说明（noteText），模板在渲染它')
+  assert.ok(pkVs.room.poker.last.noteText.indexOf(pkWant) >= 0,
+    '⑬ ★ 说明文字必须点出赢家，实际：' + pkVs.room.poker.last.noteText)
+  ok('比牌给出说明文字（不是只有四张牌，得说清凭什么赢）')
 
   /* ⑬b 换牌：换公共牌喝 1 杯、换手牌喝半杯（用户 2026-10-27 加的规则） */
   {
@@ -1447,6 +1464,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.notStrictEqual(afterPub.r + ':' + afterPub.s, beforePub.r + ':' + beforePub.s,
       '⑬b ★ 换完之后公共牌必须真的变了')
     assert.strictEqual(sw1.room.poker.myDrink, 1, '⑬b ★ 换公共牌要喝 1 杯，实际 ' + sw1.room.poker.myDrink)
+    assert.ok(sw1.room.poker.last && /公共底牌/.test(sw1.room.poker.last.noteText || ''),
+      '⑬b ★ 换牌也要有说明文字（模板同一个 .pkl-note 在渲染）')
     /* 换手牌：再喝半杯，累计 1.5 */
     const sw2 = await room.main({ action: 'pkAct', act: 'swapMine', id: pkId })
     assert.ok(sw2.ok, '⑬b 换手牌应成功：' + (sw2.msg || ''))

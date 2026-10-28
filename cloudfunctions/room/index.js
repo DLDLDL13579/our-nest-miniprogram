@@ -1528,7 +1528,12 @@ exports.main = async (event) => {
           await rooms.doc(room._id).update({
             data: {
               pkPublic: nc, pkRest: rest, pkDrink: drink, updatedAt: ts,
-              pkLast: { kind: 'swap', name: mine.name, what: 'public', drink: addDrink }
+              pkLast: {
+                kind: 'swap', name: mine.name, what: 'public', drink: addDrink,
+                /* 前端比牌区有一行说明（room.wxml 的 .pkl-note）——
+                   以前从来没生成过这个字段，那一行永远空白 */
+                noteText: mine.name + ' 换了公共底牌，喝 1 杯'
+              }
             }
           })
         } else {
@@ -1541,7 +1546,10 @@ exports.main = async (event) => {
           await rooms.doc(room._id).update({
             data: {
               players: players, pkRest: rest, pkDrink: drink, updatedAt: ts,
-              pkLast: { kind: 'swap', name: mine.name, what: 'mine', drink: addDrink }
+              pkLast: {
+                kind: 'swap', name: mine.name, what: 'mine', drink: addDrink,
+                noteText: mine.name + ' 换了自己的手牌，喝半杯'
+              }
             }
           })
         }
@@ -1551,7 +1559,10 @@ exports.main = async (event) => {
 
       if (act === 'fold') {
         mine.out = true
-        last = { kind: 'fold', name: mine.name }
+        last = {
+          kind: 'fold', name: mine.name,
+          noteText: mine.name + ' 弃牌，退出这局'
+        }
       } else if (act === 'vs') {
         const target = String(event.target || '')
         if (!target) return { ok: false, msg: '先选一个人' }
@@ -1597,7 +1608,20 @@ exports.main = async (event) => {
           winner: challengerWins ? mine.name : tP.name,
           tie: cmp === 0,
           byType: poker.rank(handA).name,
-          targetType: poker.rank(handB).name
+          targetType: poker.rank(handB).name,
+          /*
+           * 一句话说清"为什么是他输"。
+           * 没有这句时，比牌区只有四张牌 —— 玩家得自己比对牌型才知道结果，
+           * 而牌型大小顺序本来就最容易吵（尤其 A23 是第二大顺子、
+           * 一样大时先开为负，这两条各平台口径并不统一）。
+           * 当场把判据写出来，比事前读规则有用。
+           */
+          noteText: cmp === 0
+            ? '牌一样大，先开为负 —— ' + mine.name + ' 出局'
+            : (challengerWins ? mine.name : tP.name) + ' 的 '
+              + (challengerWins ? poker.rank(handA).name : poker.rank(handB).name)
+              + ' 赢 ' + (challengerWins ? tP.name : mine.name) + ' 的 '
+              + (challengerWins ? poker.rank(handB).name : poker.rank(handA).name)
         }
       } else {
         return { ok: false, msg: '不认识的动作' }
@@ -1623,12 +1647,30 @@ exports.main = async (event) => {
         patch.lastResult = {
           kind: 'poker',
           winner: patch.pkWinner,
+          /*
+           * ★★ winText / cardsText 是 2026-10-28 补的**真机缺失字段**。
+           *
+           *   结算页模板（room.wxml）一直在渲染：
+           *       <view class="pkr-t">{{room.lastResult.winText}}</view>   ← 大标题
+           *       <text wx:for="{{item.cardsText}}">…</text>               ← 每行三张牌
+           *   而云函数从来没生成过这两个字段 —— 只生成 hands[].cards（对象数组）。
+           *
+           *   为什么一直没被发现：**离线渲染的 mock 里手写了 winText / cardsText**，
+           *   截图上有"邓林 赢"和三张牌，看着完全正常；
+           *   真机上标题是空的、每行牌面也是空的 —— 结算页最想看的两样都没了。
+           *   mock 与真实响应不一致时，预览会替真实代码"圆谎"。
+           */
+          winText: (patch.pkWinner || '没人') + ' 赢',
           publicCard: room.pkPublic || null,
+          publicText: room.pkPublic ? poker.cardText(room.pkPublic) : '',
           hands: players.filter(p => p.inRound !== false)
             .map(p => {
               const full = poker.fullHand(room.pkPublic, p.cards || [])
               return {
-                name: p.name, cards: full, out: !!p.out,
+                name: p.name, cards: full,
+                /* 牌面文字（♠Q 这种）——模板直接用，前端不该再拼一遍 */
+                cardsText: full.map(c => poker.cardText(c)),
+                out: !!p.out,
                 typeName: poker.rank(full).name
               }
             })
