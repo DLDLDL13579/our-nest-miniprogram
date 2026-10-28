@@ -258,6 +258,49 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ⑤b ★ 服务端算了的字段，前端必须有人用 ============ *
+   *
+   * 同一个模式在这个项目里出现了三次：
+   *   · `how`（16 条规则文案）—— 写好了但从没渲染过
+   *   · `streaks`（连赢计数）—— 云端在记，界面从没显示
+   *   · `score`（扣分）—— 一样，而且我清死字段时还误删过它
+   * 每一次都是**手工 grep 才发现**。这条断言把它自动化：
+   *
+   * 判据：`shape()` 返回的每个字段，前端 js/wxml（剥掉注释后）里必须出现过。
+   * 否则就是"服务端算了但没人用"——要么接到界面上（更好），要么删掉。
+   */
+  {
+    const cloudSrc = fs.readFileSync(
+      path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    const shapeM = /function shape\(room, openid\)[\s\S]*?\n\}/.exec(cloudSrc)
+    assert.ok(shapeM, '抽不出 shape() —— 抽取逻辑可能失效')
+    /* 顶层返回对象里的键 = 4 空格缩进 + key: */
+    const keys = Array.from(shapeM[0].matchAll(/^ {4}([a-zA-Z][\w]*):/gm)).map(m => m[1])
+    assert.ok(keys.length > 10, '抽到的字段太少（' + keys.length + '），抽取可能失效')
+
+    /* 前端：剥掉注释再找引用（注释里提到不算"用了"） */
+    const stripComments = (t) => t
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    const front = stripComments(
+      fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8') +
+      fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8'))
+
+    /*
+     * 白名单：确实"服务端返回但界面不用"的字段，每个都要有理由。
+     * 保持极短 —— 白名单越长，这条断言越没价值。
+     */
+    const ALLOW = new Set([
+      'updatedAt'   // 只用于服务端排序/过期判断，前端刻意不渲染（roomChanged 明确排除它）
+    ])
+    const unused = keys.filter(k => !ALLOW.has(k) && !new RegExp('\\b' + k + '\\b').test(front))
+    assert.deepStrictEqual(unused, [],
+      '★ 这些字段服务端算了但前端从没引用（死数据）：' + unused.join(', ') +
+      '\n    要么接到界面上（像 streaks / score 那样），要么删掉（像 ready / cardsCount）。')
+    ok(`shape 返回的 ${keys.length} 个字段全部被前端使用（死数据 0 个）`)
+  }
+
   /* ============ ③d-2 onShareAppMessage 的 imageUrl 必须真实存在 ============ */
   console.log('\n=== ③d-2 转发封面图必须存在（路径错了会静默不显示）===')
   /*

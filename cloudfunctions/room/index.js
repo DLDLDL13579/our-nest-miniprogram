@@ -277,8 +277,14 @@ function shape(room, openid) {
     isHost: p.openid === room.hostOpenid,
     online: now() - (p.lastSeen || 0) < 30000,   // 30 秒内有心跳算在线
     /* ★ 是否参与本局：中途进来的是 false（这一局只观战），下一局自动变 true */
+    /*
+     * ⚠️ 这里原本还有两个死字段，已移除：
+     *   · `ready`（"准备"状态）—— 早期"每人点准备"设计的残留，
+     *     云端只写不读（从没被设成 true），前端完全没引用。
+     *   · `cardsCount`（别人的牌数）—— 金花每人固定 2 张，没有信息量。
+     * 判据见 test-contract ⑤b：shape() 返回的字段必须被前端引用。
+     */
     inRound: p.inRound !== false,
-    ready: !!p.ready,
     score: p.score || 0,
     /* ★ 只有自己的骰子才返回；别人的在服务端就丢掉 */
     dice: p.openid === openid ? (p.dice || []) : undefined,
@@ -380,7 +386,6 @@ function shape(room, openid) {
      * 不把所有人的自定义题全量下发 —— 那是"别人的输入"，前端用不到全量，
      * 而且列表长了会把房间状态撑大（每 1.5 秒轮询一次）。
      */
-    cardsCount: (room.cards || []).length,
     myCards: (room.cards || [])
       .filter(c => c.by === openid)
       .map(c => ({ type: c.type, text: c.text })),
@@ -487,8 +492,7 @@ exports.main = async (event) => {
           phase: 'lobby',
           hostOpenid: OPENID,
           players: [{
-            openid: OPENID, name: name, seat: 1,
-            ready: false, score: 0, dice: [],
+            openid: OPENID, name: name, seat: 1, score: 0, dice: [],
             inRound: true,          // 房主一定参与（单人房能直接开局）
             joinedAt: ts, lastSeen: ts
           }],
@@ -607,7 +611,7 @@ exports.main = async (event) => {
         data: {
           players: _.push([{
             openid: OPENID, name: name, seat: 0,     // seat 稍后统一重编号
-            ready: false, score: 0, dice: [],
+            score: 0, dice: [],
             /* ★ 中途进来的人不参与本局（只观战），下一局才发骰子 */
             inRound: !joinMidRound,
             joinedAt: ts, lastSeen: ts
@@ -755,15 +759,15 @@ exports.main = async (event) => {
          *   1 人房的房主 inRound 默认就是 true（create 时写的）。
          */
         const inRound = p.inRound !== false
-        if (!inRound) return Object.assign({}, p, { dice: [], ready: false })
+        if (!inRound) return Object.assign({}, p, { dice: [] })
         /* 转盘 / 比大小 / 谁是卧底 都不需要开局发骰子 */
         if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover' || room.game === 'poker') {
-          return Object.assign({}, p, { dice: [], ready: false })
+          return Object.assign({}, p, { dice: [] })
         }
         const n = room.game === 'liar' ? 5 : 2
         const dice = []
         for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
-        return Object.assign({}, p, { dice: dice, ready: false })
+        return Object.assign({}, p, { dice: dice })
       })
 
       /* ★ 进入"开局倒计时"而不是直接开始 —— 商业多人游戏的标配。
@@ -1279,7 +1283,7 @@ exports.main = async (event) => {
          *   观战者会永远观战下去（而且不报错）。
          */
         players: (room.players || []).map(p =>
-          Object.assign({}, p, { dice: [], ready: false, inRound: true, score: 0, out: false, cards: [], uwWord: '', uwRole: '' })),
+          Object.assign({}, p, { dice: [], inRound: true, score: 0, out: false, cards: [], uwWord: '', uwRole: '' })),
         phase: 'lobby',
         bid: null, lastResult: null, turn: 0,
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
@@ -1677,7 +1681,7 @@ exports.main = async (event) => {
         if (!anyoneInRound) {
           /* 本局参与者全部离开 → 房间回到大厅态，所有人（都是观战的）转为参与 */
           players = players.map(p => Object.assign({}, p, {
-            inRound: true, dice: [], ready: false, score: 0, out: false,
+            inRound: true, dice: [], score: 0, out: false,
             cards: [], uwWord: '', uwRole: ''
           }))
           Object.assign(upd, {
