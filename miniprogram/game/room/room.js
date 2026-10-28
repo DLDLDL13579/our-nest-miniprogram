@@ -2150,7 +2150,13 @@ Page({
       for (let k = 0; k < n; k++) {
         this._cupTimers.push(setTimeout(() => {
           if (this._dead) return
-          feedback.fire('diceSettle', { sfxDelay: 0, hapticDelay: 0 })
+          /*
+           * ★ 最后一颗走重音（2026-10-28）。
+           *   五颗同样响的话，重音就被稀释了 —— 整轮只有最后那一下该有分量。
+           */
+          const last = k === n - 1
+          feedback.fire(last ? 'diceSettleLast' : 'diceSettle',
+            { sfxDelay: 0, hapticDelay: 0 })
         }, DIE_DROP_MS * k))
       }
       this.bump()

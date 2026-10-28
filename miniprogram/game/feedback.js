@@ -75,12 +75,30 @@ const VOL_DECOR = 0.45
 
 const FEEDBACK = {
   /* ---------- 骰子逐颗落定 ---------- */
+  /*
+   * ★★ 2026-10-28 分两档（调研结论第 8 条）：
+   *   "每颗骰子落定都有动画、同样强度 —— 一局摇 5 颗 = 5 次同强度冲击，
+   *    重音被稀释了。"（斗地主只有王炸/炸弹才给全屏特效）
+   *
+   *   普通落定压到 220ms + 低音量 + 轻震；**最后一颗**才走重音 + 重震。
+   *   五颗里只有一颗"响"，那一下才有分量。
+   */
   diceSettle: {
-    animMs: 420,
-    impactAt: 60,
+    animMs: 220,
+    impactAt: 50,
     sfx: 'diceSettle',
     haptic: 'light',
     vol: VOL_DECOR
+  },
+
+  /* 最后一颗落定：整轮唯一的重音 */
+  diceSettleLast: {
+    animMs: 420,
+    impactAt: 60,
+    sfx: 'diceOnTable',
+    sfx2: 'impactLow',
+    haptic: 'medium',
+    vol: VOL_CRITICAL
   },
 
   /* ---------- 全部落定 / 开盅揭晓（重） ---------- */
