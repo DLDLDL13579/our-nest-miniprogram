@@ -167,6 +167,8 @@ Page({
   data: {
     ic: _IC,
     loading: true,
+    /* loading 超过 5 秒 → 换一句更诚实的提示（见 room.wxml） */
+    loadingSlow: false,
     /* 阶段：entry（选建/加入）→ lobby（等人齐）→ playing → over */
     stage: 'entry',
     room: null,
@@ -350,6 +352,16 @@ Page({
     }
 
     this.setData(patch)
+    /*
+     * 带号直达时 loading 是全屏遮罩，同样要起"慢了"的定时器 ——
+     * 否则云函数冷启动卡住时，用户会一直看"马上就好"。
+     */
+    if (patch.loading) {
+      this._loadingTimer = setTimeout(() => {
+        if (this._dead) return
+        this.setData({ loadingSlow: true })
+      }, 5000)
+    }
 
     /*
      * 等首屏画完再发请求：否则加载态和错误提示都会落在没渲染完的页面上。
@@ -449,6 +461,7 @@ Page({
     this.clearCountdown()
     this.clearCupTimers()
     feedback.clear()
+    clearTimeout(this._loadingTimer)
     sfx.stopAmbient && sfx.stopAmbient()
     sfx.destroy()
     /* 主动离开房间 —— 不然会一直占着座位，
@@ -1969,6 +1982,25 @@ Page({
     }
   },
 
+  /**
+   * 打开/关闭 loading 幕，并管理"慢了"的定时器（2026-10-28）。
+   * ⚠️ 定时器必须能被关掉 —— 否则一次慢进房之后，
+   *    下次 loading 一出现就立刻显示"还在进"。
+   */
+  setLoading(on) {
+    clearTimeout(this._loadingTimer)
+    this._loadingTimer = null
+    if (on) {
+      this.setData({ loading: true, loadingSlow: false })
+      this._loadingTimer = setTimeout(() => {
+        if (this._dead) return
+        this.setData({ loadingSlow: true })
+      }, 5000)
+    } else {
+      this.setData({ loading: false, loadingSlow: false })
+    }
+  },
+
   async doJoin() {
     const code = (this.data.joinCode || '').trim()
     if (code.length !== 3) {
@@ -1982,11 +2014,13 @@ Page({
     }, { loading: '进房间' })
       .catch((e) => {
         /* no-room: 进不去 = 没进到房间里，没有可同步的状态 */
-        this.setData({ err: (e && e.friendly) || '进不去', loading: false })
+        this.setData({ err: (e && e.friendly) || '进不去' })
+        this.setLoading(false)
         return null
       })
 
-    this.setData({ joining: false, loading: false })
+    this.setData({ joining: false })
+    this.setLoading(false)
     if (r && r.ok) {
       sfx.play('confetti')
       if (this._dead) return          // 云函数往返期间页面可能已卸载

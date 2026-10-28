@@ -19,8 +19,13 @@
       <view class="rl-face rl-f2"></view>
       <view class="rl-face rl-f3"></view>
     </view>
-    <view class="rl-t">正在进入房间</view>
-    <view class="rl-s">马上就好</view>
+    <view class="rl-t">{{loadingSlow ? '还在进，别急' : '正在进入房间'}}</view>
+    <!--
+      5 秒后换一句（2026-10-28）。
+      云函数冷启动 + 3 秒超时的边界上，用户会盯着"马上就好"发呆 ——
+      而"马上"到底多久？换个说法至少让他知道**还在努力，不是死了**。
+    -->
+    <view class="rl-s">{{loadingSlow ? '网络有点慢，已经等了一会儿了' : '马上就好'}}</view>
   </view>
 
   <!-- ============ 入口：建房 / 加入 ============ -->
