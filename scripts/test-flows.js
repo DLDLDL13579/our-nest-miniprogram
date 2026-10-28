@@ -306,6 +306,53 @@ async function playOne(opts) {
     ok('金花：挑人比牌 → 结算')
   }
 
+  /* ---------- 换玩法再玩：一桌人会换着玩，换完状态必须干净 ---------- */
+  /*
+   * ★ 2026-10-28。真实的一桌人是"这局玩大话骰、下局换比大小"。
+   *   而换玩法的清理和"再来一局"是**同一个服务端入口**（again / game 合一），
+   *   差别只在改不改 game —— 所以这里要验证的是：
+   *   换完之后，上一个玩法留下的东西（叫骰、结果、回合）不会污染新的。
+   */
+  {
+    OPENID = A
+    const sr = await room.main({ action: 'create', name: 'S1', game: 'liar' })
+    const sid = sr.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: sr.room.code, name: 'S2' })
+
+    /* 第一局：大话骰，玩到结算 */
+    OPENID = A
+    await room.main({ action: 'start', id: sid })
+    await enterPlaying(sid)
+    await room.main({ action: 'bid', id: sid, n: 2, face: 3 })
+    OPENID = B
+    await room.main({ action: 'open', id: sid })
+
+    /* 换成比大小 */
+    OPENID = A
+    const sw = await room.main({ action: 'game', id: sid, game: 'dice' })
+    assert.ok(sw.ok, '换玩法应成功：' + (sw.msg || ''))
+    assert.strictEqual(sw.room.game, 'dice', '换完应该是比大小')
+    assert.strictEqual(sw.room.phase, 'lobby', '换完应回到 lobby')
+    assert.ok(!sw.room.bid, '★ 换玩法后 bid 必须清空（否则新玩法带着旧叫骰）')
+    assert.ok(!sw.room.lastResult, '★ 换玩法后 lastResult 必须清空')
+
+    /* 第二局：比大小，正常打完 */
+    OPENID = A
+    const st2 = await room.main({ action: 'start', id: sid })
+    assert.ok(st2.ok, '换玩法后开局应成功：' + (st2.msg || ''))
+    await enterPlaying(sid)
+    await room.main({ action: 'roll', id: sid })
+    OPENID = B
+    await room.main({ action: 'roll', id: sid })
+
+    const fin = await room.main({ action: 'status', id: sid })
+    assert.strictEqual(fin.room.phase, 'over', '★ 换玩法后的一局必须能正常打完')
+    assert.ok(fin.room.lastResult && fin.room.lastResult.winners.length,
+      '比大小要判出赢家')
+    ok('★ 换玩法再玩：大话骰 → 换比大小 → 照常打完，中间不残留')
+  }
+
   /* ---------- 命运转盘：房主转一次 ---------- */
   {
     const { room: r } = await playOne({
@@ -317,6 +364,55 @@ async function playOne(opts) {
     assert.ok(r.spin && r.spin.t, '转盘：要抽出结果')
     assert.ok(typeof r.spin.index === 'number', '转盘：要带扇区下标')
     ok('转盘：转一次 → 出结果')
+  }
+
+  /* ---------- 连玩中有人退出又回来：座位和回合不能乱 ---------- */
+  /*
+   * ★ 2026-10-28。真实场景：有人临时接电话退出，过一会儿又回来。
+   *   这个项目栽过"回合序号越界"（seat3 退出后 turn 仍是 3 → 永远没人轮到），
+   *   而"退出后再重进"是同一类问题的另一种形态。
+   */
+  {
+    OPENID = A
+    const xr = await room.main({ action: 'create', name: 'X1', game: 'dice' })
+    const xid = xr.room.id
+    const xcode = xr.room.code
+    OPENID = B
+    await room.main({ action: 'join', code: xcode, name: 'X2' })
+    OPENID = C
+    await room.main({ action: 'join', code: xcode, name: 'X3' })
+
+    /* 中间那个人退出 */
+    OPENID = B
+    const lv = await room.main({ action: 'leave', id: xid })
+    assert.ok(lv.ok, '退出应成功')
+    const afterLeave = await room.main({ action: 'status', id: xid })
+    assert.strictEqual(afterLeave.room.count, 2, '退出后应剩 2 人')
+    /* 座位必须重新连续编号（否则"轮到座位 3"永远没人） */
+    const seats = afterLeave.room.players.map(p => p.seat).sort((a, b) => a - b)
+    assert.deepStrictEqual(seats, [1, 2], '★ 座位必须重编号成 1..N，不能留空洞')
+
+    /* 他又回来了 */
+    OPENID = B
+    const re = await room.main({ action: 'join', code: xcode, name: 'X2' })
+    assert.ok(re.ok, '重新进房应成功：' + (re.msg || ''))
+    const afterRejoin = await room.main({ action: 'status', id: xid })
+    assert.strictEqual(afterRejoin.room.count, 3, '回来后应是 3 人')
+    const seats2 = afterRejoin.room.players.map(p => p.seat).sort((a, b) => a - b)
+    assert.deepStrictEqual(seats2, [1, 2, 3], '★ 回来后座位仍必须连续')
+
+    /* 这一局还能正常开、正常打完 */
+    OPENID = A
+    const xst = await room.main({ action: 'start', id: xid })
+    assert.ok(xst.ok, '退出又进来之后开局应成功：' + (xst.msg || ''))
+    await enterPlaying(xid)
+    for (const who of [A, B, C]) {
+      OPENID = who
+      await room.main({ action: 'roll', id: xid })
+    }
+    const xfin = await room.main({ action: 'status', id: xid })
+    assert.strictEqual(xfin.room.phase, 'over', '★ 退出又回来的人参与的那局必须能结算')
+    ok('★ 连玩中有人退出又回来：座位重编号连续，这一局照常打完')
   }
 
   console.log(`\n${'='.repeat(58)}`)
