@@ -1,3 +1,20 @@
+/*
+ * ⚠️⚠️ 关于这份 mock 的一个硬道理（2026-10-28 用两次翻车换来）
+ *
+ * 它是**静态数据**，而真机的每个字段都是 room.js 按状态算出来的。
+ * 所以 mock 有两种错法，都会让截图变成"假界面"：
+ *
+ *   ① **少字段** —— `hands` 缺 `cards` 时，金花结算页一个牌面都没有，
+ *      看起来像真机的 bug（实际真机有）。
+ *   ② **状态之间不自洽** —— `cupHint` 写死"该你了，摇盅"，而同一个界面
+ *      又有叫骰按钮 → 截图看上去像"叫我去摇盅但明明已经摇过了"的矛盾。
+ *
+ * 判据：**截图只能证明"布局对不对"，不能证明"文案/数据对不对"。**
+ * 文案和派生字段的正确性由 JS 逻辑（和 test-room-ui 的断言）负责。
+ * 看截图发现"某个字不对"时，先去 room.js 查它是怎么算的，
+ * 别直接改 mock 就当修好了。
+ */
+
 /** 房间页 mock —— 只覆盖 entry（建房/进房）与 lobby 两个状态，够审查骨架 */
 const iconSet = require('../../../miniprogram/utils/iconSet.js')
 const { GAMES } = require('../../../miniprogram/utils/games.js')
@@ -149,7 +166,15 @@ module.exports = {
       stage: 'playing',
       /* 事件流：别人刚做了什么（2026-10-28 加，见 room.wxss 的 .evstrip） */
       events: [{ id: 'e2', text: '倩萍 叫 3 个 4' }],
-      cupSrc: 'cup-down', cupCls: '', cupHint: '该你了，摇盅',
+      /*
+       * ⚠️ cupHint 在真机上是**按状态算的**（room.js）：
+       *   没摇 → 「该你了，摇盅！」；摇了 → 「已扣盅，等其他人摇完」。
+       *   这里原本写死「该你了，摇盅」而同一个界面又有叫骰按钮 ——
+       *   截图看上去像"叫我去摇盅，可明明已经摇过了"的矛盾。
+       *   **mock 的文案是硬编码的，不代表真机**，但截图里看起来一样，
+       *   所以状态之间要自洽。
+       */
+      cupSrc: 'cup-down', cupCls: '', cupHint: '已扣盅，等其他人摇完',
       myRolled: true, diceShown: true, rolling: false, liarReady: true,
       myDice: [3, 5, 1, 6, 3],
       room: pkRoom({
