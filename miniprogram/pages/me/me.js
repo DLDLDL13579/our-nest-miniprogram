@@ -46,18 +46,9 @@ Page({
       muted: sfx.isMuted(),
       hapticOn: haptic.isHapticOn(),
       reduceMotion: haptic.isReduceMotion(),
-      errCount: (function () {
-        try { return (wx.getStorageSync('errLog') || []).length } catch (e) { return 0 }
-      })(),
-      nightGames: (function () {
-        /* 今晚玩了几局（跨天自动归零，见 room.js 的 bumpNightCount） */
-        try {
-          const d = new Date()
-          const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
-          const rec = wx.getStorageSync('nightGames') || {}
-          return rec.date === today ? (Number(rec.n) || 0) : 0
-        } catch (e) { return 0 }
-      })()
+      errCount: 0,
+      /* 由 refreshDiagnostics() 在 onShow 时重算（见下面的说明） */
+      nightGames: 0
     })
   },
 
@@ -82,6 +73,30 @@ Page({
   onShow() {
     this.setData({ muted: sfx.isMuted(), hapticOn: haptic.isHapticOn() })
     this.loadStats()
+    this.refreshDiagnostics()
+  },
+
+  /**
+   * 重算"今晚几局 / 最近几条错误"（2026-10-28）。
+   *
+   * ⚠️ 这两个数字只有在**玩完之后**才会变，而页面是 tabBar 页 ——
+   *    用户从房间回来时页面**不会重建**，只在 onShow 重算才看得到新值。
+   *    原来它们放在 data 的 IIFE 里，等于"只在第一次进这个 tab 时算一遍"，
+   *    后面永远是旧的。
+   *
+   *    （大厅的"上次玩的"排序是同一个毛病的另一个实例：那次的测试也没调 onShow。）
+   */
+  refreshDiagnostics() {
+    let n = 0
+    try {
+      const d = new Date()
+      const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
+      const rec = wx.getStorageSync('nightGames') || {}
+      n = rec.date === today ? (Number(rec.n) || 0) : 0
+    } catch (e) {}
+    let errs = 0
+    try { errs = (wx.getStorageSync('errLog') || []).length } catch (e) {}
+    this.setData({ nightGames: n, errCount: errs })
   },
 
   onNick(e) { this.setData({ nick: e.detail.value }) },

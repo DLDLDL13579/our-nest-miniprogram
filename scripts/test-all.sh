@@ -27,6 +27,7 @@ node scripts/test-pool.js
 node scripts/test-room-changed.js
 node scripts/test-firsthint.js
 node scripts/test-recent.js
+node scripts/test-me.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 
