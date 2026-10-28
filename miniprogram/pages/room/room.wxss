@@ -1473,3 +1473,43 @@
   flex: 1; font-size: 23rpx; line-height: 1.6;
   color: rgba(255,255,255,.72);
 }
+
+/* ---------- 页面级 loading 幕 ----------
+   一个会翻滚的骰子，比转圈更贴题。
+   注意：它是**覆盖层**，不参与 stage 的条件链 ——
+   插进 wx:if/wx:elif 链里会把整条链打断（这类错误本项目栽过）。 */
+.room-loading {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 90;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 22rpx;
+  background: rgba(28, 22, 18, .93);
+  animation: fadeIn .2s ease;
+}
+.rl-dice {
+  position: relative;
+  width: 88rpx; height: 88rpx;
+  border-radius: 18rpx;
+  background: linear-gradient(145deg, #FFFDF9, #E8DED0);
+  box-shadow: 0 10rpx 26rpx rgba(0,0,0,.4);
+  animation: rlTumble 1.15s cubic-bezier(.45,.05,.55,.95) infinite;
+}
+@keyframes rlTumble {
+  0%   { transform: rotate(0deg) translateY(0) }
+  25%  { transform: rotate(90deg) translateY(-14rpx) }
+  50%  { transform: rotate(180deg) translateY(0) }
+  75%  { transform: rotate(270deg) translateY(-14rpx) }
+  100% { transform: rotate(360deg) translateY(0) }
+}
+/* 三个点数用圆点示意，不是真骰子图（加载态不需要那么重） */
+.rl-face {
+  position: absolute; width: 14rpx; height: 14rpx; border-radius: 50%;
+  background: #C4573A;
+}
+.rl-f1 { left: 20rpx; top: 20rpx }
+.rl-f2 { left: 37rpx; top: 37rpx }
+.rl-f3 { right: 20rpx; bottom: 20rpx }
+.rl-t {
+  font-size: 27rpx; font-weight: 600; color: #F6E7C3; letter-spacing: 2rpx;
+}
+.rl-s { font-size: 21rpx; color: rgba(255,255,255,.4) }

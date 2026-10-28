@@ -83,6 +83,9 @@ module.exports = {
         options: []
       }
     }),
+    /* 页面级 loading */
+    entering: () => ({ loading: true, stage: 'entry' }),
+
     /* 进房输错了号 */
     error: () => ({ joinCode: '999', err: '房间不存在或已解散' }),
 

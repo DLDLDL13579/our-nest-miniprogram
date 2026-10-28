@@ -247,7 +247,15 @@ Page({
     const patch = {
       muted: sfx.isMuted(),
       wheelSectors: w.list,
-      wheelGradient: w.gradient
+      wheelGradient: w.gradient,
+      /*
+       * ⚠️ loading 必须**显式初始化为 false**。
+       *    data 里的初始值是 true（历史遗留），而这里如果不覆盖，
+       *    不带房间号打开房间页（比如从「我的」或异常路径进来）会被
+       *    那个全屏遮罩**永久挡住** —— 页面能用但什么都看不见，
+       *    而且不报错。只有"带号直接进房"这一条路径才该开遮罩。
+       */
+      loading: false
     }
 
     /* 名字：本机存的那一个（大厅 / 我的页里改），不再依赖配对信息 */
@@ -261,7 +269,11 @@ Page({
 
     if (q.code) {
       const c = String(q.code).replace(/\D/g, '').slice(0, 3)
-      if (c.length === 3) patch.joinCode = c
+      if (c.length === 3) {
+        patch.joinCode = c
+        /* 从打开的第一帧就盖住，不要先闪一下输入表单 */
+        patch.loading = true
+      }
     }
 
     this.setData(patch)
@@ -1212,9 +1224,9 @@ Page({
     const r = await call('room', {
       action: 'join', code: code, name: this.data.myName || '玩家'
     }, { loading: '进房间' })
-      .catch((e) => { this.setData({ err: (e && e.friendly) || '进不去' }); return null })
+      .catch((e) => { this.setData({ err: (e && e.friendly) || '进不去', loading: false }); return null })
 
-    this.setData({ joining: false })
+    this.setData({ joining: false, loading: false })
     if (r && r.ok) {
       sfx.play('confetti')
       if (this._dead) return          // 云函数往返期间页面可能已卸载
