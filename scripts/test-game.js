@@ -211,6 +211,23 @@ function extractBuildSectors(src) {
   assert.deepStrictEqual(missing, [], '摇盅流程不完整：\n    ' + missing.join('\n    '))
   ok('入盅 → 摇盅 → 扣盅 → 揭盅 → 桌上滚动，五步齐全且音效已注册')
 
+  /* ★ 2026-10-28：每个玩法的规则必须提到"喝"。
+     复核文案时发现大话骰六条规则从没写过"输了喝几杯"（桌上第一个会问的问题），
+     而比大小和卧底**代码里根本没有惩罚量** —— 所以判据不是"每条都写 1 杯"
+     （那会编造），而是"必须让玩家知道这游戏是要喝的"。 */
+  {
+    const g = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+    /*
+     * 判据是"说清惩罚方式"，不是"一定写喝" —— 转盘是真心话/大冒险，
+     * 本来就不用喝。所以认这几个词：喝 / 罚 / 执行 / 真心话 / 大冒险。
+     */
+    const noPenalty = g.GAMES.filter(x =>
+      !(x.how || []).some(h => /喝|罚|执行|真心话|大冒险/.test(h)))
+    assert.deepStrictEqual(noPenalty.map(x => x.name), [],
+      '这些玩法的规则里完全没说清"输了会怎样"：' + noPenalty.map(x => x.name).join('、'))
+    ok('五个玩法的规则都说清了惩罚方式')
+  }
+
   console.log('\n=== ⑦ 扣盅必须有震动，摇盅必须没有 ===')
   /*
    * 震动分级是刻意的：
