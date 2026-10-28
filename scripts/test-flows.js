@@ -366,6 +366,79 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 8 人比大小（上限）：最后一颗骰的判定 ---------- */
+  {
+    OPENID = 'oid_d1'
+    const br2 = await room.main({ action: 'create', name: '骰1', game: 'dice' })
+    const bid2 = br2.room.id
+    for (let i = 2; i <= 8; i++) {
+      OPENID = 'oid_d' + i
+      await room.main({ action: 'join', code: br2.room.code, name: '骰' + i })
+    }
+    OPENID = 'oid_d1'
+    await room.main({ action: 'start', id: bid2 })
+    await enterPlaying(bid2)
+
+    /* 前 7 个人摇完 → 还不该结算 */
+    for (let i = 1; i <= 7; i++) {
+      OPENID = 'oid_d' + i
+      await room.main({ action: 'roll', id: bid2 })
+    }
+    let st2 = await room.main({ action: 'status', id: bid2 })
+    assert.strictEqual(st2.room.phase, 'playing', '★ 还差 1 个人没摇时不能结算')
+
+    /* 第 8 个摇完 → 结算 */
+    OPENID = 'oid_d8'
+    await room.main({ action: 'roll', id: bid2 })
+    st2 = await room.main({ action: 'status', id: bid2 })
+    assert.strictEqual(st2.room.phase, 'over', '★ 8 人全摇完必须结算')
+    assert.strictEqual((st2.room.lastResult.ranked || []).length, 8,
+      '★ 排名要包含全部 8 个人')
+    ok('★ 8 人比大小（上限）：差一个人不结算，全员摇完才出结果')
+  }
+
+  /* ---------- 12 人卧底（上限）：大桌也要能走完 ---------- */
+  /*
+   * ★ 2026-10-28。卧底的 max 是 12 —— 也就是"一桌人全都玩"的最大规模。
+   *   2~4 人的小局走得通，不代表 12 人走得通：
+   *   投票要收满 11 票（自己不能投自己）、票型要能算、结算列表要能排。
+   */
+  {
+    OPENID = 'oid_u1'
+    const br = await room.main({ action: 'create', name: '圈1', game: 'undercover' })
+    const bid = br.room.id
+    const bcode = br.room.code
+    const players = ['oid_u1']
+    for (let i = 2; i <= 12; i++) {
+      const who = 'oid_u' + i
+      players.push(who)
+      OPENID = who
+      const j = await room.main({ action: 'join', code: bcode, name: '圈' + i })
+      assert.ok(j.ok, '第 ' + i + ' 个人应能进：' + (j.msg || ''))
+    }
+    OPENID = 'oid_u1'
+    const st = await room.main({ action: 'start', id: bid })
+    assert.ok(st.ok, '12 人应能开局：' + (st.msg || ''))
+    await enterPlaying(bid)
+    await room.main({ action: 'uwSay', id: bid })
+
+    /* 11 个人投给第 1 个人（自己不能投自己），第 1 个人投第 2 个 */
+    for (let i = 2; i <= 12; i++) {
+      OPENID = 'oid_u' + i
+      const v = await room.main({ action: 'uwVote', id: bid, target: 'oid_u1' })
+      assert.ok(v.ok, '第 ' + i + ' 个人投票应成功：' + (v.msg || ''))
+    }
+    OPENID = 'oid_u1'
+    await room.main({ action: 'uwVote', id: bid, target: 'oid_u2' })
+
+    const fin = await room.main({ action: 'status', id: bid })
+    assert.strictEqual(fin.room.uw.step, 'result', '★ 12 人投完应出结果')
+    assert.ok(fin.room.uw.lastOut, '要判出出局者')
+    assert.strictEqual(fin.room.uw.lastOut.ballots.length, 12,
+      '★ 票型要收满 12 票（自己那票也在），实际 ' + (fin.room.uw.lastOut.ballots || []).length)
+    ok('★ 12 人卧底（上限）：发词 → 12 票 → 出结果，票型齐全')
+  }
+
   /* ---------- 金花换牌的代价：换底牌 1 杯、换手牌半杯，且累计 ---------- */
   /*
    * ★ 2026-10-28。这是这个玩法的**博弈核心**（把运气变成可付费的选择），
