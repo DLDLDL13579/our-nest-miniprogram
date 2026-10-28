@@ -310,7 +310,7 @@ module.exports = {
         room: uwRoom({
           id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
           count: 12, players: players, gameName: '谁是卧底',
-          uw: { step: 'vote', word: '豆浆', myDone: true, myVote: '', voteCount: 5, voterCount: 12, reveal: [], lastOut: null }
+          uw: { step: 'vote', word: '豆浆', myDone: true, myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
         })
       }
     },
@@ -554,7 +554,7 @@ module.exports = {
       room: uwRoom({
         id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
         players: UW_PLAYERS, count: 4,
-        uw: { step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 2, voterCount: 4, aliveCount: 4, lastOut: null, reveal: null }
+        uw: { step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 2, voterCount: 4, aliveCount: 4, waitingCount: 2, waitingNames: ['老王', '阿杰'], lastOut: null, reveal: null }
       })
     }),
     /*
@@ -583,7 +583,7 @@ module.exports = {
         id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
         players: UW_PLAYERS, count: 4,
         uw: {
-          step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 1, voterCount: 4,
+          step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 1, voterCount: 4, waitingCount: 3, waitingNames: ['老王', '阿杰'],
           aliveCount: 4, lastOut: null, reveal: null,
           tieBreak: true, tieNames: ''
         }

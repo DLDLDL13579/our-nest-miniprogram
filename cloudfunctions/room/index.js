@@ -396,6 +396,18 @@ function shape(room, openid) {
         voteCount: (room.votes || []).length,
         voterCount: alive.length,
         /*
+         * ★★ 谁还没投（2026-10-28，调研结论第 2 条）：
+         *   "投票类没有'还差谁'这一层，桌上只能干等，没有催的手段。"
+         *
+         *   排除自己：自己投没投自己知道，列出"还差你"没有意义。
+         *   只给名字不给身份 —— 这不泄露任何东西，投票本来就是公开的。
+         */
+        waitingNames: alive
+          .filter(p => p.openid !== openid && !(room.votes || []).some(v => v.by === p.openid))
+          .map(p => p.name),
+        waitingCount: alive
+          .filter(p => p.openid !== openid && !(room.votes || []).some(v => v.by === p.openid)).length,
+        /*
          * 平票重投：第一次平票不淘汰任何人，让平票的几个人各补一句、再投一次；
          * 第二次仍平票则由卧底获胜（"投不出结果"本身就是好人的失败）。
          * 见 uwVote 里的说明 —— 这里只负责把状态透给前端。

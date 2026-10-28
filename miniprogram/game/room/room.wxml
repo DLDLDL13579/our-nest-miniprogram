@@ -600,6 +600,13 @@
           </block>
         </view>
         <view class="uw-wait">已投 {{room.uw.voteCount}} / {{room.uw.voterCount}}</view>
+        <!--
+          还差谁（2026-10-28，调研第 2 条）：桌上只能干等的根源是**不知道在等谁**。
+          只列第一个人 + 总数 —— 名字多了会变成一串，反而看不清。
+        -->
+        <view wx:if="{{room.uw.waitingCount > 0}}" class="uw-waiting">
+          还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}
+        </view>
       </block>
 
       <!-- ③ 结算：谁出局、他是什么身份（全场最想看的一刻） -->
