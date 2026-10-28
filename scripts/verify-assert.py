@@ -67,8 +67,14 @@ def main():
         print('✗ 原文片段没找到 —— 先确认它和文件里的写法完全一致（标点/缩进）')
         print('   提示：文案类改动最好按行号改，别靠记住整句。')
         return 1
-    if original.count(args.old) > 1:
-        print(f'⚠️ 原文片段出现 {original.count(args.old)} 次，只会替换第一处')
+    n_hit = original.count(args.old)
+    if n_hit > 1:
+        print(f'✗ 原文片段出现 {n_hit} 次 —— 拒绝继续。')
+        print('   只替换第一处会让你验错对象（第一次栽在 `data-l` 上：')
+        print('   第一次出现在**注释**里，改掉它对真正的按钮毫无影响，')
+        print('   于是断言"照样通过"，看起来像断言废了 —— 其实是改错了地方）。')
+        print('   请把片段加长到在文件里唯一（带上前后行），再跑一次。')
+        return 1
 
     # ① 先确认"没改坏的时候测试是绿的"
     base = run_test(args.test)
