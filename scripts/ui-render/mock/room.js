@@ -147,6 +147,8 @@ module.exports = {
     /* 大话骰：扣盅后轮到我叫骰 */
     liarPlay: () => ({
       stage: 'playing',
+      /* 事件流：别人刚做了什么（2026-10-28 加，见 room.wxss 的 .evstrip） */
+      events: [{ id: 'e2', text: '倩萍 叫 3 个 4' }],
       cupSrc: 'cup-down', cupCls: '', cupHint: '该你了，摇盅',
       myRolled: true, diceShown: true, rolling: false, liarReady: true,
       myDice: [3, 5, 1, 6, 3],

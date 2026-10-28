@@ -196,6 +196,22 @@ Page({
      */
     cdTick: 0,
 
+    /*
+     * 事件流：**别人做了什么**。
+     *
+     * 这是多人游戏最容易缺、又最影响"像不像在跟人玩"的一件东西。
+     * 在它之前，别人叫骰只是界面上的数字悄悄变了 —— 桌上没人知道
+     * 刚才谁干了什么，也没有"哦他叫了个大的"这个瞬间。
+     * 竞品（Plato 等）的做法是每步动作同时发成一条聊天消息，
+     * 我们不需要聊天，只需要**一行可见的动作记录**。
+     *
+     * 只保留 1 条（真机高度量过：2 条就把底部出口挤下屏了 ——
+     *   而底部那两个按钮是这一屏唯一的出口，比"留两条历史"重要得多。
+     *   真要多留历史，应该换布局（浮层），不该硬挤主界面的高度），
+     * 且**不含自己的操作**（自己做的自己有反馈）。
+     */
+    events: [],
+
     /* ---------- 骰盅 ---------- */
     cupSrc: 'cup-down',  // 当前显示的盅图（cup-down / cup-shake / cup-up）
     cupCls: '',          // 附加动画类（shaking / slam / lift）
@@ -771,6 +787,9 @@ Page({
    *   而且**不报错**。统一在一个入口重置，才不会有漏网的。
    */
   resetRound() {
+    /* 事件流属于"这一局"，新一局必须清 —— 否则开局第一屏还挂着上一局的旧事 */
+    this.setData({ events: [] })
+    this._evSeq = 0
     this.clearCupTimers()
     this.setData({
       myDice: [], myRolled: false, liarReady: false, diceShown: false,
@@ -916,9 +935,69 @@ Page({
    * 但逻辑层的 options 已经没了，取不到就静默 return）。
    * 收敛成一个入口，比"每次记得手动 decorate"可靠。
    */
+  /**
+   * 往事件流里塞一条。
+   *
+   * ★ 为什么事件是**本地生成**而不是服务端广播：
+   *   服务端每次响应本来就带着全部关键状态（bid / players / lastResult），
+   *   前端对比前后两帧就能还原"刚刚发生了什么"。
+   *   让服务端再存一份事件列表，等于多一个会和状态不一致的副本
+   *   （本项目对"同一件事有两个出口"栽过多次）。
+   *
+   *   代价是各手机看到的事件顺序可能差半个轮询周期 —— 可以接受：
+   *   它不是权威记录，只是"让屏幕上的变化有个来由"。
+   */
+  _evPush(text) {
+    if (!text) return
+    const cur = (this.data.events || []).slice()
+    if (cur.length && cur[0].text === text) return   // 同一件事不叠加
+    this._evSeq = (this._evSeq || 0) + 1
+    cur.unshift({ id: 'e' + this._evSeq, text: text })
+    /*
+     * ★ 只留 2 条（不是 3 条）。按真机高度量过：3 条会把底部的
+     *   「开！」和「离开房间」挤到屏幕外，而它们是这一屏唯一的出口。
+     *   事件流是环境信息，不能为了多留一条历史牺牲可操作区。
+     */
+    this.setData({ events: cur.slice(0, 1) })
+  },
+
+  /**
+   * 对比前后两帧，把"别人做了什么"变成一行话。
+   * 只处理**有语义的动作**，不做"任何字段变了都记一条"（那会变成日志噪声）。
+   */
+  _evDiff(prev, raw) {
+    if (!prev || !raw || raw.phase !== 'playing') return
+    const mySeat = (raw.me && raw.me.seat) || 0
+
+    /* 叫骰被别人改掉 */
+    const a = prev.bid, b = raw.bid
+    if (b && (!a || a.at !== b.at) && b.bySeat !== mySeat) {
+      this._evPush(b.byName + ' 叫 ' + b.n + ' 个 ' + b.face)
+    }
+
+    /* 别人摇好了（比大小：diceCount 从 0 变正） */
+    const prevP = prev.players || []
+    ;(raw.players || []).forEach(p => {
+      const q = prevP.filter(x => x.openid === p.openid)[0]
+      if (q && !q.diceCount && p.diceCount > 0 && p.seat !== mySeat) {
+        this._evPush(p.name + ' 摇好了')
+      }
+    })
+
+    /* 有结果了（开盅 / 出局 / 摊牌）——这是全场焦点，必须进事件流 */
+    if (raw.lastResult && (!prev.lastResult || prev.lastResult.kind !== raw.lastResult.kind)) {
+      const lr = raw.lastResult
+      if (lr.kind === 'undercover' && lr.winner) {
+        this._evPush(lr.winner === 'spy' ? '卧底赢了' : '好人赢了')
+      }
+    }
+  },
+
   applyRoom(raw, extra) {
     if (!raw) return
     if (this._dead) return
+    /* 事件流要在 setData 之前比对 —— 之后 this.data.room 已经是新的一帧了 */
+    this._evDiff(this.data.room, raw)
     /*
      * 倒计时的服务端校正。
      *

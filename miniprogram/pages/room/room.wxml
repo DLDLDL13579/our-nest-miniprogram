@@ -260,6 +260,18 @@
         <text wx:else>等 {{room.turnName || '别人'}} 叫</text>
       </view>
 
+      <!--
+        事件流：**别人做了什么**。
+        在它之前，别人的叫骰只是数字悄悄变了 —— 桌上没人知道刚才谁干了什么。
+        最多 3 条、只读、不占点击。新的从上面滑进来。
+      -->
+      <view wx:if="{{events.length}}" class="evstrip">
+        <view wx:for="{{events}}" wx:key="id" class="ev-row {{index === 0 ? 'new' : ''}}">
+          <text class="ev-dot"></text>
+          <text class="ev-t">{{item.text}}</text>
+        </view>
+      </view>
+
       <!-- ============ 骰盅 ============
            现实流程：骰子入盅 → 摇盅 → 扣盅 → 按住盅偷看自己的骰子。
            ★ 「扣盅后才能看」不是装饰 —— 真实的大话骰必须先扣稳盅再抬一条缝看，

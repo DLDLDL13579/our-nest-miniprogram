@@ -55,9 +55,16 @@ const IMG = { w: 312, h: 485, cTop: 83, cBottom: 483, cLeft: 13, cRight: 291 }
 
 /* ---------- 从 wxss 里抽真实数值（测的是线上真正生效的那份） ---------- */
 function rule(selector) {
-  const css = fs.readFileSync(WXSS, 'utf8')
+  /*
+   * ★ 必须先**剥掉注释**再解析（2026-10-28 踩到）：
+   *   `px()` 用 `(?:^|;)\s*prop:` 匹配，而块内注释 `/* … *\/` 结尾不是 `;`，
+   *   于是一条写在 `height` 前面的注释会让 `height: 500rpx` 完全读不到 ——
+   *   断言直接崩在"读不到 rpx 值"，看起来像"改坏了布局"，
+   *   实际上只是解析器不认注释。值是对的，尺子是坏的。
+   */
+  const css = fs.readFileSync(WXSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
   /* 取最后一个匹配 —— 后面的规则会覆盖前面的 */
-  const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g')
+  const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\}', 'g')
   let m, last = null
   while ((m = re.exec(css))) last = m[1]
   assert.ok(last, 'wxss 里找不到规则 ' + selector)
