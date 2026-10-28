@@ -791,6 +791,48 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     noResync.map(b => b.trim().split('\n')[0]).join('\n    '))
   ok(`${catches.length} 个失败分支：弹提示的都必须先 resyncAfterFail`)
 
+  /* ============ ⑮ 可点击的操作必须有声音反馈 ============ */
+  console.log('\n=== ⑮ 每个可点击操作都要有声音反馈 ===')
+  /*
+   * ★ 2026-10-28。逐个数 bindtap 的 handler 时发现的：
+   *   33 个可点击操作里有 9 个**点了完全没声音** ——
+   *   包括「再来一局」（整个界面里唯一的重操作）和「复制房间号」。
+   *
+   *   这是"廉价感"最直接的来源：界面切了，但手上没反馈，
+   *   用户会觉得这一下没点中。
+   *
+   *   判据：handler 函数体里必须有 sfx.play / feedback.fire / haptic. / vibrate，
+   *        或者调用了别的内部方法（声音可能在里面）。
+   *   ⚠️ 白名单只有一个：toggleMute —— **静音开关本身不该响**，
+   *      那不是漏，是刻意的。
+   */
+  {
+    const SILENT_OK = new Set(['toggleMute'])
+    const wxml = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    const js = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const handlers = [...new Set([...wxml.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]))]
+    const silent = []
+    for (const h of handlers) {
+      if (SILENT_OK.has(h)) continue
+      const m = new RegExp('\\n  (?:async )?' + h + '\\([^)]*\\)\\s*\\{').exec(js)
+      if (!m) continue
+      const start = m.index + m[0].length - 1
+      let depth = 0
+      let end = start
+      for (let k = start; k < Math.min(start + 3000, js.length); k++) {
+        if (js[k] === '{') depth++
+        else if (js[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+      }
+      const body = js.slice(start, end)
+      if (!/sfx\.play|feedback\.fire|haptic\.|vibrate|this\.\w+\(/.test(body)) {
+        silent.push(h)
+      }
+    }
+    assert.deepStrictEqual(silent, [],
+      '这些可点击操作点了没声音（界面会切，但手上没反馈，像没点中）：\n    ' + silent.join('\n    '))
+    ok('全部 ' + handlers.length + ' 个可点击操作都有声音反馈')
+  }
+
   /* ============ ⑭ 房主专属的操作，前端必须藏起来 ============ */
   console.log('\n=== ⑭ 房主专属操作必须只对房主可见 ===')
   /*
