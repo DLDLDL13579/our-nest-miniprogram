@@ -402,6 +402,55 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    *   **知道边界在哪，比假装它全能更有用。**
    */
 
+  /* ============ ⑩ ★ 延迟回调里改 stage 必须有守卫 ============
+   *
+   * 2026-10-28 的真实竞态：比大小结算有一段
+   *   `setTimeout(() => setData({ stage: 'over' }), 1500)`
+   * 而 `leave()` 只 stopPoll()、**没清定时器**。
+   * 于是"结算动画那 1.5 秒内退出房间"会留下一个待触发的回拨，
+   * 触发时 room 已被置 null → stage 变 'over' 但 room 为空
+   * → over 分支访问 room.game 得到 undefined → **白屏**。
+   *
+   * 这是「延迟回调期间的业务状态变化」，和 `_dead` 是**两件事**：
+   *   页面还活着（_dead=false），但它描述的实体没了（room=null）。
+   * 所以守卫必须同时看 `_dead` 和 `this.data.room`（或 `this.data.stage`）。
+   */
+  {
+    // 抽出所有 setTimeout 回调体（按括号配平）
+    const bodies = []
+    const src = fs.readFileSync(JS, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    let idx = 0
+    while ((idx = src.indexOf('setTimeout(', idx)) >= 0) {
+      const open = src.indexOf('{', idx)
+      if (open < 0) break
+      let depth = 0, end = -1
+      for (let k = open; k < src.length; k++) {
+        if (src[k] === '{') depth++
+        else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+      }
+      if (end < 0) break
+      bodies.push(src.slice(open, end + 1))
+      idx = end
+    }
+
+    const unguarded = []
+    for (const b of bodies) {
+      if (!/\bstage\s*:/.test(b)) continue          // 不改 stage 的回调不归这条管
+      const hasDead = /this\._dead/.test(b)
+      const hasRoom = /this\.data\.room/.test(b)
+      const hasStage = /this\.data\.stage/.test(b)
+      if (!hasDead && !hasRoom && !hasStage) unguarded.push(b.replace(/\s+/g, ' ').slice(0, 90))
+    }
+    assert.deepStrictEqual(unguarded, [],
+      '★ 这些延迟回调改了 stage，但没检查页面/房间是否还在 —— ' +
+      '退出房间后定时器仍会触发，导致 stage 与 room 不同步（白屏）：\n    ' +
+      unguarded.join('\n    ') +
+      '\n    修法：回调开头加 `if (this._dead || !this.data.room) return`')
+    ok(`延迟回调改 stage 的 ${bodies.filter(b => /\bstage\s*:/.test(b)).length} 处都有守卫`)
+  }
+
   /* ============ ⑨ ★ 每个玩法都必须有 wxml 分支（不许用 wx:else 兜底）============
    *
    * 2026-10-27 的真实事故：

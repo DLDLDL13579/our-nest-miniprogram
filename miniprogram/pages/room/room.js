@@ -1542,6 +1542,9 @@ Page({
     }
 
     this._cupTimers.push(setTimeout(() => {
+      /* 双重守卫：页面可能已卸载（_dead），也可能人已经离开房间（room 被清空）。
+         只判 _dead 不够 —— 后者页面还活着，但它描述的实体没了。 */
+      if (this._dead || !this.data.room) return
       this.setData({ result: r.result, stage: 'over' })
     }, 1500))
   },
@@ -1880,6 +1883,19 @@ Page({
             })
           })
         sfx.play('toggleOff')
+        /*
+         * ★★ 必须清掉所有定时器再清 room。
+         *   原来这里只 stopPoll()，**没有 clearCupTimers / clearCountdown** ——
+         *   于是"结算动画那 1.5 秒内退出房间"会留下一个待触发的
+         *   setTimeout(() => setData({ stage: 'over' }))；
+         *   而此刻 room 已经被置 null → stage 变成 'over' 但 room 为空
+         *   → over 分支访问 room.game 得到 undefined → **白屏**。
+         *
+         *   这是"延迟回调期间的业务状态变化"，和 `_dead` 是两件事：
+         *   页面还活着（_dead=false），但**它描述的实体没了**。
+         */
+        this.clearCupTimers()
+        this.clearCountdown()
         this.setData({ room: null, stage: 'entry', result: null, err: '' })
       }
     })
