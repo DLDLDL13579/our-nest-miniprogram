@@ -258,6 +258,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ⑤e 存储 key 的读写必须指向同一个字符串 ============ *
+   *
+   * 存储 key 是字符串，改名**不会有任何编译期报错** ——
+   * 症状是"设置保存不了 / 昵称回到默认"，而且极难查（看起来都正常）。
+   *
+   * 现状有个脆弱点：`me.js` 用常量 `NICK_KEY`，而 `room.js` 和 `app.js`
+   * 直接写字面量 `'nick'`。现在两者都是 'nick'，但改常量值时那两处会静默失配。
+   * 这条断言把三个 key 的实际值钉住。
+   */
+  {
+    const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/sfx.js'), 'utf8')
+    const fbSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/feedback.js'), 'utf8')
+    const meSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.js'), 'utf8')
+    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
+    const appSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/app.js'), 'utf8')
+
+    const val = (src, name) => {
+      const m = new RegExp('const ' + name + " = '([^']+)'").exec(src)
+      return m ? m[1] : null
+    }
+    const checks = [
+      ['MUTE_KEY', val(sfxSrc, 'MUTE_KEY'), 'gameMute'],
+      ['HAPTIC_KEY', val(fbSrc, 'HAPTIC_KEY'), 'hapticOn'],
+      ['NICK_KEY', val(meSrc, 'NICK_KEY'), 'nick']
+    ]
+    const bad = []
+    for (const [name, got, want] of checks) {
+      if (got === null) bad.push(name + '：找不到定义')
+      else if (got !== want) bad.push(`${name} = '${got}'，期望 '${want}'（改过值？读写两侧要一起改）`)
+    }
+    /* 另外确认用字面量读昵称的地方也还是 'nick' */
+    for (const [file, src] of [['room.js', roomSrc], ['app.js', appSrc]]) {
+      if (/getStorageSync\('nick'\)/.test(src) === false && /getStorageSync\(NICK_KEY\)/.test(src) === false) {
+        bad.push(file + '：读昵称的 key 既不是字面量 «nick» 也不是 NICK_KEY（写法变了？）')
+      }
+    }
+    assert.deepStrictEqual(bad, [],
+      '★ 存储 key 不一致 —— 症状是"设置保存不了"，且不会有任何报错：\n    ' + bad.join('\n    '))
+    ok('存储 key 一致（nick / gameMute / hapticOn），读写两侧对得上')
+  }
+
   /* ============ ⑤d 玩法注册表的字段必须被用到 ============ *
    *
    * `games.js` 是"有哪些玩法"的唯一事实源，但它的字段也可能是死数据：
