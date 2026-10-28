@@ -1093,6 +1093,23 @@ Page({
         })
         sfx.play('tapSoft')
       }
+      /*
+       * 有人离开了（2026-10-28）。
+       *
+       * ★ 这个缺口是"不对称"暴露出来的：进来有事件、有音效，离开什么都没有。
+       *   而酒桌上"我先走了"是高频的 —— 之后大家还在等那个人，或者
+       *   结算里还有他的分数，谁也不清楚他已经不在了。
+       *
+       * 用 openid 对比（不是数量）：一人走、一人来，数量不变但还是该说两句。
+       */
+      const gone = (prev.players || []).filter(p =>
+        !nowPlayers.some(q => q.openid === p.openid))
+      if (gone.length) {
+        gone.forEach(p => {
+          if (p.seat !== mySeat) this._evPush(p.name + ' 离开了')
+        })
+        sfx.play('tapSoft')
+      }
     }
 
     /* 别人摇好了（比大小：diceCount 从 0 变正） */
