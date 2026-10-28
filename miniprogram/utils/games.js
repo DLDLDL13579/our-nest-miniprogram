@@ -100,7 +100,7 @@ const GAMES = [
     name: '谁是卧底',
     icon: 'mask',
     color: '#7A5CA8',
-    min: 3, max: 12,
+    min: 3, soloMin: 2, max: 12,
     desc: '有一个人拿到的词和你不一样',
     how: [
       '每人偷偷看一个词，只有卧底看到的词不一样',

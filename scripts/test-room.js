@@ -1236,6 +1236,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
+  /* ============ ⑪e 单人卧底：不能"能开局但玩不了" ============ */
+  /*
+   * ★★ 2026-10-28 发现。soloTest 打开后一个人也能开局，
+   *   而卧底的开局逻辑里有这么一行：
+   *       const spies = order.slice(0, Math.min(spyN, Math.max(1, order.length - 1)))
+   *   一个人时 `Math.max(1, 0) = 1` → **唯一的人被选成卧底**。
+   *   然后进入投票：模板只列"不是自己、没出局"的人 → 列表为空，
+   *   而服务端又拦"不能投自己" → **卡死在投票页，没有任何人能推进**。
+   *
+   *   这不是"玩法不好玩"，是**能开局却永远走不下去** —— 比开不了局更糟，
+   *   因为玩家会以为是自己操作错了。
+   *
+   * 判据：单人开局时，卧底必须**要么被明确拒绝**，要么真的能走完一轮。
+   *      现在的实现是"拒绝"（见 games.js 的 soloMin）。
+   */
+  {
+    OPENID = A
+    const ur = await room.main({ action: 'create', name: 'U1', game: 'undercover' })
+    const urId = ur.room.id
+    const uSolo = await room.main({ action: 'start', id: urId, solo: true })
+    assert.strictEqual(uSolo.ok, false,
+      '★ 一个人不能开卧底局（能开但投票必卡死，比开不了更糟）')
+    assert.ok(/个人|至少/.test(uSolo.msg || ''),
+      '提示要说清要几个人，实际：' + (uSolo.msg || ''))
+    ok('★ 单人卧底被明确拒绝（而不是开局后卡在投票页）')
+  }
+
   /* ============ ⑪d 卧底词库：数量够、无重复、每对都合法 ============ */
   /*
    * 2026-10-28 从 60 对扩到 120 对。

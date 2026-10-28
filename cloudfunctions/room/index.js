@@ -838,9 +838,20 @@ exports.main = async (event) => {
       if (nPlayers < 1) return { ok: false, msg: '房间是空的' }
       {
         const gm = gameOf(room.game)
-        const need = gm ? gm.min : 2
         const solo = event.solo === true
-        if (nPlayers < need && !solo) {
+        /*
+         * ★★ 有些玩法"一个人能开局"但**永远走不下去**（2026-10-28）。
+         *
+         *   卧底就是例子：1 人时开局逻辑 `Math.max(1, order.length-1)` 会把
+         *   **唯一的人选成卧底**，然后投票页列表为空（不能投自己），
+         *   而服务端又拦"不能投自己" —— 卡死在投票页，没有任何人能推进。
+         *
+         *   这比"开不了局"更糟：玩家会以为是自己操作错了。
+         *   所以 soloTest 放行的是"能测"的玩法，不是"所有玩法"——
+         *   每个玩法用 soloMin 声明自己最少要几个人才跑得完一轮。
+         */
+        const need = solo ? (gm && gm.soloMin ? gm.soloMin : 1) : (gm ? gm.min : 2)
+        if (nPlayers < need) {
           return {
             ok: false,
             msg: '这个玩法要 ' + need + ' 个人，还差 ' + (need - nPlayers) + ' 个'

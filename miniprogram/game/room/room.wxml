@@ -241,9 +241,20 @@
         「还差 N 个人」变成可点的「先自己试试」。正式上线前把开关关掉，
         这里会自动回到禁用态，不需要改模板。
       -->
-      <view wx:if="{{room.host && room.shortBy > 0 && soloTest}}"
+      <!--
+        ★ 单人测试开关：只有"一个人也真的能玩完"的玩法才放行。
+        卧底不行 —— 1 人时唯一的人会被选成卧底，投票页列表为空、
+        服务端又拦"不能投自己"，会卡死在投票页（比开不了局更糟）。
+        服务端用 games.js 的 soloMin 拦，这里同步把按钮说清楚，
+        免得玩家点了才被拒。
+      -->
+      <view wx:if="{{room.host && room.shortBy > 0 && soloTest && room.soloOk}}"
             class="btn main bigbtn" bindtap="doStart">
         先自己试试（正式局要 {{room.minPlayers}} 人）
+      </view>
+      <view wx:elif="{{room.host && room.shortBy > 0 && soloTest && !room.soloOk}}"
+            class="btn main bigbtn disabled">
+        这个玩法一个人玩不了（要 {{room.soloMinPlayers}} 人）
       </view>
       <view wx:elif="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
         还差 {{room.shortBy}} 个人才能开

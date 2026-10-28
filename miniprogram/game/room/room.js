@@ -1380,6 +1380,14 @@ Page({
     room.minPlayers = gmeta ? gmeta.min : 2
     room.maxPlayers = gmeta ? gmeta.max : 8
     room.shortBy = Math.max(0, room.minPlayers - (room.count || 0))
+    /*
+     * 单人测试开关下，这个玩法**一个人能不能玩完一轮**（2026-10-28）。
+     * 卧底不能：1 人时唯一的人会被选成卧底，投票页列表为空、
+     * 服务端又拦"不能投自己" → 卡死。服务端按 games.js 的 soloMin 拦，
+     * 前端据此把按钮说清楚，别让玩家点了才被拒。
+     */
+    room.soloMinPlayers = (gmeta && gmeta.soloMin) ? gmeta.soloMin : 1
+    room.soloOk = (room.count || 0) >= room.soloMinPlayers
     room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)
 
     /*
