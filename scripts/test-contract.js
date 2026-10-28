@@ -1958,6 +1958,31 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(badDice, [],
       '规则文案里的颗数和 DICE_PER_PLAYER 对不上：\n    ' + badDice.join('\n    '))
     ok('规则文案里的骰子颗数与 DICE_PER_PLAYER 一致（' + perPlayer + ' 颗）')
+
+    /* 房间号位数：文案写「3 位房间号」，代码是 CODE_LEN */
+    const cm = /const CODE_LEN\s*=\s*(\d+)/.exec(srv)
+    assert.ok(cm, '找不到 CODE_LEN 的定义')
+    const codeLen = Number(cm[1])
+    const badLen = []
+    for (const root of PAGE_ROOTS) {
+      if (!fs.existsSync(root)) continue
+      for (const f of fs.readdirSync(root, { withFileTypes: true })) {
+        const fp = path.join(root, f.name)
+        if (!f.isDirectory()) continue
+        for (const g of fs.readdirSync(fp)) {
+          if (!g.endsWith('.wxml')) continue
+          const src2 = fs.readFileSync(path.join(fp, g), 'utf8')
+          for (const mm of src2.matchAll(/(\d+)\s*位房间号/g)) {
+            if (Number(mm[1]) !== codeLen) {
+              badLen.push(path.relative(ROOT, path.join(fp, g)) + ' → 写「' + mm[1] + ' 位」，代码是 ' + codeLen)
+            }
+          }
+        }
+      }
+    }
+    assert.deepStrictEqual(badLen, [],
+      '文案里的房间号位数和 CODE_LEN 对不上（玩家会输不对号）：\n    ' + badLen.join('\n    '))
+    ok('房间号位数文案与 CODE_LEN 一致（' + codeLen + ' 位）')
   }
 
   /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
