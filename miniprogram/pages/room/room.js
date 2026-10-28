@@ -1432,7 +1432,11 @@ Page({
     this.data._uwBusy = true
     sfx.play('tapSoft')
     const r = await call('room', { action: 'uwSay', id: this.data.room.id }, { silent: true })
-      .catch((e) => { wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+      .catch((e) => {
+        wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     this.data._uwBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
@@ -1453,7 +1457,11 @@ Page({
     /* 走统一时间轴：音效与震动的错开补偿由表决定，不在这里手写 */
     feedback.fire('uwVote')
     const r = await call('room', { action: 'uwVote', target: target, id: this.data.room.id }, { silent: true })
-      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' }); return null })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     this.data._uwBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
@@ -1496,7 +1504,11 @@ Page({
     const r = await call('room',
       { action: 'pkAct', act: what === 'public' ? 'swapPublic' : 'swapMine', id: this.data.room.id },
       { silent: true })
-      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没换成，再点一次', icon: 'none' }); return null })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没换成，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     this.data._pkBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
@@ -1518,7 +1530,11 @@ Page({
     this.data._pkBusy = true
     sfx.play('tapSoft')
     const r = await call('room', { action: 'pkAct', act: 'fold', id: this.data.room.id }, { silent: true })
-      .catch((e) => { wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+      .catch((e) => {
+        wx.showToast({ title: (e && e.friendly) || '没提交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     this.data._pkBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
@@ -1534,7 +1550,11 @@ Page({
     /* 摊牌：三张牌拍在桌上 + 160ms 后一下揭示重击 —— 两层音在表里定义 */
     feedback.fire('pkSpread')
     const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
-      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' }); return null })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     this.data._pkBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },
@@ -1577,6 +1597,7 @@ Page({
       action: 'card', id: this.data.room.id, type: this.data.cardType, text: text
     }, { silent: true }).catch((err) => {
       wx.showToast({ title: (err && (err.friendly || err.message)) || '没加上', icon: 'none', duration: 2200 })
+      this.resyncAfterFail()
       return null
     })
     if (r && r.ok) {
@@ -1598,6 +1619,7 @@ Page({
       action: 'cardDel', id: this.data.room.id, text: text
     }, { silent: true }).catch((err) => {
       wx.showToast({ title: (err && (err.friendly || err.message)) || '删不掉，再试一次', icon: 'none' })
+      this.resyncAfterFail()
       return null
     })
     if (r && r.ok) this.setData({ room: this.decorate(r.room) })
@@ -1628,6 +1650,7 @@ Page({
     const r = await call('room', { action: 'deck', id: this.data.room.id, deck: k },
       { silent: true }).catch((err) => {
       wx.showToast({ title: (err && (err.friendly || err.message)) || '换不了', icon: 'none' })
+      this.resyncAfterFail()
       return null
     })
     if (r && r.ok) {
@@ -1647,7 +1670,11 @@ Page({
       /* 场合只有转盘用得到，但一起传过去无害 —— 房主中途换游戏也不用重开房 */
       deck: this.data.pickDeck
     }, { loading: '开一桌' })
-      .catch((e) => { this.setData({ err: (e && e.friendly) || '开不了这一桌' }); return null })
+      .catch((e) => {
+        /* no-room: 建房失败时还没有房间可同步，这里是唯一合理的例外 */
+        this.setData({ err: (e && e.friendly) || '开不了这一桌' })
+        return null
+      })
 
     this.setData({ creating: false })
     if (r && r.ok) {
@@ -1689,7 +1716,11 @@ Page({
     const r = await call('room', {
       action: 'join', code: code, name: this.data.myName || '玩家'
     }, { loading: '进房间' })
-      .catch((e) => { this.setData({ err: (e && e.friendly) || '进不去', loading: false }); return null })
+      .catch((e) => {
+        /* no-room: 进不去 = 没进到房间里，没有可同步的状态 */
+        this.setData({ err: (e && e.friendly) || '进不去', loading: false })
+        return null
+      })
 
     this.setData({ joining: false, loading: false })
     if (r && r.ok) {
@@ -1726,7 +1757,11 @@ Page({
     }
     if (!this.specGuard()) return
     const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
-      .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
+      .catch((e) => {
+        wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
     if (r && r.ok) {
       /* ★ 走 feedback 而不是裸 sfx.play（2026-10-28）：
          裸播没有音量档位、没有震动分级，也进不了时间轴 ——
@@ -1766,6 +1801,7 @@ Page({
           title: (e && (e.friendly || e.message)) || (game ? '换不了' : '开不了新一局'),
           icon: 'none', duration: 2200
         })
+        this.resyncAfterFail()
         return null
       })
     if (r && r.ok) {
@@ -1840,6 +1876,7 @@ Page({
           title: (e && (e.friendly || e.message)) || '摇不了，再试一次',
           icon: 'none', duration: 2200
         })
+        this.resyncAfterFail()
         return null
       })
 
@@ -2024,6 +2061,23 @@ Page({
 
   /* ================= 大话骰 ================= */
 
+  /**
+   * 动作失败后立刻同步一次真实状态。
+   *
+   * ★ 2026-10-28。失败**往往说明本地看到的状态已经是旧的**：
+   *   别人刚叫过骰、刚换过牌、刚投完票，而我的轮询还没到（最长 1.5 秒）。
+   *   这时服务端回一句「只能往上叫」，如果只弹个 toast 就完事，
+   *   用户面前的按钮**还是那批过期的**，于是他会对着同一个按钮连点 ——
+   *   每次都失败，每次都提示，体验像是界面坏了。
+   *
+   *   所以：提示完立刻拉一次，把按钮更新到当前状态。
+   *   这不是"重试"（不重发那个失败的请求），是"把脚下换成真实的地面"。
+   */
+  resyncAfterFail() {
+    if (this._dead) return
+    this.pollTick()
+  },
+
   async doBid(e) {
     if (!this.specGuard()) return
     const ds = e.currentTarget.dataset
@@ -2116,6 +2170,7 @@ Page({
         title: (e && (e.friendly || e.message)) || '这一叫不行，换一个',
         icon: 'none', duration: 2200
       })
+      this.resyncAfterFail()
       return null
     })
     if (r && r.ok) {
@@ -2147,6 +2202,7 @@ Page({
           title: (e && (e.friendly || e.message)) || '开不了，再试一次',
           icon: 'none', duration: 2200
         })
+        this.resyncAfterFail()
         return null
       })
     this.setData({ suspense: false })
@@ -2201,6 +2257,7 @@ Page({
           title: (e && (e.friendly || e.message)) || '转不了，再试一次',
           icon: 'none', duration: 2200
         })
+        this.resyncAfterFail()
         return null
       })
     if (!r || !r.ok) return

@@ -733,6 +733,52 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     ok(`注册表 ${GAMES.length} 个玩法都有对应的界面分支（没有 else 兜底）`)
   }
 
+  /* ============ ⑫ 动作失败后必须立刻同步状态 ============ */
+  console.log('\n=== ⑫ 动作失败后要立刻拉一次（否则对着过期按钮连点）===')
+  /*
+   * 2026-10-28 加。失败**往往说明本地看到的状态已经是旧的**：
+   * 别人刚叫过骰/刚换过牌/刚投完票，而我的轮询还没到（最长 1.5 秒）。
+   * 这时服务端回一句「只能往上叫」，如果只弹个 toast 就完事，
+   * 用户面前的按钮还是那批过期的 —— 他会对着同一个按钮连点，
+   * 每次都失败、每次都提示，体验像是界面坏了。
+   *
+   * 判据：凡是 `call('room', ...)` 的 catch 里出现"弹提示 + return null"的地方，
+   * 都必须先调 resyncAfterFail()。用**函数体切片**逐个 catch 检查，
+   * 不做整文件正则（那种判据删掉一处也照样能过）。
+   */
+  const catches = []
+  {
+    /*
+     * ⚠️ 第一版这里用 `\.catch\(...\)\s*=>\s*\{([\s\S]*?)\n\s*\}\)` 非贪婪抓块体 ——
+     *   它是**废的**：catch 里几乎一定嵌着 `wx.showToast({ ... })`，
+     *   而那个 `        })` 正好满足「换行 + 空白 + })」，于是块体在
+     *   showToast 结束处就被截断了，后面的 return null / resync 根本没进判据。
+     *
+     *   表现是一次反向验证：删掉一处 resyncAfterFail，断言**照样 exit=0**。
+     *   这正是 AGENTS.md 反复记的那类事故 —— 判据看着在跑，实际什么都没测。
+     *
+     *   现在改成**括号配平**取块体：从 `=> {` 的那个 `{` 开始数深度，数到 0 为止。
+     */
+    const openRe = /\.catch\([^)]*\)\s*=>\s*\{/g
+    let om
+    while ((om = openRe.exec(src))) {
+      const braceIdx = src.lastIndexOf('{', om.index + om[0].length)
+      let depth = 0, end = -1
+      for (let k = braceIdx; k < src.length; k++) {
+        if (src[k] === '{') depth++
+        else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+      }
+      if (end > braceIdx) catches.push(src.slice(braceIdx, end))
+    }
+  }
+  /* no-room 标记 = 建房失败，此时还没有房间可同步（唯一合理的例外，必须写明） */
+  const noResync = catches.filter(b =>
+    /return null/.test(b) && !/resyncAfterFail\(\)/.test(b) && !/no-room/.test(b))
+  assert.deepStrictEqual(noResync, [],
+    '这些失败分支只弹了提示、没有同步状态（用户会对着过期按钮连点）：\n    ' +
+    noResync.map(b => b.trim().split('\n')[0]).join('\n    '))
+  ok(`${catches.length} 个失败分支：弹提示的都必须先 resyncAfterFail`)
+
   /* ============ ⑪ 前后台切换：回前台必须立刻同步 ============ */
   console.log('\n=== ⑪ 切回前台要立刻拉一次（不能先给一屏过期画面）===')
   /*
