@@ -1442,3 +1442,34 @@
   letter-spacing: 1rpx;
   animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
 }
+
+/* ---------- 怎么玩（lobby 等人时看的规则）----------
+   等人齐的那几十秒是无事可做的时候，正好用来讲规则。
+   编号用金色圆点：酒桌上大家会念"第 2 条"来确认。 */
+.howto {
+  margin-top: var(--gap-2);
+  padding: 26rpx 24rpx;
+  background: rgba(255,255,255,.05);
+  border: 2rpx solid rgba(255,255,255,.08);
+  border-radius: var(--r-2);
+}
+.ht-lbl {
+  font-size: 21rpx; color: rgba(232,179,60,.8);
+  letter-spacing: 2rpx; margin-bottom: 16rpx;
+}
+.ht-item {
+  display: flex; align-items: flex-start; gap: 14rpx;
+  padding: 8rpx 0;
+}
+.ht-n {
+  width: 32rpx; height: 32rpx; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(232,179,60,.18);
+  color: #E8B33C; font-size: 18rpx; font-weight: 700;
+  margin-top: 3rpx;
+}
+.ht-t {
+  flex: 1; font-size: 23rpx; line-height: 1.6;
+  color: rgba(255,255,255,.72);
+}

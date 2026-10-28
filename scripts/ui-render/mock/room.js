@@ -73,6 +73,8 @@ module.exports = {
     lobby: () => ({
       stage: 'lobby',
       room: {
+        gameName: '大话骰',
+        howList: GAMES.filter(g => g.id === 'liar')[0].how,
         id: 'r1', code: '352', game: 'liar', phase: 'lobby', host: true,
         me: { seat: 1, name: '邓林', dice: [] },
         players: PLAYERS, count: 3, turn: 0, round: 0,

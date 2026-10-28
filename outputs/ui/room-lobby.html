@@ -1109,29 +1109,64 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 
-.uw-word {
-  background: linear-gradient(135deg, #3A2E42, #2A2130);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: var(--r-3);
-  padding: 32px 15px;
-  margin-bottom: var(--gap-3);
+.uw-card {
+  position: relative;
+  margin-bottom: var(--gap-2);
+  padding: 2.5px;                       
+  border-radius: 13px;
+  background: linear-gradient(150deg, #6B4E86, #3A2C4A);
+  box-shadow: 0 5px 14px rgba(0,0,0,.32);
+  transition: transform .16s ease-out, box-shadow .18s ease-out, background .18s ease-out;
+}
+.uw-card.on {
+  background: linear-gradient(150deg, #A579D0, #6B4E86);
+  transform: translateY(-2px) scale(.995);
+  box-shadow: 0 8px 20px rgba(140, 100, 200, .42);
+}
+.uw-card-in {
+  border-radius: 11px;
+  border: 1px solid rgba(232,179,60,.45);
+  background: linear-gradient(160deg, rgba(58,44,74,.92), rgba(36,28,48,.96));
+  padding: 28px 15px;
   text-align: center;
-  
-  transition: transform .12s, background .12s;
 }
-.uw-word.on {
-  background: linear-gradient(135deg, #7A5CA8, #5A3F86);
-  transform: scale(.99);
-  box-shadow: 0 0 0 3px rgba(122, 92, 168, .22);
+.uw-card.on .uw-card-in { border-color: rgba(255,225,160,.9) }
+
+.uw-lock {
+  font-size: 18px; font-weight: 700; color: rgba(255,255,255,.85);
+  letter-spacing: 1.5px;
 }
-.uw-wlbl { font-size: 11.5px; color: rgba(255,255,255,.55); letter-spacing: 1.5px }
+.uw-wlbl { font-size: 10.5px; color: rgba(255,255,255,.55); letter-spacing: 2px }
 .uw-wtxt {
-  font-size: 44px; font-weight: 700; color: #fff;
-  margin-top: 9px; line-height: 1.2; letter-spacing: 2px;
+  font-size: 46px; font-weight: 700; color: #fff;
+  margin: 8px 0 5px; line-height: 1.15; letter-spacing: 3px;
+  text-shadow: 0 2px 9px rgba(180, 140, 240, .45);
 }
-.uw-wtip {
-  font-size: 10px; color: rgba(255,255,255,.35); margin-top: 8px;
+.uw-wsub { font-size: 10px; color: rgba(255,255,255,.4) }
+.uw-wtip { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 7px }
+
+
+.uw-seats {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin-bottom: var(--gap-2);
 }
+.uw-seat {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 9px; border-radius: 499.5px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+}
+.uw-seat-n {
+  width: 13px; height: 13px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8.5px; font-weight: 700;
+  background: rgba(255,255,255,.16); color: rgba(255,255,255,.7);
+}
+.uw-seat-t { font-size: 10.5px; color: rgba(255,255,255,.7) }
+.uw-seat.me { border-color: rgba(232,179,60,.45) }
+.uw-seat.me .uw-seat-t { color: #F6E7C3 }
+.uw-seat.out { opacity: .34 }
+.uw-seat.out .uw-seat-t { text-decoration: line-through }
 
 
 .uw-note {
@@ -1178,6 +1213,12 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-color: rgba(160, 130, 210, .7);
 }
 .uw-p.off { opacity: .38 }
+
+.uw-p.self { opacity: .42 }
+.uw-tick {
+  font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
+  background: rgba(160,130,210,.5); color: #fff;
+}
 
 
 .uw-out {
@@ -1227,47 +1268,95 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 
-.pk-hand {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  flex-wrap: wrap;
-  padding: 24px 12px;
+.pk-table {
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 11px;
+  padding: 20px 10px 17px;
   margin-bottom: var(--gap-2);
   background: linear-gradient(135deg, #3A3128, #2A231C);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: var(--r-3);
-  transition: background .12s;
 }
-.pk-hand.on {
-  background: linear-gradient(135deg, #4A3D2C, #352B20);
-  box-shadow: 0 0 0 3px rgba(232,179,60,.14);
+.pk-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  flex: none;
+  
+  transition: transform .46s cubic-bezier(.18,.9,.3,1.16), opacity .3s ease-out;
+}
+.pk-table.dealing .pk-slot {
+  transform: translateY(-150px) rotate(-14deg) scale(.72);
+  opacity: 0;
 }
 
+.pk-table.dealing .pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-table.dealing .pk-slot:nth-child(2) { transition-delay: 0ms }
+.pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-slot:nth-child(2) { transition-delay: 70ms }
+.pk-slot:nth-child(3) { transition-delay: 140ms }
 
-.pk-card {
-  width: 66px; height: 93px; flex: none;
+.pk-tagline {
+  font-size: 9.5px; color: rgba(255,255,255,.45);
+  letter-spacing: 1px; height: 13px;
+}
+.pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
+.pk-slot.pk-dark .pk-tagline { color: rgba(160,130,210,.7) }
+
+
+.pk-flip {
+  position: relative;
+  width: 68px; height: 96px;
+  transition: transform .26s cubic-bezier(.2,.85,.3,1.05);
+}
+.pk-flip.flipped { transform: rotate(-2.5deg) }
+.pk-side {
+  position: absolute; left: 0; top: 0;
+  width: 68px; height: 96px;
+  border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  background: #FFFDF9; border-radius: 8px;
-  font-size: 26px; font-weight: 700; color: #2C2822;
-  box-shadow: 0 3px 8px rgba(0,0,0,.28);
+  box-shadow: 0 3px 8px rgba(0,0,0,.3);
+  transition: opacity .16s ease-out, transform .26s cubic-bezier(.2,.85,.3,1.05);
 }
-.pk-red { color: #C4432F }
+
 
 .pk-back {
-  width: 66px; height: 93px; flex: none;
-  border-radius: 8px;
-  background: repeating-linear-gradient(45deg, #6B5A44 0 4px, #5C4C39 4px 8px);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.12);
-}
-.pk-hint {
-  width: 100%; text-align: center;
-  font-size: 11px; color: rgba(255,255,255,.5); margin-top: 11px;
+  opacity: 1;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    linear-gradient(150deg, #7B2D3A, #4E1B24);
+  box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.16), 0 3px 8px rgba(0,0,0,.3);
 }
 
-.pk-type {
-  width: 100%; text-align: center;
-  font-size: 13px; font-weight: 700; color: #F6E7C3; margin-top: 9px;
-  letter-spacing: 1px;
+.pk-front {
+  opacity: 0;
+  transform: scale(.9);
+  background: #FFFDF9;
+  font-size: 32px; font-weight: 700; color: #2C2822;
 }
+.pk-front.pk-empty { color: rgba(0,0,0,.15); font-size: 20px }
+.pk-front text { color: #2C2822 }
+.pk-front text.pk-red, .pk-red { color: #C4432F }
+
+
+.pk-flip.flipped .pk-back { opacity: 0 }
+.pk-flip.flipped .pk-front { opacity: 1; transform: scale(1) }
+
+
+.pk-slot.pk-pub .pk-flip { transform: none }
+.pk-slot.pk-pub .pk-flip .pk-back { opacity: 0 }
+.pk-slot.pk-pub .pk-flip .pk-front { opacity: 1; transform: scale(1) }
+
+.pk-slot.pk-pub .pk-front { box-shadow: inset 0 0 0 2px rgba(232,179,60,.85), 0 3px 8px rgba(0,0,0,.3) }
+
+
+.pk-q { font-size: 28px; color: rgba(0,0,0,.18); font-weight: 700 }
+
+
+.pk-owe {
+  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5);
+  margin-bottom: var(--gap-2);
+}
+.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 11.5px }
 
 
 .pk-last {
@@ -1346,6 +1435,77 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
 }
 
+
+@keyframes slamIn {
+  0%   { opacity: 0; transform: scale(1.28) rotate(-2.2deg) }
+  58%  { opacity: 1; transform: scale(.975) rotate(.7deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0deg) }
+}
+.uw-out { animation: slamIn .44s cubic-bezier(.2,.9,.3,1.18) both }
+.uw-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-last { animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+
+
+@keyframes pickedPop {
+  0%   { transform: scale(.97) }
+  60%  { transform: scale(1.015) }
+  100% { transform: scale(1) }
+}
+.uw-p.picked { animation: pickedPop .22s cubic-bezier(.3,1.5,.6,1) both }
+
+
+.uw-word {
+  transition: transform .14s ease-out, background .16s ease-out, box-shadow .16s ease-out;
+}
+.uw-word.on {
+  transform: scale(.985) translateY(-1px);
+  box-shadow: 0 0 0 2.5px rgba(160,120,220,.28), 0 6px 18px rgba(120,80,190,.35);
+}
+
+
+.settle-foot {
+  margin: 14px 0 12px;
+  padding: 13px 12px;
+  text-align: center;
+  font-size: 13.5px; font-weight: 600;
+  color: #F6E7C3;
+  background: rgba(232,179,60,.10);
+  border: 1px solid rgba(232,179,60,.28);
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}
+
+
+.howto {
+  margin-top: var(--gap-2);
+  padding: 13px 12px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-2);
+}
+.ht-lbl {
+  font-size: 10.5px; color: rgba(232,179,60,.8);
+  letter-spacing: 1px; margin-bottom: 8px;
+}
+.ht-item {
+  display: flex; align-items: flex-start; gap: 7px;
+  padding: 4px 0;
+}
+.ht-n {
+  width: 16px; height: 16px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: rgba(232,179,60,.18);
+  color: #E8B33C; font-size: 9px; font-weight: 700;
+  margin-top: 1.5px;
+}
+.ht-t {
+  flex: 1; font-size: 11.5px; line-height: 1.6;
+  color: rgba(255,255,255,.72);
+}
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -1392,7 +1552,24 @@ view, text, button, input, textarea { box-sizing: border-box }
     </div>
 
     
-    <div class="gameswitch">
+    <div class="howto">
+      <div class="ht-lbl">怎么玩 · 大话骰</div>
+      <div class="ht-list">
+        <div class="ht-item">
+          <span class="ht-n">1</span>
+          <span class="ht-t">每人摇一盅，只有自己看得到自己的点数</span>
+        </div><div class="ht-item">
+          <span class="ht-n">2</span>
+          <span class="ht-t">从一个人开始往上叫：几个几（比如「三个四」）</span>
+        </div><div class="ht-item">
+          <span class="ht-n">3</span>
+          <span class="ht-t">下一位要么叫得更大，要么拍桌子「开」</span>
+        </div><div class="ht-item">
+          <span class="ht-n">4</span>
+          <span class="ht-t">开出来够数，叫的人输；不够数，开的人输</span>
+        </div>
+      </div>
+    </div><div class="gameswitch">
       <div class="gs-lbl">换个玩法</div>
       <div class="gs-row">
         <div class="gspill on">

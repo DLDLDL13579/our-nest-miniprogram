@@ -113,6 +113,21 @@
     </view>
 
     <!--
+      怎么玩 —— 从玩法注册表的 `how` 字段渲染。
+      放在 lobby 是刻意的：**等人齐的那几十秒**正好是无事可做的时候，
+      新人不用问"这游戏怎么玩"，扫一眼就知道。
+    -->
+    <view wx:if="{{room.howList.length}}" class="howto">
+      <view class="ht-lbl">怎么玩 · {{room.gameName}}</view>
+      <view class="ht-list">
+        <view wx:for="{{room.howList}}" wx:key="*this" class="ht-item">
+          <text class="ht-n">{{index + 1}}</text>
+          <text class="ht-t">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!--
       ★ 换个玩法 —— 只在**大厅**能换（服务端也会拦"正在玩"的时候）。
       为什么不做进结算页：换玩法意味着"这一局的结果就此翻篇"，
       放在结算页会让人以为"换完还能回来看刚才那局"。

@@ -61,10 +61,28 @@ function buildList() {
   }))
 }
 
+/**
+ * 把"上次玩的那个"排到最前面。
+ *
+ * 为什么值得做：酒桌上最常发生的对话是"还玩刚才那个吧"。
+ * 让它排第一，等于省掉每次都要在列表里找一下。
+ * ⚠️ 只做**置顶**，不做"按频率排序" —— 后者会让列表顺序莫名其妙地变，
+ *   玩家找不到东西比多找一下更烦。
+ */
+function sortByRecent(list) {
+  let last = ''
+  try { last = wx.getStorageSync('lastGame') || '' } catch (e) {}
+  if (!last) return list
+  const hit = list.filter(g => g.id === last)
+  if (!hit.length) return list
+  return hit.concat(list.filter(g => g.id !== last))
+}
+
 Page({
   data: {
     ic: _IC,
-    list: buildList(),
+    /* data 初始化也走同一套排序，否则首帧会闪一下（未排序 → onShow 排序） */
+    list: sortByRecent(buildList()),
     joinCode: '',
     err: '',
     muted: false,
@@ -77,7 +95,11 @@ Page({
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */
   onShow() {
-    this.setData({ muted: sfx.isMuted(), hapticOn: feedback.isHapticOn() })
+    this.setData({
+      muted: sfx.isMuted(),
+      hapticOn: feedback.isHapticOn(),
+      list: sortByRecent(buildList())
+    })
   },
 
   onHide() { sfx.stopAll() },
@@ -110,6 +132,8 @@ Page({
   openGame(e) {
     const id = e.currentTarget.dataset.id
     sfx.play('whoosh')
+    /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
+    try { wx.setStorageSync('lastGame', id) } catch (err) {}
     wx.navigateTo({ url: '/pages/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
   },
 

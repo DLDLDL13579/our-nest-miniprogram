@@ -889,6 +889,16 @@ Page({
     room.waitingNames = waiting.map(p => p.name).join('、')
 
     /*
+     * 玩法名与规则 —— 从注册表取，不在这里重写一遍文案。
+     * ★ 注册表里每个玩法都有 `how: [4 条规则]`，但这一版之前**从来没被渲染过**
+     *   （grep `.how` 全仓为 0）—— 16 条文案白写在数据里。
+     *   放 lobby 是刻意的：等人齐的那一刻正好是无事可做、最适合看规则的时候。
+     */
+    const gmeta = gameOf(room.game)
+    room.gameName = gmeta ? gmeta.name : ''
+    room.howList = gmeta && Array.isArray(gmeta.how) ? gmeta.how : []
+
+    /*
      * 结算的"情绪收尾"：一句话说清这局谁最惨 / 发生了什么。
      * ★ 明细区已经展示了牌和骰子，这里只补**结论**，不重复数据。
      *   按玩法分别算，但都收敛到 room.settleFoot 一个字段 ——
