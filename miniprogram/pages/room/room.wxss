@@ -1053,30 +1053,67 @@
    所以视觉重心全在"你的词"那一块，其余元素一律压低存在感。
    ============================================================ */
 
-/* ---------- 你的词（按住才显示）---------- */
-.uw-word {
-  background: linear-gradient(135deg, #3A2E42, #2A2130);
-  border: 2rpx solid rgba(255,255,255,.1);
-  border-radius: var(--r-3);
-  padding: 64rpx 30rpx;
-  margin-bottom: var(--gap-3);
+/* ---------- 词卡 ----------
+   这张卡是玩家全部的私有信息，所以要有"牌"的分量：
+   外层深色底 + 内层金色细框 + 投影。按住时整体抬亮。 */
+.uw-card {
+  position: relative;
+  margin-bottom: var(--gap-2);
+  padding: 5rpx;                       /* 给金色边留出"金箔"的厚度 */
+  border-radius: 26rpx;
+  background: linear-gradient(150deg, #6B4E86, #3A2C4A);
+  box-shadow: 0 10rpx 28rpx rgba(0,0,0,.32);
+  transition: transform .16s ease-out, box-shadow .18s ease-out, background .18s ease-out;
+}
+.uw-card.on {
+  background: linear-gradient(150deg, #A579D0, #6B4E86);
+  transform: translateY(-4rpx) scale(.995);
+  box-shadow: 0 16rpx 40rpx rgba(140, 100, 200, .42);
+}
+.uw-card-in {
+  border-radius: 22rpx;
+  border: 2rpx solid rgba(232,179,60,.45);
+  background: linear-gradient(160deg, rgba(58,44,74,.92), rgba(36,28,48,.96));
+  padding: 56rpx 30rpx;
   text-align: center;
-  /* 按住时的手感：轻微内陷，像按下某个实体开关 */
-  transition: transform .12s, background .12s;
 }
-.uw-word.on {
-  background: linear-gradient(135deg, #7A5CA8, #5A3F86);
-  transform: scale(.99);
-  box-shadow: 0 0 0 6rpx rgba(122, 92, 168, .22);
+.uw-card.on .uw-card-in { border-color: rgba(255,225,160,.9) }
+
+.uw-lock {
+  font-size: 36rpx; font-weight: 700; color: rgba(255,255,255,.85);
+  letter-spacing: 3rpx;
 }
-.uw-wlbl { font-size: 23rpx; color: rgba(255,255,255,.55); letter-spacing: 3rpx }
+.uw-wlbl { font-size: 21rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx }
 .uw-wtxt {
-  font-size: 88rpx; font-weight: 700; color: #fff;
-  margin-top: 18rpx; line-height: 1.2; letter-spacing: 4rpx;
+  font-size: 92rpx; font-weight: 700; color: #fff;
+  margin: 16rpx 0 10rpx; line-height: 1.15; letter-spacing: 6rpx;
+  text-shadow: 0 4rpx 18rpx rgba(180, 140, 240, .45);
 }
-.uw-wtip {
-  font-size: 20rpx; color: rgba(255,255,255,.35); margin-top: 16rpx;
+.uw-wsub { font-size: 20rpx; color: rgba(255,255,255,.4) }
+.uw-wtip { font-size: 20rpx; color: rgba(255,255,255,.35); margin-top: 14rpx }
+
+/* ---------- 在场玩家（只展示，不用点）---------- */
+.uw-seats {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 12rpx;
+  margin-bottom: var(--gap-2);
 }
+.uw-seat {
+  display: flex; align-items: center; gap: 8rpx;
+  padding: 10rpx 18rpx; border-radius: 999rpx;
+  background: rgba(255,255,255,.07);
+  border: 2rpx solid rgba(255,255,255,.09);
+}
+.uw-seat-n {
+  width: 26rpx; height: 26rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17rpx; font-weight: 700;
+  background: rgba(255,255,255,.16); color: rgba(255,255,255,.7);
+}
+.uw-seat-t { font-size: 21rpx; color: rgba(255,255,255,.7) }
+.uw-seat.me { border-color: rgba(232,179,60,.45) }
+.uw-seat.me .uw-seat-t { color: #F6E7C3 }
+.uw-seat.out { opacity: .34 }
+.uw-seat.out .uw-seat-t { text-decoration: line-through }
 
 /* ---------- 说明 ---------- */
 .uw-note {
@@ -1123,6 +1160,12 @@
   border-color: rgba(160, 130, 210, .7);
 }
 .uw-p.off { opacity: .38 }
+/* 自己那一行压暗 —— 不能投自己，直接让它看起来就"点不动" */
+.uw-p.self { opacity: .42 }
+.uw-tick {
+  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  background: rgba(160,130,210,.5); color: #fff;
+}
 
 /* ---------- 出局揭晓 ---------- */
 .uw-out {

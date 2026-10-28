@@ -1109,29 +1109,64 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 
-.uw-word {
-  background: linear-gradient(135deg, #3A2E42, #2A2130);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: var(--r-3);
-  padding: 32px 15px;
-  margin-bottom: var(--gap-3);
+.uw-card {
+  position: relative;
+  margin-bottom: var(--gap-2);
+  padding: 2.5px;                       
+  border-radius: 13px;
+  background: linear-gradient(150deg, #6B4E86, #3A2C4A);
+  box-shadow: 0 5px 14px rgba(0,0,0,.32);
+  transition: transform .16s ease-out, box-shadow .18s ease-out, background .18s ease-out;
+}
+.uw-card.on {
+  background: linear-gradient(150deg, #A579D0, #6B4E86);
+  transform: translateY(-2px) scale(.995);
+  box-shadow: 0 8px 20px rgba(140, 100, 200, .42);
+}
+.uw-card-in {
+  border-radius: 11px;
+  border: 1px solid rgba(232,179,60,.45);
+  background: linear-gradient(160deg, rgba(58,44,74,.92), rgba(36,28,48,.96));
+  padding: 28px 15px;
   text-align: center;
-  
-  transition: transform .12s, background .12s;
 }
-.uw-word.on {
-  background: linear-gradient(135deg, #7A5CA8, #5A3F86);
-  transform: scale(.99);
-  box-shadow: 0 0 0 3px rgba(122, 92, 168, .22);
+.uw-card.on .uw-card-in { border-color: rgba(255,225,160,.9) }
+
+.uw-lock {
+  font-size: 18px; font-weight: 700; color: rgba(255,255,255,.85);
+  letter-spacing: 1.5px;
 }
-.uw-wlbl { font-size: 11.5px; color: rgba(255,255,255,.55); letter-spacing: 1.5px }
+.uw-wlbl { font-size: 10.5px; color: rgba(255,255,255,.55); letter-spacing: 2px }
 .uw-wtxt {
-  font-size: 44px; font-weight: 700; color: #fff;
-  margin-top: 9px; line-height: 1.2; letter-spacing: 2px;
+  font-size: 46px; font-weight: 700; color: #fff;
+  margin: 8px 0 5px; line-height: 1.15; letter-spacing: 3px;
+  text-shadow: 0 2px 9px rgba(180, 140, 240, .45);
 }
-.uw-wtip {
-  font-size: 10px; color: rgba(255,255,255,.35); margin-top: 8px;
+.uw-wsub { font-size: 10px; color: rgba(255,255,255,.4) }
+.uw-wtip { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 7px }
+
+
+.uw-seats {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+  margin-bottom: var(--gap-2);
 }
+.uw-seat {
+  display: flex; align-items: center; gap: 4px;
+  padding: 5px 9px; border-radius: 499.5px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+}
+.uw-seat-n {
+  width: 13px; height: 13px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8.5px; font-weight: 700;
+  background: rgba(255,255,255,.16); color: rgba(255,255,255,.7);
+}
+.uw-seat-t { font-size: 10.5px; color: rgba(255,255,255,.7) }
+.uw-seat.me { border-color: rgba(232,179,60,.45) }
+.uw-seat.me .uw-seat-t { color: #F6E7C3 }
+.uw-seat.out { opacity: .34 }
+.uw-seat.out .uw-seat-t { text-decoration: line-through }
 
 
 .uw-note {
@@ -1178,6 +1213,12 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-color: rgba(160, 130, 210, .7);
 }
 .uw-p.off { opacity: .38 }
+
+.uw-p.self { opacity: .42 }
+.uw-tick {
+  font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
+  background: rgba(160,130,210,.5); color: #fff;
+}
 
 
 .uw-out {
@@ -1442,12 +1483,37 @@ view, text, button, input, textarea { box-sizing: border-box }
   
     
     
-      <div class="uw-word">
-        
-          <div class="uw-wlbl">按住看你的词</div>
-          <div class="uw-wtip">松手就收起 · 别让旁边的人看见</div>
-        </div>
+      
+      <div class="uw-card">
+        <div class="uw-card-in">
+          
+            <div class="uw-lock">按住查看</div>
+            <div class="uw-wtip">松开就收起 · 旁边有人盯着呢</div>
+          </div>
+      </div>
 
+      
+      <div class="uw-seats">
+        
+          <div class="uw-seat  me">
+            <span class="uw-seat-n">1</span>
+            <span class="uw-seat-t">邓林</span>
+          </div>
+          <div class="uw-seat">
+            <span class="uw-seat-n">2</span>
+            <span class="uw-seat-t">倩萍</span>
+          </div>
+          <div class="uw-seat">
+            <span class="uw-seat-n">3</span>
+            <span class="uw-seat-t">阿杰</span>
+          </div>
+          <div class="uw-seat out">
+            <span class="uw-seat-n">4</span>
+            <span class="uw-seat-t">老王</span>
+          </div>
+      </div>
+
+      
       
         <div class="uw-out">
           <div class="uw-ot">老王 出局</div>

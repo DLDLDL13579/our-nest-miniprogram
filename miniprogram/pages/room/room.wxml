@@ -322,39 +322,63 @@
 
     <!-- ============ 谁是卧底 ============ -->
     <block wx:elif="{{room.game === 'undercover'}}">
-      <view class="uw-word {{showWord ? 'on' : ''}}"
+      <!--
+        ★ 词卡：这个玩法里玩家的"全部私有信息"就是这张卡。
+          所以它必须有**卡片的分量**（边框、内框、投影），
+          而不是一个色块 —— 酒桌上握着手机看的是"一张牌"。
+          按住亮起的交互理由同骰盅偷看：同桌的人就坐在旁边，松手即藏。
+      -->
+      <view class="uw-card {{showWord ? 'on' : ''}}"
             bindtouchstart="uwShowWord" bindtouchend="uwHideWord" bindtouchcancel="uwHideWord">
-        <block wx:if="{{showWord}}">
-          <view class="uw-wlbl">你的词</view>
-          <view class="uw-wtxt">{{room.uw.word}}</view>
-        </block>
-        <block wx:else>
-          <view class="uw-wlbl">按住看你的词</view>
-          <view class="uw-wtip">松手就收起 · 别让旁边的人看见</view>
+        <view class="uw-card-in">
+          <block wx:if="{{showWord}}">
+            <view class="uw-wlbl">你的词</view>
+            <view class="uw-wtxt">{{room.uw.word}}</view>
+            <view class="uw-wsub">记住它，别让人看到</view>
+          </block>
+          <block wx:else>
+            <view class="uw-lock">按住查看</view>
+            <view class="uw-wtip">松开就收起 · 旁边有人盯着呢</view>
+          </block>
+        </view>
+      </view>
+
+      <!-- 在场玩家：一眼看清还剩几人、谁已经出局（只展示，不用点） -->
+      <view class="uw-seats">
+        <block wx:for="{{room.players}}" wx:key="openid">
+          <view wx:if="{{item.inRound !== false}}"
+                class="uw-seat {{item.out ? 'out' : ''}} {{item.isMe ? 'me' : ''}}">
+            <text class="uw-seat-n">{{item.seat}}</text>
+            <text class="uw-seat-t">{{item.name}}</text>
+          </view>
         </block>
       </view>
 
+      <!-- ① 说描述：手机上不需要任何操作 -->
       <block wx:if="{{room.uw.step === 'talk'}}">
         <view class="uw-note">轮流说一句话描述它 —— 别说出词本身，也别说得太明显</view>
         <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">都说完了，开始投票</view>
         <view wx:else class="uw-wait">等房主开投票</view>
       </block>
 
+      <!-- ② 投票：每轮唯一的手机操作 -->
       <block wx:elif="{{room.uw.step === 'vote'}}">
         <view class="uw-note">谁的描述最可疑？点一个人</view>
         <view class="uw-list">
-          <view wx:for="{{room.players}}" wx:key="openid"
-                class="uw-p {{item.out ? 'off' : ''}} {{room.uw.myVote === item.openid ? 'picked' : ''}}"
-                data-oid="{{item.openid}}" bindtap="uwVote">
-            <text class="uw-pn">{{item.name}}</text>
-            <text wx:if="{{item.isMe}}" class="uw-tag">我</text>
-            <text wx:if="{{item.out}}" class="uw-tag off">已出局</text>
-            <text wx:if="{{!item.out && item.inRound === false}}" class="uw-tag off">下局加入</text>
-          </view>
+          <block wx:for="{{room.players}}" wx:key="openid">
+            <view wx:if="{{!item.out && item.inRound !== false}}"
+                  class="uw-p {{item.isMe ? 'self' : ''}} {{room.uw.myVote === item.openid ? 'picked' : ''}}"
+                  data-oid="{{item.openid}}" bindtap="uwVote">
+              <text class="uw-pn">{{item.name}}</text>
+              <text wx:if="{{item.isMe}}" class="uw-tag">我</text>
+              <text wx:if="{{room.uw.myVote === item.openid}}" class="uw-tick">已投</text>
+            </view>
+          </block>
         </view>
         <view class="uw-wait">已投 {{room.uw.voteCount}} / {{room.uw.voterCount}}</view>
       </block>
 
+      <!-- ③ 结算：谁出局、他是什么身份（全场最想看的一刻） -->
       <block wx:elif="{{room.uw.step === 'result'}}">
         <view wx:if="{{room.uw.lastOut}}" class="uw-out">
           <view class="uw-ot">{{room.uw.lastOut.name}} 出局</view>
