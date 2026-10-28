@@ -18,7 +18,7 @@ module.exports = {
       { id: 'dice', name: '比大小', color: '#5E7FA6', count: 0 },
       { id: 'wheel', name: '命运转盘', color: '#7A5CA8', count: 0 }
     ],
-    version: '3.0.0'
+    version: '3.7.4'
   }),
   states: {
     /* 新用户：还没起名字 */

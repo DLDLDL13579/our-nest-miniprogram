@@ -27,7 +27,12 @@ Page({
     gameCount: GAMES.length,
     /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
     gameRows: [],
-    version: '3.0.0'
+    /*
+     * ⚠️ 版本号是手写的常量，**改发版号时记得同步这里**。
+     *    （上一轮它一直停在 3.0.0，而实际已经是 3.7.x —— 用户看到的版本
+     *    和 commit 里的版本对不上，排查问题时会误判。）
+     */
+    version: '3.7.4'
   },
 
   onLoad() {
@@ -85,15 +90,35 @@ Page({
 
   goLobby() { wx.switchTab({ url: '/pages/lobby/lobby' }) },
 
+  /**
+   * 清理本机缓存。
+   *
+   * ★ 修一个「名不副实」：原来的弹窗说"会清掉昵称和声音开关"，
+   *   但代码**只 wx.removeStorageSync(NICK_KEY)** —— 声音开关、震动开关、
+   *   玩法统计、上次玩的，一个都没动。用户以为清干净了，其实没有。
+   *   （而且后来加的 gameStats / lastGame 连提都没提。）
+   *
+   * 现在清的就是"本机所有我们自己写进去的东西"，并把清单写进弹窗 ——
+   * 文案和实现对得上，用户才知道按下去会发生什么。
+   */
   clearCache() {
     wx.showModal({
       title: '清理本机缓存',
-      content: '会清掉昵称和声音开关。对局数据都在云端，不受影响。',
+      content: '会清掉昵称、声音与震动开关、玩过的记录。对局数据都在云端，不受影响。',
       confirmText: '清理',
       success: (r) => {
         if (!r.confirm) return
-        wx.removeStorageSync(NICK_KEY)
-        this.setData({ nick: '' })
+        try {
+          wx.removeStorageSync(NICK_KEY)
+          wx.removeStorageSync('gameStats')
+          wx.removeStorageSync('lastGame')
+        } catch (e) {}
+        /* 开关走各自的 setter，别直接写 storage —— 内存里的状态也要跟着变，
+           否则界面显示"开着"、实际已被清掉。 */
+        sfx.setMuted(false)
+        feedback.setHapticOn(true)
+        this.setData({ nick: '', muted: false, hapticOn: true })
+        this.loadStats()
         wx.showToast({ title: '清好了', icon: 'success' })
       }
     })
