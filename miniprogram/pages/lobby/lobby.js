@@ -88,7 +88,32 @@ Page({
     joinCode: '',
     err: '',
     muted: false,
-    hapticOn: true
+    hapticOn: true,
+    /* 内容量一行（"5 个玩法 · 160 道题 · 120 对词"），onShow 时现算 */
+    stats: ''
+  },
+
+  /*
+   * 内容量（2026-10-28）。
+   *
+   * 大厅原来只列 5 个玩法卡片 —— 玩家不知道后面还有多少东西。
+   * 而"有 160 道题、120 对词"恰恰是这些玩法能玩一晚上的原因，
+   * 也是它们值得用手机的理由（现实中现场出题几轮就干了）。
+   *
+   * ★ 数字全部**从数据源现算**，不写死：写死的数字会在内容扩充后
+   *   悄悄变成谎话（本项目对"注释/文案与实现不一致"栽过）。
+   */
+  statsText() {
+    const decks = require('../../utils/decks.js')
+    const words = require('../../utils/words.js')
+    const all = decks.DECKS || []
+    const cardCount = all.reduce((n, d) => n + (d.truth || []).length + (d.dare || []).length, 0)
+    const pairCount = (words.DECKS || []).reduce((n, d) => n + (d.pairs || []).length, 0)
+    const parts = []
+    if (GAMES && GAMES.length) parts.push(GAMES.length + ' 个玩法')
+    if (cardCount) parts.push(cardCount + ' 道题')
+    if (pairCount) parts.push(pairCount + ' 对词')
+    return parts.join(' · ')
   },
 
   onLoad() {
@@ -103,6 +128,7 @@ Page({
     this.setData({
       muted: sfx.isMuted(),
       hapticOn: feedback.isHapticOn(),
+      stats: this.statsText(),
       list: sortByRecent(buildList())
     })
   },

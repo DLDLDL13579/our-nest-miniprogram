@@ -19,7 +19,7 @@ module.exports = {
     list: LIST,
     joinCode: '',
     err: '',
-    muted: false,
+    muted: false, stats: '5 个玩法 · 160 道题 · 120 对词',
     hapticOn: true
   }),
   states: {
