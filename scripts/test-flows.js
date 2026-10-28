@@ -366,6 +366,43 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 金花换牌的代价：换底牌 1 杯、换手牌半杯，且累计 ---------- */
+  /*
+   * ★ 2026-10-28。这是这个玩法的**博弈核心**（把运气变成可付费的选择），
+   *   而规则里写死了"1 杯 / 半杯"。数字错了，整个博弈就变形了 ——
+   *   而且不会报错，玩家只会觉得"这游戏算得不对"。
+   */
+  {
+    OPENID = A
+    const dr = await room.main({ action: 'create', name: 'D1', game: 'poker' })
+    const did = dr.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: dr.room.code, name: 'D2' })
+    OPENID = A
+    await room.main({ action: 'start', id: did })
+    await enterPlaying(did)
+
+    /* 轮到我 → 换底牌（1 杯） */
+    let st = await room.main({ action: 'status', id: did })
+    /* myTurn 是**前端**派生字段（服务端不返回）—— 这里用 turn + me.seat 判 */
+    assert.strictEqual(st.room.turn, st.room.me.seat, '房主先手，应该轮到我')
+    const sw1 = await room.main({ action: 'pkAct', id: did, act: 'swapPublic' })
+    assert.ok(sw1.ok, '换底牌应成功：' + (sw1.msg || ''))
+    st = await room.main({ action: 'status', id: did })
+    assert.strictEqual(st.room.poker.myDrink, 1, '★ 换底牌应记 1 杯，实际 ' + st.room.poker.myDrink)
+
+    /* 换完回合不推进（规则：喝完还能接着决定） */
+    assert.strictEqual(st.room.turn, st.room.me.seat, '★ 换完仍是自己的回合（喝完还能接着决定）')
+
+    /* 再换手牌（+0.5 → 累计 1.5） */
+    const sw2 = await room.main({ action: 'pkAct', id: did, act: 'swapMine' })
+    assert.ok(sw2.ok, '换手牌应成功：' + (sw2.msg || ''))
+    st = await room.main({ action: 'status', id: did })
+    assert.strictEqual(st.room.poker.myDrink, 1.5,
+      '★ 换手牌 +0.5，累计应为 1.5，实际 ' + st.room.poker.myDrink)
+    ok('★ 金花换牌：底牌 1 杯 / 手牌半杯，累计 1.5，且换完回合不推进')
+  }
+
   /* ---------- 房间满了：第 max+1 个人进不来，而且不能留在库里 ---------- */
   /*
    * ★ 2026-10-28。test-room.js 的文件头写着"人数上限"，但实际搜不到对应的用例 ——
