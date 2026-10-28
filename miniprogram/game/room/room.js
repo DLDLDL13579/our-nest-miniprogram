@@ -1800,7 +1800,11 @@ Page({
   async addCard() {
     const text = (this.data.cardText || '').trim()
     /* "写点什么"太笼统 —— 用户不知道写多长、写什么算合格 */
-    if (!text) return wx.showToast({ title: '先写一句，比如「说出你手机里最近一张截图」', icon: 'none', duration: 2600 })
+    /*
+     * toast 的宽度只有屏幕的一小条，21 个字会折成两行还挤 ——
+     * 提示的任务是告诉用户现在缺什么，不是把例子讲完（例子就在 placeholder 里）。
+     */
+    if (!text) return wx.showToast({ title: '还没写呢', icon: 'none', duration: 1600 })
     sfx.play('tap')
     const r = await call('room', {
       action: 'card', id: this.data.room.id, type: this.data.cardType, text: text
