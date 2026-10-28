@@ -201,7 +201,13 @@ module.exports = {
           poker.cardText({ r: 12, s: 0 }),
           poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
           poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
-        ]
+        ],
+        /* 模板现在读 cardsRich（wxml 不支持 indexOf，颜色在数据层算好） */
+        cardsRich: [
+          poker.cardText({ r: 12, s: 0 }),
+          poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
+          poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
+        ].map(t => ({ t: t, red: /[♥♦]/.test(t) }))
       }))
       return {
         stage: 'over',
@@ -219,6 +225,7 @@ module.exports = {
           poker: {
             step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
             myKnown: PK_MINE[0], myKnownText: poker.cardText(PK_MINE[0]),
+            myKnownRed: /[♥♦]/.test(poker.cardText(PK_MINE[0])),
             folded: false, aliveCount: 1, myDrink: 0, log: [], last: null, winner: '邓林'
           }
         })

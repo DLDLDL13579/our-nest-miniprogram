@@ -33,6 +33,15 @@ App({
     wx.cloud.init(CFG.env ? { env: CFG.env, traceUser: true } : { traceUser: true })
 
     this.globalData.nick = wx.getStorageSync('nick') || ''
+    /*
+     * ★ 先预热云函数容器（2026-10-28）。
+     *   用户反馈"手机加载特别慢"、点转盘还弹"操作失败"——
+     *   根因之一是云函数冷启动：容器闲置会被回收，下次调用要重新拉起（1~5 秒）。
+     *   这个小程序每个动作都是云函数调用，第一下最容易撞上冷启动。
+     *   启动就发一个空请求把容器叫醒，用户真点下去时已经是热的。
+     *   （不阻塞启动流程，失败静默 —— 它只是优化，不是功能）
+     */
+    require('./utils/cloud.js').warmup()
     this.bootstrap()
   },
 

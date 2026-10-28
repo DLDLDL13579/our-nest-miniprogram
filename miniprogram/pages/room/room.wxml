@@ -547,7 +547,7 @@
           <view class="pk-flip">
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front {{room.poker.publicCard ? '' : 'pk-empty'}}">
-              <text class="{{(room.poker.publicText || '').indexOf('♥') >= 0 || (room.poker.publicText || '').indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{room.poker.publicText}}</text>
+              <text class="{{room.poker.publicRed ? 'pk-red' : ''}}">{{room.poker.publicText}}</text>
             </view>
           </view>
         </view>
@@ -559,7 +559,7 @@
           <view class="pk-flip {{showCards ? 'flipped' : ''}}">
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front {{room.poker.myKnown ? '' : 'pk-empty'}}">
-              <text class="{{(room.poker.myKnownText || '').indexOf('♥') >= 0 || (room.poker.myKnownText || '').indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{room.poker.myKnownText}}</text>
+              <text class="{{room.poker.myKnownRed ? 'pk-red' : ''}}">{{room.poker.myKnownText}}</text>
             </view>
           </view>
         </view>
@@ -789,7 +789,7 @@
       <block wx:for="{{room.lastResult.hands}}" wx:key="name">
         <view class="pkr-row {{item.out ? 'out' : ''}}">
           <text class="pkr-n">{{item.name}}</text>
-          <text wx:for="{{item.cardsText}}" wx:key="*this" class="pkr-c {{item.indexOf('♥') >= 0 || item.indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{item}}</text>
+          <text wx:for="{{item.cardsRich}}" wx:key="index" class="pkr-c {{item.red ? 'pk-red' : ''}}">{{item.t}}</text>
         </view>
       </block>
     </view>

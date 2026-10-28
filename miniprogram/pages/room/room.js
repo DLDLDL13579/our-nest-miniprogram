@@ -1333,6 +1333,18 @@ Page({
      *   按玩法分别算，但都收敛到 room.settleFoot 一个字段 ——
      *   模板只判断"有没有"，不写五套 if。
      */
+    /*
+     * 牌面颜色（红/黑）。
+     * ★ 必须在 JS 里算：微信 wxml 的表达式**不支持函数调用**，
+     *   `.indexOf('♥')` 会让整个 wxml 编译失败（`unexpected token '.'`），
+     *   而且只在上传/真机预览时才报 —— 本地渲染和断言全看不见。
+     */
+    if (room.game === 'poker' && room.poker) {
+      const isRed = (t) => /[♥♦]/.test(t || '')
+      room.poker.publicRed = isRed(room.poker.publicText)
+      room.poker.myKnownRed = isRed(room.poker.myKnownText)
+    }
+
     room.settleFoot = ''
     if (room.phase === 'over') {
       const lr = room.lastResult || {}

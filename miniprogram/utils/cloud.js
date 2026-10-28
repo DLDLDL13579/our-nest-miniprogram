@@ -69,4 +69,21 @@ function todayISO(d) {
   return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
 }
 
-module.exports = { call: call, todayISO: todayISO }
+/**
+ * 预热云函数容器（打开小程序时调一次）。
+ *
+ * ★ 为什么要它（2026-10-28，用户反馈"加载特别慢"、点转盘弹"操作失败"）：
+ *   云函数按需冷启动，容器闲置会被回收，下次调用要重新拉起，实测 1~5 秒。
+ *   而这个小程序的每个动作都是云函数调用 —— 第一下最容易撞上冷启动甚至超时。
+ *
+ *   在启动时发一个空请求把容器叫醒，用户真正点下去时就是热的。
+ *   不碰数据库、不写数据，失败也完全不影响玩法（所以静默）。
+ */
+function warmup() {
+  try {
+    wx.cloud.callFunction({ name: 'room', data: { action: 'ping' } }).catch(() => {})
+  } catch (e) { /* 忽略：预热失败不影响任何功能 */ }
+}
+
+module.exports = {
+  warmup, call: call, todayISO: todayISO }

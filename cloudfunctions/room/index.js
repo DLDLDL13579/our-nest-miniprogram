@@ -467,6 +467,23 @@ exports.main = async (event) => {
   const ts = now()
 
   try {
+    /* ================= 预热（ping） ================= */
+    /*
+     * 只做一件事：让云函数**先热起来**。
+     *
+     * 2026-10-28 加。用户反馈"手机加载特别慢"、点转盘还弹"操作失败"——
+     * 云函数是**按需冷启动**的：容器闲置一段时间会被回收，下次调用要重新拉起
+     * （实测 1~5 秒）。而这个小程序的所有动作都走云函数，
+     * 于是"打开 → 点玩法 → 转一下"里，第一下最容易撞上冷启动、甚至超时失败。
+     *
+     * 做法：小程序启动时（app.js 的 onLaunch）发一个空请求把容器叫醒，
+     * 等人真的点下去时容器已经是热的。这个请求不碰数据库、不写任何东西，
+     * 所以随便失败也不影响任何玩法。
+     */
+    if (action === 'ping') {
+      return { ok: true, pong: ts, fn: 'room' }
+    }
+
     /* ================= 建房间 ================= */
     if (action === 'create') {
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
@@ -1794,6 +1811,19 @@ exports.main = async (event) => {
                 name: p.name, cards: full,
                 /* 牌面文字（♠Q 这种）——模板直接用，前端不该再拼一遍 */
                 cardsText: full.map(c => poker.cardText(c)),
+                /*
+                 * ★ 每张牌的 {文本, 是否红色} —— 2026-10-28 补。
+                 *
+                 * 原来模板里写的是 `class="pkr-c {{item.indexOf('♥') >= 0 ? 'pk-red' : ''}}"`，
+                 * 而**微信 wxml 的表达式不支持函数调用**（.indexOf 直接让整个文件编译失败：
+                 * `Bad attr class ... unexpected token '.'`）。
+                 * 这个错误只在**真机上传/预览**时才暴露，本地渲染和所有断言都看不到 ——
+                 * 所以"看起来一切都对"的项目，一次上传都过不去。
+                 */
+                cardsRich: full.map(c => {
+                  const t = poker.cardText(c)
+                  return { t: t, red: /[♥♦]/.test(t) }
+                }),
                 out: !!p.out,
                 typeName: poker.rank(full).name
               }
