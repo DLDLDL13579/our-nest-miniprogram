@@ -1029,6 +1029,16 @@ Page({
   },
 
   /**
+   * 从**原始** room（还没 decorate）判断"是不是我的回合"。
+   * 单独抽出来是为了在 applyRoom 里用 —— 那时 this.data.room 还是上一帧，
+   * 而 decorate 又会就地改 raw，所以要在统计前后各取一次。
+   */
+  _myTurnOf(raw) {
+    if (!raw || !raw.me) return false
+    return !!raw.turn && raw.turn === raw.me.seat
+  },
+
+  /**
    * 往事件流里塞一条。
    *
    * ★ 为什么事件是**本地生成**而不是服务端广播：
@@ -1066,6 +1076,23 @@ Page({
     const a = prev.bid, b = raw.bid
     if (b && (!a || a.at !== b.at) && b.bySeat !== mySeat) {
       this._evPush(b.byName + ' 叫 ' + b.n + ' 个 ' + b.face)
+    }
+
+    /*
+     * 有人进来了（2026-10-28）。
+     * 酒桌上人是一个个到的：先到的人盯着"已经进来的人"等，
+     * 而新来的人只是列表里多了一行 —— 没有任何"他来了"的瞬间。
+     * 记进事件流 + 一声轻响，先到的人就知道"又来了一个"。
+     */
+    {
+      const prevCount = (prev.players || []).length
+      const nowPlayers = raw.players || []
+      if (nowPlayers.length > prevCount) {
+        nowPlayers.slice(prevCount).forEach(p => {
+          if (p.seat !== mySeat) this._evPush(p.name + ' 进来了')
+        })
+        sfx.play('tapSoft')
+      }
     }
 
     /* 别人摇好了（比大小：diceCount 从 0 变正） */
@@ -1121,6 +1148,21 @@ Page({
       this._htArmed = false
       this._htUntil = 0
       if (this.data.freeze) this.setData({ freeze: false })
+    }
+
+    /*
+     * 「该你了」—— 轮到我的那一刻响一声。
+     *
+     * 酒桌上手机经常扣着放、或者人正在夹菜：轮到自己却不知道，
+     * 全桌都在等一个人。这是**功能性**的声音，不是锦上添花。
+     *
+     * 只在**从"不是我的回合"变成"是我的回合"**时响 ——
+     * 拿 prev 的 myTurn 比，而不是只看 room.myTurn，否则每次轮询都会响。
+     */
+    {
+      const before = this.data.room && this.data.room.myTurn
+      const after = this._myTurnOf(raw)
+      if (after && !before) feedback.fire('yourTurn')
     }
 
     /* 事件流要在 setData 之前比对 —— 之后 this.data.room 已经是新的一帧了 */
