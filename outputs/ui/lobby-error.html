@@ -9,8 +9,23 @@
   div { display:block; }
   input, textarea { font-family:inherit; font-size:inherit; border:none; outline:none; background:none; }
   input::placeholder, textarea::placeholder { color:#A39B90; }
-  /* 小程序 view 默认 flex-direction:column */
-  .wx-hint, .hint { }
+  /*
+   * ★ 动画必须"立即跑完"，否则截图拍到的是**初始态**。
+   *
+   * 本项目大量用 animation: x .5s ... backwards 做入场编排，
+   * backwards 填充意味着 t=0 时元素就是 opacity:0 / translateY(...)。
+   * 无头 Chrome 截图不等动画 → 拍出来整页空白
+   *（第一版就是：只剩 hero 的色块底，一个字都没有）。
+   *
+   * 用 duration:0s + delay:0s 让动画瞬间到 100%，
+   * 保留"最终态"，不改变任何布局结果。
+   */
+  *, *::before, *::after {
+    animation-duration: .001s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+  }
 </style>
 <style> body {
   --brand: #E0714F;        
@@ -288,20 +303,6 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
-.catbar {
-  white-space: nowrap; margin-bottom: 9px; width: 100%;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .26s backwards;
-}
-.cat {
-  display: inline-flex; align-items: center; justify-content: center;
-  height: 30px; padding: 0 15px; margin-right: 7px;
-  border-radius: 499.5px; font-size: 12.5px;
-  background: #EFE9E0; color: var(--ink2);
-}
-.cat.on { background: var(--ink); color: #F6E7C3; font-weight: 600 }
-.cat:active { opacity: .8 }
-
-
 .glist { display: flex; flex-direction: column }
 
 .gcard {
@@ -362,6 +363,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .78s backwards;
 }
 .tip-line { display: block }
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -388,15 +390,10 @@ view, text, button, input, textarea { box-sizing: border-box }
 
   
   <div class="joinbar">
-    <div class="join-in"></div>
+    <input class="join-in" value="123" placeholder="3 位房间号" data-maxlength="3">
     <div class="join-btn on">进去</div>
   </div>
-  <div class="errbox">房间不存在或已解散</div><div class="catbar">
-    <div class="cat on">全部</div><div class="cat">摇骰子</div><div class="cat">抽题卡</div><div class="cat">动嘴皮</div><div class="cat">互相猜</div>
-  </div>
-
-  
-  <div class="glist">
+  <div class="errbox">房间不存在或已解散</div><div class="glist">
     <div class="gcard" style="--accent:#C4573A">
       <div class="gc-icon">
         <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%224.8%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.4%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
@@ -423,6 +420,30 @@ view, text, button, input, textarea { box-sizing: border-box }
       <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
     </div><div class="gcard" style="--accent:#7A5CA8">
       <div class="gc-icon">
+        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%208.6c2.6-1%205.3-1.5%208-1.5s5.4.5%208%201.5c0%204.6-3.6%208.2-8%208.2S4%2013.2%204%208.6z%22%2F%3E%3Ccircle%20cx%3D%228.7%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.3%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+      </div>
+      <div class="gc-main">
+        <div class="gc-top">
+          <span class="gc-name">谁是卧底</span>
+          <span class="gc-people">3–12 人</span>
+        </div>
+        <div class="gc-desc">有一个人拿到的词和你不一样</div>
+      </div>
+      <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+    </div><div class="gcard" style="--accent:#B8863C">
+      <div class="gc-icon">
+        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.6%22%20y%3D%226.4%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%20transform%3D%22rotate(-9%209.1%2014)%22%2F%3E%3Crect%20x%3D%229.4%22%20y%3D%224.2%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M14.9%209.4l1.1%202.4%202.4%201.1-2.4%201.1-1.1%202.4-1.1-2.4-2.4-1.1%202.4-1.1z%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+      </div>
+      <div class="gc-main">
+        <div class="gc-top">
+          <span class="gc-name">梦幻金花</span>
+          <span class="gc-people">2–6 人</span>
+        </div>
+        <div class="gc-desc">三张牌，不看也能比，敢不敢</div>
+      </div>
+      <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+    </div><div class="gcard" style="--accent:#7A5CA8">
+      <div class="gc-icon">
         <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Cpath%20d%3D%22M12%203.5v17M3.5%2012h17M6%206l12%2012M18%206L6%2018%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
       </div>
       <div class="gc-main">
@@ -431,18 +452,6 @@ view, text, button, input, textarea { box-sizing: border-box }
           <span class="gc-people">1–8 人</span>
         </div>
         <div class="gc-desc">转一下，真心话还是喝一杯</div>
-      </div>
-      <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-    </div><div class="gcard" style="--accent:#4E8C6A">
-      <div class="gc-icon">
-        <img class="gc-img" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8.8%2013.2V6.4a1.5%201.5%200%200%201%203%200V12%22%2F%3E%3Cpath%20d%3D%22M11.8%2012V4.9a1.5%201.5%200%200%201%203%200V11.8%22%2F%3E%3Cpath%20d%3D%22M14.8%2011.8V7.2a1.5%201.5%200%200%201%203%200v8a6.2%206.2%200%200%201-6.2%206.2h-.8a4.6%204.6%200%200%201-3.3-1.4l-3.7-3.8a1.6%201.6%200%200%201%202.3-2.3l2.2%202.1%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-      </div>
-      <div class="gc-main">
-        <div class="gc-top">
-          <span class="gc-name">我有你没有</span>
-          <span class="gc-people">2–8 人</span>
-        </div>
-        <div class="gc-desc">说一件你干过、别人没干过的事</div>
       </div>
       <img class="gc-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
     </div>
@@ -454,7 +463,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   </div>
 </div>
 
-<div style="position:fixed;left:0;right:0;bottom:0;height:50px;display:flex;
+<div style="position:fixed;left:0;bottom:0;width:375px;height:50px;display:flex;
     background:#FFFDF9;border-top:1px solid #EDE6DC;z-index:20"><div style="flex:1;text-align:center;font-size:11px;padding:10px 0;letter-spacing:1px;
       color:#E0714F;font-weight:600">大厅</div><div style="flex:1;text-align:center;font-size:11px;padding:10px 0;letter-spacing:1px;
       color:#9A9188;font-weight:400">我的</div></div>

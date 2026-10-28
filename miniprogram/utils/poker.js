@@ -75,12 +75,24 @@ function rank(cards) {
 
   /*
    * 顺子判定，含 **A23**（A 当 1 用）。
-   * 真实规则里 A23 是最小的顺子（比 234 还小），不是最大的。
-   * 所以比较键要把它映射成 3,2,1，让它在顺子里垫底。
-   * 不做这条的话，拿到 A23 的人会以为自己有顺子、其实被判成单张 —— 争议点。
+   *
+   * ★★ 2026-10-27 调研纠正：A23 是**第二大**的顺子，不是最小的。
+   *    主流平台（16vs 等）明确写的是：
+   *        AKQ > A23 > KQJ > QJ10 > ... > 234
+   *    我第一版凭印象做成了"最小顺子"，那会让拿到 A23 的人以为自己输
+   *    —— 这是个真会吵架的错。
+   *
+   *    A23 在 AKQ(14) 和 KQJ(13) 之间，所以比较键取 13.5。
+   *    用小数是刻意的：它只需要参与"同牌型内部排序"，
+   *    而所有合法的点数都是整数，13.5 不会和任何真实点数撞。
+   *
+   * ⚠️ 235（"豹子杀手"）**不做**：各地规则相反（有的比豹子大、有的比单张小），
+   *    线上平台普遍不启用。做成默认会更让人困惑。
    */
   const isA23 = rs[0] === 14 && rs[1] === 3 && rs[2] === 2
   const isSeq = (rs[0] - rs[1] === 1 && rs[1] - rs[2] === 1) || isA23
+  /* A23 排在 AKQ 之后、KQJ 之前 */
+  const seqKey = isA23 ? 13.5 : rs[0]
 
   let type, key
   if (isTriple) {
@@ -88,13 +100,13 @@ function rank(cards) {
     key = [rs[0]]
   } else if (isSeq && sameSuit) {
     type = TYPES.STRAIGHT_FLUSH
-    key = isA23 ? [3] : [rs[0]]
+    key = [seqKey]
   } else if (sameSuit) {
     type = TYPES.FLUSH
     key = rs.slice()
   } else if (isSeq) {
     type = TYPES.STRAIGHT
-    key = isA23 ? [3] : [rs[0]]
+    key = [seqKey]
   } else if (rs[0] === rs[1] || rs[1] === rs[2]) {
     type = TYPES.PAIR
     /* 对子的点数优先，单张次之。rs 已降序：
@@ -122,11 +134,46 @@ function compare(a, b) {
   if (ra.type !== rb.type) return ra.type - rb.type
   const n = Math.max(ra.key.length, rb.key.length)
   for (let i = 0; i < n; i++) {
-    const x = ra.key[i] || 0
-    const y = rb.key[i] || 0
+    /* ⚠️ 不能用 `key[i] || 0`：顺子的比较键可能是 0？不会，但 13.5 这类非整数
+       用 || 兜底本身是"把缺失当 0"的坏习惯，这里显式判 undefined。 */
+    const x = ra.key[i] === undefined ? 0 : ra.key[i]
+    const y = rb.key[i] === undefined ? 0 : rb.key[i]
     if (x !== y) return x - y
   }
   return 0
+}
+
+/**
+ * 梦幻金花的发牌 —— 和炸金花**完全不是一回事**（用户 2026-10-27 说明）。
+ *
+ * 炸金花：每人三张全看得到，可以"闷牌"（不看就下注）。
+ * 梦幻金花：
+ *   · **1 张公共牌** —— 所有人可见，是全场共同的话题
+ *   · **每人 1 张明牌** —— 只有自己看得见
+ *   · **每人 1 张暗牌** —— 连自己都看不到，靠想象
+ *
+ * 所以每个人只知道 2/3 的信息，第三张是赌的。
+ * 这也解释了为什么**不能闷**：本来就没有"全看"这个状态。
+ *
+ * 比牌时用「公共牌 + 我的明牌 + 我的暗牌」三张算牌型。
+ *
+ * @param {number} n 人数
+ * @returns {{publicCard: Object, hands: Object[][]}} hands[i] = [明牌, 暗牌]
+ */
+function dealDream(n, rnd) {
+  const deck = shuffle(newDeck(), rnd)
+  let k = 0
+  const publicCard = deck[k++]
+  const hands = []
+  for (let i = 0; i < n; i++) hands.push([deck[k++], deck[k++]])
+  /* 剩下的牌留着换牌用 —— 换牌必须从**没发出去的牌**里抽，
+     不能重发已经有人拿着的那张（那会让人觉得"这牌有鬼"） */
+  return { publicCard: publicCard, hands: hands, rest: deck.slice(k) }
+}
+
+/** 组合出一个人用来比大小的三张牌 */
+function fullHand(publicCard, hand) {
+  return [publicCard, hand[0], hand[1]]
 }
 
 /** 给界面用的牌面文字，如 "♠A" */
@@ -136,5 +183,6 @@ function cardText(c) {
 
 module.exports = {
   SUITS, RANKS, TYPES, TYPE_NAMES,
-  newDeck, shuffle, rank, compare, cardText
+  newDeck, shuffle, rank, compare, cardText,
+  dealDream, fullHand
 }

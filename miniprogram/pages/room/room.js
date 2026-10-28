@@ -200,7 +200,8 @@ Page({
     showWord: false,     // 按住才显示自己的词（防旁边人瞟到）
 
     /* ---------- 梦幻金花 ---------- */
-    showCards: false,    // 按住才显示自己的三张牌
+    showCards: false,    // 按住才翻开自己的牌
+    pkDealIn: false,     // 发牌动画：true = 牌还在"场外"，下一帧回到位
 
     /* ---------- 转盘 ---------- */
     wheelSectors: [],
@@ -307,6 +308,9 @@ Page({
 
   onUnload() {
     clearTimeout(this._joinTimer)
+    clearTimeout(this._pkDealTimer)
+    clearTimeout(this._pkDealTimer2)
+    clearTimeout(this._pkDealTimer3)
     /* ★ 第一件事就是标记"这个页面没了" —— 之后所有 await 回来都会提前返回。
        必须在清理之前设，否则清理期间飞行中的响应仍可能 setData */
     this._dead = true
@@ -794,6 +798,41 @@ Page({
     /* 回合交给别人时也要收起牌，否则屏幕上一直摊着你的三张 */
     const prevTurn = (this.data.room && this.data.room.turn) || 0
     if (prevTurn !== raw.turn && this.data.showCards) this.setData({ showCards: false })
+
+    /*
+     * 发牌动画：只在**第一次看到这一局的牌**时播一次。
+     *
+     * ★ 为什么不用 CSS animation：
+     *   轮询每 1.5 秒 setData 一次，wx:for 会重建节点 → CSS animation 会**反复重播**，
+     *   牌每 1.5 秒飞进来一次，比不做还糟。
+     *   用"改 class + transition"就安全：值不变时 setData 不会触发过渡。
+     */
+    /*
+     * 揭晓音：卧底出局 / 金花比牌，这两件事都是"全场焦点"，
+     * 只在**结果真的换了**的时候响一声（靠 lastOut / last 的对象身份比，
+     * 轮询不会重复触发 —— 服务端每次都返回新对象，所以要比内容）。
+     */
+    const uwOutKey = raw.uw && raw.uw.lastOut ? JSON.stringify(raw.uw.lastOut) : ''
+    if (uwOutKey && uwOutKey !== (this._lastUwOut || '')) {
+      this._lastUwOut = uwOutKey
+      sfx.play('revealHit')
+      feedback.vibrate('medium')
+    }
+    if (!uwOutKey) this._lastUwOut = ''
+
+    const nowPoker = raw.game === 'poker' && raw.phase === 'playing'
+    if (nowPoker && !this._pkDealt) {
+      this._pkDealt = true
+      /* 发牌音：三声"嗒"跟着三张牌飞进来（视觉先、声音晚 90ms 见 feedback 的通道补偿） */
+      sfx.play('cardDeal')
+      this._pkDealTimer2 = setTimeout(() => { if (!this._dead) sfx.play('cardDeal') }, 90)
+      this._pkDealTimer3 = setTimeout(() => { if (!this._dead) sfx.play('cardDeal') }, 180)
+      this.setData({ pkDealIn: true })
+      this._pkDealTimer = setTimeout(() => {
+        if (!this._dead) this.setData({ pkDealIn: false })
+      }, 90)
+    }
+    if (!nowPoker) this._pkDealt = false
   },
 
   decorate(room) {
@@ -827,6 +866,7 @@ Page({
    *   这和骰盅"按住偷看"是同一个设计理由。
    */
   uwShowWord() {
+    sfx.play('cardFlip')
     feedback.vibrate('light')
     this.setData({ showWord: true })
   },
@@ -860,7 +900,7 @@ Page({
       return
     }
     this.data._uwBusy = true
-    sfx.play('diceSettle')
+    sfx.play('chipBet')
     feedback.vibrate('medium')
     const r = await call('room', { action: 'uwVote', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没投上，再点一次', icon: 'none' }); return null })
@@ -872,11 +912,44 @@ Page({
 
   /* 按住才显示三张牌 —— 理由同卧底看词：同桌的人就坐在旁边 */
   pkShow() {
+    sfx.play('cardFlip')
     feedback.vibrate('light')
     this.setData({ showCards: true })
   },
   pkHide() {
     if (this.data.showCards) this.setData({ showCards: false })
+  },
+
+  /*
+   * 换牌：换底牌喝 1 杯、换手牌喝半杯（用户 2026-10-27 加的规则）。
+   * 按钮上直接把代价写出来 —— 让人在按之前就知道要喝多少。
+   */
+  async pkSwap(e) {
+    if (!this.data.room || this.data._pkBusy) return
+    const what = e.currentTarget.dataset.what
+    if (what !== 'public' && what !== 'mine') return
+    const cost = what === 'public' ? '1 杯' : '半杯'
+    const ok = await new Promise((res) => {
+      wx.showModal({
+        title: what === 'public' ? '换底牌？' : '换手牌？',
+        content: what === 'public'
+          ? '底牌是全场共用的，换了所有人都跟着变。你要喝 ' + cost + '。'
+          : '重发你手里的两张牌（明牌和暗牌都换）。你要喝 ' + cost + '。',
+        confirmText: '换',
+        cancelText: '算了',
+        success: (r) => res(!!r.confirm)
+      })
+    })
+    if (!ok) return
+    this.data._pkBusy = true
+    sfx.play('cardFlip')
+    feedback.vibrate('light')
+    const r = await call('room',
+      { action: 'pkAct', act: what === 'public' ? 'swapPublic' : 'swapMine', id: this.data.room.id },
+      { silent: true })
+      .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没换成，再点一次', icon: 'none' }); return null })
+    this.data._pkBusy = false
+    if (r && r.ok) this.applyRoom(r.room)
   },
 
   /* 弃牌：认输，喝一杯 */
@@ -907,7 +980,9 @@ Page({
     const target = String(e.currentTarget.dataset.oid || '')
     if (!target) return
     this.data._pkBusy = true
-    sfx.play('diceSettle')
+    /* 摊牌：三张牌拍在桌上 —— 这是全场最想看的一刻，声音要给足 */
+    sfx.play('cardSpread')
+    setTimeout(() => { if (!this._dead) sfx.play('revealHit') }, 160)
     feedback.vibrate('medium')
     const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => { wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' }); return null })

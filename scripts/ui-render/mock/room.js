@@ -22,7 +22,8 @@ const UW_PLAYERS = [
 ]
 
 /* 三手固定的牌（用来稳定截图）：♠A ♥K ♠Q = 顺金；♦9 ♣9 ♥3 = 对 9；♠7 ♥5 ♣2 = 单张 */
-const PK_MINE = [{ r: 14, s: 0 }, { r: 13, s: 1 }, { r: 12, s: 0 }]
+const PK_PUB = { r: 12, s: 2 }                     // 底牌 ♣Q
+const PK_MINE = [{ r: 13, s: 1 }, { r: 12, s: 0 }]  // 明牌 ♥K + 暗牌 ♠Q
 const PK_OTHER = [{ r: 9, s: 3 }, { r: 9, s: 2 }, { r: 3, s: 1 }]
 const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
 
@@ -91,9 +92,9 @@ module.exports = {
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
         poker: {
-          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
-          myTypeName: poker.rank(PK_MINE).name,
-          folded: false, aliveCount: 3, log: [],
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          folded: false, aliveCount: 3, myDrink: 0, log: [],
           last: null, winner: null
         }
       })
@@ -105,9 +106,9 @@ module.exports = {
         game: 'poker', phase: 'playing', host: true,
         turn: 2, myTurn: false, turnName: '倩萍',
         poker: {
-          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
-          myTypeName: poker.rank(PK_MINE).name,
-          folded: false, aliveCount: 3, log: [],
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          folded: false, aliveCount: 3, myDrink: 0.5, log: [],
           last: null, winner: null
         }
       })
@@ -119,9 +120,9 @@ module.exports = {
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
         poker: {
-          step: 'play', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
-          myTypeName: poker.rank(PK_MINE).name,
-          folded: false, aliveCount: 2, log: [],
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          folded: false, aliveCount: 2, myDrink: 1, log: [],
           last: {
             kind: 'vs', by: '倩萍', target: '阿杰',
             byCards: PK_OTHER, targetCards: PK_THIRD,
@@ -148,9 +149,9 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'over', host: true, turn: 0, myTurn: false, turnName: '',
         poker: {
-          step: 'result', myCards: PK_MINE, myCardsText: PK_MINE.map(c => poker.cardText(c)),
-          myTypeName: poker.rank(PK_MINE).name,
-          folded: false, aliveCount: 1, log: [], last: null, winner: '邓林'
+          step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          folded: false, aliveCount: 1, myDrink: 0, log: [], last: null, winner: '邓林'
         }
       })
     }),

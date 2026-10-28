@@ -1227,47 +1227,95 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 
-.pk-hand {
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  flex-wrap: wrap;
-  padding: 24px 12px;
+.pk-table {
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 11px;
+  padding: 20px 10px 17px;
   margin-bottom: var(--gap-2);
   background: linear-gradient(135deg, #3A3128, #2A231C);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: var(--r-3);
-  transition: background .12s;
 }
-.pk-hand.on {
-  background: linear-gradient(135deg, #4A3D2C, #352B20);
-  box-shadow: 0 0 0 3px rgba(232,179,60,.14);
+.pk-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  flex: none;
+  
+  transition: transform .46s cubic-bezier(.18,.9,.3,1.16), opacity .3s ease-out;
+}
+.pk-table.dealing .pk-slot {
+  transform: translateY(-150px) rotate(-14deg) scale(.72);
+  opacity: 0;
 }
 
+.pk-table.dealing .pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-table.dealing .pk-slot:nth-child(2) { transition-delay: 0ms }
+.pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-slot:nth-child(2) { transition-delay: 70ms }
+.pk-slot:nth-child(3) { transition-delay: 140ms }
 
-.pk-card {
-  width: 66px; height: 93px; flex: none;
+.pk-tagline {
+  font-size: 9.5px; color: rgba(255,255,255,.45);
+  letter-spacing: 1px; height: 13px;
+}
+.pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
+.pk-slot.pk-dark .pk-tagline { color: rgba(160,130,210,.7) }
+
+
+.pk-flip {
+  position: relative;
+  width: 68px; height: 96px;
+  transition: transform .26s cubic-bezier(.2,.85,.3,1.05);
+}
+.pk-flip.flipped { transform: rotate(-2.5deg) }
+.pk-side {
+  position: absolute; left: 0; top: 0;
+  width: 68px; height: 96px;
+  border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
-  background: #FFFDF9; border-radius: 8px;
-  font-size: 26px; font-weight: 700; color: #2C2822;
-  box-shadow: 0 3px 8px rgba(0,0,0,.28);
+  box-shadow: 0 3px 8px rgba(0,0,0,.3);
+  transition: opacity .16s ease-out, transform .26s cubic-bezier(.2,.85,.3,1.05);
 }
-.pk-red { color: #C4432F }
+
 
 .pk-back {
-  width: 66px; height: 93px; flex: none;
-  border-radius: 8px;
-  background: repeating-linear-gradient(45deg, #6B5A44 0 4px, #5C4C39 4px 8px);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.12);
-}
-.pk-hint {
-  width: 100%; text-align: center;
-  font-size: 11px; color: rgba(255,255,255,.5); margin-top: 11px;
+  opacity: 1;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    linear-gradient(150deg, #7B2D3A, #4E1B24);
+  box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.16), 0 3px 8px rgba(0,0,0,.3);
 }
 
-.pk-type {
-  width: 100%; text-align: center;
-  font-size: 13px; font-weight: 700; color: #F6E7C3; margin-top: 9px;
-  letter-spacing: 1px;
+.pk-front {
+  opacity: 0;
+  transform: scale(.9);
+  background: #FFFDF9;
+  font-size: 32px; font-weight: 700; color: #2C2822;
 }
+.pk-front.pk-empty { color: rgba(0,0,0,.15); font-size: 20px }
+.pk-front text { color: #2C2822 }
+.pk-front text.pk-red, .pk-red { color: #C4432F }
+
+
+.pk-flip.flipped .pk-back { opacity: 0 }
+.pk-flip.flipped .pk-front { opacity: 1; transform: scale(1) }
+
+
+.pk-slot.pk-pub .pk-flip { transform: none }
+.pk-slot.pk-pub .pk-flip .pk-back { opacity: 0 }
+.pk-slot.pk-pub .pk-flip .pk-front { opacity: 1; transform: scale(1) }
+
+.pk-slot.pk-pub .pk-front { box-shadow: inset 0 0 0 2px rgba(232,179,60,.85), 0 3px 8px rgba(0,0,0,.3) }
+
+
+.pk-q { font-size: 28px; color: rgba(0,0,0,.18); font-weight: 700 }
+
+
+.pk-owe {
+  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5);
+  margin-bottom: var(--gap-2);
+}
+.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 11.5px }
 
 
 .pk-last {
@@ -1367,11 +1415,39 @@ view, text, button, input, textarea { box-sizing: border-box }
     
     
       
-      <div class="pk-hand">
+      <div class="pk-table">
         
-          <div class="pk-back"></div><div class="pk-back"></div><div class="pk-back"></div>
-          <div class="pk-hint">按住看你的三张牌</div>
+        <div class="pk-slot pk-pub">
+          <div class="pk-tagline">底牌</div>
+          
+          <div class="pk-flip">
+            <div class="pk-side pk-back"></div>
+            <div class="pk-side pk-front">
+              <span >♣Q</span>
+            </div>
+          </div>
         </div>
+
+        
+        <div class="pk-slot pk-mine">
+          <div class="pk-tagline">按住看</div>
+          <div class="pk-flip">
+            <div class="pk-side pk-back"></div>
+            <div class="pk-side pk-front">
+              <span >♠Q</span>
+            </div>
+          </div>
+        </div>
+
+        
+        <div class="pk-slot pk-dark">
+          <div class="pk-tagline">靠想象</div>
+          <div class="pk-flip">
+            <div class="pk-side pk-back"></div>
+            <div class="pk-side pk-front"><span class="pk-q">?</span></div>
+          </div>
+        </div>
+      </div>
 
       
       

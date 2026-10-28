@@ -1106,6 +1106,246 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .gspill-icon { width: 20px; height: 20px }
 
+
+
+
+.uw-word {
+  background: linear-gradient(135deg, #3A2E42, #2A2130);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--r-3);
+  padding: 32px 15px;
+  margin-bottom: var(--gap-3);
+  text-align: center;
+  
+  transition: transform .12s, background .12s;
+}
+.uw-word.on {
+  background: linear-gradient(135deg, #7A5CA8, #5A3F86);
+  transform: scale(.99);
+  box-shadow: 0 0 0 3px rgba(122, 92, 168, .22);
+}
+.uw-wlbl { font-size: 11.5px; color: rgba(255,255,255,.55); letter-spacing: 1.5px }
+.uw-wtxt {
+  font-size: 44px; font-weight: 700; color: #fff;
+  margin-top: 9px; line-height: 1.2; letter-spacing: 2px;
+}
+.uw-wtip {
+  font-size: 10px; color: rgba(255,255,255,.35); margin-top: 8px;
+}
+
+
+.uw-note {
+  font-size: 11.5px; color: rgba(255,255,255,.5);
+  text-align: center; line-height: 1.7; margin-bottom: var(--gap-2);
+}
+
+
+.uw-btn {
+  height: 50px; margin-top: 11px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; font-size: 15.5px; font-weight: 700;
+  background: linear-gradient(135deg, #E88060, #C24E2F);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(196, 87, 58, .3);
+}
+.uw-btn:active { transform: scale(.98); opacity: .9 }
+
+.uw-wait {
+  margin-top: 11px; text-align: center;
+  font-size: 11px; color: rgba(255,255,255,.4); line-height: 1.7;
+}
+
+
+.uw-list { display: flex; flex-direction: column; gap: 7px }
+.uw-p {
+  display: flex; align-items: center; gap: 7px;
+  padding: 14px 13px;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  transition: background .14s, border-color .14s;
+}
+.uw-p:active { background: rgba(255,255,255,.12) }
+.uw-pn { flex: 1; font-size: 15px; font-weight: 600; color: #fff }
+.uw-tag {
+  font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
+  background: rgba(232,179,60,.25); color: #F6E7C3;
+}
+.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255,255,255,.4) }
+
+.uw-p.picked {
+  background: rgba(122, 92, 168, .38);
+  border-color: rgba(160, 130, 210, .7);
+}
+.uw-p.off { opacity: .38 }
+
+
+.uw-out {
+  background: rgba(255,255,255,.07);
+  border-radius: var(--r-2);
+  padding: 17px 14px;
+  text-align: center;
+  margin-bottom: var(--gap-2);
+}
+.uw-ot { font-size: 19px; font-weight: 700; color: #fff }
+.uw-ow { font-size: 12px; color: rgba(255,255,255,.62); margin-top: 7px; line-height: 1.6 }
+.uw-spy { color: #FFB4A0; font-weight: 700 }
+.uw-good { color: #9AD3A8; font-weight: 700 }
+.uw-otie { font-size: 10px; color: rgba(255,255,255,.38); margin-top: 5px }
+
+
+.uw-reveal {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-3);
+  padding: 17px 14px;
+  margin-bottom: var(--gap-2);
+}
+.uw-rt {
+  font-size: 22px; font-weight: 700; color: #F6E7C3;
+  text-align: center; letter-spacing: 1px;
+}
+.uw-rw {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  margin-top: 7px; font-size: 11.5px; color: rgba(255,255,255,.6);
+}
+.uw-rvs { color: #FFB4A0 }
+.uw-rlist { margin-top: 12px }
+.uw-rrow {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.uw-rrow:last-child { border-bottom: none }
+.uw-rn { flex: 1; font-size: 13px; color: rgba(255,255,255,.85) }
+.uw-rwd { font-size: 13px; font-weight: 600; color: #fff }
+.uw-rr {
+  width: 46px; text-align: center; font-size: 9.5px;
+  padding: 2px 0; border-radius: 499.5px;
+  background: rgba(154,211,168,.18); color: #9AD3A8;
+}
+.uw-rrow.spy .uw-rr { background: rgba(255,180,160,.2); color: #FFB4A0 }
+
+
+
+
+.pk-hand {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  flex-wrap: wrap;
+  padding: 24px 12px;
+  margin-bottom: var(--gap-2);
+  background: linear-gradient(135deg, #3A3128, #2A231C);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-3);
+  transition: background .12s;
+}
+.pk-hand.on {
+  background: linear-gradient(135deg, #4A3D2C, #352B20);
+  box-shadow: 0 0 0 3px rgba(232,179,60,.14);
+}
+
+
+.pk-card {
+  width: 66px; height: 93px; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: #FFFDF9; border-radius: 8px;
+  font-size: 26px; font-weight: 700; color: #2C2822;
+  box-shadow: 0 3px 8px rgba(0,0,0,.28);
+}
+.pk-red { color: #C4432F }
+
+.pk-back {
+  width: 66px; height: 93px; flex: none;
+  border-radius: 8px;
+  background: repeating-linear-gradient(45deg, #6B5A44 0 4px, #5C4C39 4px 8px);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,.12);
+}
+.pk-hint {
+  width: 100%; text-align: center;
+  font-size: 11px; color: rgba(255,255,255,.5); margin-top: 11px;
+}
+
+.pk-type {
+  width: 100%; text-align: center;
+  font-size: 13px; font-weight: 700; color: #F6E7C3; margin-top: 9px;
+  letter-spacing: 1px;
+}
+
+
+.pk-last {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-2);
+  padding: 11px 10px;
+  margin-bottom: var(--gap-2);
+}
+.pkl-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap }
+.pkl-who { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.7) }
+.pkl-who.win { color: #9AD3A8 }
+.pkl-who.lose { color: rgba(255,255,255,.38); text-decoration: line-through }
+.pkl-cards { display: flex; gap: 3px }
+.pkl-c {
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px; padding: 2px 5px;
+}
+.pkl-vs { font-size: 10px; color: rgba(255,255,255,.35) }
+.pkl-note { text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5); margin-top: 6px }
+
+
+.pk-now {
+  text-align: center; font-size: 16px; font-weight: 700; color: #F6E7C3;
+}
+.pk-note {
+  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.45);
+  margin-top: 5px; margin-bottom: var(--gap-2); line-height: 1.7;
+}
+.pk-list { display: flex; flex-direction: column; gap: 7px }
+.pk-p {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 13px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px;
+}
+.pk-p:active { background: rgba(255,255,255,.14) }
+.pk-p.cur { border-color: rgba(232,179,60,.5) }
+.pk-pn { font-size: 15px; font-weight: 600; color: #fff }
+.pk-pgo { font-size: 12px; color: #E8B33C; font-weight: 600 }
+
+
+.pk-fold {
+  margin-top: 12px; padding: 13px 0;
+  text-align: center; border-radius: 10px;
+  font-size: 13px; color: rgba(255,255,255,.55);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.pk-fold:active { background: rgba(255,255,255,.06) }
+
+.pk-wait {
+  text-align: center; padding: 22px 0;
+  font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.8;
+}
+
+
+.pk-reveal {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-3);
+  padding: 17px 13px;
+  margin-bottom: var(--gap-2);
+}
+.pkr-t {
+  text-align: center; font-size: 21px; font-weight: 700;
+  color: #F6E7C3; letter-spacing: 1px; margin-bottom: 11px;
+}
+.pkr-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.pkr-row:last-child { border-bottom: none }
+.pkr-row.out { opacity: .5 }
+.pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+.pkr-c {
+  font-size: 11px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+}
+
 .phx1::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}</style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -1147,6 +1387,14 @@ view, text, button, input, textarea { box-sizing: border-box }
           
           <img class="pill-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.5%22%20width%3D%2217%22%20height%3D%2217%22%20rx%3D%223.4%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
           <span >比大小</span>
+        </div><div class="pill ghost">
+          
+          <img class="pill-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%208.6c2.6-1%205.3-1.5%208-1.5s5.4.5%208%201.5c0%204.6-3.6%208.2-8%208.2S4%2013.2%204%208.6z%22%2F%3E%3Ccircle%20cx%3D%228.7%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.3%22%20cy%3D%2210.9%22%20r%3D%221.15%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+          <span >谁是卧底</span>
+        </div><div class="pill ghost">
+          
+          <img class="pill-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.6%22%20y%3D%226.4%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%20transform%3D%22rotate(-9%209.1%2014)%22%2F%3E%3Crect%20x%3D%229.4%22%20y%3D%224.2%22%20width%3D%2211%22%20height%3D%2215.2%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M14.9%209.4l1.1%202.4%202.4%201.1-2.4%201.1-1.1%202.4-1.1-2.4-2.4-1.1%202.4-1.1z%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
+          <span >梦幻金花</span>
         </div><div class="pill ghost">
           
           <img class="pill-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%228.5%22%2F%3E%3Cpath%20d%3D%22M12%203.5v17M3.5%2012h17M6%206l12%2012M18%206L6%2018%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%222%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">

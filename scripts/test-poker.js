@@ -74,12 +74,16 @@ const SPADE = 0, HEART = 1, CLUB = 2, DIAMOND = 3
   /* 顺子比最大牌 */
   assert.ok(compare([C(14, SPADE), C(13, HEART), C(12, CLUB)],
     [C(13, SPADE), C(12, HEART), C(11, CLUB)]) > 0, 'AKQ > KQJ')
-  /* ★ A23 是最小顺子，比 234 还小 */
+  /* ★★ A23 是第二大顺子：AKQ > A23 > KQJ > ... > 234（2026-10-27 调研纠正） */
   assert.strictEqual(rank([C(14, SPADE), C(3, HEART), C(2, CLUB)]).type, TYPES.STRAIGHT,
     'A23 必须算顺子（不算的话拿到的人会以为自己是单张）')
+  assert.ok(compare([C(14, SPADE), C(13, HEART), C(12, CLUB)],
+    [C(14, SPADE), C(3, HEART), C(2, CLUB)]) > 0, 'AKQ 要大于 A23')
+  assert.ok(compare([C(14, SPADE), C(3, HEART), C(2, CLUB)],
+    [C(13, SPADE), C(12, HEART), C(11, CLUB)]) > 0,
+    '★ A23 大于 KQJ（A23 是第二大顺子，不是最小）')
   assert.ok(compare([C(4, SPADE), C(3, HEART), C(2, CLUB)],
-    [C(14, SPADE), C(3, HEART), C(2, CLUB)]) > 0,
-    '★ A23 是最小顺子，234 要大于 A23')
+    [C(6, SPADE), C(5, HEART), C(4, CLUB)]) < 0, '234 是最小顺子')
   /* 对子：先比对子点数，再比单张 */
   assert.ok(compare([C(13, SPADE), C(13, HEART), C(2, CLUB)],
     [C(12, SPADE), C(12, HEART), C(14, CLUB)]) > 0,

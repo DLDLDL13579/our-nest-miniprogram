@@ -1176,48 +1176,102 @@
    牌面按住才显示 —— 和骰盅偷看、卧底看词是同一个手势，减少记忆负担。
    ============================================================ */
 
-/* ---------- 我的手牌 ---------- */
-.pk-hand {
-  display: flex; align-items: center; justify-content: center; gap: 16rpx;
-  flex-wrap: wrap;
-  padding: 48rpx 24rpx;
+/* ---------- 牌桌：三个牌位 ---------- */
+.pk-table {
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 22rpx;
+  padding: 40rpx 20rpx 34rpx;
   margin-bottom: var(--gap-2);
   background: linear-gradient(135deg, #3A3128, #2A231C);
   border: 2rpx solid rgba(255,255,255,.08);
   border-radius: var(--r-3);
-  transition: background .12s;
 }
-.pk-hand.on {
-  background: linear-gradient(135deg, #4A3D2C, #352B20);
-  box-shadow: 0 0 0 6rpx rgba(232,179,60,.14);
+.pk-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 14rpx;
+  flex: none;
+  /* 发牌动画只改这两个属性，值不变就不重播（见 room.js 的说明） */
+  transition: transform .46s cubic-bezier(.18,.9,.3,1.16), opacity .3s ease-out;
+}
+.pk-table.dealing .pk-slot {
+  transform: translateY(-300rpx) rotate(-14deg) scale(.72);
+  opacity: 0;
+}
+/* 三个牌位依次飞入 —— 差 70ms 就有"一张一张发"的节奏 */
+.pk-table.dealing .pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-table.dealing .pk-slot:nth-child(2) { transition-delay: 0ms }
+.pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-slot:nth-child(2) { transition-delay: 70ms }
+.pk-slot:nth-child(3) { transition-delay: 140ms }
+
+.pk-tagline {
+  font-size: 19rpx; color: rgba(255,255,255,.45);
+  letter-spacing: 2rpx; height: 26rpx;
+}
+.pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
+.pk-slot.pk-dark .pk-tagline { color: rgba(160,130,210,.7) }
+
+/* ---------- 翻牌 ----------
+   ★ 用"交叉淡入 + 轻微缩放"而不是 3D rotateY(180deg)。
+     原因：3D 翻转依赖 backface-visibility 和 preserve-3d，
+     部分小程序基础库/机型上表现不一致（要么两面同时显示、要么都不显示），
+     而这类问题**我在离线渲染里验证不出来** —— 不能赌。
+     交叉淡入 + 缩放 0.92→1，视觉上同样有"牌被翻开"的手感，且完全可靠。 */
+.pk-flip {
+  position: relative;
+  width: 136rpx; height: 192rpx;
+  transition: transform .26s cubic-bezier(.2,.85,.3,1.05);
+}
+.pk-flip.flipped { transform: rotate(-2.5deg) }
+.pk-side {
+  position: absolute; left: 0; top: 0;
+  width: 136rpx; height: 192rpx;
+  border-radius: 14rpx;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 16rpx rgba(0,0,0,.3);
+  transition: opacity .16s ease-out, transform .26s cubic-bezier(.2,.85,.3,1.05);
 }
 
-/* 牌面：白底、圆角、点数大。3 张并排一眼看清 */
-.pk-card {
-  width: 132rpx; height: 186rpx; flex: none;
-  display: flex; align-items: center; justify-content: center;
-  background: #FFFDF9; border-radius: 16rpx;
-  font-size: 52rpx; font-weight: 700; color: #2C2822;
-  box-shadow: 0 6rpx 16rpx rgba(0,0,0,.28);
-}
-.pk-red { color: #C4432F }
-/* 牌背：深色斜纹，暗示"有牌但看不到" */
+/* 牌背：菱形格 + 内框。用 CSS 画，不引图 ——
+   一张牌背图约 30KB，而 136rpx 的尺寸上看不出差别。 */
 .pk-back {
-  width: 132rpx; height: 186rpx; flex: none;
-  border-radius: 16rpx;
-  background: repeating-linear-gradient(45deg, #6B5A44 0 8rpx, #5C4C39 8rpx 16rpx);
-  box-shadow: inset 0 0 0 4rpx rgba(255,255,255,.12);
+  opacity: 1;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 3rpx, transparent 3rpx 12rpx),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 3rpx, transparent 3rpx 12rpx),
+    linear-gradient(150deg, #7B2D3A, #4E1B24);
+  box-shadow: inset 0 0 0 5rpx rgba(255,255,255,.16), 0 6rpx 16rpx rgba(0,0,0,.3);
 }
-.pk-hint {
-  width: 100%; text-align: center;
-  font-size: 22rpx; color: rgba(255,255,255,.5); margin-top: 22rpx;
+/* 牌面：白底大字，默认藏在牌背后 */
+.pk-front {
+  opacity: 0;
+  transform: scale(.9);
+  background: #FFFDF9;
+  font-size: 64rpx; font-weight: 700; color: #2C2822;
 }
-/* 牌型名：看一眼就知道自己是什么牌 */
-.pk-type {
-  width: 100%; text-align: center;
-  font-size: 26rpx; font-weight: 700; color: #F6E7C3; margin-top: 18rpx;
-  letter-spacing: 2rpx;
+.pk-front.pk-empty { color: rgba(0,0,0,.15); font-size: 40rpx }
+.pk-front text { color: #2C2822 }
+.pk-front text.pk-red, .pk-red { color: #C4432F }
+
+/* 翻开状态：牌背退场、牌面登场 */
+.pk-flip.flipped .pk-back { opacity: 0 }
+.pk-flip.flipped .pk-front { opacity: 1; transform: scale(1) }
+
+/* 底牌永远正面朝上：用同一个 flipped 状态表达，不另写一套样式 */
+.pk-slot.pk-pub .pk-flip { transform: none }
+.pk-slot.pk-pub .pk-flip .pk-back { opacity: 0 }
+.pk-slot.pk-pub .pk-flip .pk-front { opacity: 1; transform: scale(1) }
+/* 底牌加一圈金边，一眼看出"这张是大家的" */
+.pk-slot.pk-pub .pk-front { box-shadow: inset 0 0 0 4rpx rgba(232,179,60,.85), 0 6rpx 16rpx rgba(0,0,0,.3) }
+
+/* 暗牌的问号 —— 让"靠想象"这件事一眼看明白 */
+.pk-q { font-size: 56rpx; color: rgba(0,0,0,.18); font-weight: 700 }
+
+/* ---------- 换牌欠账 ---------- */
+.pk-owe {
+  text-align: center; font-size: 21rpx; color: rgba(255,255,255,.5);
+  margin-bottom: var(--gap-2);
 }
+.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 23rpx }
 
 /* ---------- 比牌记录 ---------- */
 .pk-last {
@@ -1294,4 +1348,38 @@
 .pkr-c {
   font-size: 22rpx; font-weight: 700; color: #2C2822;
   background: #FFFDF9; border-radius: 6rpx; padding: 3rpx 8rpx;
+}
+
+/* ============================================================
+   揭晓时刻的动画（卧底出局 / 金花比牌结果）
+   ------------------------------------------------------------
+   这两个瞬间是"全场焦点"：所有人都在看屏幕，等结果。
+   所以值得一个**砸下来**的入场 —— 从大到正常 + 轻微过冲，
+   配合 reveal-hit 音效，就是"揭晓了"的感觉。
+   ============================================================ */
+@keyframes slamIn {
+  0%   { opacity: 0; transform: scale(1.28) rotate(-2.2deg) }
+  58%  { opacity: 1; transform: scale(.975) rotate(.7deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0deg) }
+}
+.uw-out { animation: slamIn .44s cubic-bezier(.2,.9,.3,1.18) both }
+.uw-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-last { animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+
+/* 投票选中：按下就"落定"，给一次轻微的弹回 */
+@keyframes pickedPop {
+  0%   { transform: scale(.97) }
+  60%  { transform: scale(1.015) }
+  100% { transform: scale(1) }
+}
+.uw-p.picked { animation: pickedPop .22s cubic-bezier(.3,1.5,.6,1) both }
+
+/* 卧底看词：按住时不只是变色，还要有一层"灯打上去"的光 */
+.uw-word {
+  transition: transform .14s ease-out, background .16s ease-out, box-shadow .16s ease-out;
+}
+.uw-word.on {
+  transform: scale(.985) translateY(-2rpx);
+  box-shadow: 0 0 0 5rpx rgba(160,120,220,.28), 0 12rpx 36rpx rgba(120,80,190,.35);
 }

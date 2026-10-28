@@ -54,7 +54,15 @@ const FILES = {
   cupShake: 'audio/cup-shake.wav',          // ② 摇盅（带 3.5Hz 手摇起伏）
   cupSlam: 'audio/cup-slam.wav',            // ③ ★ 扣盅闷响（含盅内骰子被震跳）
   cupLift: 'audio/cup-lift.wav',            // ④ 揭盅（口沿离桌的摩擦）
-  diceOnTable: 'audio/dice-on-table.wav'    // ⑤ 骰子在桌上滚两下才停
+  diceOnTable: 'audio/dice-on-table.wav',   // ⑤ 骰子在桌上滚两下才停
+
+  /* ---------- 纸牌组（梦幻金花）----------
+     和骰子音色完全不同：纸是薄片，几乎没有低频，
+     拿骰子音效代替会"厚重得不像纸"。
+     cardDeal 发牌 / cardFlip 翻牌 / cardSpread 摊牌比牌 */
+  cardDeal: 'audio/card-deal.wav',
+  cardFlip: 'audio/card-flip.wav',
+  cardSpread: 'audio/card-spread.wav'
 }
 
 /* 每个音效一个可复用实例 */

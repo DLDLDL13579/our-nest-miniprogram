@@ -374,19 +374,53 @@
          没有下注、没有加注、没有闷牌价格优势。
          牌面按住才显示，理由同卧底看词：同桌的人就坐在旁边。 -->
     <block wx:elif="{{room.game === 'poker'}}">
-      <!-- 我的手牌：按住显示 -->
-      <view class="pk-hand {{showCards ? 'on' : ''}}"
-            bindtouchstart="pkShow" bindtouchend="pkHide" bindtouchcancel="pkHide">
-        <block wx:if="{{showCards}}">
-          <view wx:for="{{room.poker.myCardsText}}" wx:key="*this" class="pk-card">
-            <text class="{{item.indexOf('♥') >= 0 || item.indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{item}}</text>
+      <!--
+        ★★ 牌桌：三张牌各司其职（2026-10-27 用户说明的梦幻金花规则）
+          · 底牌：公共牌，全场可见
+          · 我的牌：只有自己看得见（按住翻开）
+          · 想象：暗牌，**连自己都看不到**，只能靠猜
+
+        翻牌用真的 3D 翻转（两面叠在一起转 180°），不是"显示/隐藏"——
+        后者看起来像贴图切换，一眼假。
+      -->
+      <view class="pk-table {{pkDealIn ? 'dealing' : ''}}">
+        <!-- 底牌 -->
+        <view class="pk-slot pk-pub">
+          <view class="pk-tagline">底牌</view>
+          <!-- 底牌永远正面朝上：样式用 .pk-pub 表达，不靠额外的类 -->
+          <view class="pk-flip">
+            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-front {{room.poker.publicCard ? '' : 'pk-empty'}}">
+              <text class="{{(room.poker.publicText || '').indexOf('♥') >= 0 || (room.poker.publicText || '').indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{room.poker.publicText}}</text>
+            </view>
           </view>
-          <view class="pk-type">{{room.poker.myTypeName}}</view>
-        </block>
-        <block wx:else>
-          <view wx:for="{{room.poker.myCards}}" wx:key="index" class="pk-back"></view>
-          <view class="pk-hint">按住看你的三张牌</view>
-        </block>
+        </view>
+
+        <!-- 我的明牌（按住翻开） -->
+        <view class="pk-slot pk-mine"
+              bindtouchstart="pkShow" bindtouchend="pkHide" bindtouchcancel="pkHide">
+          <view class="pk-tagline">{{showCards ? '你的牌' : '按住看'}}</view>
+          <view class="pk-flip {{showCards ? 'flipped' : ''}}">
+            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-front {{room.poker.myKnown ? '' : 'pk-empty'}}">
+              <text class="{{(room.poker.myKnownText || '').indexOf('♥') >= 0 || (room.poker.myKnownText || '').indexOf('♦') >= 0 ? 'pk-red' : ''}}">{{room.poker.myKnownText}}</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 暗牌：永远背面 —— 这是"梦幻"两个字的来源 -->
+        <view class="pk-slot pk-dark">
+          <view class="pk-tagline">靠想象</view>
+          <view class="pk-flip">
+            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-front"><text class="pk-q">?</text></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 我的账：为了换牌喝掉多少 -->
+      <view wx:if="{{room.poker.drinkText}}" class="pk-owe">
+        换牌已经喝了 <text class="pk-owe-n">{{room.poker.drinkText}}</text>
       </view>
 
       <!-- 比牌记录：双方亮过的牌（这是全场最好看的一刻） -->

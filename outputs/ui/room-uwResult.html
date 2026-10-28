@@ -1224,6 +1224,204 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 .uw-rrow.spy .uw-rr { background: rgba(255,180,160,.2); color: #FFB4A0 }
 
+
+
+
+.pk-table {
+  display: flex; align-items: flex-start; justify-content: center;
+  gap: 11px;
+  padding: 20px 10px 17px;
+  margin-bottom: var(--gap-2);
+  background: linear-gradient(135deg, #3A3128, #2A231C);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--r-3);
+}
+.pk-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  flex: none;
+  
+  transition: transform .46s cubic-bezier(.18,.9,.3,1.16), opacity .3s ease-out;
+}
+.pk-table.dealing .pk-slot {
+  transform: translateY(-150px) rotate(-14deg) scale(.72);
+  opacity: 0;
+}
+
+.pk-table.dealing .pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-table.dealing .pk-slot:nth-child(2) { transition-delay: 0ms }
+.pk-slot:nth-child(1) { transition-delay: 0ms }
+.pk-slot:nth-child(2) { transition-delay: 70ms }
+.pk-slot:nth-child(3) { transition-delay: 140ms }
+
+.pk-tagline {
+  font-size: 9.5px; color: rgba(255,255,255,.45);
+  letter-spacing: 1px; height: 13px;
+}
+.pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
+.pk-slot.pk-dark .pk-tagline { color: rgba(160,130,210,.7) }
+
+
+.pk-flip {
+  position: relative;
+  width: 68px; height: 96px;
+  transition: transform .26s cubic-bezier(.2,.85,.3,1.05);
+}
+.pk-flip.flipped { transform: rotate(-2.5deg) }
+.pk-side {
+  position: absolute; left: 0; top: 0;
+  width: 68px; height: 96px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 8px rgba(0,0,0,.3);
+  transition: opacity .16s ease-out, transform .26s cubic-bezier(.2,.85,.3,1.05);
+}
+
+
+.pk-back {
+  opacity: 1;
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 1.5px, transparent 1.5px 6px),
+    linear-gradient(150deg, #7B2D3A, #4E1B24);
+  box-shadow: inset 0 0 0 2.5px rgba(255,255,255,.16), 0 3px 8px rgba(0,0,0,.3);
+}
+
+.pk-front {
+  opacity: 0;
+  transform: scale(.9);
+  background: #FFFDF9;
+  font-size: 32px; font-weight: 700; color: #2C2822;
+}
+.pk-front.pk-empty { color: rgba(0,0,0,.15); font-size: 20px }
+.pk-front text { color: #2C2822 }
+.pk-front text.pk-red, .pk-red { color: #C4432F }
+
+
+.pk-flip.flipped .pk-back { opacity: 0 }
+.pk-flip.flipped .pk-front { opacity: 1; transform: scale(1) }
+
+
+.pk-slot.pk-pub .pk-flip { transform: none }
+.pk-slot.pk-pub .pk-flip .pk-back { opacity: 0 }
+.pk-slot.pk-pub .pk-flip .pk-front { opacity: 1; transform: scale(1) }
+
+.pk-slot.pk-pub .pk-front { box-shadow: inset 0 0 0 2px rgba(232,179,60,.85), 0 3px 8px rgba(0,0,0,.3) }
+
+
+.pk-q { font-size: 28px; color: rgba(0,0,0,.18); font-weight: 700 }
+
+
+.pk-owe {
+  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5);
+  margin-bottom: var(--gap-2);
+}
+.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 11.5px }
+
+
+.pk-last {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-2);
+  padding: 11px 10px;
+  margin-bottom: var(--gap-2);
+}
+.pkl-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap }
+.pkl-who { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.7) }
+.pkl-who.win { color: #9AD3A8 }
+.pkl-who.lose { color: rgba(255,255,255,.38); text-decoration: line-through }
+.pkl-cards { display: flex; gap: 3px }
+.pkl-c {
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px; padding: 2px 5px;
+}
+.pkl-vs { font-size: 10px; color: rgba(255,255,255,.35) }
+.pkl-note { text-align: center; font-size: 10.5px; color: rgba(255,255,255,.5); margin-top: 6px }
+
+
+.pk-now {
+  text-align: center; font-size: 16px; font-weight: 700; color: #F6E7C3;
+}
+.pk-note {
+  text-align: center; font-size: 10.5px; color: rgba(255,255,255,.45);
+  margin-top: 5px; margin-bottom: var(--gap-2); line-height: 1.7;
+}
+.pk-list { display: flex; flex-direction: column; gap: 7px }
+.pk-p {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 13px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px;
+}
+.pk-p:active { background: rgba(255,255,255,.14) }
+.pk-p.cur { border-color: rgba(232,179,60,.5) }
+.pk-pn { font-size: 15px; font-weight: 600; color: #fff }
+.pk-pgo { font-size: 12px; color: #E8B33C; font-weight: 600 }
+
+
+.pk-fold {
+  margin-top: 12px; padding: 13px 0;
+  text-align: center; border-radius: 10px;
+  font-size: 13px; color: rgba(255,255,255,.55);
+  border: 1px solid rgba(255,255,255,.12);
+}
+.pk-fold:active { background: rgba(255,255,255,.06) }
+
+.pk-wait {
+  text-align: center; padding: 22px 0;
+  font-size: 12px; color: rgba(255,255,255,.45); line-height: 1.8;
+}
+
+
+.pk-reveal {
+  background: rgba(255,255,255,.06);
+  border-radius: var(--r-3);
+  padding: 17px 13px;
+  margin-bottom: var(--gap-2);
+}
+.pkr-t {
+  text-align: center; font-size: 21px; font-weight: 700;
+  color: #F6E7C3; letter-spacing: 1px; margin-bottom: 11px;
+}
+.pkr-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.07);
+}
+.pkr-row:last-child { border-bottom: none }
+.pkr-row.out { opacity: .5 }
+.pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+.pkr-c {
+  font-size: 11px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+}
+
+
+@keyframes slamIn {
+  0%   { opacity: 0; transform: scale(1.28) rotate(-2.2deg) }
+  58%  { opacity: 1; transform: scale(.975) rotate(.7deg) }
+  100% { opacity: 1; transform: scale(1) rotate(0deg) }
+}
+.uw-out { animation: slamIn .44s cubic-bezier(.2,.9,.3,1.18) both }
+.uw-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-last { animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both }
+.pk-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+
+
+@keyframes pickedPop {
+  0%   { transform: scale(.97) }
+  60%  { transform: scale(1.015) }
+  100% { transform: scale(1) }
+}
+.uw-p.picked { animation: pickedPop .22s cubic-bezier(.3,1.5,.6,1) both }
+
+
+.uw-word {
+  transition: transform .14s ease-out, background .16s ease-out, box-shadow .16s ease-out;
+}
+.uw-word.on {
+  transform: scale(.985) translateY(-1px);
+  box-shadow: 0 0 0 2.5px rgba(160,120,220,.28), 0 6px 18px rgba(120,80,190,.35);
+}
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->

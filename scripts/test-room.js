@@ -1330,18 +1330,23 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(uwAfter.room.uw.myRole, 'spy', '⑫ 结束后应能知道自己就是卧底')
   ok('结束后玩家能看到自己的真实身份（复盘用）')
 
-  /* ============ ⑬ 梦幻金花：隐藏手牌 + 回合制 + 比牌裁决 ============ */
+  /* ============ ⑬ 梦幻金花：公共牌 + 明牌 + 靠想象的暗牌 ============ */
   /*
-   * 用户明确要求「不能太烧脑，简单一些」，所以只有三个动作：
-   * 看牌（前端按住）· 弃牌 · 比牌。没有下注、没有闷牌价格优势。
+   * ★★ 这是"梦幻金花"，**不是炸金花**（用户 2026-10-27 说明）：
+   *   · 1 张公共牌 —— 所有人可见
+   *   · 每人 1 张明牌 —— 只有自己看得见
+   *   · 每人 1 张暗牌 —— 连自己都看不到，靠想象
+   *   每个人只知道 2/3，所以**不存在闷牌**。
    *
    * 断言重点：
-   *   · ★ 别人的牌绝不能下发（比骰子更严重：牌的隐蔽性就是全部玩法）
-   *   · 只有轮到的人能行动（否则可以抢着比牌）
-   *   · 比牌结果必须与 poker.compare 一致（不能服务端自己另算一套）
-   *   · 只剩一人时自动结束
+   *   · 公共牌人人都能拿到，且大家拿到的是同一张
+   *   · ★ 我只看得到自己的明牌，**暗牌必须在服务端就被丢掉**（连自己都不给）
+   *   · ★ 别人的明牌也不能下发
+   *   · 比牌裁决用「公共牌 + 明牌 + 暗牌」三张，且与 poker.compare 一致
+   *   · 并列时发起方输（先开为负）
    */
-  const { compare: pCompare } = require('../miniprogram/utils/poker.js')
+  const { compare: pCompare, fullHand: pFull, rank: pRank, cardText: pText } =
+    require('../miniprogram/utils/poker.js')
   const P1 = 'oid_p1', P2 = 'oid_p2', P3 = 'oid_p3'
   OPENID = P1
   const pkr = await room.main({ action: 'create', name: 'P1', game: 'poker' })
@@ -1358,28 +1363,37 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const pkRoom = () => store.rooms.filter(x => x._id === pkId)[0]
   pkRoom().countdownEnd = Date.now() - 100
 
-  /* 每人拿到的必须是 3 张，且别人的拿不到 */
-  const pkCards = {}
+  const pkSeen = {}
   for (const oid of [P1, P2, P3]) {
     OPENID = oid
     const st = await room.main({ action: 'status', id: pkId })
     assert.ok(st.ok && st.room.poker, '⑬ 应该有 poker 状态')
-    pkCards[oid] = st.room.poker.myCards
-    assert.strictEqual(pkCards[oid].length, 3, '⑬ 每人必须拿到 3 张牌')
-    /* ★ 命门：别人的牌不能出现在我的响应里 */
-    const leak = (st.room.players || []).some(p => Array.isArray(p.cards) && p.cards.length)
-    assert.ok(!leak, '⑬ ★★ 别人的手牌绝不能下发到前端（抓到就等于明牌）')
+    const pk = st.room.poker
+    assert.ok(pk.publicCard, '⑬ 每人必须拿到公共牌')
+    assert.ok(pk.myKnown, '⑬ 每人必须拿到自己的明牌')
+    pkSeen[oid] = { pub: pk.publicCard, known: pk.myKnown, pk: pk }
+    /* ★ 命门 1：暗牌不能下发 —— 连自己都看不到 */
+    assert.strictEqual(pk.myHidden, undefined, '⑬ ★★ 暗牌不能下发（连自己都不该知道）')
+    assert.ok(!('myHidden' in pk), '⑬ ★★ 响应里不能有暗牌字段')
+    /* ★ 命门 2：别人的明牌不能下发 */
+    const leakOther = (st.room.players || []).some(p => p.cards || p.known)
+    assert.ok(!leakOther, '⑬ ★★ 别人的明牌绝不能下发')
   }
-  /* 三手牌之间不能有重复（同一副牌发出来的） */
-  const pkAll = Object.values(pkCards).flat().map(c => c.r + ':' + c.s)
-  assert.strictEqual(new Set(pkAll).size, 9, '⑬ 三人的牌不能有重复（同一副牌发的），实际: ' + pkAll.join(' '))
-  ok('★ 梦幻金花：3 人各拿 3 张、无重复牌，别人的手牌拿不到')
+  /* 公共牌全场必须是同一张 */
+  const pubs = [P1, P2, P3].map(o => pkSeen[o].pub.r + ':' + pkSeen[o].pub.s)
+  assert.strictEqual(new Set(pubs).size, 1, '⑬ ★ 三人的公共牌必须是同一张，实际: ' + pubs.join(' '))
+  /* 发出去的牌无重复（1 公共 + 3 人 × 2 张 = 7） */
+  const rawHands = pkRoom().players.map(p => p.cards)
+  const allCards = [pkRoom().pkPublic].concat(rawHands.flat()).map(c => c.r + ':' + c.s)
+  assert.strictEqual(allCards.length, 7, '⑬ 1 张公共 + 3 人各 2 张 = 7 张')
+  assert.strictEqual(new Set(allCards).size, 7, '⑬ 发出去的牌不能重复')
+  ok('★ 梦幻金花：1 张公共牌全场一致、各人只看到自己的明牌、暗牌不下发')
 
   /* 只有轮到的人能行动 */
   const pkTurn = pkRoom().turn
   const pkBySeat = pkRoom().players.filter(p => p.seat === pkTurn)[0]
-  const notMe = [P1, P2, P3].filter(o => o !== pkBySeat.openid)[0]
-  OPENID = notMe
+  const pkOther = [P1, P2, P3].filter(o => o !== pkBySeat.openid)[0]
+  OPENID = pkOther
   const pkOutOfTurn = await room.main({ action: 'pkAct', act: 'fold', id: pkId })
   assert.ok(!pkOutOfTurn.ok, '⑬ ★ 没轮到的人不能行动')
   ok('没轮到的人不能行动（回合由服务端定）')
@@ -1390,28 +1404,65 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(!pkSelfVs.ok, '⑬ ★ 不能跟自己比牌')
   ok('不能跟自己比牌')
 
-  /* 比牌：按 poker.compare 的裁决验证服务端没算错 */
-  const pkOthers = [P1, P2, P3].filter(o => o !== pkBySeat.openid)
-  const pkTarget = pkOthers[0]
-  const expectWin = pCompare(pkCards[pkBySeat.openid], pkCards[pkTarget]) >= 0
+  /* 比牌：裁决必须与"公共牌 + 明牌 + 暗牌"三张的 poker.compare 一致 */
+  const pub = pkRoom().pkPublic
+  const handOf = (oid) => {
+    const pl = pkRoom().players.filter(p => p.openid === oid)[0]
+    return pFull(pub, pl.cards)
+  }
+  const pkTarget = [P1, P2, P3].filter(o => o !== pkBySeat.openid)[0]
+  const expectWin = pCompare(handOf(pkBySeat.openid), handOf(pkTarget)) > 0
   OPENID = pkBySeat.openid
   const pkVs = await room.main({ action: 'pkAct', act: 'vs', target: pkTarget, id: pkId })
   assert.ok(pkVs.ok, '⑬ 比牌应成功：' + (pkVs.msg || ''))
   assert.ok(pkVs.room.poker.last, '⑬ 比牌必须给出结果')
-  const pkShouldWin = expectWin ? pkBySeat.name : (pkRoom().players.filter(p => p.openid === pkTarget)[0] || {}).name
-  assert.strictEqual(pkVs.room.poker.last.winner, pkShouldWin,
-    '⑬ ★ 服务端裁决必须与 poker.compare 一致，期望 ' + pkShouldWin +
-    '，实际 ' + pkVs.room.poker.last.winner)
-  /* 双方亮牌：比牌记录里必须能看见两手的牌 */
-  assert.strictEqual(pkVs.room.poker.last.byCards.length, 3, '⑬ 比牌记录要亮出挑战者的牌')
-  assert.strictEqual(pkVs.room.poker.last.targetCards.length, 3, '⑬ 比牌记录要亮出被挑战者的牌')
-  ok('★ 比牌：裁决与 poker.compare 一致，双方亮牌')
+  const pkWant = expectWin ? pkBySeat.name : (pkRoom().players.filter(p => p.openid === pkTarget)[0] || {}).name
+  assert.strictEqual(pkVs.room.poker.last.winner, pkWant,
+    '⑬ ★ 裁决必须与 poker.compare 一致，期望 ' + pkWant + '，实际 ' + pkVs.room.poker.last.winner)
+  /* 摊牌时双方的暗牌也要亮出来（否则没人知道凭什么输） */
+  assert.strictEqual(pkVs.room.poker.last.byCards.length, 3, '⑬ 摊牌要给出挑战者的三张牌')
+  assert.strictEqual(pkVs.room.poker.last.targetCards.length, 3, '⑬ 摊牌要给出被挑战者的三张牌')
+  ok('★ 比牌：用「公共牌+明牌+暗牌」裁决，摊牌亮出三张')
 
-  /* 继续把局打完：剩下两人，轮到的人弃牌 → 只剩一人 → 结束 */
+  /* ⑬b 换牌：换公共牌喝 1 杯、换手牌喝半杯（用户 2026-10-27 加的规则） */
+  {
+    const pkCur0 = pkRoom().players.filter(p => p.seat === pkRoom().turn)[0]
+    assert.ok(pkCur0, '⑬b 应该有一个当前轮的人')
+    OPENID = pkCur0.openid
+    const beforePub = pkRoom().pkPublic
+    const beforeKnown = pkCur0.cards[0]
+    /* 不是轮到的人不能换 */
+    const notMe = [P1, P2, P3].filter(o => o !== pkCur0.openid && pkRoom().players.filter(p => p.openid === o)[0].out === false)[0]
+    if (notMe) {
+      OPENID = notMe
+      const bad = await room.main({ action: 'pkAct', act: 'swapPublic', id: pkId })
+      assert.ok(!bad.ok, '⑬b ★ 没轮到的人不能换牌')
+    }
+    /* 换公共牌：喝 1 杯，公共牌必须真的变了 */
+    OPENID = pkCur0.openid
+    const sw1 = await room.main({ action: 'pkAct', act: 'swapPublic', id: pkId })
+    assert.ok(sw1.ok, '⑬b 换公共牌应成功：' + (sw1.msg || ''))
+    const afterPub = pkRoom().pkPublic
+    assert.notStrictEqual(afterPub.r + ':' + afterPub.s, beforePub.r + ':' + beforePub.s,
+      '⑬b ★ 换完之后公共牌必须真的变了')
+    assert.strictEqual(sw1.room.poker.myDrink, 1, '⑬b ★ 换公共牌要喝 1 杯，实际 ' + sw1.room.poker.myDrink)
+    /* 换手牌：再喝半杯，累计 1.5 */
+    const sw2 = await room.main({ action: 'pkAct', act: 'swapMine', id: pkId })
+    assert.ok(sw2.ok, '⑬b 换手牌应成功：' + (sw2.msg || ''))
+    assert.strictEqual(sw2.room.poker.myDrink, 1.5, '⑬b ★ 换手牌喝半杯，累计应为 1.5，实际 ' + sw2.room.poker.myDrink)
+    /* 换完回合不推进 —— 还能接着操作 */
+    assert.strictEqual(pkRoom().turn, pkCur0.seat, '⑬b 换牌不推进回合（喝完还能继续决定）')
+    /* 所有人的牌 + 公共牌仍然不重复（52 张不丢不重） */
+    const allNow = [pkRoom().pkPublic]
+      .concat(pkRoom().players.filter(p => p.inRound !== false).map(p => p.cards).flat())
+      .map(c => c && c.r + ':' + c.s)
+    assert.strictEqual(new Set(allNow).size, allNow.length, '⑬b ★ 换牌后牌不能重复（52 张不丢不重）')
+    ok('★ 换牌：换公共牌喝 1 杯、换手牌喝半杯，累计记账且不推进回合')
+  }
+
+  /* 继续打完：剩下两人，轮到的人弃牌 → 只剩一人 → 结束 */
   const pkLeft = pkRoom().players.filter(p => !p.out)
   assert.strictEqual(pkLeft.length, 2, '⑬ 比一次后应剩 2 人，实际 ' + pkLeft.length)
-  /* 让**当前轮**的那个人弃牌，剩下的那个人赢 —— 不能假设是数组第 0 个，
-     turn 是按座位往后转的（第一版就是这么踩空的：报"还没轮到你"）。 */
   const pkCurP = pkLeft.filter(p => p.seat === pkRoom().turn)[0]
   assert.ok(pkCurP, '⑬ 剩余两人里应该有一个是当前轮的人')
   const pkWinnerP = pkLeft.filter(p => p.seat !== pkCurP.seat)[0]
@@ -1421,13 +1472,10 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(pkFold.room.phase, 'over', '⑬ 只剩一人时必须自动结束')
   assert.strictEqual(pkFold.room.poker.winner, pkWinnerP.name, '⑬ 赢家应是那个没弃牌的人')
   const pkHands = pkFold.room.lastResult && pkFold.room.lastResult.hands
-  assert.ok(Array.isArray(pkHands) && pkHands.length === 3, '⑬ 结算要把所有人的牌摊开')
-  ok('★ 弃牌 → 只剩一人自动结束，结算摊开所有人的牌')
-
-  /* 已出局的人不能再行动 */
-  OPENID = pkCurP.openid
-  const pkDead = await room.main({ action: 'pkAct', act: 'fold', id: pkId })
-  assert.ok(!pkDead.ok, '⑬ 已结束的局不能再操作')
+  assert.ok(Array.isArray(pkHands) && pkHands.length === 3, '⑬ 结算要把三个人的牌摊开')
+  assert.ok(pkHands.every(h => Array.isArray(h.cards) && h.cards.length === 3),
+    '⑬ 结算的每手都必须是完整的三张')
+  ok('★ 弃牌 → 只剩一人自动结束，结算摊开三人各自的三张牌')
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)

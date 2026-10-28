@@ -284,10 +284,23 @@ function shape(room, openid) {
       const meP = (room.players || []).filter(p => p.openid === openid)[0] || null
       if (!meP) return null
       const alive = (room.players || []).filter(p => p.inRound !== false && !p.out)
+      const myHand = meP.cards || []
       return {
         step: room.pkStep || 'play',
-        myCards: meP.cards || [],
+        /* 公共牌：全场共用，本来就该看得见 */
+        publicCard: room.pkPublic || null,
+        publicText: room.pkPublic ? poker.cardText(room.pkPublic) : '',
+        /* 明牌：只有自己看得见 */
+        myKnown: myHand[0] || null,
+        myKnownText: myHand[0] ? poker.cardText(myHand[0]) : '',
+        /*
+         * ★ 暗牌**不返回**（连自己都看不到）—— 这是这个玩法的核心：
+         *   每个人只知道 2/3，第三张靠想象。
+         *   发到前端再藏起来不算数，抓包就穿了。
+         */
         folded: !!meP.out,
+        /* 我为了换牌喝掉的量（半杯 = 0.5） */
+        myDrink: (room.pkDrink || {})[openid] || 0,
         aliveCount: alive.length,
         /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
         log: (room.pkLog || []).slice(-6),
@@ -739,13 +752,25 @@ exports.main = async (event) => {
        * 洗牌用 Fisher-Yates（不是 sort(random)，那个分布不均）。
        */
       if (room.game === 'poker') {
-        const deck = poker.shuffle(poker.newDeck())
+        /*
+         * ★★ 梦幻金花 ≠ 炸金花（用户 2026-10-27 明确说明）。
+         *    · 1 张**公共牌**：所有人可见
+         *    · 每人 1 张**明牌**：只有自己看得见
+         *    · 每人 1 张**暗牌**：连自己都看不到，靠想象
+         *   比牌时用「公共牌 + 明牌 + 暗牌」三张算牌型。
+         *   每个人只知道 2/3 的信息 —— 这就是"梦幻"两个字的意思。
+         *   也因此**不存在闷牌**：本来就没有"全看"这个状态。
+         */
+        const inRoundN = players.filter(p => p.inRound !== false).length
+        const dealt = poker.dealDream(inRoundN)
         let k = 0
         players.forEach(p => {
           if (p.inRound === false) { p.cards = []; p.out = true; return }
-          p.cards = [deck[k++], deck[k++], deck[k++]]
+          p.cards = dealt.hands[k++]
           p.out = false
         })
+        room._pkPublic = dealt.publicCard
+        room._pkRest = dealt.rest
       }
 
       await rooms.doc(room._id).update({
@@ -753,6 +778,11 @@ exports.main = async (event) => {
           players: players,
           /* 梦幻金花的进度：开局直接进"比牌"，turn 指向第一个在局的人 */
           pkStep: room.game === 'poker' ? 'play' : null,
+          pkPublic: room._pkPublic || null,
+          /* 没发出去的牌 —— 换牌只能从这里抽 */
+          pkRest: room._pkRest || [],
+          /* 换牌喝掉的量：{ openid: 杯数 }，半杯记 0.5 */
+          pkDrink: {},
           pkLog: [],
           pkLast: null,
           pkWinner: null,
@@ -1182,7 +1212,7 @@ exports.main = async (event) => {
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
         spin: null,
         /* 金花 / 卧底的局内状态一起清 */
-        pkStep: null, pkLog: [], pkLast: null, pkWinner: null,
+        pkStep: null, pkLog: [], pkLast: null, pkWinner: null, pkPublic: null, pkRest: [], pkDrink: {},
 
         updatedAt: ts
       }
@@ -1368,6 +1398,57 @@ exports.main = async (event) => {
       const log = (room.pkLog || []).slice()
       let last = null
 
+      /*
+       * ============ 换牌（用户 2026-10-27 加的规则）============
+       *
+       *   换公共牌（底牌）→ 喝 1 杯
+       *   换自己的手牌   → 喝半杯
+       *
+       * 为什么这个机制重要：它把"运气"变成了"可付费的选择"。
+       * 公共牌是全场共用的，换它影响所有人 —— 所以代价是换手牌的两倍。
+       * 手牌只影响自己，半杯。
+       *
+       * 规则细节：
+       *   · 只能在**轮到自己**时换（和其他操作保持一致，避免抢着换）
+       *   · 换完回合**不推进** —— 喝完还能接着决定跟不跟、比不比
+       *   · 可以从现有牌堆抽，旧牌放回牌堆底（保证 52 张不丢不重）
+       *   · 喝的量记在自己名下，**累计**（换两次就是 2 杯）
+       */
+      if (act === 'swapPublic' || act === 'swapMine') {
+        const rest = (room.pkRest || []).slice()
+        if (!rest.length) return { ok: false, msg: '没牌可换了，这局凑合打完吧' }
+        const drink = Object.assign({}, room.pkDrink || {})
+        const addDrink = act === 'swapPublic' ? 1 : 0.5
+        drink[OPENID] = (Number(drink[OPENID]) || 0) + addDrink
+
+        if (act === 'swapPublic') {
+          const nc = rest.shift()
+          /* 旧的公共牌放回牌堆底 —— 牌不能凭空消失，否则剩下的牌会越来越少 */
+          if (room.pkPublic) rest.push(room.pkPublic)
+          await rooms.doc(room._id).update({
+            data: {
+              pkPublic: nc, pkRest: rest, pkDrink: drink, updatedAt: ts,
+              pkLast: { kind: 'swap', name: mine.name, what: 'public', drink: addDrink }
+            }
+          })
+        } else {
+          const n1 = rest.shift()
+          const n2 = rest.shift() || rest.shift()
+          if (!n1 || !n2) return { ok: false, msg: '牌不够换两手了' }
+          const old = (mine.cards || []).slice()
+          mine.cards = [n1, n2]
+          old.forEach(c => { if (c) rest.push(c) })
+          await rooms.doc(room._id).update({
+            data: {
+              players: players, pkRest: rest, pkDrink: drink, updatedAt: ts,
+              pkLast: { kind: 'swap', name: mine.name, what: 'mine', drink: addDrink }
+            }
+          })
+        }
+        const rr = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rr.data, OPENID) }
+      }
+
       if (act === 'fold') {
         mine.out = true
         last = { kind: 'fold', name: mine.name }
@@ -1379,8 +1460,9 @@ exports.main = async (event) => {
         if (!tP) return { ok: false, msg: '没有这个人' }
         if (tP.out) return { ok: false, msg: '他已经出局了' }
         if (tP.inRound === false) return { ok: false, msg: '他是中途进来的，不参与这局' }
-        if (!Array.isArray(mine.cards) || mine.cards.length !== 3) return { ok: false, msg: '你的牌不见了，让房主重开一局' }
-        if (!Array.isArray(tP.cards) || tP.cards.length !== 3) return { ok: false, msg: '对方的牌不见了，让房主重开一局' }
+        /* 梦幻金花每人手里是**两张**（明牌 + 暗牌），第三张是公共牌 */
+        if (!Array.isArray(mine.cards) || mine.cards.length !== 2) return { ok: false, msg: '你的牌不见了，让房主重开一局' }
+        if (!Array.isArray(tP.cards) || tP.cards.length !== 2) return { ok: false, msg: '对方的牌不见了，让房主重开一局' }
 
         /*
          * 比牌 —— **双方亮牌**。
@@ -1391,18 +1473,31 @@ exports.main = async (event) => {
          * 理由：先手本就有风险，给它一点补偿；而且规则必须明确，
          * 不能"随机判"—— 那会让双方都不服。
          */
-        const cmp = poker.compare(mine.cards, tP.cards)
-        const challengerWins = cmp >= 0
+        const pub = room.pkPublic
+        if (!pub) return { ok: false, msg: '公共牌不见了，让房主重开一局' }
+        const handA = poker.fullHand(pub, mine.cards)
+        const handB = poker.fullHand(pub, tP.cards)
+        const cmp = poker.compare(handA, handB)
+        /*
+         * ★ 并列时**发起比牌的人输**（"先开为负"）。
+         *   这是主流平台的规则，我第一版做成了挑战者赢 —— 反了。
+         *   为什么这么定得通：先开的人主动暴露信息，本来就该承担风险；
+         *   而且规则方向明确，双方才不会觉得被坑。
+         */
+        const challengerWins = cmp > 0
         if (challengerWins) tP.out = true
         else mine.out = true
         last = {
           kind: 'vs',
           by: mine.name, target: tP.name,
-          byCards: mine.cards, targetCards: tP.cards,
+          /* 摊牌时把双方的暗牌也亮出来 —— 不亮的话没人知道凭什么输 */
+          byCards: handA, targetCards: handB,
+          byKnown: mine.cards[0], byHidden: mine.cards[1],
+          targetKnown: tP.cards[0], targetHidden: tP.cards[1],
           winner: challengerWins ? mine.name : tP.name,
           tie: cmp === 0,
-          byType: poker.rank(mine.cards).name,
-          targetType: poker.rank(tP.cards).name
+          byType: poker.rank(handA).name,
+          targetType: poker.rank(handB).name
         }
         log.push(last)
       } else {
@@ -1421,8 +1516,15 @@ exports.main = async (event) => {
         patch.lastResult = {
           kind: 'poker',
           winner: patch.pkWinner,
+          publicCard: room.pkPublic || null,
           hands: players.filter(p => p.inRound !== false)
-            .map(p => ({ name: p.name, cards: p.cards || [], out: !!p.out }))
+            .map(p => {
+              const full = poker.fullHand(room.pkPublic, p.cards || [])
+              return {
+                name: p.name, cards: full, out: !!p.out,
+                typeName: poker.rank(full).name
+              }
+            })
         }
       } else {
         /* 回合交给下一个还在局里的人（按座位往后找一圈） */

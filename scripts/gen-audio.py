@@ -506,11 +506,18 @@ def write_wav(name, sig, out_sr=None):
         sig, sr_use = resample(sig, SR, out_sr)
     else:
         sr_use = SR
-    # ★ 顺序很重要：先响度定标 → 去直流 → 淡入淡出 → **量化**
+    # ★ 顺序很重要：先响度定标 → 混音对齐 → 去直流 → 淡入淡出 → **量化**
     #   ① 响度要在最前：它决定整体电平，后面的高通会削掉一部分，
     #      所以要在削之前就定到目标响度
-    #   ② 量化必须最后：整数域去均值只能在 int16 上做
+    #   ② ★★ 混音对齐必须**在 loudness_normalize 之后**：
+    #      loudness_normalize 的逻辑是"只提升不下调"，如果先降后归一，
+    #      会被它原样推回去（实测 charge-up 降到 -17 后又回到 -9.6）。
+    #      这个 bug 的特征很隐蔽：**中间态测量是对的，落盘的文件是错的** ——
+    #      所以验证必须测最终 wav，不能只看函数返回值。
+    #   ③ 量化必须最后：整数域去均值只能在 int16 上做
     sig = loudness_normalize(sig)
+    if name in LOUDNESS_FIX:
+        sig = match_short_term(sig, LOUDNESS_FIX[name], sr_use)
     sig = remove_dc(sig)
     sig = fade_edges(sig)
     ints = quantize(sig)
@@ -1191,6 +1198,203 @@ def cup_shake(seconds=1.05):
     return [out[i] + body[i] * 0.14 for i in range(total)]
 
 
+def grainize(seconds, seed, density_hz=900, grain_ms=1.8, amp_jitter=0.55, seed_body=None):
+    """
+    颗粒化摩擦声 —— 纸牌/布料/砂纸这类声音的正确做法。
+
+    ★ 为什么不能直接用 bandpass(noise())：
+      连续带通噪声听起来像"合成器的沙沙声"，因为它每一刻的能量都一样。
+      真实摩擦是**无数个微小接触点**的叠加 —— 每一刻接触的点数、角度、
+      压力都在变，所以能量是**起伏的、颗粒状的**。
+
+      这是纸牌音效"像不像"的分水岭。做法：
+        · 每 grain_ms 放一个极短脉冲（噪声 × 快速衰减包络）
+        · 脉冲幅度随机起伏（接触点多少不同）
+        · 再叠一层很轻的连续噪声作底（完全离散会显得"电子"）
+    """
+    n = int(SR * seconds)
+    out = [0.0] * n
+    rng = random.Random(seed)
+    step = max(1, int(SR * grain_ms / 1000.0))
+    i = 0
+    k = 0
+    while i < n:
+        amp = 1.0 - amp_jitter * rng.random()
+        glen = min(step * 2, n - i)
+        g = noise(glen, seed + 1000 + k)
+        ge = env_ad(glen, max(1, int(SR * 0.0004)), SR * 0.006)
+        for j in range(glen):
+            out[i + j] += g[j] * ge[j] * amp
+        i += step
+        k += 1
+    # 很轻的连续底噪（把颗粒"粘"起来）
+    body = noise(n, seed_body or (seed + 7))
+    for j in range(n):
+        out[j] = out[j] * 0.85 + body[j] * 0.15
+    # 整体包络：摩擦是"起快、收慢"
+    env = env_ad(n, max(1, int(SR * 0.004)), SR * 0.035)
+    return [out[j] * env[j] for j in range(n)]
+
+
+
+# ============================================================
+# v5.2 混音平衡（2026-10-28）
+#
+# ★ 为什么需要：所有音效都做了峰值归一化（峰值 ≈0.97），
+#   但**感知响度**跨度有 20.6 dB —— 听起来就是"有的震耳、有的听不见"。
+#   实测最刺眼的 5 处：
+#     咽酒 drink      -5.5 dB  ← 比摊牌还响 17 dB，喧宾夺主
+#     摊牌 card-spread -23.2 dB ← 全场焦点反而最轻之一
+#     入盅 dice-into-cup -26.2 dB ← 摇盅第一步几乎听不见
+#     转盘慢转 wheel-slow -12.9 dB ← 背景音太响，长音会累
+#     蓄力 charge-up  -9.2 dB  ← 氛围音成了全场最响
+#
+# ★ 只修这 5 处，**不做全局重排**。
+#   AGENTS.md 记过"归一化只能向上不能向下"的教训 —— 一刀切拉平会
+#   把本来有层次的设计改坏。这里每一处改动都有明确的语义理由。
+#
+# 指标用「100ms 窗口的最大 RMS」而不是全局 RMS：
+#   全局 RMS 会把"尖峰 + 长静音"判得很轻，但耳朵不是这么听的。
+# ============================================================
+
+def short_term_db(sig, sr=None, win_ms=100):
+    """100ms 窗口的最大 RMS（dBFS）—— 感知响度的近似。
+
+    ⚠️ sr 必须传该音效**自己的采样率**：音效有 8000/11025/22050 三档，
+       用全局 SR 算窗口会算错窗口长度（第一个版本就错在这，导致测量值乱跳）。
+    """
+    sr = sr or SR
+    n = len(sig)
+    w = max(1, int(sr * win_ms / 1000.0))
+    if n <= w:
+        rms = math.sqrt(sum(x * x for x in sig) / max(1, n))
+        return 20 * math.log10(rms) if rms > 0 else -99.0
+    best = 0.0
+    step = max(1, w // 4)
+    for i in range(0, n - w + 1, step):
+        seg = sig[i:i + w]
+        r = math.sqrt(sum(x * x for x in seg) / w)
+        if r > best:
+            best = r
+    return 20 * math.log10(best) if best > 0 else -99.0
+
+
+def match_short_term(sig, target_db, sr=None):
+    """把短时峰值响度对齐到目标值。
+
+    ⚠️ 只用于**向下调**。向上调会被峰值保护吃掉（峰值已接近 0.97），
+       结果是"越调越轻" —— 实测 dice-into-cup 想要 +6 dB，实际变成 -26 dB。
+    """
+    cur = short_term_db(sig, sr)
+    if cur <= -98:
+        return sig
+    k = 10 ** ((target_db - cur) / 20.0)
+    out = [x * k for x in sig]
+    peak = max((abs(x) for x in out), default=0)
+    if peak > 0.97:
+        out = [x * (0.97 / peak) for x in out]
+    return out
+
+
+# 文件 → 目标短时峰值响度（dBFS）。**只做向下调**。
+#
+# ⚠️ 这里一开始列了 5 个，其中两个（dice-into-cup / card-spread）是向上调，
+#    被峰值保护吃掉、反而更轻了。复核后确认：这两个**本来就不该单独调响** ——
+#    它们都是组合音的一部分：
+#      · 摊牌 = card-spread(-23) 紧跟 reveal-hit(-20)，整体由后者主导
+#      · 入盅 = dice-into-cup(-26) 紧跟摇盅(-18)，前者只是"开场轻响"
+#    单独看响度低是**设计意图**，不是失衡。差点因为错误的指标改坏它们。
+LOUDNESS_FIX = {
+    'drink':      -14.0,   # 咽酒：氛围，本来 -5.5 比摊牌还响 17 dB，喧宾夺主
+    'wheel-slow': -20.0,   # 转盘慢转：1.6 秒长音，太响会累
+    'charge-up':  -17.0,   # 蓄力：氛围铺垫，不是主角
+}
+
+# ============================================================
+# v5 纸牌组（2026-10-27）—— 梦幻金花用
+#
+# 为什么必须单独做：这一组的音色和骰子/转盘**完全不同**。
+#   骰子是硬木撞桌面（有低频"咚"），纸牌是**薄片擦桌面**（几乎没有低频）。
+#   拿骰子音效代替牌声，一听就"厚重得不像纸"。
+#
+# 纸牌声音的物理特征：
+#   · 没有低频 —— 一张 30g 的纸片不会让桌子响
+#   · 主能量在 2k~8kHz，是"纸纤维擦过硬桌面"的沙沙 + 落下的"嗒"
+#   · 时长短（80~200ms），衰减极快
+# ============================================================
+
+def card_deal():
+    """
+    发牌：纸牌从手边滑出去，落在桌面。
+
+    ★ v5.1 改用**颗粒化摩擦**（grainize）——
+      第一版用 bandpass(noise()) 直接做，听着像"合成器沙沙"，
+      因为连续噪声每一刻能量都一样。真实纸牌滑过桌面是无数纤维
+      接触点的断续叠加，能量是起伏的。
+    """
+    n = int(SR * 0.22)
+    # 滑动：颗粒化摩擦，主频偏高（纸是薄而硬的）
+    slide = grainize(0.22, 7101, density_hz=780, grain_ms=1.6)
+    slide = bandpass(slide, 0.26, 0.90)
+    out = [slide[i] * 0.55 for i in range(min(n, len(slide)))]
+    while len(out) < n:
+        out.append(0.0)
+    # 落桌："嗒" —— 极短的高频冲击（这个必须有，纸牌落桌是明确的点）
+    tap_n = int(SR * 0.045)
+    hit = highpass(noise(tap_n, 7102), 0.62)
+    he = env_ad(tap_n, max(1, int(SR * 0.0006)), SR * 0.010)
+    off = int(SR * 0.092)
+    for j, v in enumerate(hit):
+        if off + j < n:
+            out[off + j] += v * he[j] * 0.80
+    return out
+
+
+def card_flip():
+    """
+    翻牌：手指一弹把牌翻过来。
+    比发牌更脆更短 —— 摩擦少、冲击集中，而且"翻"有一个上扬的尾巴。
+    """
+    n = int(SR * 0.145)
+    fric = grainize(0.10, 7201, density_hz=1100, grain_ms=1.2)
+    fric = highpass(bandpass(fric, 0.42, 0.96), 0.18)
+    out = [0.0] * n
+    for i in range(min(n, len(fric))):
+        out[i] = fric[i] * 0.62
+    # 翻过来拍到桌面
+    tap_n = int(SR * 0.040)
+    hit = highpass(noise(tap_n, 7202), 0.60)
+    he = env_ad(tap_n, max(1, int(SR * 0.0005)), SR * 0.009)
+    off = int(SR * 0.052)
+    for j, v in enumerate(hit):
+        if off + j < n:
+            out[off + j] += v * he[j] * 0.86
+    return out
+
+
+def card_spread():
+    """
+    摊牌：几张牌一起拍在桌上（比牌那一刻）。
+    三张牌在 0~41ms 内相继落下 —— 听感上是一声厚的，不是三声。
+    每张牌自己的摩擦仍然是颗粒化的。
+    """
+    n = int(SR * 0.30)
+    out = [0.0] * n
+    for k, (delay_ms, amp, seed) in enumerate([(0, 0.95, 7301), (22, 0.72, 7302), (41, 0.58, 7303)]):
+        off = int(SR * delay_ms / 1000.0)
+        seg = grainize(0.10, seed, density_hz=950, grain_ms=1.4)
+        seg = bandpass(seg, 0.32, 0.92)
+        for j in range(min(len(seg), n - off)):
+            out[off + j] += seg[j] * amp * 0.52
+        tap_n = int(SR * 0.035)
+        hit = highpass(noise(tap_n, seed + 50), 0.58)
+        he = env_ad(tap_n, max(1, int(SR * 0.0005)), SR * 0.008)
+        for j in range(tap_n):
+            if off + j < n:
+                out[off + j] += hit[j] * he[j] * amp * 0.85
+    return out
+
+
 def cup_slam():
     """
     ③ 扣盅 —— ★ 整个流程最有仪式感的一下。
@@ -1312,6 +1516,10 @@ ALL_V3 = [
     ('cup-slam',          _sp(cup_slam, tail_ms=260, seed=65), SR_HI),
     ('cup-lift',          _sp(cup_lift, tail_ms=140, seed=67), SR_MID),
     ('dice-on-table',     _sp(dice_on_table, tail_ms=180, seed=69), SR_HI),
+    # v5 纸牌组：牌是薄片，反射比骰子短得多（tail 只要 90~140ms）
+    ('card-deal',         _sp(card_deal, tail_ms=120, seed=71), SR_HI),
+    ('card-flip',         _sp(card_flip, tail_ms=90, seed=73), SR_HI),
+    ('card-spread',       _sp(card_spread, tail_ms=140, seed=75), SR_HI),
 ]
 
 
