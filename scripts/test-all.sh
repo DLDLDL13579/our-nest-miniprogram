@@ -20,7 +20,9 @@ node scripts/test-cup-geometry.js
 echo "═══ 5/9 房间页状态机（phase→stage 唯一出口 / 新一局重置）═══"
 node scripts/test-room-ui.js
 
+# ★ 音效抖动：一局里同一音效播很多次，不能每次都完全一样（打点机感）
 echo "═══ 6/9 反馈时间轴 + 错误反馈（音画同步 / 不许静默吞错）═══"
+node scripts/test-pitch.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 
