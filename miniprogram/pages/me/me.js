@@ -88,7 +88,8 @@ Page({
     if (h) feedback.vibrate('light')
   },
 
-  goLobby() { wx.switchTab({ url: '/pages/lobby/lobby' }) },
+  /* ⚠️ 这里原来有个 `goLobby()`（switchTab 到大厅）—— tabBar 已经有入口，
+     从来没被模板绑定过。2026-10-28 由「死功能」断言扫出来并删除。 */
 
   /**
    * 清理本机缓存。

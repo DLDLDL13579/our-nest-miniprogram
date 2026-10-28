@@ -1706,7 +1706,12 @@ Page({
 
   /* ================= 建房 ================= */
 
-  onName(e) { this.setData({ myName: e.detail.value }) },
+  /*
+   * ⚠️ 这里原来有个 （昵称输入框的 bindinput 处理）。
+   *   2026-10-27 按手机上不要太多交互把 entry 的昵称输入砍掉了，
+   *   这个处理器就成了孤儿 —— 2026-10-28 由「死功能」断言扫出来并删除。
+   *   （改昵称现在走 lobby 里点自己那行 → showModal，见 renameMe）
+   */
   pickGame(e) {
     const k = e.currentTarget.dataset.k
     const g = gameOf(k)

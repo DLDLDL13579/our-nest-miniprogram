@@ -1373,6 +1373,73 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.deepStrictEqual(missing, [], '存在模板绑定了但 js 未定义的方法：\n    ' + missing.join('\n    '))
   ok('全部页面的 bind/catch 处理函数都有定义（goAnswer / previewPhoto 这类已修）')
 
+  /* ============ ③b 反向检查：定义了却从没被绑定的方法（死功能） ============ */
+  console.log('\n=== ③b 页面方法里有没有"从没被绑定过"的死功能 ===')
+  /*
+   * ★★ 2026-10-28，用一个真 bug 换来的。
+   *
+   *   金花的「换牌」功能是**完整实现**的：`pkSwap` 方法、服务端 swapPublic/
+   *   swapMine、代价计算、二次确认弹窗，全都齐了。但模板里**从来没有按钮
+   *   调用它** —— 规则说明里写着"换底牌喝一杯、换手牌喝半杯"，
+   *   而玩家在界面上找不到任何入口。
+   *
+   *   ③ 那条断言只查一个方向：**模板绑定的方法必须在 js 里存在**。
+   *   "存在的方法从没被绑定"是反方向，一条断言都没管。
+   *
+   * 判据：
+   *   · 从 js 里抽方法名（`  name(...) {` 这种两空格缩进的定义）
+   *   · 排除生命周期（onLoad/onShow/…）、以下划线开头的内部方法、
+   *     以及**在 js 里被 this.xxx() 调用过的**（那种是内部实现，不需要绑定）
+   *   · 剩下的必须能在模板的 bind / catch 属性里找到
+   */
+  {
+    const LIFECYCLE = new Set(['onLoad', 'onShow', 'onHide', 'onUnload', 'onReady', 'onPullDownRefresh',
+      'onReachBottom', 'onShareAppMessage', 'onShareTimeline', 'onPageScroll', 'onResize', 'onTabItemTap'])
+    const deadMethods = []
+    /*
+     * ★ 扫描范围必须包含**分包**（miniprogram/game）。
+     *   房间页在分包里，只扫 pages 的话它永远不被检查 ——
+     *   而"断言只扫了一半"是静默的：它一直是绿的，只是什么都没测。
+     *   （同一天已经在"死动作检测"上踩过同一个坑，这次是第二次。）
+     */
+    const PAGE_ROOTS = [path.join(ROOT, 'miniprogram', 'pages'), path.join(ROOT, 'miniprogram', 'game')]
+    const pageDirs = []
+    PAGE_ROOTS.forEach(root => {
+      if (!fs.existsSync(root)) return
+      for (const f of fs.readdirSync(root, { withFileTypes: true })) {
+        if (f.isDirectory()) pageDirs.push(path.join(root, f.name))
+      }
+    })
+    for (const dir of pageDirs) {
+      const dirName = path.basename(dir)
+      for (const jf of fs.readdirSync(dir)) {
+        if (!jf.endsWith('.js')) continue
+        const js = fs.readFileSync(path.join(dir, jf), 'utf8')
+        const wxmlFile = path.join(dir, jf.replace(/\.js$/, '.wxml'))
+        if (!fs.existsSync(wxmlFile)) continue
+        const tpl = fs.readFileSync(wxmlFile, 'utf8')
+        const bound = new Set()
+        ;(tpl.matchAll(/(?:bind|catch)[a-z]*="([a-zA-Z_]\w*)"/g)).forEach(m => bound.add(m[1]))
+        const clean = js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+        const defs = []
+        ;(clean.matchAll(/\n  (?:async )?([a-zA-Z_]\w*)\s*\([^)]*\)\s*\{/g)).forEach(m => defs.push(m[1]))
+        for (const name of defs) {
+          if (LIFECYCLE.has(name)) continue
+          if (name.startsWith('_')) continue
+          if (bound.has(name)) continue
+          /* 被 this.xxx() 调过 = 内部实现，不需要绑定 */
+          if (new RegExp('this\\.' + name + '\\s*\\(').test(clean)) continue
+          deadMethods.push(dirName + '/' + jf + ' → ' + name + '()')
+        }
+      }
+    }
+    assert.deepStrictEqual(deadMethods, [],
+      '★ 这些方法定义在页面里，但**模板从没绑定过、内部也没调用** —— 是死功能：\n    ' +
+      deadMethods.join('\n    ') +
+      '\n    要么补上入口，要么删掉（"写好了但用户点不到"比没写更糟）。')
+    ok('页面方法没有死功能（要么被模板绑定、要么被内部调用）')
+  }
+
   /* ============ ④ 模板引用的房间字段必须真的有人提供 ============ */
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*

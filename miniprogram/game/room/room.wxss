@@ -1480,6 +1480,26 @@
   background: rgba(232,179,60,.2); color: #E8B33C;
 }
 
+/* ---------- 金花：换牌（有代价的两个动作） ---------- */
+.pk-acts {
+  display: flex; gap: 14rpx;
+  margin-top: 18rpx;
+}
+.pk-swap {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4rpx;
+  height: 96rpx;
+  border-radius: 20rpx;
+  background: rgba(232, 179, 60, .12);
+  border: 2rpx solid rgba(232, 179, 60, .34);
+  transition: transform .12s, background .12s;
+}
+.pk-swap:active { transform: scale(.96); background: rgba(232, 179, 60, .22) }
+.ps-t { font-size: 27rpx; font-weight: 700; color: #F6E7C3 }
+/* 代价直接写在按钮上：按之前就知道要喝多少，而不是按完才被告知 */
+.ps-c { font-size: 18rpx; color: rgba(232, 179, 60, .9) }
+
 /* ---------- 金花：桌上的人（换牌量是公开的读牌线索） ---------- */
 .pk-seats {
   /* 上贴牌型提示、下贴"轮到你" —— 两头都要留气口，

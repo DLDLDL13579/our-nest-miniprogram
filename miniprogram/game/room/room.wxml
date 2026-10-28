@@ -737,6 +737,26 @@
             </view>
           </block>
         </view>
+        <!--
+          ★★ 换牌入口（2026-10-28 补）。
+          这是个**写好了却从没人能点**的功能：`pkSwap` 的方法、服务端的
+          `swapPublic` / `swapMine`、代价计算、确认弹窗全都齐了，
+          但模板里从来没有按钮调用它 —— 规则说明里写着"换底牌喝一杯、
+          换手牌喝半杯"，玩家在界面上找不到任何入口。
+          （测试也抓不到：现有断言是"模板绑定的方法必须存在"这一个方向，
+            "存在的方法从没被绑定"是反方向。）
+          按钮上直接把代价写出来 —— 让人在按之前就知道要喝多少。
+        -->
+        <view class="pk-acts">
+          <view class="pk-swap" data-what="public" bindtap="pkSwap">
+            <text class="ps-t">换底牌</text>
+            <text class="ps-c">喝 1 杯</text>
+          </view>
+          <view class="pk-swap" data-what="mine" bindtap="pkSwap">
+            <text class="ps-t">换手牌</text>
+            <text class="ps-c">喝半杯</text>
+          </view>
+        </view>
         <view class="pk-fold" bindtap="pkFold">算了，我弃牌</view>
       </block>
 
