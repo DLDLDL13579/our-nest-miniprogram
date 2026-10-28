@@ -191,6 +191,8 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'over', host: true, turn: 0, myTurn: false, turnName: '',
         settleFoot: '你为了换牌喝了 1.5 杯',
+        streaks: { 1: 3, 2: 0, 3: 0 },
+        streakText: '邓林 连赢 3 把',
         lastResult: {
           kind: 'poker', winner: '邓林',
           winText: '邓林 赢',

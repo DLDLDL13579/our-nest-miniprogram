@@ -1034,6 +1034,27 @@ Page({
     room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)
 
     /*
+     * 连庄提示：找出"连赢 2 把以上"的人。
+     *
+     * ★ streaks 这个字段服务端一直在维护（比大小用它放连击音效），
+     *   但**界面从没显示过** —— 酒桌上"他连赢三把了"是最能带动气氛的一句话，
+     *   却只躺在数据里。现在算成一句话，放在结算页。
+     */
+    room.streakText = ''
+    {
+      const st = room.streaks || {}
+      let best = null
+      Object.keys(st).forEach((seat) => {
+        const n = Number(st[seat]) || 0
+        if (n < 2) return
+        if (best && n <= best.n) return
+        const p = (room.players || []).filter(x => String(x.seat) === String(seat))[0]
+        if (p) best = { name: p.name, n: n }
+      })
+      if (best) room.streakText = best.name + ' 连赢 ' + best.n + ' 把'
+    }
+
+    /*
      * 结算的"情绪收尾"：一句话说清这局谁最惨 / 发生了什么。
      * ★ 明细区已经展示了牌和骰子，这里只补**结论**，不重复数据。
      *   按玩法分别算，但都收敛到 room.settleFoot 一个字段 ——

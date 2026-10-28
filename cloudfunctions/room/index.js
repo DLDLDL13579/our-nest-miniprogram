@@ -227,6 +227,30 @@ function isStale(room) {
  * 给前端的房间视图。
  * ★ 关键：骰子按 openid 过滤 —— 别人的骰子不在响应里。
  */
+/**
+ * 更新连庄计数。
+ *
+ * ★ 原来只有「比大小」在算连赢，大话骰 / 金花 / 卧底从来不计 ——
+ *   而 `streaks` 这个字段一直在（比大小要它来放连击音效）。
+ *   现在收敛成一个 helper：**谁赢由调用方给判据**，这里只管记账。
+ *
+ * @param {object} prev 旧的 streaks（{ seat: count }）
+ * @param {Array} players 当前玩家
+ * @param {function} isWinner (player) => boolean
+ * @returns {{streaks: object, maxStreak: number}}
+ */
+function bumpStreaks(prev, players, isWinner) {
+  const streaks = {}
+  let maxStreak = 0
+  ;(players || []).forEach(p => {
+    const won = !!isWinner(p)
+    const n = won ? ((prev || {})[p.seat] || 0) + 1 : 0
+    streaks[p.seat] = n
+    if (n > maxStreak) maxStreak = n
+  })
+  return { streaks: streaks, maxStreak: maxStreak }
+}
+
 function shape(room, openid) {
   const players = (room.players || []).map(p => ({
     openid: p.openid,
@@ -922,8 +946,19 @@ exports.main = async (event) => {
       const players = (room.players || []).map(p =>
         p.seat === loserSeat ? Object.assign({}, p, { score: (p.score || 0) - 1 }) : p)
 
+      /* 大话骰只有一个人输，所以"除他以外都赢" */
+      const liarStreak = bumpStreaks(room.streaks, room.players,
+        (p) => p.seat !== loserSeat)
+      result.streaks = liarStreak.streaks
+      result.maxStreak = liarStreak.maxStreak
+
       await rooms.doc(room._id).update({
-        data: { players: players, phase: 'over', lastResult: result, updatedAt: ts }
+        data: {
+          players: players, phase: 'over', lastResult: result,
+          /* 连庄要跨局保留 —— 存在房间上而不是 result 里 */
+          streaks: liarStreak.streaks,
+          updatedAt: ts
+        }
       })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID), result: result }
@@ -1513,6 +1548,14 @@ exports.main = async (event) => {
         patch.phase = 'over'
         patch.pkStep = 'result'
         patch.pkWinner = stillAlive.length ? stillAlive[0].name : ''
+        /*
+         * 金花：只有最后站着的那个人赢。
+         * ⚠️ 用 **名字** 判而不是座位 —— pkwInner 存的是名字，
+         *    而这里 players 已经改过（out 标记），用名字更直接。
+         */
+        const pkStreak = bumpStreaks(room.streaks, room.players,
+          (p) => p.name === patch.pkWinner && p.inRound !== false)
+        patch.streaks = pkStreak.streaks
         patch.lastResult = {
           kind: 'poker',
           winner: patch.pkWinner,

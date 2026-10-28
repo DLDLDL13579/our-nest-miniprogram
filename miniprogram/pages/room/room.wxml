@@ -745,6 +745,11 @@
       <view class="loserbox">赢的是 {{result.winners}}</view>
     </view>
 
+    <!-- 连庄：酒桌上最能带动气氛的一句话，单独一行、更高调 -->
+    <view wx:if="{{room.streakText && stage === 'over'}}" class="streak-bar">
+      <text class="streak-t">{{room.streakText}}</text>
+    </view>
+
     <!-- 结算的情绪收尾：一句结论，不重复上面的明细 -->
     <view wx:if="{{room.settleFoot}}" class="settle-foot">{{room.settleFoot}}</view>
 
