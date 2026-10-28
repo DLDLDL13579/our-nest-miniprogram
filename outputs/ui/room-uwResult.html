@@ -222,7 +222,17 @@ view, text, button, input, textarea { box-sizing: border-box }
   padding: 0 16px calc(25px + env(safe-area-inset-bottom));
 }
 
+
+.pg-tex {
+  position: fixed; left: 0; top: 0;
+  width: 100vw; height: 100vh;
+  opacity: .05;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .gbar {
+  position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 0 5px;
 }
@@ -1990,6 +2000,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 
   
   <div class="gamepage">
+  
+  <img class="pg-tex" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/bg/wood.jpg" data-mode="aspectFill" style="object-fit:cover;">
   <div class="gbar">
     <div class="gbar-l">
       <span class="gbar-back">‹</span>

@@ -6,7 +6,22 @@
   padding: 0 32rpx calc(50rpx + env(safe-area-inset-bottom));
 }
 
+/*
+ * 页面级材质层。
+ * ⚠️ 必须 position: fixed + z-index 最低 + pointer-events:none：
+ *    它要铺满整屏（包括滚动出去的部分），但不能吃掉任何点击，
+ *    也不能盖住后面的内容。
+ */
+.pg-tex {
+  position: fixed; left: 0; top: 0;
+  width: 100vw; height: 100vh;
+  opacity: .05;
+  z-index: 0;
+  pointer-events: none;
+}
+
 .gbar {
+  position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: space-between;
   padding: 20rpx 0 10rpx;
 }
