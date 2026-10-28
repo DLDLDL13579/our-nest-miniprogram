@@ -62,6 +62,29 @@
 .cf:nth-child(3n)   { margin-left: 10rpx }
 .cf:nth-child(5n)   { margin-left: -14rpx }
 
+/* ============================================================
+   减少动效（2026-10-28）
+   ------------------------------------------------------------
+   开启后把动画/过渡时长压到很短、延迟清零。
+   ⚠️ 只缩短、不删除：骰子落定、开盅这些**功能性**动画
+      （告诉你发生了什么）不能没有，但可以快。
+   ⚠️ `!important` 是少数正当场景（无障碍覆盖要压过各选择器里的时长）。
+   ============================================================ */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: .12s !important;
+  animation-delay: 0s !important;
+  transition-duration: .1s !important;
+  transition-delay: 0s !important;
+}
+/* 持续循环的装饰动画（烛光、光晕呼吸）直接停掉 —— 它们才是"晃眼"的来源 */
+.reduce-motion .cs-spot,
+.reduce-motion .oh-glow,
+.reduce-motion .lb-glow {
+  animation: none !important;
+}
+
 .gbar {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: space-between;

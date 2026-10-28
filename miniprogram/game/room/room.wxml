@@ -24,7 +24,7 @@
   </view>
 
   <!-- ============ 入口：建房 / 加入 ============ -->
-<view class="gamepage {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
+<view class="gamepage {{reduceMotion ? 'reduce-motion' : ''}} {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
   <!--
     页面级材质（2026-10-28）。
     总览图里一眼能看出来：内容少的界面（投票、出局、等待）下半屏是**纯色空白**，

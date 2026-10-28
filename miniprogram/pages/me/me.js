@@ -24,6 +24,7 @@ Page({
     nick: '',
     muted: false,
     hapticOn: true,
+    reduceMotion: false,
     gameCount: GAMES.length,
     /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
     gameRows: [],
@@ -41,7 +42,8 @@ Page({
     this.setData({
       nick: wx.getStorageSync(NICK_KEY) || '',
       muted: sfx.isMuted(),
-      hapticOn: haptic.isHapticOn()
+      hapticOn: haptic.isHapticOn(),
+      reduceMotion: haptic.isReduceMotion()
     })
   },
 
@@ -82,6 +84,11 @@ Page({
     this.setData({ muted: m })
     /* 打开音效时给一声，让用户当场听到"确实有声音了" */
     if (!m) sfx.play('tick')
+  },
+
+  toggleMotion() {
+    const v = haptic.setReduceMotion(!this.data.reduceMotion)
+    this.setData({ reduceMotion: v })
   },
 
   toggleHaptic() {

@@ -30,6 +30,28 @@ function clear() {
 }
 
 const HAPTIC_KEY = 'hapticOn'
+
+/*
+ * 「减少动效」开关（2026-10-28，调研第 12 条）。
+ * Jackbox 有 Motion Sensitivity 开关 —— 晕动症、嫌花的人需要一个出路。
+ * 和震动一样是"反馈偏好"，所以放在同一个模块里。
+ *
+ * 开启后：房间页根节点挂 `.reduce-motion`，CSS 把动画时长压到 1/3。
+ * ⚠️ 只缩短、不删除：骰子落定/开盅这些**功能性**动画（告诉你发生了什么）
+ *    不能没有，但可以快。
+ */
+const MOTION_KEY = 'reduceMotion'
+let _reduceMotion = null
+function _initMotion() {
+  if (_reduceMotion !== null) return
+  try { _reduceMotion = !!wx.getStorageSync(MOTION_KEY) } catch (e) { _reduceMotion = false }
+}
+function isReduceMotion() { _initMotion(); return !!_reduceMotion }
+function setReduceMotion(v) {
+  _reduceMotion = !!v
+  try { wx.setStorageSync(MOTION_KEY, _reduceMotion) } catch (e) {}
+  return _reduceMotion
+}
 let _hapticOn = null
 
 function _initHaptic() {
@@ -109,4 +131,4 @@ function setHapticOn(v) {
   return _hapticOn
 }
 
-module.exports = { vibrate, isHapticOn, setHapticOn, clear }
+module.exports = { vibrate, isHapticOn, setHapticOn, isReduceMotion, setReduceMotion, clear }

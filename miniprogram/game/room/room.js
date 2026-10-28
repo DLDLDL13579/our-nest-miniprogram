@@ -182,6 +182,8 @@ Page({
     soloTest: !!CFG.soloTest,
     /* 局内规则浮层（点"看规则"打开） */
     howOpen: false,
+    /* 减少动效（「我的」里可切）—— 房间页根容器据此挂 class */
+    reduceMotion: false,
     pickGame: 'liar',
     pickGameName: '大话骰',
     /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
@@ -371,6 +373,11 @@ Page({
      * 预热是幂等的，多叫一次没有代价。
      */
     require('../../utils/cloud.js').warmup()
+    /* 动效开关可能在「我的」里刚改过，每次回到房间都同步一次 */
+    const h = require('../../utils/haptic.js')
+    if (h.isReduceMotion() !== this.data.reduceMotion) {
+      this.setData({ reduceMotion: h.isReduceMotion() })
+    }
     if (!this.data.room) return
     /*
      * ★★ 回前台**立刻**拉一次，不等 1.5 秒的轮询周期（2026-10-28）。

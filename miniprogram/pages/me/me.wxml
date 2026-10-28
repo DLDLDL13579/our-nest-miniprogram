@@ -26,6 +26,18 @@
       </view>
       <view class="sw {{hapticOn ? 'on' : ''}}"><view class="swdot"></view></view>
     </view>
+    <!--
+      减少动效（2026-10-28）：晕动症、嫌花的人需要一个出路。
+      开启后房间页的动画时长压到三分之一 —— 只缩短、不删除，
+      骰子落定/开盅这类"告诉你发生了什么"的功能性动画不能没有。
+    -->
+    <view class="rline" bindtap="toggleMotion">
+      <view class="rl-main">
+        <view class="rl-t">减少动效</view>
+        <view class="rl-s">动画变快、幅度变小。觉得晃眼就打开</view>
+      </view>
+      <view class="sw {{reduceMotion ? 'on' : ''}}"><view class="swdot"></view></view>
+    </view>
   </view>
 
   <!-- ③ 玩法统计：按开过次数排，0 次的也列出来（"还没玩过"是个弱引导） -->
