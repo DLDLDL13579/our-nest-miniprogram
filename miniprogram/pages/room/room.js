@@ -995,9 +995,24 @@ Page({
 
     /* "还在等谁"：摇骰子比大小里，扣盅后唯一能做的事就是等。
        只说"等其他人"等于没说 —— 不知道等几个、等谁。 */
-    const waiting = (room.players || []).filter(p => !(p.diceCount > 0))
+    /*
+     * "还差谁没摇" —— **必须排除自己**。
+     * 原来看起来没问题，是因为它只在 `myRolled` 为真时显示（那时自己已经摇过了）；
+     * 但语义上"等我自己摇"是荒谬的，而且一旦别处复用它就会暴露。
+     */
+    const waiting = (room.players || []).filter(p => !p.isMe && !(p.diceCount > 0))
     room.waitingCount = waiting.length
     room.waitingNames = waiting.map(p => p.name).join('、')
+    /*
+     * 等待文案按人数换句式。
+     * 「还差 1 个人没摇（倩萍）」→「等倩萍摇」：
+     * 少一层"数字 + 括号"的转译，读起来就是人在说话。
+     * 人多时才需要"还差几个"的框架（否则一长串名字没重点）。
+     */
+    if (!waiting.length) room.waitingText = ''
+    else if (waiting.length === 1) room.waitingText = '等 ' + room.waitingNames + ' 摇'
+    else if (waiting.length === 2) room.waitingText = '等 ' + room.waitingNames.replace('、', ' 和 ') + ' 摇'
+    else room.waitingText = '还差 ' + waiting.length + ' 个人没摇 · ' + room.waitingNames
 
     /*
      * 我是不是"中途加入、这局只能看"。

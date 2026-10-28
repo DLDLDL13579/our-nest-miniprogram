@@ -1636,6 +1636,56 @@ view, text, button, input, textarea { box-sizing: border-box }
   animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
 }
 
+
+.uw-cmp {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px dashed rgba(160, 130, 210, .45);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: rgba(200, 180, 235, .95);
+}
+
+
+.pk-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(232, 179, 60, .85);
+  letter-spacing: 0.5px;
+  margin: -5px 0 var(--gap-2);
+}
+
+
+.pk-pcups {
+  font-size: 9.5px;
+  color: rgba(150, 170, 190, .8);
+  margin-right: 4px;
+}
+
+
+.revealbox .die-img {
+  opacity: .62;
+  transition: opacity .18s ease-out;
+}
+.revealbox .die-img.hit {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(232, 179, 60, .9), 0 2px 7px rgba(232, 179, 60, .35);
+  border-radius: 5px;
+  transform: scale(1.08);
+  transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
+}
+
+
+.rv-row.win {
+  background: rgba(232, 179, 60, .12);
+  border-radius: 7px;
+  padding-left: 8px;
+  padding-right: 6px;
+  box-shadow: inset 2px 0 0 rgba(232, 179, 60, .85);
+}
+.rv-row.win .rv-name { color: #F6E7C3; font-weight: 700 }
+.rv-row.win .rv-total { color: #FFD98A }
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->

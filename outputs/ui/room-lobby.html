@@ -724,6 +724,25 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
+.actbar {
+  margin-top: 15px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.actrow {
+  display: flex; gap: 9px;
+}
+.actrow .btn { flex: 1; height: 38px; font-size: 13.5px; border-radius: 9px }
+
+
+.textbtn {
+  height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: rgba(255,255,255,.38);
+  letter-spacing: 0.5px;
+}
+.textbtn:active { color: rgba(255,255,255,.6) }
+
+
 
 
 .gamepage.rolling {
@@ -1441,10 +1460,17 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
 .pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+
 .pkr-c {
-  font-size: 11px; font-weight: 700; color: #2C2822;
-  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 42px;
+  flex: none;
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  letter-spacing: -0.5px;
 }
+.pkr-c.pk-red { color: #C4432F }
 
 
 @keyframes slamIn {
@@ -1629,6 +1655,56 @@ view, text, button, input, textarea { box-sizing: border-box }
   animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
 }
 
+
+.uw-cmp {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px dashed rgba(160, 130, 210, .45);
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: rgba(200, 180, 235, .95);
+}
+
+
+.pk-hint {
+  text-align: center;
+  font-size: 11.5px;
+  color: rgba(232, 179, 60, .85);
+  letter-spacing: 0.5px;
+  margin: -5px 0 var(--gap-2);
+}
+
+
+.pk-pcups {
+  font-size: 9.5px;
+  color: rgba(150, 170, 190, .8);
+  margin-right: 4px;
+}
+
+
+.revealbox .die-img {
+  opacity: .62;
+  transition: opacity .18s ease-out;
+}
+.revealbox .die-img.hit {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(232, 179, 60, .9), 0 2px 7px rgba(232, 179, 60, .35);
+  border-radius: 5px;
+  transform: scale(1.08);
+  transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
+}
+
+
+.rv-row.win {
+  background: rgba(232, 179, 60, .12);
+  border-radius: 7px;
+  padding-left: 8px;
+  padding-right: 6px;
+  box-shadow: inset 2px 0 0 rgba(232, 179, 60, .85);
+}
+.rv-row.win .rv-name { color: #F6E7C3; font-weight: 700 }
+.rv-row.win .rv-total { color: #FFD98A }
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -1720,9 +1796,12 @@ view, text, button, input, textarea { box-sizing: border-box }
           <span >命运转盘</span>
         </div>
       </div>
-    </div><div class="btn main bigbtn">
-      开始（3 人）
-    </div><div class="btn ghostb" style="margin-top:20rpx">离开房间</div>
+    </div><div class="actbar">
+      
+      <div class="btn main bigbtn">
+        开始（3 人）
+      </div><div class="textbtn">离开房间</div>
+    </div>
   </div>
 
 

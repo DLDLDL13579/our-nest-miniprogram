@@ -177,7 +177,22 @@ const PAGES = {
   me: { path: 'pages/me/me', title: '我的', tab: 'pages/me/me' }
 }
 
-function renderPage(key, { state = 'default', outDir = OUT, width = 375 } = {}) {
+/**
+ * ★★ 画布高度必须等于**真机内容区高度**，否则"一屏放得下"这个结论是假的。
+ *
+ * 2026-10-28 发现：room mock 的 `__height` 一直是 1400px，
+ * 而 iPhone 13 去掉状态栏 47 与导航栏 44 后内容区只有 **753px**。
+ * 也就是说此前所有截图都是把屏幕拉长到 1.86 倍拍的 ——
+ * 画面上半截空着，看着很舒展，真机上却要往下滚将近一屏。
+ *
+ * 这正是 AGENTS.md 反复记过的"测量工具本身没被验证过"：
+ * 判据看着对，尺子是坏的。
+ *
+ * 现在默认按真机高度出图；要看完整超长页面用 `--full`。
+ */
+const DEVICE = { width: 375, height: 753 }   // iPhone 13：844 − 47（状态栏）− 44（导航栏）
+
+function renderPage(key, { state = 'default', outDir = OUT, width = 0, height = 0, full = false } = {}) {
   const conf = PAGES[key]
   if (!conf) throw new Error('未知页面: ' + key)
   const base = path.join(MP, conf.path)
@@ -210,20 +225,21 @@ function renderPage(key, { state = 'default', outDir = OUT, width = 375 } = {}) 
   fs.mkdirSync(outDir, { recursive: true })
   const name = key + (state === 'default' ? '' : '-' + state)
   const htmlFile = path.join(outDir, name + '.html')
-  const pngFile = path.join(outDir, name + '.png')
+  const pngFile = path.join(outDir, (full ? name + '@full' : name) + '.png')
   fs.writeFileSync(htmlFile, html)
 
-  const h = mock.__height || 1400
+  const w = width || DEVICE.width
+  const h = height || (full ? (mock.__height || 1400) : DEVICE.height)
   execFileSync(CHROME, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
     '--force-device-scale-factor=2',
     '--screenshot=' + pngFile,
-    '--window-size=' + width + ',' + h,
+    '--window-size=' + w + ',' + h,
     'file://' + htmlFile
   ], { stdio: 'ignore', timeout: 60000 })
 
-  const w = getWarnings()
-  return { key, state, png: pngFile, html: htmlFile, warnings: w.slice() }
+  const warns = getWarnings()
+  return { key, state, png: pngFile, html: htmlFile, width: w, height: h, warnings: warns.slice() }
 }
 
 module.exports = { renderPage, PAGES }
@@ -240,6 +256,11 @@ if (require.main === module) {
     const i = args.indexOf('--states')
     return i >= 0 ? args[i + 1].split(',') : null
   })()
+  const height = (() => {
+    const i = args.indexOf('--height')
+    return i >= 0 ? Number(args[i + 1]) : 0
+  })()
+  const full = args.includes('--full')
   const keys = args.filter((a, i) => !a.startsWith('--') &&
     !(i > 0 && /^--/.test(args[i - 1])))
   const targets = keys.length ? keys : Object.keys(PAGES)
@@ -249,9 +270,10 @@ if (require.main === module) {
     const list = states || [state]
     for (const s of list) {
       try {
-        const r = renderPage(k, { state: s })
+        const r = renderPage(k, { state: s, full, height })
         const warn = r.warnings.length ? `  ⚠ ${r.warnings.length} 个表达式失败` : ''
-        console.log(`  ✓ ${k}${s === 'default' ? '' : '/' + s} → ${path.relative(ROOT, r.png)}${warn}`)
+        console.log(`  ✓ ${k}${s === 'default' ? '' : '/' + s} → ${path.relative(ROOT, r.png)}` +
+          `  (${r.width}×${r.height})${warn}`)
         if (r.warnings.length) r.warnings.slice(0, 3).forEach(w => console.log('      ' + w))
         ok++
       } catch (e) {

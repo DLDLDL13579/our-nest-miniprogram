@@ -193,17 +193,23 @@
       人数不够时按钮不装死：**说清还差几个人**。
       原来单人也能点"开始（1 人）"，进去玩一个没有对手的大话骰。
     -->
-    <view wx:if="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
-      还差 {{room.shortBy}} 个人才能开
-    </view>
-    <view wx:elif="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
-      开始（{{room.count}} 人）
-    </view>
-    <view wx:else class="waiting">
-      等房主开始 · 房主是 {{room.players[0].name}}
-    </view>
+    <view class="actbar">
+      <!--
+        人数不够时按钮不装死：**说清还差几个人**。
+        原来单人也能点"开始（1 人）"，进去玩一个没有对手的大话骰。
+      -->
+      <view wx:if="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
+        还差 {{room.shortBy}} 个人才能开
+      </view>
+      <view wx:elif="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
+        开始（{{room.count}} 人）
+      </view>
+      <view wx:else class="waiting">
+        等房主开始 · 房主是 {{room.players[0].name}}
+      </view>
 
-    <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
+      <view class="textbtn" bindtap="leave">离开房间</view>
+    </view>
   </block>
 
   <!-- ============ 开局倒计时 ============ -->
@@ -389,7 +395,7 @@
       </view>
       <!-- 等别人的时候，明确说是**谁**还没摇 —— 不然就是干等 -->
       <view wx:if="{{myRolled && !result}}" class="waitline">
-        还差 {{room.waitingCount}} 个人没摇<block wx:if="{{room.waitingNames}}">（{{room.waitingNames}}）</block>
+        {{room.waitingText}}
       </view>
     </block>
 
@@ -416,8 +422,16 @@
         </view>
       </view>
 
-      <!-- 在场玩家：一眼看清还剩几人、谁已经出局（只展示，不用点） -->
-      <view class="uw-seats">
+      <!--
+        在场玩家：一眼看清还剩几人、谁已经出局（只展示，不用点）。
+
+        ★ 投票阶段要**藏起来**（2026-10-28 按真机高度重拍才发现）：
+          下面那张投票列表本身就是同一份名单，
+          12 人局时座位条 + 词卡 + 6 行投票按钮 = 一屏装不下，
+          「已投 x/12」和「离开房间」被顶到屏幕外 —— 玩家看不到进度，
+          也退不出去。名单在投票阶段只该出现一次。
+      -->
+      <view wx:if="{{room.uw.step !== 'vote'}}" class="uw-seats">
         <block wx:for="{{room.players}}" wx:key="openid">
           <view wx:if="{{item.inRound !== false}}"
                 class="uw-seat {{item.out ? 'out' : ''}} {{item.isMe ? 'me' : ''}}">
@@ -649,7 +663,7 @@
       <view wx:else class="waiting">等房主转</view>
     </block>
 
-    <view class="btn ghostb" style="margin-top:24rpx" bindtap="leave">离开房间</view>
+    <view class="textbtn" bindtap="leave">离开房间</view>
   </block>
 
   <!-- ============ 加题面板 ============
@@ -791,9 +805,13 @@
     <!-- 结算的情绪收尾：一句结论，不重复上面的明细 -->
     <view wx:if="{{room.settleFoot}}" class="settle-foot">{{room.settleFoot}}</view>
 
-    <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>
-    <view wx:else class="waiting">等房主开下一局</view>
-    <view wx:if="{{room.host}}" class="btn ghostb" style="margin-top:20rpx" bindtap="pickNewGame">换个玩法</view>
-    <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
+    <view class="actbar">
+      <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>
+      <view wx:else class="waiting">等房主开下一局</view>
+      <view class="actrow">
+        <view wx:if="{{room.host}}" class="btn ghostb" bindtap="pickNewGame">换个玩法</view>
+        <view class="textbtn" bindtap="leave">离开房间</view>
+      </view>
+    </view>
   </block>
 </view>

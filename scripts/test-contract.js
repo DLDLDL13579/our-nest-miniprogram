@@ -1382,9 +1382,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const realRoom = await room.main({ action: 'status', id: ROOM_ID })
   assert.ok(realRoom.ok && realRoom.room, '④ 取房间状态应成功')
   const providedRoom = new Set(Object.keys(realRoom.room))
-  /* 服务端算的派生字段也要算数（前端 decorate 会补这些） */
-  /* 前端 decorate 算的派生字段：服务端不返回，但确实是前端自己赋值的 */
-  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options', 'settleFoot', 'gameName', 'howList', 'spectating', 'shortBy', 'minPlayers', 'maxPlayers', 'streakText', 'loserBoard', 'uwCompare', 'hintText', 'drinkCups', 'drinkText'].forEach(k => providedRoom.add(k))
+  /*
+   * 前端 `decorate()` 算的派生字段也要算数 —— 但它们**必须从源码里抽**，
+   * 不能像原来那样硬编码一份数组。
+   *
+   * ⚠️ 原来就是一份写死的 18 项清单。2026-10-28 往 decorate 里加了
+   *    `waitingText`（等待文案按人数换句式），模板一引用 → 这条断言立刻报
+   *    "幽灵字段"：**它把正确代码判成了错误**，而去修的办法只有"往白名单里
+   *    再补一项" —— 那等于自己给自己放行，白名单从此只增不减，
+   *    真出现幽灵字段时照样有它兜着，这条断言迟早退化成摆设。
+   *
+   * 现在的判据是：**模板引用的 room.X 必须满足「服务端返回」或「decorate 里赋过值」**。
+   * 两边都是自动抽取的，加字段不用改测试，而真·幽灵字段（模板写了、
+   * 但既没服务端提供、也没人计算）照样抓得到，且不报错地静默变空。
+   */
+  {
+    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'pages', 'room', 'room.js'), 'utf8')
+    const i = roomSrc.indexOf('  decorate(room) {')
+    assert.ok(i > 0, '④ 找不到 room.js 的 decorate()（前端派生字段的唯一入口）')
+    /* 括号计数取函数体：比正则可靠，不会被体内的对象字面量骗到 */
+    let depth = 0, end = -1
+    const open = roomSrc.indexOf('{', i)
+    for (let k = open; k < roomSrc.length; k++) {
+      if (roomSrc[k] === '{') depth++
+      else if (roomSrc[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    assert.ok(end > open, '④ decorate() 的括号不配平')
+    const body = roomSrc.slice(open, end)
+    const derived = [...new Set([...body.matchAll(/room\.([A-Za-z_]\w*)\s*=/g)].map(m => m[1]))]
+    /* `room[k] = ...` 这类动态写入无法静态判定，出现了就明确失败而不是悄悄漏掉 */
+    assert.deepStrictEqual(body.match(/room\[[^\]]+\]\s*=/g) || [], [],
+      '④ decorate() 里出现动态字段写入（room[k]=），幽灵字段断言无法覆盖')
+    assert.ok(derived.length > 5, '④ decorate() 抽取到的派生字段太少，抽取逻辑可能失效')
+    derived.forEach(k => providedRoom.add(k))
+    console.log('  · decorate 派生字段 ' + derived.length + ' 个，服务端字段 ' + Object.keys(realRoom.room).length + ' 个')
+  }
 
   const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '')
   /* 自己的递归遍历：④ 在顶层 walk/pagesDir 定义之前，不能复用它们 */
