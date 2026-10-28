@@ -47,6 +47,16 @@
       <text class="gbar-back">‹</text>
       <text class="gbar-t">大厅</text>
     </view>
+    <view class="gbar-mid" wx:if="{{room && room.code}}">
+      <!--
+        房间号常驻顶栏（2026-10-28）。
+        游戏进行到一半，桌上有人想再叫一个朋友进来 —— 而这时房间号只在
+        lobby 阶段显示，他只能退出去看。一行小字就能省掉这次来回。
+        点一下还能复制（沿用 lobby 的同一套复制逻辑）。
+      -->
+      <text class="gbar-code" bindtap="copyCode">{{room.code}}</text>
+      <text class="gbar-codelbl">房间号</text>
+    </view>
     <view class="gbar-r" bindtap="toggleMute">
       <image class="gbar-mute" src="{{ic[muted ? 'speakerOff' : 'speakerOn']}}" mode="aspectFit" />
     </view>
