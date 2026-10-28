@@ -5,7 +5,7 @@ const { GAMES } = require('../../../miniprogram/utils/games.js')
 const IC = iconSet.build(['speakerOn', 'speakerOff', 'hapticOn', 'hapticOff', 'chevronRight'], '#E8B33C')
 
 const LIST = GAMES.map((g, i) => ({
-  id: g.id, name: g.name, desc: g.desc, color: g.color, cat: g.cat,
+  id: g.id, name: g.name, desc: g.desc, color: g.color,
   players: g.min + '–' + g.max + ' 人',
   iconUri: IC[g.icon],
   /* 第一个标成"上次玩的"，用来预览新标签 */

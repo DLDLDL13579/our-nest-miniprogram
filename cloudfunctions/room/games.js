@@ -46,13 +46,6 @@
  * 按「玩家在桌边做什么」分，不按「技术实现」分 —— 玩家挑游戏时想的是
  * 「现在这桌人适合玩嘴皮子还是玩骰子」，不是「这个要几个轮询」。
  */
-const CATS = [
-  { k: 'dice',  name: '摇骰子', desc: '靠手气，节奏快' },
-  { k: 'card',  name: '抽题卡', desc: '靠胆子，出彩快' },
-  { k: 'talk',  name: '动嘴皮', desc: '靠嘴和脑，笑点密' },
-  { k: 'vote',  name: '互相猜', desc: '靠观察，越玩越嗨' }
-]
-
 /**
  * 玩法表
  *
@@ -61,7 +54,6 @@ const CATS = [
  *   name    界面显示名
  *   icon    icons.js 里的图标 key
  *   color   卡片强调色
- *   cat     属于 CATS 里的哪一类
  *   min/max 人数范围（服务端会按它拦）
  *   need    需要哪套服务端能力：
  *             'dice'  骰子（服务端摇、按人过滤）
@@ -77,9 +69,7 @@ const GAMES = [
     name: '大话骰',
     icon: 'target',
     color: '#C4573A',
-    cat: 'dice',
     min: 2, max: 8,
-    need: ['dice', 'turn'],
     desc: '轮流往上叫，不信就开',
     how: [
       '每人摇一盅，只有自己看得到自己的点数',
@@ -93,9 +83,7 @@ const GAMES = [
     name: '比大小',
     icon: 'dice',
     color: '#5E7FA6',
-    cat: 'dice',
     min: 2, max: 8,
-    need: ['dice'],
     desc: '一起摇一盅，点数大的赢',
     how: [
       '所有人同时摇盅',
@@ -109,9 +97,7 @@ const GAMES = [
     name: '谁是卧底',
     icon: 'mask',
     color: '#7A5CA8',
-    cat: 'vote',
     min: 3, max: 12,
-    need: ['role', 'vote'],
     desc: '有一个人拿到的词和你不一样',
     how: [
       '每人偷偷看一个词，只有卧底看到的词不一样',
@@ -125,9 +111,7 @@ const GAMES = [
     name: '梦幻金花',
     icon: 'cards',
     color: '#B8863C',
-    cat: 'dice',
     min: 2, max: 6,
-    need: ['cards', 'turn'],
     /*
      * ★ 这段曾是**炸金花**的描述（"三张牌，不看也能比"）。
      *   用户 10-27 纠正过：梦幻金花 = 1 张公共底牌（全场可见）
@@ -148,9 +132,7 @@ const GAMES = [
     name: '命运转盘',
     icon: 'wheel',
     color: '#7A5CA8',
-    cat: 'card',
     min: 1, max: 8,
-    need: ['card'],
     desc: '转一下，真心话还是喝一杯',
     how: [
       '房主转盘，全场同步看到同一格结果',
@@ -167,20 +149,10 @@ function gameOf(id) {
   return null
 }
 
-/** 全部玩法 id —— 服务端校验用 */
-function gameIds() {
-  return GAMES.map(g => g.id)
-}
-
-/** 某个分类下的玩法 */
-function gamesInCat(cat) {
-  return GAMES.filter(g => g.cat === cat)
-}
-
 /** 玩法名（找不到时返回空串，不要回退成"随便"） */
 function gameName(id) {
   const g = gameOf(id)
   return g ? g.name : ''
 }
 
-module.exports = { CATS, GAMES, gameOf, gameIds, gamesInCat, gameName }
+module.exports = { GAMES, gameOf, gameName }

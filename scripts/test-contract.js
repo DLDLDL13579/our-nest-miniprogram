@@ -258,6 +258,46 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ⑤d 玩法注册表的字段必须被用到 ============ *
+   *
+   * `games.js` 是"有哪些玩法"的唯一事实源，但它的字段也可能是死数据：
+   *   · `cat`（分类）—— 用户明确说大厅不做筛选，这个字段从没被读过
+   *   · `need`（用到哪些道具）—— 所有玩法都在手机内完成，没有实体道具
+   * 两个都是"写了没人用"，本轮清掉（连同死函数 CATS / gameIds / gamesInCat）。
+   *
+   * 判据：GAMES 每一项的每个字段名，必须在项目源码里出现过（剥注释后）。
+   * ⚠️ 这条判据对 `how` 这种常见英文词会有假阴性（注释里出现过就算"用了"），
+   *    宁可漏报 —— 假阳性会让我去删本来在用的字段。
+   */
+  {
+    const games = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+    const keys = Object.keys(games.GAMES[0])
+    const strip = (t) => t
+      .replace(/<!--[\s\S]*?-->/g, ' ')
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+
+    const seen = new Set()
+    const walk = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { if (f.name !== 'node_modules') walk(fp); continue }
+        if (!/\.(js|wxml)$/.test(f.name)) continue
+        if (fp.includes('utils/games.js') || fp.includes('cloudfunctions/room/games.js')) continue
+        seen.add(strip(fs.readFileSync(fp, 'utf8')))
+      }
+    }
+    walk(path.join(ROOT, 'miniprogram'))
+    walk(path.join(ROOT, 'cloudfunctions'))
+    const all = Array.from(seen).join('\n')
+
+    const dead = keys.filter(k => !new RegExp('\\b' + k + '\\b').test(all))
+    assert.deepStrictEqual(dead, [],
+      '★ 这些玩法字段在项目里从没被读过（死字段）：' + dead.join(', ') +
+      '\n    要么接到界面上（像 min/max/how 那样），要么删掉（像 cat/need 那样）。')
+    ok(`玩法注册表的 ${keys.length} 个字段全部被使用（${keys.join('/')}）`)
+  }
+
   /* ============ ⑤c 前端 maxlength 必须与云端截断长度一致 ============ *
    *
    * 不一致的后果很隐蔽：用户以为能输 60 个字，云端却悄悄截到 20 ——
