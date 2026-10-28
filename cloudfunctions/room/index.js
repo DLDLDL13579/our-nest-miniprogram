@@ -1677,8 +1677,13 @@ exports.main = async (event) => {
            * 一样大时先开为负，这两条各平台口径并不统一）。
            * 当场把判据写出来，比事前读规则有用。
            */
+          /*
+           * ⚠️ 平局文案里带上双方牌型：只说"牌一样大"的话，桌上会追问
+           *    "都是什么牌" —— 而这正是判平手的前提。顺带说明"先开为负"
+           *    这条各平台一致、但玩家最容易觉得被坑的规则。
+           */
           noteText: cmp === 0
-            ? '牌一样大，先开为负 —— ' + mine.name + ' 出局'
+            ? '牌一样大（都是' + poker.rank(handA).name + '），先开为负 —— ' + mine.name + ' 出局'
             : (challengerWins ? mine.name : tP.name) + ' 的 '
               + (challengerWins ? poker.rank(handA).name : poker.rank(handB).name)
               + ' 赢 ' + (challengerWins ? tP.name : mine.name) + ' 的 '

@@ -1526,8 +1526,19 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   assert.strictEqual(typeof pkVs.room.poker.last.noteText, 'string',
     '⑬ ★ 比牌必须给一句文字说明（noteText），模板在渲染它')
-  assert.ok(pkVs.room.poker.last.noteText.indexOf(pkWant) >= 0,
-    '⑬ ★ 说明文字必须点出赢家，实际：' + pkVs.room.poker.last.noteText)
+  /*
+   * ⚠️ 平手是**随机发生**的（发到同样的牌型），而平手时"赢家"是
+   *    "先开为负"判出来的，文案里不会出现他的名字 —— 原来这条断言
+   *    在平手局会偶发失败，而失败信息看着像功能坏了（"说明文字没点出赢家"）。
+   *    现在按两种情况分别判：平局看有没有解释规则，非平局看有没有点出赢家。
+   */
+  if (pkVs.room.poker.last.tie) {
+    assert.ok(/先开为负/.test(pkVs.room.poker.last.noteText),
+      '⑬ ★ 平局必须说明"先开为负"这条规则，实际：' + pkVs.room.poker.last.noteText)
+  } else {
+    assert.ok(pkVs.room.poker.last.noteText.indexOf(pkWant) >= 0,
+      '⑬ ★ 说明文字必须点出赢家，实际：' + pkVs.room.poker.last.noteText)
+  }
   ok('比牌给出说明文字（不是只有四张牌，得说清凭什么赢）')
 
   /* ⑬b 换牌：换公共牌喝 1 杯、换手牌喝半杯（用户 2026-10-27 加的规则） */
