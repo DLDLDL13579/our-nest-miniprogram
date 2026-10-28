@@ -101,6 +101,17 @@ module.exports = {
       })
     }),
 
+    /* 单人房：人数不够，开始按钮应该说"还差 N 个人" */
+    alone: () => ({
+      stage: 'lobby',
+      room: pkRoom({
+        game: 'liar', phase: 'lobby', host: true, count: 1,
+        gameName: '大话骰', minPlayers: 2, maxPlayers: 8, shortBy: 1,
+        players: [UW_PLAYERS[0]],
+        howList: GAMES.filter(g => g.id === 'liar')[0].how
+      })
+    }),
+
     /* 断线态（连续失败 3 次以上） */
     netdown: () => ({
       stage: 'lobby',

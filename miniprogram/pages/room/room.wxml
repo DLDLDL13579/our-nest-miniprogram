@@ -181,7 +181,14 @@
       </view>
     </view>
 
-    <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
+    <!--
+      人数不够时按钮不装死：**说清还差几个人**。
+      原来单人也能点"开始（1 人）"，进去玩一个没有对手的大话骰。
+    -->
+    <view wx:if="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
+      还差 {{room.shortBy}} 个人才能开
+    </view>
+    <view wx:elif="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
       开始（{{room.count}} 人）
     </view>
     <view wx:else class="waiting">

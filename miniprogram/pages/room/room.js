@@ -1022,6 +1022,16 @@ Page({
     const gmeta = gameOf(room.game)
     room.gameName = gmeta ? gmeta.name : ''
     room.howList = gmeta && Array.isArray(gmeta.how) ? gmeta.how : []
+    /*
+     * 人数要求：从注册表取，不在界面里写死。
+     * ★ 服务端为了调试允许单开（"一个人先看看玩法"），但**产品上不该让人
+     *   开一个玩不了的局**：单人点"开始（1 人）"玩大话骰，只会一脸问号。
+     *   所以这里算出"还差几个人"，由界面决定按钮能不能点。
+     */
+    room.minPlayers = gmeta ? gmeta.min : 2
+    room.maxPlayers = gmeta ? gmeta.max : 8
+    room.shortBy = Math.max(0, room.minPlayers - (room.count || 0))
+    room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)
 
     /*
      * 结算的"情绪收尾"：一句话说清这局谁最惨 / 发生了什么。
@@ -1411,6 +1421,15 @@ Page({
   /* ================= 开局 / 再来 ================= */
 
   async doStart() {
+    /*
+     * 人数不够就直接说，别让请求发出去再被服务端拒 ——
+     * 服务端允许单开（调试用），所以它**不会**帮我们拦这个。
+     */
+    const rm = this.data.room
+    if (rm && rm.shortBy > 0) {
+      wx.showToast({ title: '还差 ' + rm.shortBy + ' 个人才能开' + (rm.gameName || ''), icon: 'none', duration: 2000 })
+      return
+    }
     if (!this.specGuard()) return
     const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
       .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
