@@ -1488,6 +1488,57 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '模板引用了两层字段，但云函数与前端都不产生它（界面上静默变空）：\n    ' +
       nestGhost.join('\n    '))
     ok('两层引用 room.a.b 的第二层都有来源（不是只有模板记得它）')
+
+  /* ============ ④c 动画曲线必须收敛（风格一致性） ============ */
+  console.log('\n=== ④c 全仓动画曲线只能是那 6 条 ===')
+  /*
+   * ★★ 2026-10-28。改造前全仓有 **18 种** cubic-bezier + 12 处裸 ease。
+   *   单看每一处都"挺顺"，但整体是十八种手感混在一起 ——
+   *   这是"说不上来哪里不对、就是不像一个团队做的"的典型来源。
+   *
+   *   收敛到 6 条（每条对应一种**语义**，不是按好看程度挑的）：
+   *     (0, 0, .2, 1)          入场：快起慢停，元素"落进画面"
+   *     (.4, 0, .2, 1)         屏内：位置/大小变化
+   *     (.36, .07, .19, .97)   撞击：带一点极快的中段，专门给"砸住"
+   *     (.34, 1.2, .64, 1)     轻回弹：轻微过冲（≤6%）
+   *     (.34, 1.4, .64, 1)     中回弹：物体落位
+   *     (.34, 1.56, .64, 1)    强回弹：奖励/爆发时刻
+   *
+   *   裸 ease 只在**循环**动画里允许（ease-in-out 对称，呼吸类循环必须对称）。
+   */
+  {
+    const bezKinds = new Map()
+    const bareEase = []
+    const walkCss = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) walkCss(fp)
+        else if (f.name.endsWith('.wxss')) {
+          const t = fs.readFileSync(fp, 'utf8')
+          ;(t.match(/cubic-bezier\([^)]*\)/g) || []).forEach(x => {
+            const norm = 'cubic-bezier(' + x.slice('cubic-bezier('.length, -1)
+              .split(',').map(v => v.trim()).join(', ') + ')'
+            bezKinds.set(norm, (bezKinds.get(norm) || 0) + 1)
+          })
+          /* 一次性动画不许裸用 ease（循环动画的 ease-in-out 是允许的） */
+          t.split('\n').forEach((line, i) => {
+            if (!/animation\s*:/.test(line)) return
+            if (/\binfinite\b/.test(line)) return
+            if (/\bease\b(?!-)/.test(line) && !/cubic-bezier/.test(line)) {
+              bareEase.push(path.relative(ROOT, fp) + ':' + (i + 1))
+            }
+          })
+        }
+      }
+    }
+    walkCss(path.join(ROOT, 'miniprogram'))
+    assert.ok(bezKinds.size <= 6,
+      '动画曲线又散开了（当前 ' + bezKinds.size + ' 种，上限 6）：\n    ' +
+      [...bezKinds.entries()].map(([k, v]) => v + '× ' + k).join('\n    '))
+    assert.deepStrictEqual(bareEase, [],
+      '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
+    ok(`动画曲线收敛到 ${bezKinds.size} 种，一次性动画无裸 ease`)
+  }
   }
 
   /* ============================================================

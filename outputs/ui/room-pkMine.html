@@ -235,7 +235,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-top: 6px; padding: 8px 11px; border-radius: 8px;
   background: rgba(232,179,60,.16); color: #E8B33C;
   font-size: 11px; text-align: center;
-  animation: fadeIn .25s ease;
+  animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
 }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
 
@@ -329,7 +329,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   font-size: 38px; font-weight: 700; color: #F6E7C3;
   letter-spacing: 7px; margin: 7px 0 5px;
   text-shadow: 0 2px 10px rgba(232,179,60,.35);
-  animation: codeIn .5s cubic-bezier(.34,1.56,.64,1) backwards;
+  animation: codeIn .5s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 @keyframes codeIn {
   0%   { opacity: 0; transform: scale(.7) }
@@ -345,7 +345,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-radius: var(--r-2);
   background: rgba(255,255,255,.06);
   border: 1px solid transparent;
-  animation: pIn .32s ease backwards;
+  animation: pIn .32s cubic-bezier(0, 0, .2, 1) backwards;
 }
 .pitem.me {
   background: rgba(232,179,60,.14);
@@ -450,7 +450,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   width: 29px; height: 31px;
   flex: none;
   
-  animation: dieDrop .5s cubic-bezier(.22, 1.3, .45, 1) backwards;
+  animation: dieDrop .5s cubic-bezier(.34, 1.4, .64, 1) backwards;
   animation-delay: calc(var(--i) * 90ms);
 }
 @keyframes dieDrop {
@@ -468,7 +468,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   z-index: 3;
   
   filter: drop-shadow(0 5px 11px rgba(0, 0, 0, .5));
-  transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
+  transition: transform .38s cubic-bezier(.34, 1.4, .64, 1),
               opacity .3s ease;
 }
 
@@ -504,7 +504,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .cs-cup.into {
-  animation: cupInto .42s cubic-bezier(.22, 1.3, .45, 1);
+  animation: cupInto .42s cubic-bezier(.34, 1.4, .64, 1);
 }
 @keyframes cupInto {
   0%   { transform: translateY(0) scale(1) }
@@ -586,7 +586,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   overflow: hidden;
   box-shadow: 0 0 0 4px rgba(232,179,60,.35), 0 7px 20px rgba(0,0,0,.5);
   
-  transition: transform 2.7s cubic-bezier(.15, .62, .1, 1);
+  transition: transform 2.7s cubic-bezier(.4, 0, .2, 1);
 }
 .ws-lbl {
   position: absolute;
@@ -630,7 +630,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   padding: 8px 12px; border-radius: 8px;
   background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
   font-size: 12px; font-weight: 600; min-width: 59px; text-align: center;
-  animation: fadeIn .25s ease;
+  animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
 }
 .optbtn:active { background: rgba(232,179,60,.3); transform: scale(.94) }
 
@@ -686,14 +686,14 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 .over-tag {
   font-size: 13px; padding: 4px 14px; border-radius: 499.5px; letter-spacing: 1px;
-  animation: codeIn .42s cubic-bezier(.34,1.56,.64,1) backwards;
+  animation: codeIn .42s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 .over-tag.ok { background: rgba(109,158,106,.25); color: #9BC798 }
 .over-tag.no { background: rgba(224,113,79,.25); color: #F0A38C }
 .over-num { margin-top: 12px; display: flex; align-items: baseline; gap: 5px }
 .on-big {
   font-size: 52px; font-weight: 700; color: #F6E7C3; line-height: 1;
-  animation: codeIn .5s cubic-bezier(.34,1.56,.64,1) .06s backwards;
+  animation: codeIn .5s cubic-bezier(.34, 1.56, .64, 1) .06s backwards;
 }
 .on-unit { font-size: 14px; color: rgba(255,255,255,.6) }
 .over-need { font-size: 11px; color: rgba(255,255,255,.45); margin-top: 6px }
@@ -795,7 +795,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .pitem {
-  animation: playerIn .34s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: playerIn .34s cubic-bezier(0, 0, .2, 1) backwards;
 }
 .pitem:nth-child(1) { animation-delay: .04s }
 .pitem:nth-child(2) { animation-delay: .11s }
@@ -812,7 +812,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .cc-code {
-  animation: codeDrop .55s cubic-bezier(.22, 1.4, .5, 1) backwards;
+  animation: codeDrop .55s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 @keyframes codeDrop {
   0%   { opacity: 0; transform: translateY(-15px) scale(.7); letter-spacing: 20px }
@@ -828,7 +828,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .optbtn {
-  animation: optIn .26s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: optIn .26s cubic-bezier(0, 0, .2, 1) backwards;
 }
 @keyframes optIn {
   0%   { opacity: 0; transform: scale(.85) translateY(4px) }
@@ -837,7 +837,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .bid-val {
-  animation: bidPop .4s cubic-bezier(.22, 1.5, .5, 1) backwards;
+  animation: bidPop .4s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 @keyframes bidPop {
   0%   { opacity: .4; transform: scale(.88) }
@@ -852,7 +852,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .revealbox .rv-row {
-  animation: rowIn .36s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: rowIn .36s cubic-bezier(0, 0, .2, 1) backwards;
 }
 .revealbox .rv-row:nth-child(1) { animation-delay: .05s }
 .revealbox .rv-row:nth-child(2) { animation-delay: .15s }
@@ -867,7 +867,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .nettip {
-  animation: netFade .3s ease, netBreathe 2.4s ease-in-out .3s infinite;
+  animation: netFade .3s cubic-bezier(0, 0, .2, 1), netBreathe 2.4s ease-in-out .3s infinite;
 }
 @keyframes netFade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes netBreathe {
@@ -910,8 +910,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   text-shadow: 0 4px 22px rgba(232,179,60,.5);
 }
 
-.cd-num.pop-a { animation: cdPopA .82s cubic-bezier(.22, 1.45, .5, 1) both }
-.cd-num.pop-b { animation: cdPopB .82s cubic-bezier(.22, 1.45, .5, 1) both }
+.cd-num.pop-a { animation: cdPopA .82s cubic-bezier(.34, 1.56, .64, 1) both }
+.cd-num.pop-b { animation: cdPopB .82s cubic-bezier(.34, 1.56, .64, 1) both }
 @keyframes cdPopA {
   0%   { transform: scale(1.34); opacity: .4 }
   26%  { transform: scale(.97);  opacity: 1 }
@@ -928,7 +928,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   font-size: 75px;
   color: #FFF3D6;
   text-shadow: 0 0 20px rgba(255,210,140,.9), 0 4px 17px rgba(232,179,60,.6);
-  animation: cdGoBurst .5s cubic-bezier(.16, 1.3, .4, 1) both;
+  animation: cdGoBurst .5s cubic-bezier(.34, 1.4, .64, 1) both;
 }
 @keyframes cdGoBurst {
   0%   { transform: scale(.72); opacity: 0 }
@@ -946,7 +946,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin: 10px 0 4px;
   border: 1px solid rgba(255,255,255,.14);
   
-  animation: cardIn .42s cubic-bezier(.22, 1.2, .4, 1) backwards;
+  animation: cardIn .42s cubic-bezier(.34, 1.2, .64, 1) backwards;
 }
 @keyframes cardIn {
   0%   { opacity: 0; transform: translateY(9px) scale(.94) }
@@ -1066,7 +1066,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: #2A211A;
   border-radius: 14px 14px 0 0;
   border-top: 1px solid rgba(232,179,60,.28);
-  animation: sheetUp .3s cubic-bezier(.22, 1.1, .4, 1);
+  animation: sheetUp .3s cubic-bezier(.34, 1.2, .64, 1);
   max-height: 82vh;
   overflow-y: auto;
 }
@@ -1215,7 +1215,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   
   margin: 7px 0 9px;
   display: flex; flex-wrap: wrap; gap: 5px;
-  animation: seatsIn .34s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: seatsIn .34s cubic-bezier(0, 0, .2, 1) backwards;
 }
 @keyframes seatsIn {
   0%   { opacity: 0; transform: translateY(5px) }
@@ -1244,7 +1244,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: linear-gradient(160deg, rgba(232,179,60,.16), rgba(232,179,60,.06));
   border: 1px solid rgba(232,179,60,.42);
   text-align: center;
-  animation: tieIn .42s cubic-bezier(.34,1.3,.64,1) backwards;
+  animation: tieIn .42s cubic-bezier(.34, 1.2, .64, 1) backwards;
 }
 @keyframes tieIn {
   0%   { opacity: 0; transform: scale(.94) }
@@ -1301,7 +1301,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   transition: opacity .2s;
 }
 
-.ev-row.new { opacity: 1; animation: evIn .34s cubic-bezier(.22, 1, .36, 1) backwards }
+.ev-row.new { opacity: 1; animation: evIn .34s cubic-bezier(0, 0, .2, 1) backwards }
 @keyframes evIn {
   0%   { opacity: 0; transform: translateX(-7px) }
   100% { opacity: 1; transform: translateX(0) }
@@ -1414,7 +1414,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   flex: none;
   
-  transition: transform .46s cubic-bezier(.18,.9,.3,1.16), opacity .3s ease-out;
+  transition: transform .46s cubic-bezier(.34, 1.2, .64, 1), opacity .3s ease-out;
 }
 .pk-table.dealing .pk-slot {
   transform: translateY(-150px) rotate(-14deg) scale(.72);
@@ -1438,7 +1438,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pk-flip {
   position: relative;
   width: 68px; height: 96px;
-  transition: transform .26s cubic-bezier(.2,.85,.3,1.05);
+  transition: transform .26s cubic-bezier(.34, 1.2, .64, 1);
 }
 .pk-flip.flipped { transform: rotate(-2.5deg) }
 .pk-side {
@@ -1447,7 +1447,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-radius: 7px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 3px 8px rgba(0,0,0,.3);
-  transition: opacity .16s ease-out, transform .26s cubic-bezier(.2,.85,.3,1.05);
+  transition: opacity .16s ease-out, transform .26s cubic-bezier(.34, 1.2, .64, 1);
 }
 
 
@@ -1581,10 +1581,10 @@ view, text, button, input, textarea { box-sizing: border-box }
   58%  { opacity: 1; transform: scale(.975) rotate(.7deg) }
   100% { opacity: 1; transform: scale(1) rotate(0deg) }
 }
-.uw-out { animation: slamIn .44s cubic-bezier(.2,.9,.3,1.18) both }
-.uw-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
-.pk-last { animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both }
-.pk-reveal { animation: slamIn .5s cubic-bezier(.2,.9,.3,1.18) both }
+.uw-out { animation: slamIn .44s cubic-bezier(.34, 1.2, .64, 1) both }
+.uw-reveal { animation: slamIn .5s cubic-bezier(.34, 1.2, .64, 1) both }
+.pk-last { animation: slamIn .42s cubic-bezier(.34, 1.2, .64, 1) both }
+.pk-reveal { animation: slamIn .5s cubic-bezier(.34, 1.2, .64, 1) both }
 
 
 @keyframes pickedPop {
@@ -1592,7 +1592,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   60%  { transform: scale(1.015) }
   100% { transform: scale(1) }
 }
-.uw-p.picked { animation: pickedPop .22s cubic-bezier(.3,1.5,.6,1) both }
+.uw-p.picked { animation: pickedPop .22s cubic-bezier(.34, 1.56, .64, 1) both }
 
 
 
@@ -1607,7 +1607,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   border: 1px solid rgba(232,179,60,.28);
   border-radius: 10px;
   letter-spacing: 0.5px;
-  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+  animation: slamIn .42s cubic-bezier(.34, 1.2, .64, 1) both;
 }
 
 
@@ -1648,7 +1648,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 11px;
   background: rgba(28, 22, 18, .93);
-  animation: fadeIn .2s ease;
+  animation: fadeIn .2s cubic-bezier(0, 0, .2, 1);
 }
 .rl-dice {
   position: relative;
@@ -1656,7 +1656,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-radius: 9px;
   background: linear-gradient(145deg, #FFFDF9, #E8DED0);
   box-shadow: 0 5px 13px rgba(0,0,0,.4);
-  animation: rlTumble 1.15s cubic-bezier(.45,.05,.55,.95) infinite;
+  animation: rlTumble 1.15s cubic-bezier(.4, 0, .2, 1) infinite;
 }
 @keyframes rlTumble {
   0%   { transform: rotate(0deg) translateY(0) }
@@ -1686,7 +1686,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(196, 67, 47, .16);
   color: #F0A38C;
   border: 1px solid rgba(196, 67, 47, .3);
-  animation: netFade .3s ease;
+  animation: netFade .3s cubic-bezier(0, 0, .2, 1);
 }
 .nettip-retry {
   flex: none;
@@ -1737,7 +1737,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: linear-gradient(100deg, rgba(232,179,60,.16), rgba(232,179,60,.06));
   border: 1px solid rgba(232,179,60,.4);
   border-radius: 9px;
-  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+  animation: slamIn .42s cubic-bezier(.34, 1.2, .64, 1) both;
 }
 .streak-t {
   font-size: 14px; font-weight: 700;
@@ -1755,7 +1755,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(94, 127, 166, .13);
   border: 1px solid rgba(94, 127, 166, .3);
   border-radius: 9px;
-  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+  animation: slamIn .42s cubic-bezier(.34, 1.2, .64, 1) both;
 }
 
 

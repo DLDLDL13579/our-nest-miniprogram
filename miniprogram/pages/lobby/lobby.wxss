@@ -13,7 +13,7 @@
   border-radius: var(--r-3); margin-bottom: var(--gap-3);
   background: linear-gradient(135deg, #3E2E28 0%, #2E211C 60%, #241A16 100%);
   box-shadow: var(--sh-3);
-  animation: heroDrop .62s cubic-bezier(.22, 1.4, .5, 1) backwards;
+  animation: heroDrop .62s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 @keyframes heroDrop {
   0%   { opacity: 0; transform: translateY(-34rpx) scale(.96) }
@@ -37,16 +37,16 @@
 .lb-top { display: flex; align-items: center; justify-content: space-between }
 .lb-lbl {
   font-size: 22rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .16s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .16s backwards;
 }
 .lb-t {
   font-size: 52rpx; font-weight: 700; color: #F6E7C3;
   margin-top: 6rpx; letter-spacing: 3rpx; line-height: 1.15;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .24s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .24s backwards;
 }
 .lb-s {
   font-size: 22rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.6;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .32s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .32s backwards;
 }
 @keyframes lineRise {
   0%   { opacity: 0; transform: translateY(14rpx) }
@@ -58,7 +58,7 @@
 .lb-sw {
   width: 36rpx; height: 36rpx; flex: none;
   padding: 6rpx; box-sizing: border-box; opacity: .75;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .4s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .4s backwards;
 }
 .lb-sw.off { opacity: .34 }
 .lb-sw:active { opacity: 1; transform: scale(1.15) }
@@ -72,7 +72,7 @@
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-2);
   border: 2rpx solid var(--line);
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .22s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .22s backwards;
 }
 .join-in {
   flex: 1; min-width: 0; height: 68rpx;
@@ -127,7 +127,7 @@
    */
   border-top: 5rpx solid var(--accent, var(--brand));
   transition: transform .12s, box-shadow .12s;
-  animation: cardRise .46s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: cardRise .46s cubic-bezier(0, 0, .2, 1) backwards;
 }
 .gcard:nth-of-type(1) { animation-delay: .28s }
 .gcard:nth-of-type(2) { animation-delay: .34s }
@@ -216,7 +216,7 @@
   margin-top: 8rpx; padding: 24rpx 26rpx;
   background: #F5F1EB; border-radius: var(--r-2);
   font-size: 21rpx; color: var(--ink3); line-height: 1.9;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .78s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .78s backwards;
 }
 .tip-line { display: block }
 

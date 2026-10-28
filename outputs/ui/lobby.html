@@ -221,7 +221,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   border-radius: var(--r-3); margin-bottom: var(--gap-3);
   background: linear-gradient(135deg, #3E2E28 0%, #2E211C 60%, #241A16 100%);
   box-shadow: var(--sh-3);
-  animation: heroDrop .62s cubic-bezier(.22, 1.4, .5, 1) backwards;
+  animation: heroDrop .62s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 @keyframes heroDrop {
   0%   { opacity: 0; transform: translateY(-17px) scale(.96) }
@@ -245,16 +245,16 @@ view, text, button, input, textarea { box-sizing: border-box }
 .lb-top { display: flex; align-items: center; justify-content: space-between }
 .lb-lbl {
   font-size: 11px; color: rgba(255,255,255,.55); letter-spacing: 2px;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .16s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .16s backwards;
 }
 .lb-t {
   font-size: 26px; font-weight: 700; color: #F6E7C3;
   margin-top: 3px; letter-spacing: 1.5px; line-height: 1.15;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .24s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .24s backwards;
 }
 .lb-s {
   font-size: 11px; color: rgba(255,255,255,.5); margin-top: 6px; line-height: 1.6;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .32s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .32s backwards;
 }
 @keyframes lineRise {
   0%   { opacity: 0; transform: translateY(7px) }
@@ -266,7 +266,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .lb-sw {
   width: 18px; height: 18px; flex: none;
   padding: 3px; box-sizing: border-box; opacity: .75;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .4s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .4s backwards;
 }
 .lb-sw.off { opacity: .34 }
 .lb-sw:active { opacity: 1; transform: scale(1.15) }
@@ -278,7 +278,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-2);
   border: 1px solid var(--line);
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .22s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .22s backwards;
 }
 .join-in {
   flex: 1; min-width: 0; height: 34px;
@@ -319,7 +319,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   
   border-top: 2.5px solid var(--accent, var(--brand));
   transition: transform .12s, box-shadow .12s;
-  animation: cardRise .46s cubic-bezier(.22, 1, .36, 1) backwards;
+  animation: cardRise .46s cubic-bezier(0, 0, .2, 1) backwards;
 }
 .gcard:nth-of-type(1) { animation-delay: .28s }
 .gcard:nth-of-type(2) { animation-delay: .34s }
@@ -401,7 +401,7 @@ view, text, button, input, textarea { box-sizing: border-box }
   margin-top: 4px; padding: 12px 13px;
   background: #F5F1EB; border-radius: var(--r-2);
   font-size: 10.5px; color: var(--ink3); line-height: 1.9;
-  animation: lineRise .5s cubic-bezier(.22, 1, .36, 1) .78s backwards;
+  animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .78s backwards;
 }
 .tip-line { display: block }
 
