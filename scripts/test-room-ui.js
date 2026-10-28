@@ -733,6 +733,52 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     ok(`注册表 ${GAMES.length} 个玩法都有对应的界面分支（没有 else 兜底）`)
   }
 
+  /* ============ ⑪ 前后台切换：回前台必须立刻同步 ============ */
+  console.log('\n=== ⑪ 切回前台要立刻拉一次（不能先给一屏过期画面）===')
+  /*
+   * 酒桌上的真实动作：切出去回条微信 → 切回来。
+   * 而原来是切回来先看到一屏过期画面，1.5 秒后轮询才跳到真实状态。
+   * 倒计时改成挂钟驱动之后更明显 —— 它在后台照样走完，
+   * 切回来可能本地显示"开始！"而服务端已经 over 了。
+   *
+   * 判据：onShow 的函数体里必须先调 pollTick()、再 startPoll()。
+   * 顺序反了的话两个请求并发，pollTick 的并发保护会把后一个丢掉。
+   */
+  const showBody = (() => {
+    const i = src.indexOf('  onShow() {')
+    if (i < 0) return ''
+    let depth = 0, end = -1
+    const open = src.indexOf('{', i)
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    return end > open ? src.slice(open, end) : ''
+  })()
+  assert.ok(showBody, '⑪ 找不到 onShow 函数体')
+  const iTick = showBody.indexOf('pollTick()')
+  const iStart = showBody.indexOf('startPoll()')
+  assert.ok(iTick >= 0, '⑪ onShow 里必须立刻调 pollTick()（回前台先同步一次）')
+  assert.ok(iStart >= 0, '⑪ onShow 里必须恢复轮询')
+  assert.ok(iTick < iStart, '⑪ 顺序必须是「先 pollTick 再 startPoll」（反了会两个请求并发，后一个被丢弃）')
+
+  const hideBody = (() => {
+    const i = src.indexOf('  onHide() {')
+    if (i < 0) return ''
+    let depth = 0, end = -1
+    const open = src.indexOf('{', i)
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    return end > open ? src.slice(open, end) : ''
+  })()
+  assert.ok(hideBody, '⑪ 找不到 onHide 函数体')
+  assert.ok(/stopPoll\(\)/.test(hideBody), '⑪ 切后台必须停轮询（微信后台 5 秒后请求必然失败）')
+  assert.ok(!/call\('room'/.test(hideBody),
+    '⑪ 切后台不能发云函数请求 —— 那次请求必然 fail interrupted，还占着并发标志')
+  ok('回前台先 pollTick 再挂周期；切后台只停不请求')
+
   /* ============ ⑩ 结算前必须定格 300ms（hitstop） ============ */
   console.log('\n=== ⑩ 结算前定格：最激动的一秒不能被跳过 ===')
   /*
