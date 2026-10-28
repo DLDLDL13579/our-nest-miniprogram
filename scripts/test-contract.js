@@ -297,8 +297,36 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const unused = keys.filter(k => !ALLOW.has(k) && !new RegExp('\\b' + k + '\\b').test(front))
     assert.deepStrictEqual(unused, [],
       '★ 这些字段服务端算了但前端从没引用（死数据）：' + unused.join(', ') +
-      '\n    要么接到界面上（像 streaks / score 那样），要么删掉（像 ready / cardsCount）。')
-    ok(`shape 返回的 ${keys.length} 个字段全部被前端使用（死数据 0 个）`)
+      '\n    要么接到界面上（像 streaks / score 那样），要么删掉（像 ready / cardsCount / pkLog）。')
+
+    /*
+     * 嵌套对象也要查 —— 顶层那条覆盖不到它们，而这里藏过死字段：
+     *   · players[] 的 `ready` / `cardsCount`
+     *   · poker 的 `log`（比牌历史，前端从没显示）
+     * 抽取方式：按缩进找子对象体的键。
+     */
+    const nested = []
+    const pm = /const players =[\s\S]*?\n  \}\)\)/.exec(shapeM[0])
+    if (pm) {
+      for (const m of pm[0].matchAll(/^ {4}([a-zA-Z][\w]*):/gm)) nested.push(['players.' + m[1], m[1]])
+    }
+    for (const sub of ['poker', 'uw']) {
+      const at = shapeM[0].indexOf(sub + ': (function () {')
+      if (at < 0) continue
+      const ret = shapeM[0].indexOf('return {', at)
+      if (ret < 0) continue
+      const end = shapeM[0].indexOf('\n      }', ret)
+      const seg = shapeM[0].slice(ret, end < 0 ? ret + 2000 : end)
+      for (const m of seg.matchAll(/^ {8}([a-zA-Z][\w]*):/gm)) nested.push([sub + '.' + m[1], m[1]])
+    }
+    const nestedUnused = nested
+      .filter(([full, key]) => !new RegExp('\\b' + key + '\\b').test(front))
+      .map(([full]) => full)
+    assert.deepStrictEqual(nestedUnused, [],
+      '★ 这些**嵌套**字段服务端算了但前端从没引用：' + nestedUnused.join(', ') +
+      '\n    （顶层那条断言覆盖不到子对象里的死字段）')
+
+    ok(`shape 顶层 ${keys.length} 个 + 嵌套 ${nested.length} 个字段全部被前端使用`)
   }
 
   /* ============ ③d-2 onShareAppMessage 的 imageUrl 必须真实存在 ============ */

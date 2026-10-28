@@ -350,7 +350,6 @@ function shape(room, openid) {
         myDrink: (room.pkDrink || {})[openid] || 0,
         aliveCount: alive.length,
         /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
-        log: (room.pkLog || []).slice(-6),
         last: room.pkLast || null,
         winner: room.pkWinner || null
       }
@@ -842,7 +841,6 @@ exports.main = async (event) => {
           pkRest: room._pkRest || [],
           /* 换牌喝掉的量：{ openid: 杯数 }，半杯记 0.5 */
           pkDrink: {},
-          pkLog: [],
           pkLast: null,
           pkWinner: null,
           /* 谁是卧底的进度：开局直接进"说描述"（看词是按住看，不需要单独一步） */
@@ -1289,7 +1287,7 @@ exports.main = async (event) => {
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
         spin: null,
         /* 金花 / 卧底的局内状态一起清 */
-        pkStep: null, pkLog: [], pkLast: null, pkWinner: null, pkPublic: null, pkRest: [], pkDrink: {},
+        pkStep: null, pkLast: null, pkWinner: null, pkPublic: null, pkRest: [], pkDrink: {},
 
         updatedAt: ts
       }
@@ -1484,7 +1482,6 @@ exports.main = async (event) => {
 
       const act = String(event.act || '')
       const alive = players.filter(p => p.inRound !== false && !p.out)
-      const log = (room.pkLog || []).slice()
       let last = null
 
       /*
@@ -1588,14 +1585,13 @@ exports.main = async (event) => {
           byType: poker.rank(handA).name,
           targetType: poker.rank(handB).name
         }
-        log.push(last)
       } else {
         return { ok: false, msg: '不认识的动作' }
       }
 
       const stillAlive = players.filter(p => p.inRound !== false && !p.out)
       const patch = {
-        players: players, pkLog: log, pkLast: last, updatedAt: ts
+        players: players, pkLast: last, updatedAt: ts
       }
 
       if (stillAlive.length <= 1) {
@@ -1686,7 +1682,7 @@ exports.main = async (event) => {
           }))
           Object.assign(upd, {
             phase: 'lobby', bid: null, lastResult: null, turn: 0, spin: null,
-            pkStep: null, pkLog: [], pkLast: null, pkWinner: null,
+            pkStep: null, pkLast: null, pkWinner: null,
             pkPublic: null, pkRest: [], pkDrink: {}
           })
         }
