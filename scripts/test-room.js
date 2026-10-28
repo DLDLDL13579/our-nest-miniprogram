@@ -1118,7 +1118,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    * 这样测的才是"玩家实际会看到几个按钮"。
    */
   const rjs = require('fs').readFileSync(
-    require('path').join(__dirname, '..', 'miniprogram/pages/room/room.js'), 'utf8')
+    require('path').join(__dirname, '..', 'miniprogram/game/room/room.js'), 'utf8')
   /* ⚠️ 必须匹配**函数定义** `  buildOptions(room) {`，
    *   不能用 indexOf('buildOptions(room)') —— 那个串在 refresh()
    *   里的调用处和注释里也出现，会匹配到调用那一行，抽出来的

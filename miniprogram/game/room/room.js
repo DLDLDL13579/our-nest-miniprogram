@@ -1453,7 +1453,7 @@ Page({
       const g = gameOf(r.game)
       return {
         title: '来玩' + (g ? g.name : '酒桌游戏') + '，房间号 ' + r.code,
-        path: '/pages/room/room?code=' + r.code,
+        path: '/game/room/room?code=' + r.code,
         /* 不带 imageUrl 时微信会截页面首屏当封面 —— 群里看是一堆文字，辨识度极低 */
         imageUrl: '/images/share-cover.png'
       }

@@ -1,7 +1,6 @@
 {
   "pages": [
     "pages/lobby/lobby",
-    "pages/room/room",
     "pages/me/me"
   ],
   "window": {
@@ -31,5 +30,14 @@
   "sitemapLocation": "sitemap.json",
   "cloud": true,
   "lazyCodeLoading": "requiredComponents",
-  "__usePrivacyCheck__": true
+  "__usePrivacyCheck__": true,
+  "subpackages": [
+    {
+      "root": "game",
+      "pages": [
+        "room/room"
+      ],
+      "name": "game"
+    }
+  ]
 }

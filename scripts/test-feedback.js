@@ -226,7 +226,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
         else if (f.name.endsWith('.js')) out.push(fs.readFileSync(fp, 'utf8'))
       }
     }
+    /*
+     * ★ 扫描范围 = 主包 pages + **分包 game**（2026-10-28 房间页移进分包）。
+     *   只扫 pages 的话，房间页里所有 fire() 都看不到 →
+     *   一大半动作被误判成"死动作"（配了等于没配）。
+     *   这类"搬了文件就漏扫"的坑，是会静默把断言变成废纸的那一种。
+     */
     walk(path.join(ROOT, 'miniprogram', 'pages'))
+    walk(path.join(ROOT, 'miniprogram', 'game'))
     return out.join('\n')
   })()
   const fired = new Set()

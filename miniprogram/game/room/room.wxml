@@ -331,18 +331,18 @@
           让人一眼认出这是什么东西的场合。
           刻意压到很小、很暗、带旋转：装饰不能和主角（盅）抢注意力。
         -->
-        <image class="cs-prop p1" src="/images/dice/dice-5.png" mode="aspectFit" />
-        <image class="cs-prop p2" src="/images/dice/dice-2.png" mode="aspectFit" />
+        <image class="cs-prop p1" src="/game/images/dice/dice-5.png" mode="aspectFit" />
+        <image class="cs-prop p2" src="/game/images/dice/dice-2.png" mode="aspectFit" />
 
         <!-- 骰子：压在盅底下（z-index 更低），只有偷看/揭盅时才露出来 -->
         <view class="cs-dice {{diceShown ? 'show' : ''}}">
           <image wx:for="{{myDice}}" wx:key="index"
-                 src="/images/dice/dice-{{item}}.png"
+                 src="/game/images/dice/dice-{{item}}.png"
                  class="cs-die" style="--i:{{index}}" mode="aspectFit" />
         </view>
 
         <!-- 盅本体。按住 = 抬起来偷看，松手 = 扣回去 -->
-        <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png"
+        <image class="cs-cup {{cupCls}}" src="/game/images/cup/{{cupSrc}}.png"
                bindtouchstart="onCupPress" bindtouchend="onCupRelease"
                bindtouchcancel="onCupRelease" mode="aspectFit" />
       </view>
@@ -438,11 +438,11 @@
 
         <view class="cs-dice {{diceShown ? 'show' : ''}}">
           <image wx:for="{{myDice}}" wx:key="index"
-                 src="/images/dice/dice-{{item}}.png"
+                 src="/game/images/dice/dice-{{item}}.png"
                  class="cs-die" style="--i:{{index}}" mode="aspectFit" />
         </view>
 
-        <image class="cs-cup {{cupCls}}" src="/images/cup/{{cupSrc}}.png" mode="aspectFit" />
+        <image class="cs-cup {{cupCls}}" src="/game/images/cup/{{cupSrc}}.png" mode="aspectFit" />
       </view>
 
       <!-- 提示语同样放场景外（盅抬起会扫过场景内所有位置） -->
@@ -457,7 +457,7 @@
       <view class="othercups">
         <view wx:for="{{room.players}}" wx:key="openid" class="oc-item {{item.isMe ? 'me' : ''}}">
           <image class="oc-cup {{item.diceCount > 0 ? 'done' : ''}}"
-                 src="/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png"
+                 src="/game/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png"
                  mode="aspectFit" />
           <view class="oc-name">{{item.name}}</view>
           <view class="oc-stat {{item.diceCount > 0 ? 'done' : ''}}">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
@@ -623,7 +623,7 @@
                 scaleToFill 不会变形。
               -->
               <image wx:if="{{room.poker.publicCard}}" class="pk-face"
-                     src="/images/card/c{{room.poker.publicCard.s}}-{{room.poker.publicCard.r}}.png"
+                     src="/game/images/card/c{{room.poker.publicCard.s}}-{{room.poker.publicCard.r}}.png"
                      mode="scaleToFill" />
               <text wx:else class="pk-red">{{room.poker.publicText}}</text>
             </view>
@@ -638,7 +638,7 @@
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front {{room.poker.myKnown ? '' : 'pk-empty'}}">
               <image wx:if="{{room.poker.myKnown}}" class="pk-face"
-                     src="/images/card/c{{room.poker.myKnown.s}}-{{room.poker.myKnown.r}}.png"
+                     src="/game/images/card/c{{room.poker.myKnown.s}}-{{room.poker.myKnown.r}}.png"
                      mode="scaleToFill" />
               <text wx:else class="pk-red">{{room.poker.myKnownText}}</text>
             </view>
@@ -874,7 +874,7 @@
           <!-- 结算页也用真实牌面：文字画牌和游戏中的牌不是一回事，
                玩家一眼能看出"结算时牌变小了但图案还在"才是同一副牌 -->
           <image wx:for="{{item.cards}}" wx:key="index" class="pkr-face {{item.out ? 'out' : ''}}"
-                 src="/images/card/c{{item.s}}-{{item.r}}.png" mode="scaleToFill" />
+                 src="/game/images/card/c{{item.s}}-{{item.r}}.png" mode="scaleToFill" />
         </view>
       </block>
     </view>
@@ -900,7 +900,7 @@
                 判据：d === face 或 (d === 1 且 face !== 1)
             -->
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
-                   src="/images/dice/dice-{{d}}.png"
+                   src="/game/images/dice/dice-{{d}}.png"
                    class="die-img {{(d === result.face || (d === 1 && result.face !== 1)) ? 'hit' : ''}}"
                    mode="aspectFit" />
           </view>
@@ -934,7 +934,7 @@
         <view class="oh-name">{{result.winners}}</view>
         <view class="oh-dice">
           <image wx:for="{{result.topDice}}" wx:for-item="d" wx:key="index"
-                 src="/images/dice/dice-{{d}}.png" class="oh-die" mode="aspectFit"
+                 src="/game/images/dice/dice-{{d}}.png" class="oh-die" mode="aspectFit"
                  style="--i:{{index}}" />
         </view>
         <view class="oh-total">{{result.top}} 点</view>
@@ -947,7 +947,7 @@
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
-                   src="/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />
+                   src="/game/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />
           </view>
           <text class="rv-total">{{item.total}} 点</text>
         </view>

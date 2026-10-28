@@ -153,7 +153,7 @@ Page({
       st[id] = (Number(st[id]) || 0) + 1
       wx.setStorageSync('gameStats', st)
     } catch (err) {}
-    wx.navigateTo({ url: '/pages/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
+    wx.navigateTo({ url: '/game/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
   },
 
   /* 输房间号：3 位不是本地能判的（号段由服务端定），所以只做"非空"提示，
@@ -179,7 +179,7 @@ Page({
       return
     }
     sfx.play('whoosh')
-    wx.navigateTo({ url: '/pages/room/room?code=' + encodeURIComponent(code) })
+    wx.navigateTo({ url: '/game/room/room?code=' + encodeURIComponent(code) })
   },
 
   /* ---------- 我的 ---------- */

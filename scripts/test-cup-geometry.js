@@ -31,8 +31,8 @@ const path = require('path')
 const assert = require('assert')
 
 const ROOT = path.join(__dirname, '..')
-const WXSS = path.join(ROOT, 'miniprogram/pages/room/room.wxss')
-const CUP_PNG = path.join(ROOT, 'miniprogram/images/cup/cup-down.png')
+const WXSS = path.join(ROOT, 'miniprogram/game/room/room.wxss')
+const CUP_PNG = path.join(ROOT, 'miniprogram/game/images/cup/cup-down.png')
 
 let n = 0
 function ok(msg) { n++; console.log('  ✓ ' + msg) }
@@ -163,7 +163,7 @@ function px(body, prop) {
    *   真机实测（旧参数 lift=170/scale=.80）：包围盒超出上沿 25px，
    *   透明带只抵掉 1.2px → **实体被切 23.8px**，盅顶就是平的。
    */
-  const cupUp = pngSize(path.join(ROOT, 'miniprogram/images/cup/cup-up.png'))
+  const cupUp = pngSize(path.join(ROOT, 'miniprogram/game/images/cup/cup-up.png'))
   assert.strictEqual(cupUp.w, IMG.w, 'cup-up.png 尺寸变了，几何基准要重算')
 
   const bbW = cupW * scale, bbH = cupH * scale
@@ -233,7 +233,7 @@ function px(body, prop) {
 
   /* 提示语必须排在场景之后（模板顺序），否则它会跑到场景上面去 */
   const tplSrc = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8')
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
   const sceneEnd = tplSrc.indexOf('</view>', tplSrc.indexOf('class="cs-cup'))
   const hintIdx = tplSrc.indexOf('class="cs-hint"')
   assert.ok(hintIdx > sceneEnd,

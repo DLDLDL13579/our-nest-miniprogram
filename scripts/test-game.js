@@ -41,7 +41,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
  * ============================================================ */
 
 const roomJs = fs.readFileSync(
-  path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
+  path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
 const roomCloud = fs.readFileSync(
   path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
 
@@ -276,7 +276,7 @@ function extractBuildSectors(src) {
   ok('按住盅才显示骰子，且看过之后才允许叫骰')
 
   console.log('\n=== ⑩ 骰盅图必须三态齐全 ===')
-  const cupDir = path.join(ROOT, 'miniprogram/images/cup')
+  const cupDir = path.join(ROOT, 'miniprogram/game/images/cup')
   const cupMissing = ['cup-down', 'cup-shake', 'cup-up']
     .filter(k => !fs.existsSync(path.join(cupDir, k + '.png')))
   assert.deepStrictEqual(cupMissing, [],
@@ -298,7 +298,7 @@ function extractBuildSectors(src) {
    *   所以下面逐个字段做「改了必须被认出来」的反向验证。
    */
   const rcSrc = fs.readFileSync(
-    path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
   /*
    * ★ 抽取方式：按**大括号配平**截到函数结束，而不是"找下一个注释"。
    *

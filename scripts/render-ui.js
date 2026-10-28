@@ -173,7 +173,7 @@ function tabbarHtml(active) {
 
 const PAGES = {
   lobby: { path: 'pages/lobby/lobby', title: '酒桌', tab: 'pages/lobby/lobby' },
-  room: { path: 'pages/room/room', title: '房间' },
+  room: { path: 'game/room/room', title: '房间' },
   me: { path: 'pages/me/me', title: '我的', tab: 'pages/me/me' }
 }
 

@@ -331,7 +331,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/sfx.js'), 'utf8')
     const fbSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/feedback.js'), 'utf8')
     const meSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.js'), 'utf8')
-    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8')
+    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
     const appSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/app.js'), 'utf8')
 
     const val = (src, name) => {
@@ -410,7 +410,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const cloudSrc = fs.readFileSync(
       path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
     const meWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.wxml'), 'utf8')
-    const roomWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8')
+    const roomWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
 
     /* 输入框 class → 云端对应限制的抽取方式 */
     const pairs = [
@@ -475,8 +475,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
       .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
     const front = stripComments(
-      fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.js'), 'utf8') +
-      fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8'))
+      fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8') +
+      fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8'))
 
     /*
      * 白名单：确实"服务端返回但界面不用"的字段，每个都要有理由。
@@ -758,7 +758,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   console.log('\n=== ③d 模板引用的图片文件必须存在（骰子图那类）===')
   /*
    * 为什么加这条：2.5.0 把骰子从 CSS 拼装改成**离线渲染的图片**
-   * （miniprogram/images/dice/dice-1..6.png，由 scripts/render-dice.py 生成）。
+   * （miniprogram/game/images/dice/dice-1..6.png，由 scripts/render-dice.py 生成）。
    *
    * 这引入了一类全新的静默故障：图片没生成 / 被误删 / 路径写错时，
    * `<image>` 只是**不显示**，不报错、不警告，页面照常渲染 ——
@@ -817,7 +817,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   ok('模板引用的图片全部存在')
 
   /* 骰子图必须 6 张齐全 —— 缺哪张，哪个点数就整颗骰子消失 */
-  const diceDir = path.join(ROOT, 'miniprogram', 'images', 'dice')
+  const diceDir = path.join(ROOT, 'miniprogram', 'game', 'images', 'dice')
   const diceMissing = []
   for (let v = 1; v <= 6; v++) {
     if (!fs.existsSync(path.join(diceDir, 'dice-' + v + '.png'))) diceMissing.push('dice-' + v + '.png')
@@ -1405,7 +1405,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    * 但既没服务端提供、也没人计算）照样抓得到，且不报错地静默变空。
    */
   {
-    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'pages', 'room', 'room.js'), 'utf8')
+    const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'game', 'room', 'room.js'), 'utf8')
     const i = roomSrc.indexOf('  decorate(room) {')
     assert.ok(i > 0, '④ 找不到 room.js 的 decorate()（前端派生字段的唯一入口）')
     /* 括号计数取函数体：比正则可靠，不会被体内的对象字面量骗到 */
@@ -1473,7 +1473,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *      而一个从不报错的更强判据需要构造带比牌历史的房间响应，成本不成比例。
    */
   {
-    const roomJsSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'pages', 'room', 'room.js'), 'utf8')
+    const roomJsSrc = fs.readFileSync(path.join(ROOT, 'miniprogram', 'game', 'room', 'room.js'), 'utf8')
     const cloudSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions', 'room', 'index.js'), 'utf8')
     const knownKey = (k) =>
       new RegExp('(^|[\\s,{])' + k + '\\s*:').test(cloudSrc) ||
