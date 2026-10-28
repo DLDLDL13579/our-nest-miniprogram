@@ -587,21 +587,42 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 .ws-pointer {
-  position: absolute; left: 50%; top: -3px;
-  margin-left: -9px;
+  position: absolute; left: 50%; top: -5px;
+  margin-left: -10px;
   width: 0; height: 0;
-  border-left: 9px solid transparent;
-  border-right: 9px solid transparent;
-  border-top: 17px solid #E8B33C;
-  z-index: 5;
-  filter: drop-shadow(0 1.5px 3px rgba(0,0,0,.6));
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 20px solid #7A5A18;          
+  z-index: 6;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.65));
+}
+.ws-pointer::before {
+  content: ''; position: absolute;
+  left: -8px; top: -20px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 16.5px solid #E8B33C;          
+}
+.ws-pointer::after {
+  content: ''; position: absolute;
+  left: -3.5px; top: -19px;
+  width: 0; height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 12px solid rgba(255, 244, 214, .78);   
 }
 .ws-disc {
   position: absolute; left: 0; top: 0;
   width: 280px; height: 280px;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 0 4px rgba(232,179,60,.35), 0 7px 20px rgba(0,0,0,.5);
+  box-shadow:
+    0 0 0 1.5px rgba(122, 90, 24, .5),        
+    0 0 0 4.5px rgba(232, 179, 60, .30),      
+    0 0 0 5.5px rgba(122, 90, 24, .35),      
+    inset 0 0 20px rgba(0, 0, 0, .28),      
+    0 8px 22px rgba(0, 0, 0, .55);
   
   transition: transform 2.7s cubic-bezier(.4, 0, .2, 1);
 }
@@ -609,19 +630,30 @@ view, text, button, input, textarea { box-sizing: border-box }
   position: absolute;
   transform: translate(-50%, -50%);
   font-size: 10.5px; color: #fff; font-weight: 600;
+  
   white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0,0,0,.7);
   pointer-events: none;
 }
+
+.ws-lbl.small { font-size: 9px; letter-spacing: 0 }
+
 .ws-hub {
   position: absolute; left: 50%; top: 50%;
   width: 48px; height: 48px; margin: -24px 0 0 -24px;
   border-radius: 50%;
-  background: linear-gradient(145deg, #F6E7C3, #D9B96A);
+  background: linear-gradient(160deg, #FFF3D6 0%, #F0D79A 42%, #C9A65A 100%);
   color: #4A3630; font-size: 16px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 3px 9px rgba(0,0,0,.5);
-  z-index: 4;
+  letter-spacing: 1px;
+  box-shadow:
+    0 0 0 2px rgba(122, 90, 24, .55),      
+    inset 0 1.5px 2.5px rgba(255, 255, 255, .85),  
+    inset 0 -2.5px 4px rgba(122, 90, 24, .35),   
+    0 4px 11px rgba(0, 0, 0, .55);
+  z-index: 5;
+  transition: transform .12s;
+  text-shadow: 0 0.5px 0 rgba(255,255,255,.6);
 }
 .ws-result {
   text-align: center;
@@ -752,8 +784,17 @@ view, text, button, input, textarea { box-sizing: border-box }
 .oh-total {
   position: relative;
   margin-top: 6px;
-  font-size: 15px; font-weight: 700; color: #F6E7C3;
+  font-size: 16px; font-weight: 700; color: #F6E7C3;
 }
+
+
+.pkr-face {
+  
+  width: 28px; height: 37.5px;
+  border-radius: 3px;
+  flex: none;
+}
+.pkr-face.out { opacity: .55; filter: saturate(.6) }
 
 
 .center-box { display: flex; flex-direction: column; align-items: center; padding: 20px 5px }
@@ -777,10 +818,17 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(255,255,255,.06);
   border-radius: var(--r-2); padding: 12px;
 }
+
 .rv-row {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 0;
   border-bottom: 1px solid rgba(255,255,255,.06);
+  animation: rvIn .34s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes rvIn {
+  0%   { opacity: 0; transform: translateY(5px) }
+  100% { opacity: 1; transform: translateY(0) }
 }
 .rv-row:last-child { border-bottom: none }
 .rv-name { font-size: 12px; color: rgba(255,255,255,.6); min-width: 55px }
@@ -1462,6 +1510,29 @@ view, text, button, input, textarea { box-sizing: border-box }
 .uw-good { color: #9AD3A8; font-weight: 700 }
 .uw-otie { font-size: 10.5px; color: rgba(255,255,255,.38); margin-top: 5px }
 
+.uw-alive {
+  text-align: center; margin-top: 8px;
+  font-size: 10.5px; color: rgba(255,255,255,.42); letter-spacing: 0.5px;
+}
+
+
+.uw-ballots {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(255,255,255,.12);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 5px 8px;
+}
+.uw-ballot {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10.5px;
+  
+  animation: rvIn .3s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.ub-by { color: rgba(255,255,255,.55) }
+.ub-arrow { color: rgba(232,179,60,.7); font-size: 9px }
+.ub-to { color: rgba(255,255,255,.82); font-weight: 600 }
+
 
 .uw-reveal {
   background: rgba(255,255,255,.06);
@@ -1945,43 +2016,43 @@ view, text, button, input, textarea { box-sizing: border-box }
       </div>
 
       <div class="revealbox">
-        <div class="rv-row">
+        <div class="rv-row" style="--i:0">
           <span class="rv-name">老王</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-2.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">27 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:1">
           <span class="rv-name">阿强</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">23 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:2">
           <span class="rv-name">阿杰</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">20 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:3">
           <span class="rv-name">大刘</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-2.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">16 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:4">
           <span class="rv-name">倩萍</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-4.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-6.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">13 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:5">
           <span class="rv-name">小美</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-3.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;">
           </div>
           <span class="rv-total">9 点</span>
-        </div><div class="rv-row">
+        </div><div class="rv-row" style="--i:6">
           <span class="rv-name">邓林</span>
           <div class="dicebox mini">
             <img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-5.png" data-mode="aspectFit" style="object-fit:contain;"><img class="die-img" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/dice/dice-1.png" data-mode="aspectFit" style="object-fit:contain;">

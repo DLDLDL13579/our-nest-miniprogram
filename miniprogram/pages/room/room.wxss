@@ -768,10 +768,28 @@
   background: rgba(255,255,255,.06);
   border-radius: var(--r-2); padding: 24rpx;
 }
+/*
+ * 结算行**逐行入场**（2026-10-28）。
+ *
+ * 工作室级 UI 的一个廉价但有效的标志：元素按顺序出现，而不是同时冒出来。
+ * 排行榜尤其需要 —— 从第 2 名往下逐条落，最后停在最后一名，
+ * 这个顺序本身就在"读"排名。
+ *
+ * ⚠️ 只有**结算页**能这么用：它只在 over 时渲染一次，而且轮询的数据不变时
+ *    wx:for 不会重建节点，animation 就不会反复重播。
+ *    大厅/玩家列表那种每 1.5 秒刷新一次的列表**绝对不能用** ——
+ *    CSS animation 会跟着节点重建一遍遍重播（这个坑记在 AGENTS.md 里）。
+ */
 .rv-row {
   display: flex; align-items: center; gap: 16rpx;
   padding: 14rpx 0;
   border-bottom: 2rpx solid rgba(255,255,255,.06);
+  animation: rvIn .34s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes rvIn {
+  0%   { opacity: 0; transform: translateY(10rpx) }
+  100% { opacity: 1; transform: translateY(0) }
 }
 .rv-row:last-child { border-bottom: none }
 .rv-name { font-size: 24rpx; color: rgba(255,255,255,.6); min-width: 110rpx }
@@ -1588,6 +1606,9 @@
 .uw-ballot {
   display: flex; align-items: center; gap: 6rpx;
   font-size: 21rpx;
+  /* 票型也逐条落 —— 谁投了谁，按发生顺序读最自然 */
+  animation: rvIn .3s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 .ub-by { color: rgba(255,255,255,.55) }
 .ub-arrow { color: rgba(232,179,60,.7); font-size: 18rpx }

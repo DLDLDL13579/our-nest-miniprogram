@@ -558,7 +558,7 @@
             现在把它摆出来，不用谁去回忆。
           -->
           <view wx:if="{{room.uw.lastOut.ballots.length}}" class="uw-ballots">
-            <view wx:for="{{room.uw.lastOut.ballots}}" wx:key="by" class="uw-ballot">
+            <view wx:for="{{room.uw.lastOut.ballots}}" wx:key="by" class="uw-ballot" style="--i:{{index}}">
               <text class="ub-by">{{item.by}}</text>
               <text class="ub-arrow">投</text>
               <text class="ub-to">{{item.to}}</text>
@@ -925,7 +925,8 @@
 
       <view class="revealbox">
         <view wx:for="{{result.restRanked}}" wx:key="seat" wx:for-index="ri"
-              class="rv-row {{item.total === result.top ? 'win' : ''}}">
+              class="rv-row {{item.total === result.top ? 'win' : ''}}"
+              style="--i:{{ri}}">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"

@@ -784,7 +784,7 @@ view, text, button, input, textarea { box-sizing: border-box }
 .oh-total {
   position: relative;
   margin-top: 6px;
-  font-size: 15px; font-weight: 700; color: #F6E7C3;
+  font-size: 16px; font-weight: 700; color: #F6E7C3;
 }
 
 
@@ -818,10 +818,17 @@ view, text, button, input, textarea { box-sizing: border-box }
   background: rgba(255,255,255,.06);
   border-radius: var(--r-2); padding: 12px;
 }
+
 .rv-row {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 0;
   border-bottom: 1px solid rgba(255,255,255,.06);
+  animation: rvIn .34s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes rvIn {
+  0%   { opacity: 0; transform: translateY(5px) }
+  100% { opacity: 1; transform: translateY(0) }
 }
 .rv-row:last-child { border-bottom: none }
 .rv-name { font-size: 12px; color: rgba(255,255,255,.6); min-width: 55px }
@@ -1517,7 +1524,10 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 .uw-ballot {
   display: flex; align-items: center; gap: 3px;
-  font-size: 10px;
+  font-size: 10.5px;
+  
+  animation: rvIn .3s cubic-bezier(0, 0, .2, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
 }
 .ub-by { color: rgba(255,255,255,.55) }
 .ub-arrow { color: rgba(232,179,60,.7); font-size: 9px }
@@ -2032,21 +2042,21 @@ view, text, button, input, textarea { box-sizing: border-box }
 
           
           <div class="uw-cmp">你的词是「苹果」</div><div class="uw-ballots">
-            <div class="uw-ballot">
+            <div class="uw-ballot" style="--i:0">
               <span class="ub-by">邓林</span>
-              <span class="ub-arrow">→</span>
+              <span class="ub-arrow">投</span>
               <span class="ub-to">老王</span>
-            </div><div class="uw-ballot">
+            </div><div class="uw-ballot" style="--i:1">
               <span class="ub-by">倩萍</span>
-              <span class="ub-arrow">→</span>
+              <span class="ub-arrow">投</span>
               <span class="ub-to">老王</span>
-            </div><div class="uw-ballot">
+            </div><div class="uw-ballot" style="--i:2">
               <span class="ub-by">阿杰</span>
-              <span class="ub-arrow">→</span>
+              <span class="ub-arrow">投</span>
               <span class="ub-to">老王</span>
-            </div><div class="uw-ballot">
+            </div><div class="uw-ballot" style="--i:3">
               <span class="ub-by">老王</span>
-              <span class="ub-arrow">→</span>
+              <span class="ub-arrow">投</span>
               <span class="ub-to">倩萍</span>
             </div>
           </div></div><div class="uw-alive">场上还剩 3 人</div><div class="uw-btn">继续下一轮</div><div class="textbtn">离开房间</div>
