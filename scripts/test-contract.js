@@ -439,6 +439,51 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     missingVarCls.join('\n    '))
   ok('js 里变量插值的动态 class 也都有 CSS 定义')
 
+  /* ============ ③c-3 模板里写的 class 必须有样式定义 ============ */
+  console.log('\n=== ③c-3 模板写的 class 必须有定义（否则布局静默失效）===')
+  /*
+   * 为什么单列：`class="ht-list"` 这种"写了但没定义"的情况**不报错** ——
+   * 元素照常渲染，只是没有那条样式（布局悄悄变了）。
+   * `<image>` 缺 class 定义更严重（撑满容器），那个由 ③e-3 管；
+   * 这条管**所有元素**。
+   *
+   * ⚠️ 判据必须只看**静态 class 属性**、且只认 ASCII 类名：
+   *    第一版把 `{{x ? '卧底赢了' : ...}}` 里的中文文案也当成了 class，
+   *    报出 38 个假阳性（连 '是卧底' '吹牛被抓' 都在里面）。
+   *    假阳性比漏报更麻烦 —— 它会让我去"修"本来就对的东西。
+   */
+  {
+    const stripCss = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '')
+    const pageDirs = fs.readdirSync(path.join(ROOT, 'miniprogram', 'pages'), { withFileTypes: true })
+      .filter(d => d.isDirectory()).map(d => d.name)
+    const appCss = stripCss(fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8'))
+    const undef = []
+    for (const pg of pageDirs) {
+      const dir = path.join(ROOT, 'miniprogram', 'pages', pg)
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.wxml')) continue
+        const wxml = fs.readFileSync(path.join(dir, f), 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+        const cssFile = path.join(dir, f.replace(/\.wxml$/, '.wxss'))
+        const css = stripCss(fs.existsSync(cssFile) ? fs.readFileSync(cssFile, 'utf8') : '') + appCss
+        const defined = new Set(Array.from(css.matchAll(/\.([a-zA-Z][\w-]*)/g)).map(m => m[1]))
+        for (const m of wxml.matchAll(/class="([^"]*)"/g)) {
+          /* 只留静态部分：把 {{...}} 整体换成空格 */
+          const staticPart = m[1].replace(/\{\{[\s\S]*?\}\}/g, ' ')
+          for (const tok of staticPart.split(/\s+/)) {
+            if (!tok) continue
+            if (!/^[a-zA-Z][\w-]*$/.test(tok)) continue   // 中文文案、插值残留一律跳过
+            if (!defined.has(tok)) undef.push(pg + '/' + f + ' → .' + tok)
+          }
+        }
+      }
+    }
+    assert.deepStrictEqual(undef, [],
+      '★ 这些 class 写在模板里但没有任何样式定义（布局会静默失效）：\n    ' +
+      undef.join('\n    ') +
+      '\n    要么补样式，要么把没用的 class 名删掉（别留"看起来有用"的空壳）。')
+    ok('模板里写的 class 全部有样式定义')
+  }
+
   /* ============ ③d wxml 引用的图片必须真实存在 ============ */
   console.log('\n=== ③d 模板引用的图片文件必须存在（骰子图那类）===')
   /*

@@ -14,7 +14,7 @@
     只有一档的话，断网持续时玩家不知道该等还是该退。
   -->
   <view wx:if="{{netTip}}" class="nettip {{netDown ? 'down' : ''}}">
-    <text class="nettip-t">{{netTip}}</text>
+    <text>{{netTip}}</text>
     <text wx:if="{{netDown}}" class="nettip-retry" catchtap="retryNow">重试</text>
   </view>
 

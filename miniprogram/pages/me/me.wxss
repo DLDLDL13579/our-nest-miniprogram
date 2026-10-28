@@ -55,9 +55,6 @@
 .sw.on .swdot { transform: translateX(36rpx) }
 
 /* ---------- 玩法行 ---------- */
-.row2-main { flex: 1; min-width: 0 }
-.row2-arrow { width: 28rpx; height: 28rpx; opacity: .4; flex: none }
-.mi-icon { width: 36rpx; height: 36rpx }
 
 /* ---------- 关于 ---------- */
 .about { font-size: 23rpx; color: var(--ink2); line-height: 1.9 }
