@@ -1288,8 +1288,13 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     /* 弃牌必须能推进（而不是回到"轮到你了"） */
     const folded = await room.main({ action: 'pkAct', act: 'fold', id: prId })
     assert.ok(folded.ok, '★ 单人金花弃牌应成功：' + (folded.msg || ''))
-    assert.ok(folded.room.poker.folded || folded.room.phase === 'over',
-      '★ 弃牌后必须真的弃了（否则界面回到"轮到你了"，单人局无处可去）')
+    /*
+     * ⚠️ 这里原来写成 `folded || phase === 'over'` —— 太松。
+     *    "folded 了但没结算"同样会让单人局停在废弃界面，
+     *    没有别人能推进，和卡死没区别。所以必须是 over。
+     */
+    assert.strictEqual(folded.room.phase, 'over',
+      '★ 单人弃牌后必须结算（只置 folded 不结算 = 一样卡住），实际 phase=' + folded.room.phase)
     ok('★ 单人金花：没有可比的人，弃牌能走完')
   }
 
