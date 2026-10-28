@@ -949,6 +949,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     'POOL_SIZE 里有已删除的音效（幽灵配置）：\n    ' + ghostPool.join('\n    '))
   ok(`池化配置 ${poolKeys.length} 条，无幽灵条目`)
 
+  /* ============ ③b-3 调用的 sfx 方法必须真的导出（防死代码） ============ */
+  console.log('\n=== ③b-3 sfx 的方法必须真的导出过 ===')
+  /*
+   * ★ 2026-10-28 发现：room.js 里写着 `sfx.init && sfx.init()` ——
+   *   而 sfx **从来没导出过 init**。因为有 `&&` 短路，它不报错，
+   *   只是**永远不执行**。结果是"预加载"这件事从未发生。
+   *
+   *   这类"防御性写法掩盖了方法不存在"比直接报错更隐蔽：
+   *   `sfx.xxx && sfx.xxx()` 看起来稳，实际是死代码。
+   */
+  {
+    const sfxSrc2 = fs.readFileSync(path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+    const exp = /module\.exports\s*=\s*\{([^}]*)\}/.exec(sfxSrc2)
+    assert.ok(exp, '找不到 sfx 的导出')
+    const exported = new Set(exp[1].split(',').map(x => x.trim().split(':')[0].trim()).filter(Boolean))
+    const missing = []
+    for (const root of PAGE_ROOTS) {
+      if (!fs.existsSync(root)) continue
+      const walkJs = (d) => {
+        for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+          const fp = path.join(d, f.name)
+          if (f.isDirectory()) { walkJs(fp); continue }
+          if (!f.name.endsWith('.js') || fp.includes('feedback.js') || fp.includes('sfx.js')) continue
+          /*
+           * ⚠️ 必须先剥注释再匹配：room.js 的注释里写了旧写法
+           *    `sfx.init && sfx.init()` 说明这个 bug —— 不剥注释的话
+           *    断言会去报注释里的代码（假阳性），而那行代码本来就是对的。
+           */
+          const src = fs.readFileSync(fp, 'utf8')
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+          for (const m of src.matchAll(/sfx\.([a-zA-Z_]\w*)\s*(?:\(|&&)/g)) {
+            if (!exported.has(m[1])) missing.push(path.relative(ROOT, fp) + ' → sfx.' + m[1])
+          }
+        }
+      }
+      walkJs(root)
+    }
+    assert.deepStrictEqual([...new Set(missing)], [],
+      '这些 sfx 方法没导出（调用永远不生效，而且不报错）：\n    ' +
+      [...new Set(missing)].join('\n    '))
+    ok('页面调用的 sfx 方法全部有导出')
+  }
+
   /* ============ ③b-2 音频质量：直流偏置与响度 ============ */
   console.log('\n=== ③b-2 音频质量：直流偏置必须为 0，且不能有「过轻」的音效 ===')
   /*

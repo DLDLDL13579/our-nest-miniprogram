@@ -232,4 +232,37 @@ function setMuted(v) {
   return muted
 }
 
-module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, FILES }
+/**
+ * 预加载几个"第一下不能慢"的音效。
+ *
+ * ★★ 2026-10-28 补。之前 room.js 里写着 `sfx.init && sfx.init()` ——
+ *   而 sfx **从来没导出过 init**，那行是死代码，音效一次都没预加载过。
+ *   而文件开头的注释明明写着"预加载是手感的一部分"：
+ *   第一次播放某音效有几十毫秒解码延迟，摇骰子时这个延迟会让哗啦声慢半拍。
+ *
+ * 为什么只预加载几个：微信对同时存在的 InnerAudioContext 数量有限制
+ * （十几个），35 个全建会撞上限。这五个是"每个动作的第一下"，
+ * 它们慢了最明显。
+ */
+const PRELOAD_KEYS = ['shakerMetal', 'diceTumbleWood', 'cupSlam', 'cardFlip', 'tapSoft']
+
+function preload() {
+  PRELOAD_KEYS.forEach((k) => {
+    const src = FILES[k]
+    if (!src) return
+    /* 池化的音效（POOL_SIZE > 1）跳过：它们的实例是按 slot 名建的，
+       预加载塞进 pool[k] 会和真正的播放逻辑打架 */
+    if (POOL_SIZE[k] > 1) return
+    if (pool[k]) return
+    try {
+      const a = wx.createInnerAudioContext()
+      a.src = src
+      a.obeyMuteSwitch = false
+      pool[k] = a
+    } catch (e) {
+      /* 预加载失败不影响播放（只是第一下慢一点） */
+    }
+  })
+}
+
+module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, preload, FILES }
