@@ -258,6 +258,56 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ⑤c 前端 maxlength 必须与云端截断长度一致 ============ *
+   *
+   * 不一致的后果很隐蔽：用户以为能输 60 个字，云端却悄悄截到 20 ——
+   * 他看到的和存下来的不一样，而且**没有任何提示**。
+   * 现在三处都是对的（昵称 12 / 自定义题 60 / 房间号 3），
+   * 但它们是**两份独立的常量**，改一处忘另一处就是下次的坑。
+   */
+  {
+    const cloudSrc = fs.readFileSync(
+      path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    const meWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.wxml'), 'utf8')
+    const roomWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/room/room.wxml'), 'utf8')
+
+    /* 输入框 class → 云端对应限制的抽取方式 */
+    const pairs = [
+      {
+        name: '昵称',
+        html: meWxml,
+        cls: 'mein',
+        cloud: () => {
+          const m = /const name = String\(event\.name \|\| ''\)\.trim\(\)\.slice\(0, (\d+)\)/.exec(cloudSrc)
+          return m ? Number(m[1]) : null
+        }
+      },
+      {
+        name: '自定义题',
+        html: roomWxml,
+        cls: 'cardta',
+        cloud: () => {
+          const m = /const MAX_CARD = (\d+)/.exec(cloudSrc)
+          return m ? Number(m[1]) : null
+        }
+      }
+    ]
+
+    const bad = []
+    for (const p of pairs) {
+      const re = new RegExp('class="[^"]*' + p.cls + '[^"]*"[^>]*maxlength="(\\d+)"|maxlength="(\\d+)"[^>]*class="[^"]*' + p.cls)
+      const m = re.exec(p.html)
+      const frontVal = m ? Number(m[1] || m[2]) : null
+      const cloudVal = p.cloud()
+      if (frontVal === null) { bad.push(p.name + '：找不到前端 maxlength'); continue }
+      if (cloudVal === null) { bad.push(p.name + '：找不到云端限制（抽取可能失效）'); continue }
+      if (frontVal !== cloudVal) bad.push(`${p.name}：前端 ${frontVal} ≠ 云端 ${cloudVal}`)
+    }
+    assert.deepStrictEqual(bad, [],
+      '★ 前端长度限制与云端截断不一致 —— 用户会被**悄悄截断**：\n    ' + bad.join('\n    '))
+    ok('前端 maxlength 与云端截断长度一致（昵称 / 自定义题）')
+  }
+
   /* ============ ⑤b ★ 服务端算了的字段，前端必须有人用 ============ *
    *
    * 同一个模式在这个项目里出现了三次：
