@@ -1764,6 +1764,44 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('骰子 6 张 / 骰盅 3 张 / 扑克 52 张全部齐全，且没有多余文件')
   }
 
+  /* ============ ③i 版本号必须是单一来源（不能硬编码在页面里） ============ */
+  console.log('\n=== ③i 版本号只有 config.js 一处来源 ===')
+  /*
+   * ★ 2026-10-28。`me.js` 里硬编码着 `version: '3.7.4'`，而实际已经 3.9.x ——
+   * 用户报问题时说"我用的 3.7.4"，我根本对不上他跑的是哪一版。
+   *
+   * 这类"文案与实现不一致"本项目栽过：音效早换成真录音了，
+   * "我的"页还写着"摇盅、扣盅、开盅都是合成音"。
+   * 判据：页面 js 里不许出现 `version: '数字'` 这种硬编码，必须从 config 读。
+   */
+  {
+    const pageJs = []
+    for (const root of [path.join(ROOT, 'miniprogram', 'pages'), path.join(ROOT, 'miniprogram', 'game')]) {
+      if (!fs.existsSync(root)) continue
+      for (const d of fs.readdirSync(root, { withFileTypes: true })) {
+        if (!d.isDirectory()) continue
+        for (const f of fs.readdirSync(path.join(root, d.name))) {
+          if (f.endsWith('.js')) pageJs.push(path.join(root, d.name, f))
+        }
+      }
+    }
+    const hard = []
+    for (const f of pageJs) {
+      const src = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      const m = /version\s*:\s*'[0-9]+\.[0-9]+/.exec(src)
+      if (m) hard.push(path.relative(ROOT, f) + ' → ' + m[0])
+    }
+    assert.deepStrictEqual(hard, [],
+      '这些页面把版本号硬编码了（会悄悄过时，用户报问题对不上）：\n    ' +
+      hard.join('\n    ') + '\n    改成从 config.js 读。')
+
+    /* config 里的版本号本身要是合法格式 */
+    const cfg = require(path.join(ROOT, 'miniprogram', 'config.js'))
+    assert.ok(/^[0-9]+\.[0-9]+\.[0-9]+$/.test(String(cfg.version || '')),
+      'config.js 的 version 必须是 x.y.z 形式，实际：' + cfg.version)
+    ok('版本号单一来源（config.js ' + cfg.version + '），页面里没有硬编码')
+  }
+
   /* ============ ④f wxml 表达式只能用"微信支持的那一小撮语法" ============ */
   console.log('\n=== ④f wxml 里不许出现函数调用 / 可选链 / 模板字符串 ===')
   /*
