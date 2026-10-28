@@ -261,6 +261,52 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     assert.strictEqual(ov.gameName, games.gameOf('liar').name, '玩法名应来自注册表')
 
     ok('★ decorate() 真跑一遍：牌型提示 / 换牌量 / 观战 / 连庄 / 今晚最惨 / 规则文案 全部正确')
+
+  /* ============ ④c ★ buildOptions()：叫骰选项的规则 ============
+   *
+   * 这是玩家每一回合都在用的东西，规则是「数量变大，或数量相同但点数变大」。
+   * 它从没被单独测过 —— 而它错一次，玩家就会叫出非法骰、被服务端拒，
+   * 或者干脆看不到能叫的选项。
+   */
+  {
+    const src = fs.readFileSync(JS, 'utf8')
+    const at = src.indexOf('buildOptions(room)')
+    assert.ok(at > 0, '找不到 buildOptions')
+    const open = src.indexOf('{', at)
+    let depth = 0, end = -1
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    assert.ok(end > open, 'buildOptions 的括号没配平')
+    const build = new Function('return function buildOptions(room){' +
+      src.slice(open + 1, end) + '}')()
+
+    /* ① 没叫过：从最小的开始，24 个封顶（2 人 = 10 颗骰子） */
+    const first = build({ count: 2, bid: null })
+    assert.strictEqual(first.length, 24, '应封顶 24 个（全列 60 个没人看得完）')
+    assert.strictEqual(first[0], '1个1', '第一个应是最小的 1个1，实际：' + first[0])
+    assert.strictEqual(first[23], '4个6', '第 24 个应是 4个6，实际：' + first[23])
+
+    /* ② 上家叫了 3个4：合法的必须"更大" */
+    const after = build({ count: 2, bid: { n: 3, face: 4 } })
+    assert.ok(after.length > 0, '应该有合法选项')
+    assert.ok(!after.includes('3个4'), '★ 不能重复上家的叫法')
+    assert.ok(!after.includes('3个3'), '★ 同数量但点数更小不合法')
+    assert.ok(!after.includes('2个6'), '★ 数量更小不合法')
+    assert.strictEqual(after[0], '3个5', '第一合法项应是 3个5（同数量点数更大），实际：' + after[0])
+    assert.ok(after.includes('4个1'), '★ 数量变大时点数可以更小')
+
+    /* ③ 已经叫到顶（10 个 6）→ 没有合法选项 */
+    const max = build({ count: 2, bid: { n: 10, face: 6 } })
+    assert.strictEqual(max.length, 0, '叫到顶之后不该还有选项（否则能无限往上叫）')
+
+    /* ④ 人数越多，上限越高 */
+    const four = build({ count: 4, bid: { n: 10, face: 6 } })
+    assert.ok(four.length > 0, '4 人局有 20 颗骰子，10个6 之后仍可往上叫')
+
+    ok('★ buildOptions()：非法项全部排除、同数量点数可升、数量升后点数可降、封顶 24 个')
+  }
   }
 
   /* ============ ⑤ 模板引用的字段必须在 js 里真的算出来 ============ */
