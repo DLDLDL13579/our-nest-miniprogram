@@ -181,6 +181,20 @@ const mock = {
   openapi: { security: { async msgSecCheck() { return { errCode: 0, result: { suggest: 'pass' } } } } }
 }
 const ROOT = path.join(__dirname, '..')
+/*
+ * ★★ 所有"扫页面"的断言都必须用这两个根目录。
+ *
+ * 房间页在 2026-10-28 移进分包 `miniprogram/game/` 时，有两条断言（死动作、死功能）
+ * 仍然只扫 `miniprogram/pages` —— 它们**一直是绿的，只是什么都没测**。
+ * 之后又发现第三条（③c-3 的 class 样式检查）也漏了：往 wxml 里塞一个
+ * 没有样式的 class，断言毫无反应。一天之内在同一个坑上踩了三次。
+ *
+ * 所以把"页面根目录"提成全局常量，扫描断言一律用它 —— 不再靠"记得改"。
+ */
+const PAGE_ROOTS = [
+  path.join(ROOT, 'miniprogram', 'pages'),
+  path.join(ROOT, 'miniprogram', 'game')
+]
 const orig = Module._load
 Module._load = function (r) { if (r === 'wx-server-sdk') return mock; return orig.apply(this, arguments) }
 
@@ -531,12 +545,13 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   {
     const shareFiles = []
     ;(function walkShare(d) {
+      if (Array.isArray(d)) return d.forEach(x => walkShare(x))
       for (const f of fs.readdirSync(d, { withFileTypes: true })) {
         const fp = path.join(d, f.name)
         if (f.isDirectory()) walkShare(fp)
         else if (f.name.endsWith('.js')) shareFiles.push(fp)
       }
-    })(path.join(ROOT, 'miniprogram', 'pages'))
+    })(PAGE_ROOTS)
 
     const missingImg = []
     for (const js of shareFiles) {
@@ -569,6 +584,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   const missingCls = []
   function walkWxml(dir, out) {
+    /* 支持传数组（PAGE_ROOTS 有两个根：主包 + 分包） */
+    if (Array.isArray(dir)) return dir.reduce((a, d) => walkWxml(d, a), out || [])
     out = out || []
     fs.readdirSync(dir).forEach(f => {
       const p = path.join(dir, f)
@@ -578,7 +595,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     return out
   }
   const appCss = fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8')
-  walkWxml(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+  walkWxml(PAGE_ROOTS).forEach(wxml => {
     const wxss = wxml.replace(/\.wxml$/, '.wxss')
     let css = appCss
     if (fs.existsSync(wxss)) css += fs.readFileSync(wxss, 'utf8')
@@ -663,7 +680,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    * 本项目的动态 class 全部走这个约定。）
    */
   const missingVarCls = []
-  walkWxml(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+  walkWxml(PAGE_ROOTS).forEach(wxml => {
     const js = wxml.replace(/\.wxml$/, '.js')
     if (!fs.existsSync(js)) return
     const wxss = wxml.replace(/\.wxml$/, '.wxss')
@@ -716,12 +733,22 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   {
     const stripCss = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '')
-    const pageDirs = fs.readdirSync(path.join(ROOT, 'miniprogram', 'pages'), { withFileTypes: true })
-      .filter(d => d.isDirectory()).map(d => d.name)
+    /*
+     * ★★ 这里原来是 `fs.readdirSync(miniprogram/pages)` 的**独立实现** ——
+     *   所以 2026-10-28 房间页移进分包后，这一条（class 必须有样式）就
+     *   悄悄只扫主包了：往 room.wxml 里塞一个没有样式的 class，断言毫无反应。
+     *   现在改成遍历 PAGE_ROOTS（主包 + 分包）。
+     */
+    const pageDirs = []
+    for (const root of PAGE_ROOTS) {
+      if (!fs.existsSync(root)) continue
+      for (const d of fs.readdirSync(root, { withFileTypes: true })) {
+        if (d.isDirectory()) pageDirs.push({ name: d.name, dir: path.join(root, d.name) })
+      }
+    }
     const appCss = stripCss(fs.readFileSync(path.join(ROOT, 'miniprogram', 'app.wxss'), 'utf8'))
     const undef = []
-    for (const pg of pageDirs) {
-      const dir = path.join(ROOT, 'miniprogram', 'pages', pg)
+    for (const { name: pg, dir } of pageDirs) {
       for (const f of fs.readdirSync(dir)) {
         if (!f.endsWith('.wxml')) continue
         const wxml = fs.readFileSync(path.join(dir, f), 'utf8').replace(/<!--[\s\S]*?-->/g, '')
@@ -768,6 +795,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    */
   const missingImg = []
   function walkWxmlImg(dir, out) {
+    /* 支持传数组（PAGE_ROOTS 有两个根：主包 + 分包） */
+    if (Array.isArray(dir)) return dir.reduce((a, d) => walkWxmlImg(d, a), out || [])
     out = out || []
     fs.readdirSync(dir).forEach(f => {
       const p = path.join(dir, f)
@@ -776,7 +805,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     })
     return out
   }
-  walkWxmlImg(path.join(ROOT, 'miniprogram', 'pages')).forEach(wxml => {
+  walkWxmlImg(PAGE_ROOTS).forEach(wxml => {
     const tpl = fs.readFileSync(wxml, 'utf8')
     const re = /src\s*=\s*"(\/[^"]+)"/g
     let m
@@ -857,6 +886,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* ② 页面直接传字符串的调用必须已注册 */
   const unregistered = []
   function walkPages(dir, out) {
+    /* 支持传数组（PAGE_ROOTS 有两个根：主包 + 分包） */
+    if (Array.isArray(dir)) return dir.reduce((a, d) => walkPages(d, a), out || [])
     out = out || []
     fs.readdirSync(dir).forEach(f => {
       const p = path.join(dir, f)
@@ -865,7 +896,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     })
     return out
   }
-  walkPages(path.join(ROOT, 'miniprogram', 'pages')).forEach(jsFile => {
+  walkPages(PAGE_ROOTS).forEach(jsFile => {
     const lines = fs.readFileSync(jsFile, 'utf8').split('\n')
     lines.forEach((line, i) => {
       const re = /sfx\.play\(\s*'([\w]+)'/g
@@ -1402,7 +1433,6 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
      *   而"断言只扫了一半"是静默的：它一直是绿的，只是什么都没测。
      *   （同一天已经在"死动作检测"上踩过同一个坑，这次是第二次。）
      */
-    const PAGE_ROOTS = [path.join(ROOT, 'miniprogram', 'pages'), path.join(ROOT, 'miniprogram', 'game')]
     const pageDirs = []
     PAGE_ROOTS.forEach(root => {
       if (!fs.existsSync(root)) return

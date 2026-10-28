@@ -271,6 +271,21 @@ view, text, button, input, textarea { box-sizing: border-box }
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 0 5px;
 }
+
+.gbar-mid {
+  display: flex; align-items: baseline; gap: 5px;
+  padding: 3px 9px; border-radius: 499.5px;
+  background: rgba(255,255,255,.06);
+}
+.gbar-code {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
+  font-size: 16px; font-weight: 700; color: #F6E7C3;
+  letter-spacing: 2px;
+}
+.gbar-codelbl { font-size: 9px; color: rgba(255,255,255,.52) }
+.gbar-mid:active { background: rgba(232,179,60,.18) }
+
 .gbar-l { display: flex; align-items: center; gap: 5px; padding: 5px 3px }
 .gbar-back { font-size: 22px; color: rgba(255,255,255,.7); line-height: 1 }
 .gbar-t { font-size: 16px; color: rgba(255,255,255,.85); font-weight: 600 }
@@ -432,7 +447,9 @@ view, text, button, input, textarea { box-sizing: border-box }
   padding: 11px 0 8px;
 }
 .bid-lbl { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); letter-spacing: 1.5px }
-.bid-val { font-size: 22px; font-weight: 700; color: #F6E7C3; margin-top: 3px; letter-spacing: 1px }
+.bid-val {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif; font-size: 22px; font-weight: 700; color: #F6E7C3; margin-top: 3px; letter-spacing: 1px }
 .bid-val.hint { font-size: 13.5px; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
 .bid-by { font-size: 10.5px; color: rgba(255, 255, 255, 0.52); margin-top: 4px }
 
@@ -483,6 +500,7 @@ view, text, button, input, textarea { box-sizing: border-box }
       rgba(92,74,58,.30) 0%, rgba(38,29,23,.55) 46%, rgba(24,18,15,.9) 100%);
 }
 
+
 .cs-spot {
   position: absolute; left: 50%; top: -30%;
   width: 150%; height: 130%;
@@ -492,6 +510,14 @@ view, text, button, input, textarea { box-sizing: border-box }
     rgba(255, 220, 150, .07) 38%,
     rgba(255, 210, 140, 0) 68%);
   pointer-events: none;
+  animation: candle 4.8s ease-in-out infinite;
+}
+@keyframes candle {
+  0%   { opacity: .86; transform: scale(1)     translateX(0) }
+  28%  { opacity: 1;   transform: scale(1.03)  translateX(-3px) }
+  52%  { opacity: .82; transform: scale(.99)   translateX(2px) }
+  74%  { opacity: .96; transform: scale(1.015) translateX(-1.5px) }
+  100% { opacity: .86; transform: scale(1)     translateX(0) }
 }
 
 
@@ -769,11 +795,12 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
-.liar-acts { display: flex; gap: 7px; align-items: stretch }
+
+.liar-acts { display: flex; gap: 14px; align-items: center }
 .liar-acts .openbtn { flex: 1; margin-top: 0 }
 .pibtn {
   flex: none;
-  width: 75px; height: 48px;
+  width: 66px; height: 44px;
   margin-top: 0;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #E8B33C, #C08A18);
@@ -864,6 +891,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 .oh-total {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
   position: relative;
   margin-top: 6px;
   font-size: 16px; font-weight: 700; color: #F6E7C3;
@@ -956,6 +985,11 @@ view, text, button, input, textarea { box-sizing: border-box }
 .actrow .btn { flex: 1; height: 38px; font-size: 13.5px; border-radius: 9px }
 
 
+
+.footrow { display: flex; justify-content: center; gap: 20px }
+
+.how-sheet-list { max-height: 310px; overflow-y: auto }
+
 .textbtn {
   height: 32px;
   display: flex; align-items: center; justify-content: center;
@@ -1030,10 +1064,6 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
-@keyframes mineDieIn {
-  0%   { opacity: 0; transform: rotateY(-180deg) scale(.5) }
-  100% { opacity: 1; transform: rotateY(0deg) scale(1) }
-}
 
 
 .optbtn {
@@ -1112,6 +1142,8 @@ view, text, button, input, textarea { box-sizing: border-box }
 .cd-in { position: relative }
 .cd-lbl { font-size: 10.5px; color: rgba(255,255,255,.5); letter-spacing: 2px }
 .cd-num {
+  
+  font-family: 'BebasNum', -apple-system, sans-serif;
   
   font-size: 100px; font-weight: 700; color: #F6E7C3;
   line-height: 1.02; margin: 10px 0 7px;
@@ -1382,6 +1414,15 @@ view, text, button, input, textarea { box-sizing: border-box }
   text-align: center;
 }
 .uw-card.on .uw-card-in { border-color: rgba(255,225,160,.9) }
+
+
+.uw-card.compact { margin-bottom: 8px }
+.uw-card.compact .uw-card-in { padding: 11px 15px }
+.uw-card.compact .uw-lock { font-size: 13.5px; letter-spacing: 1px }
+.uw-card.compact .uw-wtip { display: none }
+.uw-card.compact .uw-wlbl { font-size: 9px }
+.uw-card.compact .uw-wtxt { font-size: 32px }
+.uw-card.compact .uw-wsub { display: none }
 
 .uw-lock {
   font-size: 18px; font-weight: 700; color: rgba(255,255,255,.85);
@@ -2106,7 +2147,11 @@ view, text, button, input, textarea { box-sizing: border-box }
       <span class="gbar-back">‹</span>
       <span class="gbar-t">大厅</span>
     </div>
-    <div class="gbar-r">
+    <div class="gbar-mid">
+      
+      <span class="gbar-code">627</span>
+      <span class="gbar-codelbl">房间号</span>
+    </div><div class="gbar-r">
       <img class="gbar-mute" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23E8B33C%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%209.5h3l4-3.2v11.4l-4-3.2H4z%22%2F%3E%3Cpath%20d%3D%22M14.5%209a4.2%204.2%200%200%201%200%206%22%2F%3E%3Cpath%20d%3D%22M17%206.6a7.6%207.6%200%200%201%200%2010.8%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
     </div>
   </div>
@@ -2116,7 +2161,7 @@ view, text, button, input, textarea { box-sizing: border-box }
     
     
       
-      <div class="pk-table">
+      <div class="stage-in pk-table">
         
         <div class="pk-slot pk-pub">
           <div class="pk-tagline">底牌</div>
@@ -2188,7 +2233,10 @@ view, text, button, input, textarea { box-sizing: border-box }
           </div>
         </div>
         <div class="pk-fold">算了，我弃牌</div>
+      <div class="footrow">
+      <div class="textbtn">看规则</div>
       <div class="textbtn">离开房间</div>
+    </div>
   </div>
 
 
