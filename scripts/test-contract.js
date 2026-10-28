@@ -734,6 +734,14 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
           for (const tok of staticPart.split(/\s+/)) {
             if (!tok) continue
             if (!/^[a-zA-Z][\w-]*$/.test(tok)) continue   // 中文文案、插值残留一律跳过
+            /*
+             * ★ 动态拼接的**半边**要跳过（2026-10-28）：
+             *   `class="cf cf-{{item % 5}}"` 剥掉插值后剩下 `cf-`，
+             *   那不是一个完整的类名，而是前缀 —— 真类名（cf-0..cf-4）
+             *   由各自的样式/断言覆盖。不跳会报"cf- 没有样式"这种假阳性，
+             *   而假阳性会让我去改本来就对的代码。
+             */
+            if (tok.endsWith('-') || tok.startsWith('-')) continue
             if (!defined.has(tok)) undef.push(pg + '/' + f + ' → .' + tok)
           }
         }

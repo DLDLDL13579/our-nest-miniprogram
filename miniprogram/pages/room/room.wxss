@@ -20,6 +20,48 @@
   pointer-events: none;
 }
 
+/* ============================================================
+   撒花
+   ------------------------------------------------------------
+   20 片彩纸从顶部飘落，2.4 秒后清空 DOM。
+   每片的位置/延迟/旋转/时长都按 nth-child 错开 —— 同一套 keyframes、
+   参数不同，视觉上就是"随机飘落"，但不需要在 js 里算随机数
+   （算随机数要在 setData 里塞 20 个对象，纯浪费）。
+   ============================================================ */
+.confetti {
+  position: fixed; left: 0; top: 0;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 20;
+}
+.cf {
+  position: absolute;
+  top: -30rpx;
+  width: 12rpx; height: 20rpx;
+  border-radius: 2rpx;
+  animation: cfFall 2.4s linear forwards;
+}
+@keyframes cfFall {
+  0%   { transform: translateY(0) rotate(0deg);        opacity: 1 }
+  85%  { opacity: 1 }
+  100% { transform: translateY(110vh) rotate(720deg);  opacity: 0 }
+}
+/* 5 种颜色轮转 */
+.cf-0 { background: #E8B33C }
+.cf-1 { background: #E0714F }
+.cf-2 { background: #6D9E6A }
+.cf-3 { background: #5E7FA6 }
+.cf-4 { background: #C9A0DC }
+/* 位置与节奏：每 4 片一组，错开横向位置和延迟 */
+.cf:nth-child(4n+1) { left: 8%;  animation-delay: 0ms;   animation-duration: 2.3s }
+.cf:nth-child(4n+2) { left: 31%; animation-delay: 120ms; animation-duration: 2.5s }
+.cf:nth-child(4n+3) { left: 58%; animation-delay: 60ms;  animation-duration: 2.2s }
+.cf:nth-child(4n+4) { left: 82%; animation-delay: 180ms; animation-duration: 2.6s }
+/* 再按 3 的倍数错开一点横向偏移，避免排成四条竖线 */
+.cf:nth-child(3n)   { margin-left: 10rpx }
+.cf:nth-child(5n)   { margin-left: -14rpx }
+
 .gbar {
   position: relative; z-index: 1;
   display: flex; align-items: center; justify-content: space-between;

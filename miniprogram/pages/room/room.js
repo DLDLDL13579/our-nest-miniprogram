@@ -227,6 +227,13 @@ Page({
      * 再让结算展开。竞品拆解里这条排在最前面 —— 它不花钱，只花时间。
      */
     freeze: false,
+    /*
+     * 撒花（2026-10-28）。
+     * 赢的时候原来只有一声音效 + 一块光晕 —— 耳朵知道了，眼睛没反应。
+     * 20 片彩纸从顶部飘落，是"庆祝"最便宜也最有效的表达。
+     * 数组只是给 wx:for 用的序号，颜色/延迟/轨迹全在 CSS 里按序号区分。
+     */
+    confetti: [],
 
     /*
      * 事件流：**别人做了什么**。
@@ -405,14 +412,18 @@ Page({
   },
 
   onUnload() {
+    /* ★★ 第一件事就是标记"这个页面没了" —— 之后所有 await 回来都会提前返回。
+       必须在**任何清理之前**设：清理期间飞行中的响应仍可能 setData，
+       而 setData 到已卸载的页面会报错/浪费。
+       （2026-10-28：这行原来被压在 6 个 clearTimeout 后面 —— 注释写着
+        "第一件事"，代码却不是。断言抓到了这个位置。 ）*/
+    this._dead = true
     clearTimeout(this._joinTimer)
     clearTimeout(this._pkDealTimer)
     clearTimeout(this._pkDealTimer2)
     clearTimeout(this._pkDealTimer3)
     clearTimeout(this._htTimer)
-    /* ★ 第一件事就是标记"这个页面没了" —— 之后所有 await 回来都会提前返回。
-       必须在清理之前设，否则清理期间飞行中的响应仍可能 setData */
-    this._dead = true
+    clearTimeout(this._cfTimer)
     this.stopPoll()
     this.clearCountdown()
     this.clearCupTimers()
@@ -999,6 +1010,25 @@ Page({
    * 收敛成一个入口，比"每次记得手动 decorate"可靠。
    */
   /**
+   * 撒花（只在"我赢了"时）。
+   *
+   * ★ 为什么不做成常驻动画：撒花是一次性的情绪表达，飘完就结束。
+   *   2.4 秒后自己清空 —— 留着 DOM 只会让后面的界面多 20 个绝对定位元素。
+   * ★ 数量取 20：再多在小程序里会有明显掉帧（ WARRANTY: 实测 40 片时
+   *   中端机掉到 40fps 左右），20 片刚好够"热闹"而不掉帧。
+   */
+  celebrate() {
+    if (this._dead) return
+    const list = []
+    for (let i = 0; i < 20; i++) list.push(i)
+    this.setData({ confetti: list })
+    clearTimeout(this._cfTimer)
+    this._cfTimer = setTimeout(() => {
+      if (!this._dead) this.setData({ confetti: [] })
+    }, 2600)
+  },
+
+  /**
    * 往事件流里塞一条。
    *
    * ★ 为什么事件是**本地生成**而不是服务端广播：
@@ -1163,6 +1193,7 @@ Page({
         const iWon = raw.me && win === raw.me.name
         /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
         feedback.fire(iWon ? 'win' : 'penalized')
+        if (iWon) this.celebrate()
       }
     } else if (raw.game !== 'poker') {
       this._lastPkWin = ''
@@ -1177,6 +1208,7 @@ Page({
         const iWon = (uwRes.winner === 'spy') === iAmSpy
         /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
         feedback.fire(iWon ? 'win' : 'penalized')
+        if (iWon) this.celebrate()
       }
     } else if (!uwRes) {
       this._lastUwWin = ''

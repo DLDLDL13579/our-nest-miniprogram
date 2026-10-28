@@ -33,6 +33,15 @@
     这张图只有 5KB，是场景里那张材质同一张。
   -->
   <image class="pg-tex" src="/images/bg/wood.jpg" mode="aspectFill" />
+
+  <!--
+    撒花：赢了才放（20 片）。
+    颜色/横向位置/延迟/旋转全部按序号区分（CSS 里的 nth-child），
+    所以这里只需要一个序号数组 —— 不用在 js 里算随机。
+  -->
+  <view wx:if="{{confetti.length}}" class="confetti">
+    <view wx:for="{{confetti}}" wx:key="*this" class="cf cf-{{item % 5}}"></view>
+  </view>
   <view class="gbar">
     <view class="gbar-l" bindtap="goBack">
       <text class="gbar-back">‹</text>

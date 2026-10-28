@@ -237,6 +237,32 @@ module.exports = {
     },
 
     /* 比大小满员 8 人：8 行骰子墙会不会超屏（比大小 max=8） */
+    /* 撒花（赢家那一刻的庆祝）—— 单独一个状态，因为它是一次性的 */
+    diceWin: () => {
+      const base = (function () {
+        const names = ['邓林', '倩萍', '老王']
+        return {
+          confetti: Array.from({ length: 20 }, (_, i) => i),
+          result: {
+            ranked: names.map((n, i) => ({ name: n, seat: i + 1, total: 26 - i * 7,
+              dice: [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1] })),
+            winners: ['邓林'], top: 26
+          }
+        }
+      })()
+      base.result.topDice = base.result.ranked[0].dice
+      base.result.restRanked = base.result.ranked.slice(1)
+      base.stage = 'over'
+      base.room = pkRoom({
+        game: 'dice', phase: 'over', host: true, count: 3,
+        players: ['邓林', '倩萍', '老王'].map((n, i) => ({
+          seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+          diceCount: 5, inRound: true, out: false
+        }))
+      })
+      return base
+    },
+
     dice8: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎']
       const ranked = names.map((n, i) => ({

@@ -784,6 +784,53 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     noResync.map(b => b.trim().split('\n')[0]).join('\n    '))
   ok(`${catches.length} 个失败分支：弹提示的都必须先 resyncAfterFail`)
 
+  /* ============ ⑬ 撒花：只在不吃点击、且必须自己清空 ============ */
+  console.log('\n=== ⑬ 撒花：不吃点击、必须清空 ===')
+  /*
+   * 撒花是 20 个绝对定位元素同时动画，两个风险：
+   *   ① 覆盖层没设 pointer-events:none → **整屏点不动**（这是最致命的，
+   *      而且只在"刚赢的那 2.6 秒"出现，最容易漏测）
+   *   ② 没清空 → 20 个元素永久留在 DOM 里，后面的界面白背这份开销
+   *
+   * ★ 撒花在离线渲染里**看不到**：渲染器为了让截图稳定，会把 animation
+   *   瞬间拨到终态，而终态是 opacity:0。所以这一块只能靠断言守结构，
+   *   不能靠截图确认 —— 写下来免得下次误以为"没做"。
+   */
+  {
+    const cfCss = /(^|\n)\.confetti\s*\{[^}]*\}/.exec(css)
+    assert.ok(cfCss, '⑬ 找不到 .confetti 的样式')
+    assert.ok(/pointer-events\s*:\s*none/.test(cfCss[0]),
+      '⑬ 撒花层必须 pointer-events:none —— 否则整屏点不动（只在刚赢的 2.6 秒里出问题）')
+    assert.ok(!/z-index\s*:\s*-/.test(cfCss[0]) && /z-index/.test(cfCss[0]),
+      '⑬ 撒花要在内容之上（z-index 正数）')
+
+    /* 5 种颜色都要有定义（按序号取模 5） */
+    for (let i = 0; i < 5; i++) {
+      assert.ok(new RegExp('\\.cf-' + i + '\\s*\\{').test(css),
+        '⑬ .cf-' + i + ' 没有颜色定义（撒花会有一片透明）')
+    }
+    assert.ok(/@keyframes\s+cfFall/.test(css), '⑬ 找不到撒花的 keyframes')
+
+    /* js 侧：必须自己清空，且定时器可清理 */
+    const celBody = (() => {
+      const i = src.indexOf('  celebrate() {')
+      if (i < 0) return ''
+      let depth = 0, end = -1
+      const open = src.indexOf('{', i)
+      for (let k = open; k < src.length; k++) {
+        if (src[k] === '{') depth++
+        else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+      }
+      return end > open ? src.slice(open, end) : ''
+    })()
+    assert.ok(celBody, '⑬ 找不到 celebrate()')
+    assert.ok(/setData\(\{\s*confetti:\s*\[\]\s*\}\)/.test(celBody),
+      '⑬ 撒花必须自己清空（否则 20 个元素永久留在 DOM）')
+    assert.ok(/clearTimeout\(this\._cfTimer\)/.test(src),
+      '⑬ 撒花定时器进清理清单（onUnload 要能停）')
+    ok('撒花：覆盖层不吃点击、五种颜色齐全、自己会清空且定时器可清理')
+  }
+
   /* ============ ⑪ 前后台切换：回前台必须立刻同步 ============ */
   console.log('\n=== ⑪ 切回前台要立刻拉一次（不能先给一屏过期画面）===')
   /*
