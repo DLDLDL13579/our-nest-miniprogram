@@ -106,7 +106,8 @@ Page({
   onShareAppMessage() {
     return {
       title: '酒桌上缺个游戏？这几个都能手机一起玩',
-      path: '/pages/lobby/lobby'
+      path: '/pages/lobby/lobby',
+      imageUrl: '/images/share-cover.png'
     }
   },
 

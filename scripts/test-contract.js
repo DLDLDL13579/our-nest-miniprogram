@@ -258,6 +258,39 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '存在解析不到文件的 require（会让页面白屏）：\n    ' + badRequire.join('\n    '))
   ok('全部 require 相对路径都能解析到真实文件')
 
+  /* ============ ③d-2 onShareAppMessage 的 imageUrl 必须真实存在 ============ */
+  console.log('\n=== ③d-2 转发封面图必须存在（路径错了会静默不显示）===')
+  /*
+   * 为什么单列一条：`imageUrl` 指向一个不存在的文件时，
+   * 微信**不会报错**，只是退回"截取页面首屏当封面" ——
+   * 群里看到的就是一堆文字，而开发者完全不知道。
+   * 这和图片资源缺失是同一类问题（③d 只扫 wxml，`imageUrl` 写在 js 里）。
+   */
+  {
+    const shareFiles = []
+    ;(function walkShare(d) {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) walkShare(fp)
+        else if (f.name.endsWith('.js')) shareFiles.push(fp)
+      }
+    })(path.join(ROOT, 'miniprogram', 'pages'))
+
+    const missingImg = []
+    for (const js of shareFiles) {
+      const src = fs.readFileSync(js, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      for (const m of src.matchAll(/imageUrl\s*:\s*['"]([^'"]+)['"]/g)) {
+        const rel = m[1].replace(/^\//, '')
+        if (!fs.existsSync(path.join(ROOT, 'miniprogram', rel))) {
+          missingImg.push(path.relative(ROOT, js) + ' → ' + m[1])
+        }
+      }
+    }
+    assert.deepStrictEqual(missingImg, [],
+      '★ 转发封面图不存在（微信不报错，只是退回截首屏）：\n    ' + missingImg.join('\n    '))
+    ok('转发封面图路径全部真实存在')
+  }
+
   /* ============ ③c 模板里的动态 class 必须有 CSS 定义 ============ */
   console.log('\n=== ③c 动态 class 必须有样式定义（否则动画白写） ===')
   /*
