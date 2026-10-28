@@ -1657,3 +1657,14 @@
   font-size: 23rpx;
   color: rgba(200, 180, 235, .95);
 }
+
+/* ---------- 金花：基于已知两张的牌型提示 ----------
+   它替玩家做了一件心算的事（第三张看不到），所以语气要"给参考"，
+   不要做成结论 —— 用次要色 + 小字号，别抢牌桌的视觉重量。 */
+.pk-hint {
+  text-align: center;
+  font-size: 23rpx;
+  color: rgba(232, 179, 60, .85);
+  letter-spacing: 1rpx;
+  margin: -10rpx 0 var(--gap-2);
+}

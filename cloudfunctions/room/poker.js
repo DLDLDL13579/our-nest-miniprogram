@@ -176,6 +176,38 @@ function fullHand(publicCard, hand) {
   return [publicCard, hand[0], hand[1]]
 }
 
+/**
+ * 基于**已知的两张**给一句牌型提示（第三张是暗牌，玩家看不到）。
+ *
+ * ★ 为什么需要：梦幻金花的暗牌连自己都看不到，玩家看到公共底牌和自己的明牌
+ *   之后要做的事是"这两张能凑出什么"——而这个心算对多数人很费劲，
+ *   尤其是在酒桌上（还喝着酒）。给一句"至少是对子"能显著降低决策门槛。
+ *
+ * ★ 为什么它不破坏玩法：提示只用**玩家本来就看得见的两张**算，
+ *   不含任何暗牌信息，也不改变比牌结果 —— 它只是把心算替玩家做了一遍。
+ *
+ * ★ 为什么用"有机会"而不是确切牌型：第三张没看到，任何非确定的说法都是错的。
+ *   唯一能确定的只有"两张同点数 → 至少是对子"（第三张怎么变都不会更差）。
+ */
+function handHint(a, b) {
+  if (!a || !b) return ''
+  const sameRank = a.r === b.r
+  const sameSuit = a.s === b.s
+  /* 顺子的可能：两张点数相邻或隔一张（A23 这种特殊相连已在 rank() 里处理，
+     这里只做粗略的"有没有机会"，不需要精确） */
+  const d = Math.abs(a.r - b.r)
+  const nearStraight = d === 1 || d === 2 ||
+    /* A 和 2/3 也能连（A23 是第二大顺子） */
+    (a.r === 13 && (b.r === 1 || b.r === 2)) ||
+    (b.r === 13 && (a.r === 1 || a.r === 2))
+
+  if (sameRank) return '至少是对子'
+  if (sameSuit && nearStraight) return '有机会顺金'
+  if (sameSuit) return '有机会金花'
+  if (nearStraight) return '有机会顺子'
+  return '全靠想象了'
+}
+
 /** 给界面用的牌面文字，如 "♠A" */
 function cardText(c) {
   return SUITS[c.s] + RANKS[c.r]
@@ -184,5 +216,5 @@ function cardText(c) {
 module.exports = {
   SUITS, RANKS, TYPES, TYPE_NAMES,
   newDeck, shuffle, rank, compare, cardText,
-  dealDream, fullHand
+  dealDream, fullHand, handHint
 }

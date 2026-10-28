@@ -267,6 +267,8 @@ module.exports = {
         poker: {
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          /* 牌型提示走真实函数算，保证和线上一致 */
+          hintText: poker.handHint(PK_PUB, PK_MINE[1]),
           folded: false, aliveCount: 3, myDrink: 0, log: [],
           last: null, winner: null
         }

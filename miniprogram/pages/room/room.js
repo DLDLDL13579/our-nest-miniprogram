@@ -1014,6 +1014,20 @@ Page({
     }
 
     /*
+     * 金花：牌型提示。
+     *
+     * ★ 只用**玩家本来就看得见的两张**（公共底牌 + 自己的明牌）算 ——
+     *   暗牌连自己都看不到，所以任何非确定的说法都只能是"有机会"。
+     *   唯一能确定的是"两张同点数 → 至少是对子"。
+     *   它替玩家做了一件心算的事，不改变任何规则、不泄露暗牌。
+     */
+    if (room.game === 'poker' && room.poker) {
+      const pub = room.poker.publicCard
+      const mine = room.poker.myKnown
+      room.poker.hintText = (pub && mine) ? poker.handHint(pub, mine) : ''
+    }
+
+    /*
      * 玩法名与规则 —— 从注册表取，不在这里重写一遍文案。
      * ★ 注册表里每个玩法都有 `how: [4 条规则]`，但这一版之前**从来没被渲染过**
      *   （grep `.how` 全仓为 0）—— 16 条文案白写在数据里。

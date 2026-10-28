@@ -520,6 +520,12 @@
         </view>
       </view>
 
+      <!--
+        牌型提示：只用玩家本来就看得见的两张（公共底牌 + 自己的明牌）算，
+        不含暗牌信息。它替玩家做了一件心算的事，不改变任何规则。
+      -->
+      <view wx:if="{{room.poker.hintText}}" class="pk-hint">{{room.poker.hintText}}</view>
+
       <!-- 我的账：为了换牌喝掉多少 -->
       <view wx:if="{{room.poker.drinkText}}" class="pk-owe">
         换牌已经喝了 <text class="pk-owe-n">{{room.poker.drinkText}}</text>
