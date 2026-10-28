@@ -277,9 +277,11 @@
     <block wx:if="{{room.game === 'liar'}}">
       <view class="bidbar">
         <block wx:if="{{room.bid}}">
-          <view class="bid-lbl">现在叫到</view>
+          <view class="bid-lbl">
+            现在叫到<text wx:if="{{room.bid.mult > 1}}" class="bid-mult">{{room.bid.mult}} 倍</text>
+          </view>
           <view class="bid-val">{{room.bid.n}} 个 {{room.bid.face}}</view>
-          <view class="bid-by">{{room.bid.byName}} 叫的</view>
+          <view class="bid-by">{{room.bid.byName}} 叫的<text wx:if="{{room.bid.piBy}}" class="bid-pi"> · 被 {{room.bid.piBy}} 劈了</text></view>
         </block>
         <block wx:else>
           <view class="bid-lbl">还没人叫</view>
@@ -416,8 +418,17 @@
         </view>
       </scroll-view>
 
-      <view wx:if="{{room.bid && room.myTurn}}" class="btn openbtn" bindtap="doOpen">
-        开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+      <view wx:if="{{room.bid && room.myTurn}}" class="liar-acts">
+        <view class="btn openbtn" bindtap="doOpen">
+          开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+        </view>
+        <!--
+          劈：加倍赌对方在吹。酒桌上最有火药味的一个动作 ——
+          在这之前只有"开"，而"开"是一翻两瞪眼，没有中间地带。
+          ⚠️ 只有别人叫的骰才能劈（自己叫的不能自己劈，服务端也拦）。
+        -->
+        <view wx:if="{{room.bid.lastSeat !== room.me.seat && room.bid.mult < 8}}"
+              class="btn pibtn" bindtap="doPi">劈！</view>
       </view>
     </block>
 

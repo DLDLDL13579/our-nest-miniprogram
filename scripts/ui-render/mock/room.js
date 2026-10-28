@@ -155,7 +155,7 @@ module.exports = {
       room: pkRoom({
         game: 'liar', phase: 'playing', host: true, turn: 1, myTurn: true,
         turnName: '邓林', count: 3,
-        bid: { bySeat: 2, byName: '倩萍', n: 3, face: 4, zhai: false },
+        bid: { bySeat: 2, byName: '倩萍', n: 3, face: 4, zhai: false, mult: 2, piBy: '阿杰' },
         players: [
           { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, diceCount: 5 },
           { seat: 2, name: '倩萍', isMe: false, isHost: false, online: true, diceCount: 5 },

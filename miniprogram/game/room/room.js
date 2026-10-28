@@ -2305,6 +2305,29 @@ Page({
     }
   },
 
+  /**
+   * 劈：把赌注翻倍，并把回合怼回上一个叫骰的人。
+   *
+   * 为什么值得加：在这之前只有「叫」和「开」——有人叫了个离谱的，
+   * 你除了开没有别的回应，而开是一翻两瞪眼。真实酒桌上最有火药味的
+   * 一句是「劈！」，以及被劈的人回的「反劈！」。
+   */
+  async doPi() {
+    if (!this.specGuard()) return
+    if (!this.data.room || !this.data.room.myTurn) return
+    sfx.play('tap')
+    const r = await call('room', { action: 'pi', id: this.data.room.id }, { silent: true })
+      .catch((e) => {
+        wx.showToast({ title: (e && (e.friendly || e.message)) || '劈不了', icon: 'none', duration: 2000 })
+        this.resyncAfterFail()
+        return null
+      })
+    if (r && r.ok) {
+      feedback.fire('penalized')
+      this.applyRoom(r.room)
+    }
+  },
+
   async doOpen() {
     /* 观战者不该能开别人的盅 —— 这是断言扫出来的真漏 */
     if (!this.specGuard()) return

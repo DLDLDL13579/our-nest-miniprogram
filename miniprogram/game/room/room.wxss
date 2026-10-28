@@ -724,6 +724,27 @@
   box-shadow: 0 6rpx 18rpx rgba(232,179,60,.3);
 }
 
+/* 劈：和"开"并排。开是主操作（红），劈是次操作（金）—— 两者视觉重量不同 */
+.liar-acts { display: flex; gap: 14rpx; align-items: stretch }
+.liar-acts .openbtn { flex: 1; margin-top: 0 }
+.pibtn {
+  flex: none;
+  width: 150rpx; height: 96rpx;
+  margin-top: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #E8B33C, #C08A18);
+  color: #2C1A08; font-size: 28rpx; font-weight: 700;
+  border-radius: 22rpx;
+  box-shadow: 0 8rpx 22rpx rgba(192, 138, 24, .38);
+}
+/* 倍数徽章：被劈过就要一眼看到"这局赌注是几倍" */
+.bid-mult {
+  margin-left: 10rpx; padding: 2rpx 12rpx; border-radius: 999rpx;
+  font-size: 18rpx; font-weight: 700;
+  background: rgba(232,179,60,.26); color: #F0C860;
+}
+.bid-pi { color: #F0A38C }
+
 .openbtn {
   height: 96rpx; margin-top: 10rpx;
   background: linear-gradient(135deg, #E88060, #CE5738);

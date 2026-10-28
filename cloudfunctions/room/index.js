@@ -308,7 +308,14 @@ function shape(room, openid) {
     countdownMs: room.phase === 'countdown' ? Math.max(0, (room.countdownEnd || 0) - now()) : 0,
     turn: room.turn || 0,           // 轮到第几号座位
     round: room.round || 0,
-    bid: room.bid || null,          // 大话骰：当前叫骰
+    /*
+     * bid 里补一个 lastSeat = 「最近一次动作」是谁做的（叫骰或劈）。
+     * 前端据此决定"能不能劈"（自己刚动过的不能再劈自己）——
+     * 判据只放一处，避免前端自己再推一遍导致两边不一致。
+     */
+    bid: room.bid ? Object.assign({}, room.bid, {
+      lastSeat: room.bid.piSeat || room.bid.bySeat
+    }) : null,          // 大话骰：当前叫骰
     lastResult: room.lastResult || null,
     streaks: room.streaks || {},
     /* 转盘：当前这一转的结果（所有人靠它同步看到同一个扇区） */
@@ -1060,6 +1067,75 @@ exports.main = async (event) => {
     }
 
     /* ================= 大话骰：开骰 ================= */
+    /* ================= 劈（加倍） =================
+     *
+     * ★★ 2026-10-28 加。调研过同类产品后得出的判断：
+     *   大话骰缺的**不是规则数量，而是一个让桌上争吵有出口的动作**。
+     *   现在只有「叫」和「开」——有人叫了个离谱的，你除了开没有别的回应，
+     *   而"开"是一翻两瞪眼。真实的酒桌上，最有火药味的一句是**"劈！"**
+     *   （我加倍赌你在吹），以及被劈的人回的**"反劈！"**。
+     *
+     * 规则（刻意做到一句话能说清）：
+     *   · 只能在轮到你、且已经有人叫过时劈
+     *   · 劈 → 倍数 ×2，回合交给**上一个叫骰的人**（被劈的人）
+     *   · 被劈的人可以：反劈（再 ×2）/ 继续往上叫 / 开
+     *   · 开出来的输家喝 **倍数** 杯（1 杯 × 倍数）
+     *   · 每局最多劈到 8 倍（防止无限翻倍把一局拖成天文数字）
+     *
+     * 为什么不做"认输/投降"：那是逃避，酒桌上没人用，而且会让局提前结束。
+     */
+    if (action === 'pi') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      const meP = (room.players || []).filter(p => p.openid === OPENID)[0]
+      if (!meP) return { ok: false, msg: '你不在这个房间里' }
+      if (meP.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      const cur = room.bid
+      if (!cur) return { ok: false, msg: '还没人叫骰，没得劈' }
+      if (room.turn !== meP.seat) return { ok: false, msg: '还没轮到你' }
+      /*
+       * ★ 能不能劈，看的是「**最近一次动作**是谁做的」，不是"这口骰是谁叫的"。
+       *
+       *   ⚠️ 第一版写的是 `cur.bySeat === meP.seat` → 反劈被自己的规则拦住了：
+       *      A 叫骰、B 劈 A、回合回到 A，此时 bySeat 仍是 A，
+       *      于是 A 想反劈时被判成"自己叫的骰不能自己劈"。
+       *      而反劈恰恰是这个动作最有火药味的一半。
+       *
+       *   真正的语义：谁刚做过动作（叫骰 / 劈），谁就不能接着劈自己 —— 否则
+       *   一个人可以无限把自己翻倍，把「劈」变成自娱自乐。
+       */
+      const lastActor = cur.piSeat || cur.bySeat
+      if (lastActor === meP.seat) return { ok: false, msg: '你刚叫的，不能自己劈自己' }
+
+      const nextMult = Math.min(8, (cur.mult || 1) * 2)
+      if (nextMult === (cur.mult || 1)) {
+        return { ok: false, msg: '已经劈到 8 倍了，够了' }
+      }
+      /*
+       * 回合交给**上一个叫骰的人** —— 他必须回应这一劈。
+       * 这是"劈"和"叫"最大的区别：叫是把球传给下家，劈是**直接怼回去**。
+       */
+      await rooms.doc(room._id).update({
+        data: {
+          bid: {
+            n: cur.n, face: cur.face, at: ts,
+            bySeat: cur.bySeat, byName: cur.byName,
+            mult: nextMult,
+            /* 谁劈的（记**最后一次**—— 结算时"4 倍是谁推上去的"才对得上） */
+            piBy: meP.name, piSeat: meP.seat
+          },
+          /* 回合怼回**最近一次动作的人**：第一次劈是怼叫骰的人，
+             反劈是怼上一次劈的人（不能一律怼 bySeat，否则反劈会把球
+             传给原叫骰人而不是刚才劈你的人） */
+          turn: cur.piSeat || cur.bySeat,
+          updatedAt: ts
+        }
+      })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
     if (action === 'open') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
@@ -1095,9 +1171,17 @@ exports.main = async (event) => {
       /* 叫的人没吹牛 → 开的人输；吹了 → 叫的人输 */
       const loserSeat = bidderWins ? mySeat.seat : cur.bySeat
 
+      const mult = Math.max(1, Number(cur.mult) || 1)
       const result = {
         need: cur.n, face: cur.face,
         actual: actual, bidderWins: bidderWins,
+        /* 被劈了几次 → 输家喝几杯（1 杯 × 倍数） */
+        mult: mult,
+        cups: mult,
+        /* 谁劈的（没有就是普通开） */
+        piBy: cur.piBy || '',
+        loserText: ((room.players || []).filter(p => p.seat === (bidderWins ? mySeat.seat : cur.bySeat))[0] || {}).name || '?',
+
         loserSeat: loserSeat,
         loserName: ((room.players || []).filter(p => p.seat === loserSeat)[0] || {}).name || '?',
         bidderName: cur.byName,

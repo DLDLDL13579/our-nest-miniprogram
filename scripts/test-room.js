@@ -1236,6 +1236,82 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
+  /* ============ ⑪c 大话骰：劈（加倍） ============ */
+  /*
+   * 2026-10-28 加。调研过同类产品后的判断：大话骰缺的**不是规则数量，
+   * 而是一个让桌上争吵有出口的动作**。原来只有「叫」和「开」——
+   * 有人叫了个离谱的，你除了开没有别的回应，而开是一翻两瞪眼。
+   *
+   * 语义（刻意做到一句话说清）：
+   *   · 只能在轮到你、且已经有人叫过时劈
+   *   · 劈 → 倍数 ×2，回合**怼回**上一个叫骰的人（不是传给下家）
+   *   · 被劈的人可以反劈 / 继续叫 / 开
+   *   · 开出来输家喝「倍数」杯，最多 8 倍
+   */
+  {
+    const PA = 'oid_pa', PB = 'oid_pb'
+    OPENID = PA
+    const pr = await room.main({ action: 'create', name: 'P1', game: 'liar' })
+    const prId = pr.room.id
+    OPENID = PB
+    await room.main({ action: 'join', code: pr.room.code, name: 'P2' })
+    OPENID = PA
+    await room.main({ action: 'start', id: prId, solo: true })
+    store.rooms.filter(x => x._id === prId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: prId })
+
+    /* 还没人叫 → 不能劈 */
+    OPENID = PA
+    const piNoBid = await room.main({ action: 'pi', id: prId })
+    assert.ok(!piNoBid.ok, '★ 还没人叫骰时不能劈')
+
+    /* 先由 P1 叫一个 */
+    const firstBid = await room.main({ action: 'bid', id: prId, n: 2, face: 3 })
+    assert.ok(firstBid.ok, 'P1 叫骰应成功：' + (firstBid.msg || ''))
+
+    /*
+     * ⚠️ 顺序很重要：**先验"回合不在你时不能劈"，再让 P2 劈**。
+     *    第一版把这条放在 P2 劈之后，而那时回合正好回到 P1 ——
+     *    于是这次"本应被拒"的调用**成功了**，把 piSeat 改成了 P1，
+     *    紧接着的"反劈"反而被拦。**测试自己改掉了自己的前置条件。**
+     */
+    OPENID = PA
+    const notMyTurn = await room.main({ action: 'pi', id: prId })
+    assert.ok(!notMyTurn.ok && /还没轮到你/.test(notMyTurn.msg || ''),
+      '★ 回合不在你时不能劈（实际：' + (notMyTurn.msg || '') + '）')
+
+    /* 轮到 P2，他劈：倍数 ×2，回合怼回 P1 */
+    OPENID = PB
+    const piRes = await room.main({ action: 'pi', id: prId })
+    assert.ok(piRes.ok, '★ 轮到谁谁才能劈：' + (piRes.msg || ''))
+    assert.strictEqual(piRes.room.bid.mult, 2, '劈一次 → 2 倍')
+    assert.strictEqual(piRes.room.bid.piBy, 'P2', '要记住是谁劈的（结算时要说清）')
+    assert.strictEqual(piRes.room.turn, 1,
+      '★ 劈之后回合要**怼回**叫骰的人（不是传给下家）—— 实际 turn=' + piRes.room.turn)
+
+    /* 被劈的人反劈：再 ×2 → 4 倍（这是「劈」最有火药味的一半） */
+    OPENID = PA
+    const backPi = await room.main({ action: 'pi', id: prId })
+    assert.ok(backPi.ok, '反劈应成功：' + (backPi.msg || ''))
+    assert.strictEqual(backPi.room.bid.mult, 4, '反劈 → 4 倍')
+    /* 反劈后回合怼回对方（对 P1 来说对方是 P2，座位 2） */
+    assert.strictEqual(backPi.room.turn, 2, '反劈之后回合怼回对方（seat 2）—— 实际 ' + backPi.room.turn)
+    ok('★ 劈：倍数翻倍、回合怼回对方、被劈的人可以反劈')
+
+    /* 开：输家要喝「倍数」杯 */
+    OPENID = PB
+    const openRes = await room.main({ action: 'open', id: prId })
+    assert.ok(openRes.ok, '开骰应成功：' + (openRes.msg || ''))
+    assert.strictEqual(openRes.result.mult, 4, '开出来的结果要带倍数')
+    assert.strictEqual(openRes.result.cups, 4, '★ 输家喝 4 杯（1 杯 × 4 倍）')
+    /*
+     * piBy 记的是**最后一次**把赌注推到当前倍数的人 —— 这里是 P1 的反劈，
+     * 不是最先劈的 P2。结算时说"被 P1 劈了"才对得上"4 倍是谁推上去的"。
+     */
+    assert.strictEqual(openRes.result.piBy, 'P1', '结算里要能说清最后是谁劈的')
+    ok('★ 开骰结算：输家按倍数喝（4 倍 = 4 杯）')
+  }
+
   /* ============ ⑪b 比大小：5 颗骰子 + 豹子直接赢（纯函数直测） ============ */
   /*
    * 2026-10-28 改。两件事：
