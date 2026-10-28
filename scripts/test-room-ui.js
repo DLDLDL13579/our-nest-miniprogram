@@ -824,7 +824,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
         else if (js[k] === '}') { depth--; if (depth === 0) { end = k; break } }
       }
       const body = js.slice(start, end)
-      if (!/sfx\.play|feedback\.fire|haptic\.|vibrate|this\.\w+\(/.test(body)) {
+      /*
+       * ⚠️ 不能把 `this.xxx(` 当作"可能有声音" —— 第一版这么写，
+       *    而 `doAgain` 里就有一句 `return this.backToLobby()`，
+       *    于是**去掉音效后断言照样通过**（反向验证 exit=0，假绿）。
+       *    现在只认**直接的**声音调用。
+       */
+      if (!/sfx\.play|feedback\.fire|haptic\.|vibrate/.test(body)) {
         silent.push(h)
       }
     }

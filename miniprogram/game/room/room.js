@@ -1857,6 +1857,7 @@ Page({
    */
   async doNudge() {
     if (!this.specGuard()) return
+    sfx.play('tapSoft')
     const r = await call('room', { action: 'nudge', id: this.data.room.id }, { silent: true })
       .catch((e) => {
         wx.showToast({ title: (e && (e.friendly || e.message)) || '催不动', icon: 'none' })
@@ -1894,8 +1895,15 @@ Page({
    * lobby 里有一整套「怎么玩」，但开局就撤掉了 ——
    * 而酒桌上最常发生的是"开局前扫了一眼、轮到自己忘了"。
    */
-  showHow() { this.setData({ howOpen: true }) },
-  closeHow() { if (this.data.howOpen) this.setData({ howOpen: false }) },
+  showHow() {
+    sfx.play('tapSoft')
+    this.setData({ howOpen: true })
+  },
+  closeHow() {
+    if (!this.data.howOpen) return
+    sfx.play('tapSoft')
+    this.setData({ howOpen: false })
+  },
 
   /* ================= 建房 ================= */
 
@@ -2035,6 +2043,8 @@ Page({
   copyCode() {
     const c = this.data.room && this.data.room.code
     if (!c) return
+    /* 复制成功给一声"嗒"——否则用户不知道点到了没有 */
+    sfx.play('tapSoft')
     wx.setClipboardData({
       data: c,
       success: () => wx.showToast({ title: '房间号复制了', icon: 'none' })
@@ -2127,7 +2137,11 @@ Page({
     }
   },
 
-  doAgain() { return this.backToLobby() },
+  doAgain() {
+    /* 再来一局是界面里唯一的重操作，点了必须有声音（2026-10-28 补） */
+    sfx.play('toggleOn')
+    return this.backToLobby()
+  },
 
   /*
    * 换个玩法：结算页直接选，不用退回大厅再进来。
@@ -2135,6 +2149,7 @@ Page({
    * 自绘面板要多一套遮罩 + 进出动画，收益不值。
    */
   pickNewGame() {
+    sfx.play('tapSoft')
     const list = GAMES.map(g => g.name)
     wx.showActionSheet({
       itemList: list,
@@ -2148,7 +2163,9 @@ Page({
   /* 房主换玩法（只在 lobby 可用；服务端会拦"正在玩"的时候） */
   changeGame(e) {
     const k = e.currentTarget.dataset.k
+    /* 点的是"已经在玩的这个" → 不出声也不动，避免"点了没反应"的错觉 */
     if (k === this.data.room.game) return
+    sfx.play('toggleOn')
     this.backToLobby(k)
   },
 
@@ -2770,5 +2787,9 @@ Page({
     this.setData({ muted: m })
   },
 
-  goBack() { wx.navigateBack() }
+  goBack() {
+    /* 返回也要有声 —— 页面切换有系统过渡，但手上没反馈会像没点中 */
+    sfx.play('tapSoft')
+    wx.navigateBack()
+  }
 })
