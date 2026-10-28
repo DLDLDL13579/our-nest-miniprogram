@@ -366,6 +366,59 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 有人来晚了：这一局观战，下一局参与 ---------- */
+  /*
+   * ★ 2026-10-28。真实场景：饭局中途有人赶到。
+   *
+   *   服务端用 `inRound` 标记处理，而它防的是两个具体的坑
+   *   （AGENTS.md 里写着，都是"不报错但整局坏掉"的类型）：
+   *     ① 新人插进来重编号座位 → 正在玩的人的回合全乱
+   *     ② 比大小的结束判据是 every(dice.length>0)，
+   *        新人的 dice 是空的 → **这一局永远结束不了**
+   *
+   *   所以要测的不只是"能不能进来"，而是"进来之后这一局还能正常结束"。
+   */
+  {
+    OPENID = A
+    const mr = await room.main({ action: 'create', name: 'L1', game: 'dice' })
+    const mid = mr.room.id
+    const mcode = mr.room.code
+    OPENID = B
+    await room.main({ action: 'join', code: mcode, name: 'L2' })
+
+    OPENID = A
+    await room.main({ action: 'start', id: mid })
+    await enterPlaying(mid)
+
+    /* 第 3 个人在 playing 中途进来 */
+    OPENID = C
+    const late = await room.main({ action: 'join', code: mcode, name: '迟到的' })
+    assert.ok(late.ok, '中途加入应成功：' + (late.msg || ''))
+    const me = (late.room.players || []).filter(p => p.seat === late.room.me.seat)[0] || {}
+    assert.strictEqual(me.inRound, false, '★ 中途进来的这一局只能观战（inRound=false）')
+
+    /* 已有的人的座位不能被他挤乱 */
+    const seats = late.room.players.map(p => p.seat).sort((a, b) => a - b)
+    assert.deepStrictEqual(seats, [1, 2, 3], '座位仍要连续（他在末尾）')
+
+    /* ★ 关键：这一局必须还能正常结束（不能因为多了个没骰子的人而卡死） */
+    OPENID = A
+    await room.main({ action: 'roll', id: mid })
+    OPENID = B
+    await room.main({ action: 'roll', id: mid })
+    const fin = await room.main({ action: 'status', id: mid })
+    assert.strictEqual(fin.room.phase, 'over',
+      '★ 观战者不该让这一局卡死（他的 dice 是空的，但判结束只看 inRound 的人）')
+
+    /* 下一局他应该自然参与 */
+    OPENID = A
+    const ag = await room.main({ action: 'again', id: mid })
+    assert.ok(ag.ok, '再来一局应成功')
+    const cInRound = (ag.room.players || []).filter(p => p.name === '迟到的')[0] || {}
+    assert.notStrictEqual(cInRound.inRound, false, '★ 下一局他就该参与，不再是观战')
+    ok('★ 有人来晚了：这一局观战且不卡死，下一局自动参与')
+  }
+
   /* ---------- 连玩中有人退出又回来：座位和回合不能乱 ---------- */
   /*
    * ★ 2026-10-28。真实场景：有人临时接电话退出，过一会儿又回来。
