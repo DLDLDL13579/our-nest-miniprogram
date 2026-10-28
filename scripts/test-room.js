@@ -450,6 +450,43 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     await room.main({ action: 'leave', id: store.rooms.filter(x => x.code === CODES[i])[0]._id }).catch(() => {})
   }
 
+  /* ============ ⑦c 重开一局必须把卧底状态清干净 ============ */
+  /*
+   * 2026-10-28 补。`again` 原来只清 pk*（金花），uw*（卧底）与 votes 全靠
+   * **下一次 start** 才清 —— 也就是"重开之后、再开局之前"这段时间里，
+   * 房间还留着上一局的出局名单 / 全场摊牌 / 票型 / 重投状态。
+   *
+   * 现在所有读取都看 phase 兜住了，所以没有立刻出错。但这正是"依赖隐式约定"：
+   * 哪天有地方读了 uwReveal 而忘了看 phase，就会把上一局的牌摊出来而且不报错。
+   * 本项目对状态残留栽过（spin 不清 → 换到转盘后还留着上一轮扇区）。
+   */
+  {
+    OPENID = A
+    const ur = await room.main({ action: 'create', name: 'W1', game: 'undercover' })
+    const urId = ur.room.id
+    /* 直接往库里塞一份"上一局的残留"，再调 again */
+    const r0 = store.rooms.filter(x => x._id === urId)[0]
+    r0.uwStep = 'vote'
+    r0.uwOut = ['oid_x']
+    r0.uwReveal = [{ name: 'x', word: 'w', role: 'spy', out: true }]
+    r0.uwLastOut = { name: 'x', word: 'w', role: 'spy' }
+    r0.uwTieBreak = true
+    r0.uwTieNames = '某某'
+    r0.votes = [{ by: 'oid_x', target: 'oid_y', name: 'x', at: 1 }]
+
+    const re = await room.main({ action: 'again', id: urId })
+    assert.ok(re.ok, 'again 应成功：' + (re.msg || ''))
+    const back = store.rooms.filter(x => x._id === urId)[0]
+    assert.strictEqual(back.uwStep, null, '重开后 uwStep 必须清空')
+    assert.deepStrictEqual(back.uwOut, [], '重开后出局名单必须清空')
+    assert.strictEqual(back.uwReveal, null, '重开后全场摊牌必须清空')
+    assert.strictEqual(back.uwLastOut, null, '重开后上一轮出局必须清空')
+    assert.strictEqual(back.uwTieBreak, false, '重开后重投标记必须复位')
+    assert.strictEqual(back.uwTieNames, '', '重开后平票名单必须清空')
+    assert.deepStrictEqual(back.votes, [], '重开后票型必须清空')
+    ok('★ 重开一局把卧底的全部局内状态清干净（不依赖下一次 start 兜底）')
+  }
+
   /* ============ ⑦b 摇过不能重摇（后端必须拦，不能只靠前端藏按钮） ============ */
   /*
    * 2026-10-28 补。前端摇完会把"摇盅"藏起来，但云函数是公开接口 ——

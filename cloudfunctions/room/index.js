@@ -1528,6 +1528,21 @@ exports.main = async (event) => {
         spin: null,
         /* 金花 / 卧底的局内状态一起清 */
         pkStep: null, pkLast: null, pkWinner: null, pkPublic: null, pkRest: [], pkDrink: {},
+        /*
+         * ★★ 卧底这一批也要在这里清（2026-10-28）。
+         *
+         * 原来只有 pk* 那几项，uw* 与 votes 全靠**下一次 start 时**才清
+         * （start 里有完整的一份）。也就是说重开之后、再开局之前，
+         * 房间里保留着上一局的出局名单、全场摊牌、票型、重投状态。
+         *
+         * 现在所有读取都看 phase 兜住了，所以**没有立刻出错**——
+         * 但这正是"依赖隐式约定"的典型：哪天有一个地方读了 uwReveal
+         * 而忘了看 phase，就会把上一局的摊牌显示出来，而且不报错。
+         * 本项目对"状态残留"栽过（spin 不清 → 换到转盘后还留着上一轮扇区），
+         * 所以这里一次清干净，不再依赖 start 兜底。
+         */
+        uwStep: null, uwOut: [], uwLastOut: null, uwReveal: null,
+        uwTieBreak: false, uwTieNames: '', votes: [],
 
         updatedAt: ts
       }
