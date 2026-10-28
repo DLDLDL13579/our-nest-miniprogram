@@ -1547,6 +1547,74 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
     ok(`动画曲线收敛到 ${bezKinds.size} 种，一次性动画无裸 ease`)
 
+  /* ============ ④h 正文文字对比度必须过 WCAG AA ============ */
+  console.log('\n=== ④h 白色文字对比度 ≥ 4.5（酒桌是暗光场景）===')
+  /*
+   * ★★ 2026-10-28。实测全仓有 **39 处**白色文字的对色对比度低于 4.5:1
+   *   （集中在 rgba(255,255,255,.30~.45) 这个区间，对比度 2.7~4.4）。
+   *
+   *   为什么在这个项目里尤其要管：酒桌是**暗光场景**，手机还可能斜着放在桌上、
+   *   有人喝了几杯 —— 对比度不够的文字在这种条件下基本读不出来。
+   *   而"读不出来"不会报任何错，只会让玩家觉得"这游戏做得很糙"。
+   *
+   * 判据：白字（rgba(255,255,255,a)）在页面底色 #241A16 上，
+   *      对比度必须 ≥ 4.5（WCAG AA 小字号标准）。
+   *
+   * 白名单（必须低，不能提亮）：
+   *   · disabled / .ph（占位符）/ mask 遮罩 / 装饰性水印
+   *   这几类提亮反而会表达错误信息（"不可用"看起来像可用）。
+   */
+  {
+    const PAGE_BG = [0x24, 0x1A, 0x16]
+    const lum = (rgb) => {
+      const f = (c) => { c = c / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) }
+      return 0.2126 * f(rgb[0]) + 0.7152 * f(rgb[1]) + 0.0722 * f(rgb[2])
+    }
+    const contrastOn = (alpha) => {
+      const fg = [0, 1, 2].map(i => Math.round(alpha * 255 + (1 - alpha) * PAGE_BG[i]))
+      const l1 = lum(fg), l2 = lum(PAGE_BG)
+      return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05)
+    }
+    const LOW_OK = ['disabled', 'ph', 'mask', 'cf', 'pg-tex', 'cs-felt', 'overlay']
+    const lowContrast = []
+    const walkLow = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { walkLow(fp); continue }
+        if (!f.name.endsWith('.wxss')) continue
+        const css = fs.readFileSync(fp, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+        const re = /([^{}]+)\{([^{}]*)\}/g
+        let m
+        while ((m = re.exec(css))) {
+          const sel = m[1].trim()
+          const body = m[2]
+          if (LOW_OK.some(k => sel.indexOf(k) >= 0)) continue
+          /*
+           * ⚠️ 必须排除 `border-color` / `background-color` ——
+           *   第一版写的是 /color:\s*rgba.../，于是 `border-color: rgba(...,.14)`
+           *   被当成文字颜色，报出两条假阳性（框线本来就该淡）。
+           *   要求 color 前面是 `;` 或属性列表开头，不能是 `-`。
+           */
+          const cm = /(?:^|[;\s])color:\s*rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*(0?\.\d+)\s*\)/.exec(body)
+          if (!cm) continue
+          const a = parseFloat(cm[1])
+          const c = contrastOn(a)
+          if (c < 4.5) {
+            const line = css.slice(0, m.index).split('\n').length
+            lowContrast.push(path.relative(ROOT, fp) + ':' + line +
+              '  ' + sel.slice(0, 40) + '  a=' + a + ' 对比度 ' + c.toFixed(2))
+          }
+        }
+      }
+    }
+    walkLow(path.join(ROOT, 'miniprogram'))
+    assert.deepStrictEqual(lowContrast, [],
+      '这些文字在暗光下读不出来（WCAG AA 要 4.5，当前不足）：\n    ' +
+      lowContrast.join('\n    ') +
+      '\n    修法：白色透明度提到 ≥0.5；"不可用/占位符"这类确实该暗的加进白名单。')
+    ok(`白色文字全部达标（页面底色 #241A16 上 ≥ 4.5:1）`)
+  }
+
   /* ============ ④f wxml 表达式只能用"微信支持的那一小撮语法" ============ */
   console.log('\n=== ④f wxml 里不许出现函数调用 / 可选链 / 模板字符串 ===')
   /*

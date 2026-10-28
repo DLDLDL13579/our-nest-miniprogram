@@ -110,8 +110,8 @@
   border: 2rpx solid rgba(255,255,255,.09);
 }
 .gamepage .card.hl { border-color: rgba(232,179,60,.4) }
-.gamepage .lbl { color: rgba(255,255,255,.45) }
-.gamepage .hint { color: rgba(255,255,255,.35) }
+.gamepage .lbl { color: rgba(255, 255, 255, 0.52) }
+.gamepage .hint { color: rgba(255, 255, 255, 0.52) }
 .gamepage .tin {
   background: rgba(255,255,255,.08);
   border-color: rgba(255,255,255,.14);
@@ -120,7 +120,7 @@
 .gamepage .ph { color: rgba(255,255,255,.28) }
 .gamepage .chiprow .pill { background: rgba(232,179,60,.22); color: #F6E7C3 }
 .gamepage .chiprow .pill.ghost {
-  background: transparent; color: rgba(255,255,255,.45);
+  background: transparent; color: rgba(255, 255, 255, 0.52);
   border-color: rgba(255,255,255,.18);
 }
 
@@ -142,8 +142,8 @@
 }
 /* 未选中（ghost）时压暗，和灰掉的文字保持一致 —— 不换第二张图 */
 .pill.ghost .pill-icon { opacity: .55 }
-.gamepage .sechead { color: rgba(255,255,255,.4) }
-.gamepage .xs { color: rgba(255,255,255,.35) }
+.gamepage .sechead { color: rgba(255, 255, 255, 0.52) }
+.gamepage .xs { color: rgba(255, 255, 255, 0.52) }
 
 .tin {
   width: 100%; height: 88rpx; border-radius: 18rpx;
@@ -170,7 +170,7 @@
 
 .entry-tip {
   margin-top: 26rpx; font-size: 21rpx;
-  color: rgba(255,255,255,.3); line-height: 1.9; text-align: center;
+  color: rgba(255, 255, 255, 0.52); line-height: 1.9; text-align: center;
 }
 
 /* ---------- 房间号卡 ---------- */
@@ -233,7 +233,7 @@
 
 .waiting {
   text-align: center; padding: 30rpx;
-  font-size: 24rpx; color: rgba(255,255,255,.45);
+  font-size: 24rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* ---------- 大话骰 ---------- */
@@ -243,10 +243,10 @@
      而它只是"现在叫到几"的一行信息。真机一屏塞不下事件流 + 骰盅 + 出牌区。 */
   padding: 22rpx 0 16rpx;
 }
-.bid-lbl { font-size: 21rpx; color: rgba(255,255,255,.4); letter-spacing: 3rpx }
+.bid-lbl { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 3rpx }
 .bid-val { font-size: 44rpx; font-weight: 700; color: #F6E7C3; margin-top: 6rpx; letter-spacing: 2rpx }
-.bid-val.hint { font-size: 27rpx; color: rgba(255,255,255,.4); font-weight: 400 }
-.bid-by { font-size: 21rpx; color: rgba(255,255,255,.35); margin-top: 8rpx }
+.bid-val.hint { font-size: 27rpx; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
+.bid-by { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
 
 
 /* ---------- 骰子（结算页用，游戏中的骰子见 .cs-die）---------- */
@@ -523,7 +523,7 @@
   font-size: 21rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
   max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
-.oc-stat { font-size: 18rpx; color: rgba(255,255,255,.4); margin-top: 4rpx }
+.oc-stat { font-size: 18rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
 /* 已摇的人用金色标出来 —— 一眼扫过去就知道还差谁 */
 .oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
 
@@ -535,7 +535,7 @@
 .waitline {
   text-align: center;
   font-size: 24rpx;
-  color: rgba(255,255,255,.45);
+  color: rgba(255, 255, 255, 0.52);
   margin-top: 16rpx;
   line-height: 1.6;
 }
@@ -818,7 +818,7 @@
   animation: codeIn .5s cubic-bezier(.34, 1.56, .64, 1) .06s backwards;
 }
 .on-unit { font-size: 27rpx; color: rgba(255,255,255,.6) }
-.over-need { font-size: 21rpx; color: rgba(255,255,255,.45); margin-top: 12rpx }
+.over-need { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 12rpx }
 
 .revealbox {
   width: 100%; margin-top: 30rpx;
@@ -919,7 +919,7 @@
 .textbtn {
   height: 64rpx;
   display: flex; align-items: center; justify-content: center;
-  font-size: 24rpx; color: rgba(255,255,255,.38);
+  font-size: 24rpx; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 1rpx;
 }
 .textbtn:active { color: rgba(255,255,255,.6) }
@@ -1133,7 +1133,7 @@
   55%  { transform: scale(1.1); opacity: 1 }
   100% { transform: scale(1);   opacity: 1 }
 }
-.cd-sub { font-size: 24rpx; color: rgba(255,255,255,.45); margin-top: 18rpx }
+.cd-sub { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 18rpx }
 
 /* ================================================================
  * 题卡（真心话 / 大冒险）
@@ -1176,7 +1176,7 @@
   padding: 6rpx 18rpx;
 }
 .cardbox.dare .cb-type { color: #9FC0DD; background: rgba(94,127,166,.22) }
-.cb-deck { font-size: 21rpx; color: rgba(255,255,255,.4) }
+.cb-deck { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
 /* 题目正文：这块要让人一眼读完，所以给大字号 + 宽松行高 */
 .cb-text {
   font-size: 32rpx;
@@ -1218,7 +1218,7 @@
 }
 .dc-name { font-size: 27rpx; font-weight: 600; color: rgba(255,255,255,.88) }
 .deckcard.on .dc-name { color: #F6E7C3 }
-.dc-desc { font-size: 21rpx; color: rgba(255,255,255,.42); margin-top: 6rpx; line-height: 1.4 }
+.dc-desc { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 6rpx; line-height: 1.4 }
 
 /* 游戏中：一行小胶囊，房主点了即换（不打断当前这局，服务端会拦） */
 .deckrow {
@@ -1257,7 +1257,7 @@
   display: flex; flex-direction: column; gap: 6rpx;
 }
 .ce-t { font-size: 27rpx; color: rgba(246,231,195,.85); font-weight: 600 }
-.ce-s { font-size: 21rpx; color: rgba(255,255,255,.4) }
+.ce-s { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
 
 /* 遮罩 */
 .mask {
@@ -1284,7 +1284,7 @@
   100% { transform: translateY(0); opacity: 1 }
 }
 .sheet-t { font-size: 32rpx; font-weight: 700; color: #F6E7C3 }
-.sheet-s { font-size: 21rpx; color: rgba(255,255,255,.45); margin-top: 8rpx; line-height: 1.5 }
+.sheet-s { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx; line-height: 1.5 }
 
 /* 类型切换：两枚并排，选中态用题卡同款颜色（真心话暖红 / 大冒险冷蓝） */
 .typerow { display: flex; gap: 16rpx; margin: 26rpx 0 18rpx }
@@ -1313,7 +1313,7 @@
   line-height: 1.5;
 }
 
-.mine-t { font-size: 21rpx; color: rgba(255,255,255,.4); margin: 30rpx 0 14rpx }
+.mine-t { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin: 30rpx 0 14rpx }
 .minelist { display: flex; flex-direction: column; gap: 12rpx }
 .mineitem {
   padding: 18rpx 22rpx;
@@ -1323,7 +1323,7 @@
   display: flex; gap: 14rpx; align-items: baseline;
 }
 .mineitem.dare { background: rgba(94,127,166,.16); border-left-color: #5E7FA6 }
-.mi-type { font-size: 21rpx; color: rgba(255,255,255,.45); flex: none }
+.mi-type { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); flex: none }
 .mi-text { font-size: 24rpx; color: rgba(255,255,255,.82); line-height: 1.45 }
 
 /* ================================================================
@@ -1339,7 +1339,7 @@
   background: rgba(255,255,255,.04);
   border: 2rpx solid rgba(255,255,255,.10);
 }
-.gs-lbl { font-size: 21rpx; color: rgba(255,255,255,.45); margin-bottom: 16rpx }
+.gs-lbl { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-bottom: 16rpx }
 .gs-row { display: flex; gap: 14rpx }
 .gspill {
   flex: 1;
@@ -1405,8 +1405,8 @@
   margin: 16rpx 0 10rpx; line-height: 1.15; letter-spacing: 6rpx;
   text-shadow: 0 4rpx 18rpx rgba(180, 140, 240, .45);
 }
-.uw-wsub { font-size: 21rpx; color: rgba(255,255,255,.4) }
-.uw-wtip { font-size: 21rpx; color: rgba(255,255,255,.35); margin-top: 14rpx }
+.uw-wsub { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
+.uw-wtip { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 14rpx }
 
 /* ---------- 在场玩家（只展示，不用点）---------- */
 .uw-seats {
@@ -1459,7 +1459,7 @@
 .pk-seat.me { border-color: rgba(232,179,60,.42) }
 .pk-seat.out { opacity: .42 }
 .pk-seat-n { font-size: 21rpx; color: rgba(255,255,255,.82); font-weight: 600 }
-.pk-seat-s { font-size: 18rpx; color: rgba(255,255,255,.42) }
+.pk-seat-s { font-size: 18rpx; color: rgba(255, 255, 255, 0.52) }
 /* 换过牌的标成金色：这是"他手里可能不好"的信号，值得一眼看到 */
 .pk-seat-s.drank { color: #E8B33C }
 .pk-seat-s.out { color: #F0A38C }
@@ -1489,7 +1489,7 @@
   margin-top: 10rpx; font-size: 24rpx; color: rgba(255,255,255,.82); line-height: 1.6;
 }
 .uw-tie-x {
-  margin-top: 8rpx; font-size: 21rpx; color: rgba(255,255,255,.45);
+  margin-top: 8rpx; font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* 决胜投票的提示要比普通提示更硬 —— 它承载"这次必须有结果" */
@@ -1519,7 +1519,7 @@
 
 .uw-wait {
   margin-top: 22rpx; text-align: center;
-  font-size: 21rpx; color: rgba(255,255,255,.4); line-height: 1.7;
+  font-size: 21rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.7;
 }
 
 /* ============================================================
@@ -1620,7 +1620,7 @@
   font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.25); color: #F6E7C3;
 }
-.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255,255,255,.4) }
+.uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255, 255, 255, 0.52) }
 /* 已经投过的那一票：整行变紫，一眼看出"我投的是他" */
 .uw-p.picked {
   background: rgba(122, 92, 168, .38);
@@ -1646,11 +1646,11 @@
 .uw-ow { font-size: 24rpx; color: rgba(255,255,255,.62); margin-top: 14rpx; line-height: 1.6 }
 .uw-spy { color: #FFB4A0; font-weight: 700 }
 .uw-good { color: #9AD3A8; font-weight: 700 }
-.uw-otie { font-size: 21rpx; color: rgba(255,255,255,.38); margin-top: 10rpx }
+.uw-otie { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 10rpx }
 
 .uw-alive {
   text-align: center; margin-top: 16rpx;
-  font-size: 21rpx; color: rgba(255,255,255,.42); letter-spacing: 1rpx;
+  font-size: 21rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 1rpx;
 }
 
 /* ---------- 票型（谁投了谁） ---------- */
@@ -1737,7 +1737,7 @@
 .pk-slot:nth-child(3) { transition-delay: 140ms }
 
 .pk-tagline {
-  font-size: 18rpx; color: rgba(255,255,255,.45);
+  font-size: 18rpx; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 2rpx; height: 26rpx;
 }
 .pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
@@ -1823,13 +1823,13 @@
 .pkl-row { display: flex; align-items: center; justify-content: center; gap: 12rpx; flex-wrap: wrap }
 .pkl-who { font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,.7) }
 .pkl-who.win { color: #9AD3A8 }
-.pkl-who.lose { color: rgba(255,255,255,.38); text-decoration: line-through }
+.pkl-who.lose { color: rgba(255, 255, 255, 0.52); text-decoration: line-through }
 .pkl-cards { display: flex; gap: 6rpx }
 .pkl-c {
   font-size: 24rpx; font-weight: 700; color: #2C2822;
   background: #FFFDF9; border-radius: 8rpx; padding: 4rpx 10rpx;
 }
-.pkl-vs { font-size: 21rpx; color: rgba(255,255,255,.35) }
+.pkl-vs { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
 .pkl-note { text-align: center; font-size: 21rpx; color: rgba(255,255,255,.5); margin-top: 12rpx }
 
 /* ---------- 轮到我 ---------- */
@@ -1837,7 +1837,7 @@
   text-align: center; font-size: 32rpx; font-weight: 700; color: #F6E7C3;
 }
 .pk-note {
-  text-align: center; font-size: 21rpx; color: rgba(255,255,255,.45);
+  text-align: center; font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
   margin-top: 10rpx; margin-bottom: var(--gap-2); line-height: 1.7;
 }
 .pk-list { display: flex; flex-direction: column; gap: 14rpx }
@@ -1864,7 +1864,7 @@
 
 .pk-wait {
   text-align: center; padding: 44rpx 0;
-  font-size: 24rpx; color: rgba(255,255,255,.45); line-height: 1.8;
+  font-size: 24rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.8;
 }
 
 /* ---------- 结算摊牌 ---------- */
@@ -2017,7 +2017,7 @@
 .rl-t {
   font-size: 27rpx; font-weight: 600; color: #F6E7C3; letter-spacing: 2rpx;
 }
-.rl-s { font-size: 21rpx; color: rgba(255,255,255,.4) }
+.rl-s { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
 
 /* ---------- 网络提示：两档 ----------
    抖动（黄）→ 断了（红 + 重试按钮）。区别不只是颜色：
