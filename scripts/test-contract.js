@@ -1384,7 +1384,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const providedRoom = new Set(Object.keys(realRoom.room))
   /* 服务端算的派生字段也要算数（前端 decorate 会补这些） */
   /* 前端 decorate 算的派生字段：服务端不返回，但确实是前端自己赋值的 */
-  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options', 'settleFoot', 'gameName', 'howList', 'spectating', 'shortBy', 'minPlayers', 'maxPlayers', 'streakText', 'loserBoard', 'uwCompare', 'hintText'].forEach(k => providedRoom.add(k))
+  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options', 'settleFoot', 'gameName', 'howList', 'spectating', 'shortBy', 'minPlayers', 'maxPlayers', 'streakText', 'loserBoard', 'uwCompare', 'hintText', 'drinkCups', 'drinkText'].forEach(k => providedRoom.add(k))
 
   const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '')
   /* 自己的递归遍历：④ 在顶层 walk/pagesDir 定义之前，不能复用它们 */

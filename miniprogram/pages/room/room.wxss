@@ -1668,3 +1668,11 @@
   letter-spacing: 1rpx;
   margin: -10rpx 0 var(--gap-2);
 }
+
+/* 比牌列表里的「换牌 1.5 杯」—— 决策线索，不是主角。
+   和主角色的"比 ▸"拉开，用灰蓝小字。 */
+.pk-pcups {
+  font-size: 19rpx;
+  color: rgba(150, 170, 190, .8);
+  margin-right: 8rpx;
+}

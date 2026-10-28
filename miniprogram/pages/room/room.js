@@ -1025,6 +1025,19 @@ Page({
       const pub = room.poker.publicCard
       const mine = room.poker.myKnown
       room.poker.hintText = (pub && mine) ? poker.handHint(pub, mine) : ''
+      /*
+       * 把"每人换牌喝了多少"挂回各自的 player 上，方便列表里直接渲染。
+       * 这是**公开信息**（换牌时全桌都看见谁喝了），但**只暴露总量** ——
+       * 不暴露换的是底牌还是手牌、更不暴露换之前的牌。
+       */
+      const cupsMap = {}
+      ;(room.poker.drinks || []).forEach(d => { cupsMap[d.name] = d.cups })
+      ;(room.players || []).forEach(p => {
+        const c = Number(cupsMap[p.name]) || 0
+        p.drinkCups = c
+        /* 显示文字：1 杯 / 1.5 杯，0 就不显示 */
+        p.drinkText = c === 0 ? '' : (c % 1 === 0 ? c + ' 杯' : Math.floor(c) + '.5 杯')
+      })
     }
 
     /*

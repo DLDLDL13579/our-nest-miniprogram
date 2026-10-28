@@ -33,8 +33,8 @@ function pkRoom(r) {
     id: 'r3', code: '627', count: 3,
     me: { seat: 1, name: '邓林', dice: [] },
     players: [
-      { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false },
-      { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false },
+      { openid: 'a', name: '邓林', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '' },
+      { openid: 'b', name: '倩萍', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false, drinkText: '1.5 杯' },
       { openid: 'c', name: '阿杰', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
     ],
     round: 1, bid: null, lastResult: null, spin: null, deck: 'friends',
@@ -269,7 +269,18 @@ module.exports = {
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           /* 牌型提示走真实函数算，保证和线上一致 */
           hintText: poker.handHint(PK_PUB, PK_MINE[1]),
-          folded: false, aliveCount: 3, myDrink: 0, log: [],
+          folded: false, aliveCount: 3, myDrink: 0,
+          /* 公开信息：谁换过几次牌（喝了几杯） */
+          /*
+           * ⚠️ 渲染器**不执行页面的 decorate()**，所以这里要直接写
+           *   decorate 算出来的结果（drinkText）—— 否则界面上什么都不显示，
+           *   而真实运行是对的。这类 mock 与逻辑的重复是渲染器的固有局限。
+           */
+          drinks: [
+            { name: '邓林', cups: 0, out: false },
+            { name: '倩萍', cups: 1.5, out: false },
+            { name: '阿杰', cups: 0, out: false }
+          ], log: [],
           last: null, winner: null
         }
       })

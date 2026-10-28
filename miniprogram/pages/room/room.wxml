@@ -568,6 +568,8 @@
                   class="pk-p {{item.seat === room.turn ? 'cur' : ''}}"
                   data-oid="{{item.openid}}" bindtap="pkVs">
               <text class="pk-pn">{{item.name}}</text>
+              <!-- 他换过几次牌（= 喝了几杯）：换得多说明手里不好，或者很拼 -->
+              <text wx:if="{{item.drinkText}}" class="pk-pcups">换牌 {{item.drinkText}}</text>
               <text class="pk-pgo">比 ▸</text>
             </view>
           </block>

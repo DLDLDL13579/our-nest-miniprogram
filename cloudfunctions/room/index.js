@@ -348,6 +348,20 @@ function shape(room, openid) {
         folded: !!meP.out,
         /* 我为了换牌喝掉的量（半杯 = 0.5） */
         myDrink: (room.pkDrink || {})[openid] || 0,
+        /*
+         * ★ 所有人的换牌量 —— 这是**公开信息**：
+         *   谁换牌谁喝酒，桌子上的人都看见了；而且比牌列表里
+         *   "他换过几次"是很有用的决策线索（换得多说明手里不好，或者很拼）。
+         *   ⚠️ 只暴露"喝了多少"，不暴露"换的是底牌还是手牌"，
+         *      也不暴露换之前的牌 —— 那些是私密的。
+         */
+        drinks: (room.players || [])
+          .filter(p => p.inRound !== false)
+          .map(p => ({
+            name: p.name,
+            cups: Number((room.pkDrink || {})[p.openid]) || 0,
+            out: !!p.out
+          })),
         aliveCount: alive.length,
         /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
         last: room.pkLast || null,

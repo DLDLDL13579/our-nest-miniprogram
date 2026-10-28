@@ -183,6 +183,86 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   }
   ok('模板里有：没偷看的引导 + 轮次提示 + 等谁叫')
 
+  /* ============ ④b ★ 真的跑一遍 decorate()，验证派生字段的值 ============
+   *
+   * ★ 为什么需要这条：`decorate()` 算出了十几个派生字段
+   *   （options / myTurn / turnName / waitingCount / spectating / settleFoot /
+   *    streakText / loserBoard / howList / hintText / drinkText …），
+   *   但**从来没有任何测试真正执行过它**：
+   *     · 离线渲染器不跑页面逻辑，只吃 mock 静态数据
+   *     · ⑤ 只检查"有没有赋值"，不检查"赋的值对不对"
+   *
+   *   2026-10-28 就吃过这个亏：给金花加了 hintText，断言全绿、
+   *   渲染器也画不出来（它不执行 decorate），只能靠人工看真机才可能发现。
+   *
+   * 做法：从源码抽出 decorate 的函数体，用桩 this 真跑一遍。
+   */
+  {
+    const src = fs.readFileSync(JS, 'utf8')
+    const at = src.indexOf('decorate(room)')
+    assert.ok(at > 0, '找不到 decorate（抽取可能失效）')
+    const open = src.indexOf('{', at)
+    let depth = 0, end = -1
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    assert.ok(end > open, 'decorate 的括号没配平')
+    const body = src.slice(open + 1, end)
+
+    const poker = require(path.join(ROOT, 'miniprogram/utils/poker.js'))
+    const games = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+    const decorate = new Function('poker', 'gameOf', 'return function decorate(room){' + body + '}')(poker, games.gameOf)
+    const stub = { buildOptions: () => ['1个1'] }
+
+    /* ① 金花牌型提示 + 换牌量 */
+    const pk = decorate.call(stub, {
+      game: 'poker', phase: 'playing', count: 2, me: { seat: 1, name: '我' },
+      players: [
+        { openid: 'a', name: '我', seat: 1, isMe: true, inRound: true, out: false, score: 0 },
+        { openid: 'b', name: '他', seat: 2, isMe: false, inRound: true, out: false, score: 0 }
+      ],
+      poker: {
+        publicCard: { r: 12, s: 0 }, myKnown: { r: 12, s: 2 },
+        myDrink: 0, drinks: [{ name: '我', cups: 0 }, { name: '他', cups: 1.5 }]
+      }
+    })
+    assert.strictEqual(pk.poker.hintText, '至少是对子',
+      '两张同点数必须提示「至少是对子」，实际：' + pk.poker.hintText)
+    assert.strictEqual(pk.players[1].drinkText, '1.5 杯',
+      '换牌量应翻译成「1.5 杯」，实际：' + pk.players[1].drinkText)
+    assert.strictEqual(pk.players[0].drinkText, '', '没换过牌的人不该显示数字')
+
+    /* ② 观战判定 */
+    const sp = decorate.call(stub, {
+      game: 'liar', phase: 'playing', count: 2, me: { seat: 1, name: '我' },
+      players: [
+        { openid: 'a', name: '我', seat: 1, isMe: true, inRound: false, score: 0 },
+        { openid: 'b', name: '他', seat: 2, isMe: false, inRound: true, score: 0 }
+      ]
+    })
+    assert.strictEqual(sp.spectating, true, '中途加入的人 spectating 必须为 true')
+
+    /* ③ 连庄 / 今晚最惨 / 结算收尾 */
+    const ov = decorate.call(stub, {
+      game: 'liar', phase: 'over', count: 3, me: { seat: 1, name: '我' },
+      players: [
+        { openid: 'a', name: '我', seat: 1, isMe: true, inRound: true, score: -3 },
+        { openid: 'b', name: '他', seat: 2, isMe: false, inRound: true, score: 0 }
+      ],
+      streaks: { 2: 3 }, lastResult: { loserName: '我' }
+    })
+    assert.strictEqual(ov.streakText, '他 连赢 3 把', '连庄文字不对：' + ov.streakText)
+    assert.strictEqual(ov.loserBoard, '我 今晚已经输了 3 局', '今晚最惨文字不对：' + ov.loserBoard)
+    assert.strictEqual(ov.settleFoot, '我 喝一杯', '结算收尾不对：' + ov.settleFoot)
+
+    /* ④ 规则文案来自注册表，不是页面里另写一份 */
+    assert.ok(ov.howList.length >= 3, '规则条目应来自注册表')
+    assert.strictEqual(ov.gameName, games.gameOf('liar').name, '玩法名应来自注册表')
+
+    ok('★ decorate() 真跑一遍：牌型提示 / 换牌量 / 观战 / 连庄 / 今晚最惨 / 规则文案 全部正确')
+  }
+
   /* ============ ⑤ 模板引用的字段必须在 js 里真的算出来 ============ */
   console.log('\n=== ⑤ 模板引用的状态字段必须有出处 ===')
 
