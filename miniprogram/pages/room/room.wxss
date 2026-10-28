@@ -1423,10 +1423,21 @@
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
 .pkr-n { flex: 1; font-size: 25rpx; color: rgba(255,255,255,.85) }
+/*
+ * 结算页的牌 —— 原来只有一个 22rpx 的浅色小块加几个字，
+ * 六个人摊牌时糊成一团，**"摊牌"的意义（让人看清谁有什么牌）就没了**。
+ * 现在做成真正的小牌形状（62×86rpx），一行三张仍然放得下。
+ */
 .pkr-c {
-  font-size: 22rpx; font-weight: 700; color: #2C2822;
-  background: #FFFDF9; border-radius: 6rpx; padding: 3rpx 8rpx;
+  display: flex; align-items: center; justify-content: center;
+  width: 60rpx; height: 84rpx;
+  flex: none;
+  font-size: 24rpx; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 8rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, .22);
+  letter-spacing: -1rpx;
 }
+.pkr-c.pk-red { color: #C4432F }
 
 /* ============================================================
    揭晓时刻的动画（卧底出局 / 金花比牌结果）

@@ -169,10 +169,14 @@ module.exports = {
        */
       const hands = names.map((n, i) => ({
         name: n, out: i > 0,
+        /*
+         * 牌不能重复 —— 第一版 i=0 时算出来两张 ♠Q，
+         * 真实发牌（newDeck + shuffle）不会出现，但预览图会被它误导。
+         */
         cardsText: [
           poker.cardText({ r: 12, s: 0 }),
-          poker.cardText({ r: 12 - i, s: i % 4 }),
-          poker.cardText({ r: 9 - i, s: (i + 1) % 4 })
+          poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
+          poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
         ]
       }))
       return {

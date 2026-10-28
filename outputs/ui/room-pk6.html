@@ -1441,10 +1441,17 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
 .pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+
 .pkr-c {
-  font-size: 11px; font-weight: 700; color: #2C2822;
-  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 42px;
+  flex: none;
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  letter-spacing: -0.5px;
 }
+.pkr-c.pk-red { color: #C4432F }
 
 
 @keyframes slamIn {
@@ -1616,6 +1623,19 @@ view, text, button, input, textarea { box-sizing: border-box }
   letter-spacing: 0.5px;
 }
 
+
+.loser-board {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  color: rgba(200, 215, 235, .9);
+  background: rgba(94, 127, 166, .13);
+  border: 1px solid rgba(94, 127, 166, .3);
+  border-radius: 9px;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -1643,32 +1663,32 @@ view, text, button, input, textarea { box-sizing: border-box }
       
         <div class="pkr-row">
           <span class="pkr-n">邓林</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥9</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥Q</span><span class="pkr-c">♣9</span>
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">倩萍</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥J</span><span class="pkr-c">♣8</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c">♣J</span><span class="pkr-c pk-red">♦8</span>
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">阿杰</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♣10</span><span class="pkr-c pk-red">♦7</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♦10</span><span class="pkr-c">♠7</span>
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">老王</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♦9</span><span class="pkr-c">♠6</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c">♠9</span><span class="pkr-c pk-red">♥6</span>
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">小美</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♠8</span><span class="pkr-c pk-red">♥5</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥8</span><span class="pkr-c">♣5</span>
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">大刘</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥7</span><span class="pkr-c">♣4</span>
+          <span class="pkr-c">♠Q</span><span class="pkr-c">♣7</span><span class="pkr-c pk-red">♦4</span>
         </div>
       
     </div><div class="settle-foot">邓林 没换过牌就赢了</div><div class="btn main bigbtn">再来一局</div><div class="btn ghostb" style="margin-top:20rpx">换个玩法</div><div class="btn ghostb" style="margin-top:20rpx">离开房间</div>

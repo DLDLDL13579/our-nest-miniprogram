@@ -1441,10 +1441,17 @@ view, text, button, input, textarea { box-sizing: border-box }
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
 .pkr-n { flex: 1; font-size: 12.5px; color: rgba(255,255,255,.85) }
+
 .pkr-c {
-  font-size: 11px; font-weight: 700; color: #2C2822;
-  background: #FFFDF9; border-radius: 3px; padding: 1.5px 4px;
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 42px;
+  flex: none;
+  font-size: 12px; font-weight: 700; color: #2C2822;
+  background: #FFFDF9; border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .22);
+  letter-spacing: -0.5px;
 }
+.pkr-c.pk-red { color: #C4432F }
 
 
 @keyframes slamIn {
@@ -1616,14 +1623,28 @@ view, text, button, input, textarea { box-sizing: border-box }
   letter-spacing: 0.5px;
 }
 
-.phx1::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}
-.phx2::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}</style>
+
+.loser-board {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 12.5px; font-weight: 600;
+  color: rgba(200, 215, 235, .9);
+  background: rgba(94, 127, 166, .13);
+  border: 1px solid rgba(94, 127, 166, .3);
+  border-radius: 9px;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}
+
+</style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
 <div style="height:44px;display:flex;align-items:center;justify-content:center;
             font-size:17px;font-weight:600;color:#2C2822;background:#F5F0EA;
             position:sticky;top:0;z-index:9">房间</div>
-<div class="gamepage">
+
+  
+  <div class="gamepage">
   <div class="gbar">
     <div class="gbar-l">
       <span class="gbar-back">‹</span>
