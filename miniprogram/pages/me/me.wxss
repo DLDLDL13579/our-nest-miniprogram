@@ -108,3 +108,6 @@
 
 /* 今晚局数：紧跟"一共 N 个"后面，同一行 */
 .night-n { color: #E8B33C; opacity: .9 }
+
+/* 错误记录那一行：可点，给一点提示色 */
+.errline { color: #E8A08C }

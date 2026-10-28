@@ -50,6 +50,27 @@ function call(name, data, opt) {
         msg = '网络断了，连上再试'
       }
       msg = msg || '网络不太好，再试一次'
+      /*
+       * ★ 记一条错误日志（2026-10-28）。
+       *
+       * 现在出了问题只弹一个 toast，弹完就没了 —— 用户来找我说"操作失败了"，
+       * 我只能猜。存最近 20 条在本地，「我的」页可以一键复制给开发者。
+       *
+       * ⚠️ **只记技术信息，不记任何用户内容**：函数名、action、原始错误串、
+       *    时间。不记昵称、不记房间号、不记词/题。
+       */
+      try {
+        var log = wx.getStorageSync('errLog') || []
+        var act = (opt && opt.action) || ((opt && opt.payload && opt.payload.action) || '')
+        log.push({
+          t: Date.now(),
+          fn: name,
+          act: act,
+          raw: String(raw).slice(0, 160)
+        })
+        if (log.length > 20) log = log.slice(log.length - 20)
+        wx.setStorageSync('errLog', log)
+      } catch (e) {}
       err.friendly = msg
       if (opt.silent) console.warn('[' + name + ']', msg)
       else wx.showToast({ title: msg, icon: 'none', duration: 3500 })

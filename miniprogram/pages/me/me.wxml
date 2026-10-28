@@ -63,6 +63,15 @@
     <view class="about">
       <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</view>
       <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</view>
+      <!--
+        错误记录（2026-10-28）。
+        出问题时只弹一个 toast，弹完就没了 —— 用户来反馈"操作失败了"，
+        开发者只能猜。存最近 20 条在本地，点一下复制，粘给开发者就有真相。
+        ⚠️ 只记技术信息（函数名 / action / 原始错误），不记昵称、房间号、词题。
+      -->
+      <view wx:if="{{errCount > 0}}" class="ab-line errline" bindtap="copyErrLog">
+        最近有 {{errCount}} 条错误记录 · 点这里复制
+      </view>
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
       <view class="ab-ver">v{{version}}</view>
     </view>

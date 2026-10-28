@@ -26,6 +26,7 @@ Page({
     hapticOn: true,
     reduceMotion: false,
     nightGames: 0,
+    errCount: 0,
     gameCount: GAMES.length,
     /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
     gameRows: [],
@@ -45,6 +46,9 @@ Page({
       muted: sfx.isMuted(),
       hapticOn: haptic.isHapticOn(),
       reduceMotion: haptic.isReduceMotion(),
+      errCount: (function () {
+        try { return (wx.getStorageSync('errLog') || []).length } catch (e) { return 0 }
+      })(),
       nightGames: (function () {
         /* 今晚玩了几局（跨天自动归零，见 room.js 的 bumpNightCount） */
         try {
@@ -94,6 +98,28 @@ Page({
     this.setData({ muted: m })
     /* 打开音效时给一声，让用户当场听到"确实有声音了" */
     if (!m) sfx.play('tick')
+  },
+
+  /**
+   * 复制错误记录（2026-10-28）。
+   * 给的是**可粘进聊天窗口的纯文本**，不是 JSON —— 用户在手机上不会看 JSON。
+   */
+  copyErrLog() {
+    /* me 页是主包页面，只能用主包的 tick 试听音（音效资源在分包） */
+    sfx.play('tick')
+    var log = []
+    try { log = wx.getStorageSync('errLog') || [] } catch (e) {}
+    if (!log.length) return
+    var lines = log.map(function (x) {
+      var d = new Date(x.t)
+      var hh = ('0' + d.getHours()).slice(-2)
+      var mm = ('0' + d.getMinutes()).slice(-2)
+      return hh + ':' + mm + '  ' + x.fn + (x.act ? '/' + x.act : '') + '  ' + x.raw
+    })
+    wx.setClipboardData({
+      data: '酒桌 错误记录（' + log.length + ' 条）\n' + lines.join('\n'),
+      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) }
+    })
   },
 
   toggleMotion() {
