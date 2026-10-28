@@ -54,7 +54,14 @@
       只负责说清"点了会怎样"。
   -->
   <view class="ggrid">
-    <view wx:for="{{list}}" wx:key="id" class="gcard"
+    <!--
+      首次进入的指向（2026-10-28）。
+      玩法卡上写着"开桌"，但**第一次打开的人不知道那张卡是能点的** ——
+      卡片看起来像展示，而"开桌"两个字在卡内底部，容易被当成标签。
+      所以第一次进来给第一张卡一个很轻的呼吸 + 一句指向，点过任意一张就消失。
+    -->
+    <view wx:if="{{firstHint}}" class="first-hint">点下面任意一张，直接就开桌</view>
+    <view wx:for="{{list}}" wx:key="id" class="gcard {{firstHint && index === 0 ? 'hint' : ''}}"
           style="--accent:{{item.color}}" data-id="{{item.id}}" bindtap="openGame">
       <view class="gc-spot"></view>
       <view class="gc-head">

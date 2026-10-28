@@ -18,6 +18,8 @@ module.exports = {
     ic: IC,
     list: LIST,
     joinCode: '',
+    /* 首次引导：渲染器不跑 onShow，用环境变量模拟 LOBBY_FIRST=1 */
+    firstHint: !!process.env.LOBBY_FIRST,
     err: '',
     muted: false, stats: '5 个玩法 · 160 道题 · 120 对词',
     hapticOn: true

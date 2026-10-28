@@ -86,6 +86,8 @@ Page({
     /* data 初始化也走同一套排序，否则首帧会闪一下（未排序 → onShow 排序） */
     list: sortByRecent(buildList()),
     joinCode: '',
+    /* 首次进入的指向（点过任意一张卡就永久关掉） */
+    firstHint: false,
     err: '',
     muted: false,
     hapticOn: true,
@@ -122,6 +124,12 @@ Page({
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */
   onShow() {
+    /* 首次进来给一个指向 —— 之后再也不出现（storage 记着） */
+    try {
+      if (!wx.getStorageSync('openedOnce')) {
+        this.setData({ firstHint: true })
+      }
+    } catch (e) {}
     /* 大厅停留时就先把云函数叫醒 —— 等用户点玩法卡时容器已经是热的，
        否则第一次操作会撞上 1~3 秒冷启动，而云函数超时只有 3 秒 */
     warmup()
@@ -175,6 +183,11 @@ Page({
      * 主包不能引用分包资源（微信的硬规则，见 README 的"已知限制"）。
      */
     sfx.play('tick')
+    /* 点过任意一张卡 → 首次指向永久关掉 */
+    if (this.data.firstHint) {
+      try { wx.setStorageSync('openedOnce', 1) } catch (err) {}
+      this.setData({ firstHint: false })
+    }
     const id = e.currentTarget.dataset.id
     /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
     try { wx.setStorageSync('lastGame', id) } catch (err) {}
