@@ -820,6 +820,41 @@ Page({
     }
     if (!uwOutKey) this._lastUwOut = ''
 
+    /*
+     * 游戏真正结束的那一刻（金花 / 卧底走到 over）——
+     * 这是整局的情绪落点，必须有自己的声音：
+     * 赢了撒花、输了给一个下坠。只在**赢家变化**时响一次，
+     * 轮询不会重复触发。
+     *
+     * ⚠️ 卧底的赢家是 'civilian' / 'spy' 而不是人名，
+     *    所以要拿"我是不是卧底"和"赢的是不是卧底"比对，不能直接比名字。
+     */
+    if (raw.game === 'poker' && raw.poker && raw.poker.winner) {
+      const win = raw.poker.winner
+      if (win !== (this._lastPkWin || '')) {
+        this._lastPkWin = win
+        const iWon = raw.me && win === raw.me.name
+        sfx.play(iWon ? 'confetti' : 'failDrop')
+        if (iWon) feedback.vibrate('long')
+      }
+    } else if (raw.game !== 'poker') {
+      this._lastPkWin = ''
+    }
+
+    const uwRes = raw.lastResult && raw.lastResult.kind === 'undercover' ? raw.lastResult : null
+    if (uwRes && raw.uw && raw.uw.myRole) {
+      const key = uwRes.winner + '|' + raw.uw.myRole
+      if (key !== (this._lastUwWin || '')) {
+        this._lastUwWin = key
+        const iAmSpy = raw.uw.myRole === 'spy'
+        const iWon = (uwRes.winner === 'spy') === iAmSpy
+        sfx.play(iWon ? 'confetti' : 'failDrop')
+        if (iWon) feedback.vibrate('long')
+      }
+    } else if (!uwRes) {
+      this._lastUwWin = ''
+    }
+
     const nowPoker = raw.game === 'poker' && raw.phase === 'playing'
     if (nowPoker && !this._pkDealt) {
       this._pkDealt = true
