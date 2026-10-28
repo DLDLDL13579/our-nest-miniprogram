@@ -973,6 +973,12 @@
   background: rgba(232,179,60,.22); color: #F0C860; flex: none;
 }
 
+/* 超时自动开的说明：灰字，不抢结算的注意力 */
+.auto-tip {
+  text-align: center; margin-top: 10rpx;
+  font-size: 21rpx; color: rgba(255,255,255,.52);
+}
+
 .loserbox {
   margin: 30rpx 0 26rpx;
   font-size: 32rpx; font-weight: 700; color: #F0A38C; letter-spacing: 2rpx;

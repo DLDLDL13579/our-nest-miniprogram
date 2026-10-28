@@ -822,6 +822,58 @@ exports.main = async (event) => {
         room = Object.assign({}, room, { phase: 'playing' })
       }
 
+      /*
+       * ★★ 回合超时（2026-10-28，调研第 3 条）。
+       *
+       *   「无回合超时。有人锁屏/接电话，全桌停在'等某某'」——
+       *   这个项目在 AGENTS.md 里记过两次"永远没人轮到"的卡死。
+       *
+       *   谁先来问 status 谁就触发检查（和倒计时推进同一个思路：
+       *   云函数没有定时器，靠轮询的时机做事；这一步幂等，不需要锁）。
+       *
+       *   只管**大话骰**：它是唯一"回合卡住就整局卡住"的玩法
+       *   （比大小各自摇、金花可以弃牌、卧底房主能推进、转盘房主点）。
+       *   超时 45 秒 ≈ 30 次轮询都不动，基本可以确定人不在。
+       *   动作选"开骰"——最接近"我不信"的自然行为，且一定会结算。
+       */
+      if (room.game === 'liar' && room.phase === 'playing' && room.bid &&
+          room.turnAt && ts - room.turnAt > 45000) {
+        const idleSeat = room.turn
+        const idle = (room.players || []).filter(p => p.seat === idleSeat)[0]
+        /* 那个人是不是真的不在了（心跳也很旧）—— 不能因为"想得久"就替他开 */
+        const idleGone = !idle || ts - (idle.lastSeen || 0) > 20000
+        if (idleGone) {
+          const cur = room.bid
+          /* 重算实际骰子数（和 open 分支同一套规则：1 是万能） */
+          let actual = 0
+          ;(room.players || []).forEach(p => {
+            (p.dice || []).forEach(d => {
+              if (d === cur.face) actual++
+              else if (d === 1 && cur.face !== 1) actual++
+            })
+          })
+          const bidderWins = actual >= cur.n
+          const loserSeat = bidderWins ? idleSeat : cur.bySeat
+          const loserName = ((room.players || []).filter(p => p.seat === loserSeat)[0] || {}).name || '?'
+          await rooms.doc(room._id).update({
+            data: {
+              phase: 'over',
+              lastResult: {
+                need: cur.n, face: cur.face, actual: actual,
+                bidderWins: bidderWins, mult: 1, cups: 1,
+                loserSeat: loserSeat, loserName: loserName,
+                bidderName: cur.byName, piBy: '',
+                autoOpened: (idle && idle.name) || '',
+                allDice: (room.players || []).map(p => ({ name: p.name, seat: p.seat, dice: p.dice || [] }))
+              },
+              updatedAt: ts
+            }
+          }).catch(() => {})
+          const rr = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rr.data, OPENID) }
+        }
+      }
+
       /* 顺手刷新心跳 —— 前端轮询的同时就把"我还活着"告诉服务端，
          省一次专门的请求 */
       const isMember = (room.players || []).some(p => p.openid === OPENID)
@@ -1011,6 +1063,7 @@ exports.main = async (event) => {
           countdownEnd: ts + COUNTDOWN_MS,
           round: (room.round || 0) + 1,
           turn: 1,
+          turnAt: ts,
           bid: null,
           /* ★ 新一局必须清掉上一转的结果，否则前端一进 playing
              就会看到"上一局转出来的扇区"，误以为这局已经转过了 */
@@ -1088,6 +1141,8 @@ exports.main = async (event) => {
         data: {
           bid: { n: n, face: face, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
           turn: nextSeat,
+          /* 回合开始时间 —— status 里用它判超时（2026-10-28） */
+          turnAt: ts,
           updatedAt: ts
         }
       })
@@ -1158,6 +1213,7 @@ exports.main = async (event) => {
              反劈是怼上一次劈的人（不能一律怼 bySeat，否则反劈会把球
              传给原叫骰人而不是刚才劈你的人） */
           turn: cur.piSeat || cur.bySeat,
+          turnAt: ts,
           updatedAt: ts
         }
       })

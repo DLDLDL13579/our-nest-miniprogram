@@ -1008,6 +1008,11 @@
       </view>
 
       <view class="loserbox">{{result.loserName}} 喝一杯</view>
+      <!--
+        超时被自动开的要说清楚（2026-10-28）。
+        否则桌上会以为"是谁开的？"——而实际上没人开，是系统替他开的。
+      -->
+      <view wx:if="{{result.autoOpened}}" class="auto-tip">{{result.autoOpened}} 掉线太久，自动开了</view>
     </view>
 
     <!--

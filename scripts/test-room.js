@@ -487,6 +487,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 重开一局把卧底的全部局内状态清干净（不依赖下一次 start 兜底）')
   }
 
+  /* ============ ⑦d 回合超时：有人锁屏不能把全桌卡死 ============ ============ */
+  /*
+   * 2026-10-28 补（调研第 3 条）。这个项目在 AGENTS.md 里记过两次
+   * "永远没人轮到"的卡死 —— 有人锁屏/接电话，全桌就停在"等某某"。
+   *
+   * 判据：大话骰 playing 阶段，轮到的人 45 秒没动**且心跳也很旧** →
+   *      自动替他"开骰"并结算（动作选"开"，最接近"我不信"，且一定会结算）。
+   *      只在他确实掉线时触发 —— 不能因为"想得久"就替他做决定。
+   */
+  {
+    OPENID = A
+    const tr = await room.main({ action: 'create', name: 'T1', game: 'liar' })
+    const trId = tr.room.id
+    OPENID = 'oid_t2'
+    await room.main({ action: 'join', code: tr.room.code, name: 'T2' })
+    OPENID = A
+    await room.main({ action: 'start', id: trId })
+    store.rooms.filter(x => x._id === trId)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: trId })
+    await room.main({ action: 'bid', id: trId, n: 2, face: 3 })
+
+    const raw = store.rooms.filter(x => x._id === trId)[0]
+    /* ① 回合刚推进 10 秒、人也还活着 → 不该自动开 */
+    raw.turnAt = Date.now() - 10000
+    OPENID = A
+    const notYet = await room.main({ action: 'status', id: trId })
+    assert.strictEqual(notYet.room.phase, 'playing', '才过 10 秒不该自动开骰')
+
+    /* ② 45 秒没动，且那个人心跳很旧 → 自动开并结算 */
+    raw.turnAt = Date.now() - 50000
+    const idleSeat = raw.turn
+    raw.players = raw.players.map(p => p.seat === idleSeat
+      ? Object.assign({}, p, { lastSeen: Date.now() - 40000 }) : p)
+    OPENID = A
+    const auto = await room.main({ action: 'status', id: trId })
+    assert.strictEqual(auto.room.phase, 'over', '★ 超时且掉线应自动结算（否则全桌卡死）')
+    assert.ok(auto.room.lastResult && auto.room.lastResult.autoOpened,
+      '结算里要说明是谁超时被自动开的')
+    ok('★ 回合超时：掉线 45 秒后自动开骰，不会把全桌卡死')
+  }
+
   /* ============ ⑦b 摇过不能重摇（后端必须拦，不能只靠前端藏按钮） ============ */
   /*
    * 2026-10-28 补。前端摇完会把"摇盅"藏起来，但云函数是公开接口 ——
