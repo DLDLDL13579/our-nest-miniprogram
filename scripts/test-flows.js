@@ -366,6 +366,39 @@ async function playOne(opts) {
     ok('转盘：转一次 → 出结果')
   }
 
+  /* ---------- 房间满了：第 max+1 个人进不来，而且不能留在库里 ---------- */
+  /*
+   * ★ 2026-10-28。test-room.js 的文件头写着"人数上限"，但实际搜不到对应的用例 ——
+   *   而这块代码有一处**必须验证**的地方：超员时是"先 push 再摘出去"，
+   *   如果摘的动作失败，那个人就会留在房间里（count 变 7），
+   *   而且他不知道自己没进来。
+   *
+   *   用金花（max=6）测：6 人满员，第 7 个人必须被拒且不留痕。
+   */
+  {
+    OPENID = A
+    const fr = await room.main({ action: 'create', name: 'F1', game: 'poker' })
+    const fid = fr.room.id
+    const fcode = fr.room.code
+    /* 再进 5 个（加上房主共 6，正好满） */
+    for (let i = 2; i <= 6; i++) {
+      OPENID = 'oid_f' + i
+      const j = await room.main({ action: 'join', code: fcode, name: 'F' + i })
+      assert.ok(j.ok, '第 ' + i + ' 个人应能进：' + (j.msg || ''))
+    }
+    /* 第 7 个人 */
+    OPENID = 'oid_f7'
+    const over = await room.main({ action: 'join', code: fcode, name: 'F7' })
+    assert.strictEqual(over.ok, false, '★ 满员后第 7 个人必须进不来')
+    assert.ok(/满/.test(over.msg || ''), '提示要说清是满了，实际：' + (over.msg || ''))
+
+    /* ★ 关键：他不能留在房间里（不能只看返回值） */
+    OPENID = A
+    const st = await room.main({ action: 'status', id: fid })
+    assert.strictEqual(st.room.count, 6, '★ 被拒的人不能留在玩家列表里（否则人数越进越多）')
+    ok('★ 房间满了：第 7 个人被拒、提示说清、且没有留在库里')
+  }
+
   /* ---------- 所有人都走了：房间要失效，号码能回收 ---------- */
   /*
    * ★ 2026-10-28。3 位号码只有 1000 个 —— 空房间如果一直占着号，
