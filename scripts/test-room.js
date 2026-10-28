@@ -1236,6 +1236,59 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(Array.isArray(rollB.result.ranked) && rollB.result.ranked.length === 2, '结果要有两个人的排名')
   ok('★ 摇骰子：A 摇 → B 摇 → 自动出结果')
 
+  /* ============ ⑪d 卧底词库：数量够、无重复、每对都合法 ============ */
+  /*
+   * 2026-10-28 从 60 对扩到 120 对。
+   *
+   * 为什么扩：12 人局一轮抽一个词对，60 对大概玩四五轮就开始重复 ——
+   * 而"需要大量内容库"本来就是这个玩法存在的理由之一
+   * （现实里现场出题几轮就干了）。
+   *
+   * 扩的时间踩了两个坑，都用断言锁住：
+   *   ① 往数组末尾追加时，**原数组最后一项没有尾逗号** ——
+   *      直接粘上去会生成非法表达式，而我第一版用 `index(']')` 找插入点，
+   *      找到的是**第一个词对的 `]`**，把文件改坏了。
+   *   ② 新词和旧词重了三个（薯条 / 乒乓球 / 剧本杀）——
+   *      同一个词在两个词对里出现，抽到时会让人以为撞了 bug。
+   */
+  {
+    const words = require('../miniprogram/utils/words.js')
+    assert.ok(Array.isArray(words.DECKS) && words.DECKS.length >= 3,
+      '词库至少要 3 组（吃的 / 日常 / 玩乐）')
+    let total = 0
+    const seen = new Map()
+    const dup = []
+    const bad = []
+    words.DECKS.forEach(d => {
+      assert.ok(Array.isArray(d.pairs), d.k + ' 缺 pairs 数组')
+      d.pairs.forEach(p => {
+        total++
+        if (!Array.isArray(p) || p.length !== 2 || !p[0] || !p[1]) {
+          bad.push(d.k + ' → ' + JSON.stringify(p))
+          return
+        }
+        /* 同一个词出现在两对里 = 抽到时会让人以为撞了 bug */
+        p.forEach(w => {
+          if (seen.has(w)) dup.push(w + '（' + seen.get(w) + ' 与 ' + d.k + '）')
+          else seen.set(w, d.k)
+        })
+        /* 两个词不能相同（同义词对没得玩） */
+        if (p[0] === p[1]) bad.push(d.k + ' → 两个词相同：' + p[0])
+      })
+    })
+    assert.deepStrictEqual(bad, [], '词库里有不合法的词对：\n    ' + bad.join('\n    '))
+    assert.deepStrictEqual(dup, [], '这些词在多个词对里重复出现：\n    ' + dup.join('\n    '))
+    assert.ok(total >= 100, `词对总数应 ≥100（现在 ${total} 对）—— 太少玩几轮就重复`)
+    ok(`卧底词库 ${total} 对，无重复词、无非法项`)
+
+    /* 抽词必须落在该组里，且平民词 ≠ 卧底词 */
+    const picked = words.pickPair('food')
+    assert.ok(picked && picked.civilian && picked.spy && picked.deck === 'food',
+      'pickPair 返回结构不对：' + JSON.stringify(picked))
+    assert.notStrictEqual(picked.civilian, picked.spy, '平民词和卧底词不能相同')
+    ok('抽词结构正确（平民词 ≠ 卧底词）')
+  }
+
   /* ============ ⑪c 大话骰：劈（加倍） ============ */
   /*
    * 2026-10-28 加。调研过同类产品后的判断：大话骰缺的**不是规则数量，
