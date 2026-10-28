@@ -15,6 +15,7 @@
  *
  * 跑法：node scripts/test-room.js
  */
+const fs = require('fs')
 const path = require('path')
 const Module = require('module')
 const assert = require('assert')
@@ -1476,6 +1477,57 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(pkHands.every(h => Array.isArray(h.cards) && h.cards.length === 3),
     '⑬ 结算的每手都必须是完整的三张')
   ok('★ 弃牌 → 只剩一人自动结束，结算摊开三人各自的三张牌')
+
+  /* ============ ⑭ 房间容量必须按玩法取 ============ *
+   *
+   * 注册表里每个玩法写着各自的 max，而云端原来用一个全局 MAX_PLAYERS=8 ——
+   * 两个方向都不对：
+   *   · 卧底 max=12，被全局 8 挡住，12 人根本进不来（"支持 12 人"是假的）
+   *   · 金花 max=6，全局 8 却允许第 7、8 个人进来（超员）
+   * 这条断言锁"按玩法取上限"，并禁止再出现裸的全局容量判断。
+   */
+  {
+    const { gameOf: capGameOf } = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+    const pkCap = capGameOf('poker').max
+    const uwCap = capGameOf('undercover').max
+    assert.strictEqual(pkCap, 6, '金花的 max 应该是 6')
+    assert.strictEqual(uwCap, 12, '卧底的 max 应该是 12')
+    assert.ok(uwCap > 8, '★ 卧底上限必须大于 8 —— 否则"最多 12 人"是假的')
+
+    /*
+     * ⚠️ 判据第一版写的是 `length\s*[<>]=?\s*MAX_PLAYERS` ——
+     *    只抓"直接比"这一种写法。把代码改成 `const cap = MAX_PLAYERS` 就绕过去了，
+     *    反向验证当场发现（改坏后断言照样通过）。
+     *    现在改成：**除 gameCap 函数体之外，整个云函数里不允许出现 MAX_PLAYERS**。
+     */
+    let cloudSrc = fs.readFileSync(
+      path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    /* 把 gameCap 的函数体整段挖掉（它是唯一允许用兜底值的地方） */
+    const capAt = cloudSrc.indexOf('function gameCap')
+    assert.ok(capAt > 0, '找不到 gameCap —— 抽取可能失效')
+    const open = cloudSrc.indexOf('{', capAt)
+    let depth = 0, close = -1
+    for (let k = open; k < cloudSrc.length; k++) {
+      if (cloudSrc[k] === '{') depth++
+      else if (cloudSrc[k] === '}') { depth--; if (depth === 0) { close = k; break } }
+    }
+    assert.ok(close > open, 'gameCap 的括号没配平')
+    /*
+     * 只检查 gameCap **之后**的部分 ——
+     * 定义行 `const MAX_PLAYERS = 8` 和 gameCap 内部的兜底都是合法的，
+     * 它们都在 gameCap 之前或之内。
+     * （第一版连定义行也算了，导致正常代码报错 —— 反向验证时才发现。）
+     */
+    const outside = cloudSrc.slice(close + 1)
+    const stray = Array.from(outside.matchAll(/\bMAX_PLAYERS\b/g))
+    assert.strictEqual(stray.length, 0,
+      '★ gameCap 之外还有 ' + stray.length + ' 处直接引用 MAX_PLAYERS —— ' +
+      '容量必须按玩法取（gameCap(玩法)），全局值只作兜底')
+    ok('★ 房间容量按玩法取（金花 6 / 卧底 12 / 全局 8 只作兜底）')
+  }
+
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)

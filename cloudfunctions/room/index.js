@@ -97,7 +97,24 @@ const CODE_SPACE = 1000
 const TTL_MS = 2 * 3600 * 1000
 
 /* 单房间人数上限 —— 一部手机传着玩，人太多轮不过来 */
+/*
+ * ⚠️ 这个常量曾经是**全局上限 8**，而注册表里每个玩法写着各自的 max ——
+ *    由此产生两个方向的不一致：
+ *      · 卧底 min=3 max=**12**，但全局 8 把它挡在 8 人，12 人根本进不来
+ *      · 金花 max=**6**，全局 8 却允许第 7、第 8 个人进来（超员）
+ *    现在按玩法取上限（见 gameCap），这个常量只作**兜底安全值**。
+ */
 const MAX_PLAYERS = 8
+
+/**
+ * 某个玩法的房间人数上限。
+ * 注册表没写就退回兜底值 —— 不返回 Infinity，避免异常数据把房间撑爆。
+ */
+function gameCap(gameId) {
+  const g = gameOf(gameId)
+  const n = g && Number(g.max)
+  return Number.isFinite(n) && n > 0 ? n : MAX_PLAYERS
+}
 
 /* 自定义题：单条长度上限 / 每人每类条数上限 */
 const MAX_CARD = 60
@@ -540,8 +557,18 @@ exports.main = async (event) => {
         return { ok: true, room: shape(rr.data, OPENID), rejoined: true }
       }
 
-      if ((room.players || []).length >= MAX_PLAYERS) {
-        return { ok: false, msg: '房间满了（最多 ' + MAX_PLAYERS + ' 人）' }
+      {
+        /* 按**当前玩法**的容量判，并把具体数字告诉对方 ——
+           "房间满了" 不说几个人，用户只会反复试。 */
+        const cap = gameCap(room.game)
+        const cur = (room.players || []).length
+        if (cur >= cap) {
+          const g = gameOf(room.game)
+          return {
+            ok: false,
+            msg: '房间满了（' + (g ? g.name : '这个玩法') + '最多 ' + cap + ' 人，已经 ' + cur + ' 人）'
+          }
+        }
       }
       /*
        * ★★ 允许"玩到一半进来"（2026-10-10 用户要求）。
@@ -594,10 +621,14 @@ exports.main = async (event) => {
       let finalPlayers = (rr.data && rr.data.players) || []
 
       /* 超员 → 把自己摘出去（同样是整写，但此时只有"我"这一个变量） */
-      if (finalPlayers.length > MAX_PLAYERS) {
+      if (finalPlayers.length > gameCap(room.game)) {
         finalPlayers = finalPlayers.filter(p => p.openid !== OPENID)
         await rooms.doc(room._id).update({ data: { players: finalPlayers, updatedAt: ts } }).catch(() => {})
-        return { ok: false, msg: '房间满了（最多 ' + MAX_PLAYERS + ' 人）' }
+        const g = gameOf(room.game)
+        return {
+          ok: false,
+          msg: '房间满了（' + (g ? g.name : '这个玩法') + '最多 ' + gameCap(room.game) + ' 人）'
+        }
       }
 
       /*
@@ -1262,7 +1293,19 @@ exports.main = async (event) => {
           return { ok: false, msg: '这局玩完再换' }
         }
         const g = String(event.game || '')
-        if (!gameOf(g)) return { ok: false, msg: '没有这个玩法' }
+        const meta = gameOf(g)
+        if (!meta) return { ok: false, msg: '没有这个玩法' }
+        /*
+         * ★ 换玩法也要看人数：8 个人在玩大话骰，房主换成金花（最多 6 人）
+         *   就会挤进去 —— 而金花的发牌按人数走，多出来的人拿不到牌，
+         *   后果是"有人永远轮不到"（和当年 turn 越界同一类静默卡死）。
+         *   拒绝要**说清数字**，房主才知道该踢人还是换个玩法。
+         */
+        const cap = gameCap(g)
+        const now = (room.players || []).length
+        if (now > cap) {
+          return { ok: false, msg: meta.name + '最多 ' + cap + ' 人，现在有 ' + now + ' 人' }
+        }
         data.game = g
         /* 顺便换题卡场合（只有转盘用得到；传了就换，没传就保持） */
         if (event.deck !== undefined) data.deck = decks.deckOf(String(event.deck)).k
