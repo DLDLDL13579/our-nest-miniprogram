@@ -1331,6 +1331,94 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.strictEqual(uwAfter.room.uw.myRole, 'spy', '⑫ 结束后应能知道自己就是卧底')
   ok('结束后玩家能看到自己的真实身份（复盘用）')
 
+  /* ============ ⑫b 平票：不淘汰，重投一次；两次平票卧底赢 ============ */
+  /*
+   * 2026-10-28 改的规则。原来平票是**随机**挑一个人出局 ——
+   * 实现上没问题，问题在桌上没法解释：被选中的人一定会问"凭什么是我"，
+   * 而服务端唯一能给的答案是"随机"。
+   *
+   * 现在的口径（腾讯欢乐斗地主系列攻略的主流说法）：
+   *   平票 → 平票的人各补一句 → 重投 → 仍平票则卧底胜。
+   * 每一步都有桌上能懂的理由，且"投不出结果 = 好人失败"符合游戏逻辑。
+   *
+   * 断言要锁的正是这三步，尤其是**"第一次平票不能淘汰任何人"** ——
+   * 这条如果回归成"随机淘汰"，玩家体验会直接崩，但代码不会报错。
+   */
+  {
+    const T1 = 'oid_t1', T2 = 'oid_t2', T3 = 'oid_t3'
+    const trio = [T1, T2, T3]
+    OPENID = T1
+    const tr = await room.main({ action: 'create', name: 'T1', game: 'undercover', deck: 'food' })
+    assert.ok(tr.ok, '⑫b 建 3 人卧底房应成功：' + (tr.msg || ''))
+    const trId = tr.room.id
+    for (const [oid, nm] of [[T2, 'T2'], [T3, 'T3']]) {
+      OPENID = oid
+      const j = await room.main({ action: 'join', code: tr.room.code, name: nm })
+      assert.ok(j.ok, '⑫b ' + nm + ' 加入应成功：' + (j.msg || ''))
+    }
+    OPENID = T1
+    const st3 = await room.main({ action: 'start', id: trId })
+    assert.ok(st3.ok, '⑫b 开局应成功：' + (st3.msg || ''))
+    store.rooms.filter(x => x._id === trId)[0].countdownEnd = Date.now() - 100
+    /*
+     * ★ 必须先 status 一次把 phase 从 countdown 推到 playing。
+     *   推进是在 status 里做的（服务端读 countdownEnd 过期就翻页），
+     *   start 返回的 phase 还是 countdown —— 直接 uwSay 会被"这局还没开始"拒掉。
+     *   第一版就是漏了这一步，报错是 `Cannot read properties of undefined`，
+     *   真正的错误信息（"这局还没开始"）被埋在返回值里没打出来。
+     */
+    OPENID = T1
+    const st0 = await room.main({ action: 'status', id: trId })
+    assert.ok(st0.ok && st0.room.uw, '⑫b 推进到 playing 后应拿到 uw 状态')
+
+    /* 三人互投成一圈 → 各 1 票，三方平票 */
+    const cycle = {}
+    cycle[T1] = T2; cycle[T2] = T3; cycle[T3] = T1
+    const voteAll = async () => {
+      let last = null
+      for (const oid of trio) {
+        OPENID = oid
+        last = await room.main({ action: 'uwVote', target: cycle[oid], id: trId })
+        assert.ok(last.ok, '⑫b ' + oid + ' 投票应成功：' + (last.msg || ''))
+      }
+      return last
+    }
+
+    OPENID = T1
+    const toVote1 = await room.main({ action: 'uwSay', id: trId })
+    assert.strictEqual(toVote1.room.uw.step, 'vote', '⑫b 应进入投票')
+
+    const tieRes = await voteAll()
+    assert.strictEqual(tieRes.room.phase, 'playing',
+      '⑫b ★ 平票不能结束这一局（随机淘汰的旧行为会在这里 over）')
+    assert.strictEqual(tieRes.room.uw.step, 'talk',
+      '⑫b ★ 平票应回到"说描述"，让平票的人各补一句')
+    assert.strictEqual(tieRes.room.uw.tieBreak, true, '⑫b 应标记"这一轮已经用过重投"')
+    assert.ok(tieRes.room.uw.tieNames && tieRes.room.uw.tieNames.length > 0,
+      '⑫b 应告诉玩家平票的是谁，实际：' + JSON.stringify(tieRes.room.uw.tieNames))
+    assert.strictEqual(tieRes.room.players.filter(x => !x.out).length, 3,
+      '⑫b ★★ 第一次平票**不能淘汰任何人**（这条是被"随机挑一个"坑过的地方）')
+    ok('★ 平票不淘汰人：回到说描述，并点名平票的几个人')
+
+    /* 重投：票数清零重新开始 */
+    OPENID = T1
+    const toVote2 = await room.main({ action: 'uwSay', id: trId })
+    assert.strictEqual(toVote2.room.uw.step, 'vote', '⑫b 应重新进入投票')
+    assert.strictEqual(toVote2.room.uw.voteCount, 0, '⑫b 重投必须从零计票')
+    assert.strictEqual(toVote2.room.uw.tieBreak, true,
+      '⑫b 决胜投票阶段要保留"已用过重投"的标记（前端靠它改提示语）')
+
+    const deadRes = await voteAll()
+    assert.strictEqual(deadRes.room.phase, 'over', '⑫b ★ 两次平票应结束这一局')
+    assert.strictEqual(deadRes.room.lastResult.winner, 'spy',
+      '⑫b ★★ 两次都投不出结果 —— 判卧底胜（投不出结果本身就是好人失败）')
+    assert.strictEqual(deadRes.room.lastResult.tieDeadlock, true,
+      '⑫b 要标记这是"两轮平票"造成的，界面才能解释清楚')
+    assert.strictEqual(deadRes.room.players.filter(x => !x.out).length, 3,
+      '⑫b 死局也不该误淘汰任何人')
+    ok('★ 两次平票 → 卧底胜（并标记 tieDeadlock，界面能解释清楚）')
+  }
+
   /* ============ ⑬ 梦幻金花：公共牌 + 明牌 + 靠想象的暗牌 ============ */
   /*
    * ★★ 这是"梦幻金花"，**不是炸金花**（用户 2026-10-27 说明）：

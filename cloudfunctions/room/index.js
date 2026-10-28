@@ -387,6 +387,13 @@ function shape(room, openid) {
         myVote: ((room.votes || []).filter(v => v.by === openid)[0] || {}).target || '',
         voteCount: (room.votes || []).length,
         voterCount: alive.length,
+        /*
+         * 平票重投：第一次平票不淘汰任何人，让平票的几个人各补一句、再投一次；
+         * 第二次仍平票则由卧底获胜（"投不出结果"本身就是好人的失败）。
+         * 见 uwVote 里的说明 —— 这里只负责把状态透给前端。
+         */
+        tieBreak: !!room.uwTieBreak,
+        tieNames: room.uwTieNames || '',
         aliveCount: alive.length,
         /* 上一轮出局的人：公开他的词和身份 —— 这是全场最想看的一刻 */
         lastOut: room.uwLastOut || null,
@@ -862,6 +869,8 @@ exports.main = async (event) => {
           uwOut: [],
           uwLastOut: null,
           uwReveal: null,
+          uwTieBreak: false,
+          uwTieNames: '',
           votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
@@ -1375,7 +1384,12 @@ exports.main = async (event) => {
         }
         if (step === 'result') {
           await rooms.doc(room._id).update({
-            data: { uwStep: 'talk', votes: [], uwLastOut: null, updatedAt: ts }
+            data: {
+              uwStep: 'talk', votes: [], uwLastOut: null,
+              /* 重投状态必须一起清：不清的话下一轮第一次平票会被当成
+                 "已经用过重投了" → 直接判卧底胜，而且不报错 */
+              uwTieBreak: false, uwTieNames: '', updatedAt: ts
+            }
           })
           const rr = await rooms.doc(room._id).get()
           return { ok: true, room: shape(rr.data, OPENID) }
@@ -1415,13 +1429,57 @@ exports.main = async (event) => {
       let max = 0
       Object.keys(tally).forEach(k => { if (tally[k] > max) max = tally[k] })
       const top = Object.keys(tally).filter(k => tally[k] === max)
+
       /*
-       * 平票：**随机**选一个出局，并在结果里说明"平票随机"。
-       * 为什么不做重投：重投在酒桌上会拖很久（谁都不想让步），
-       * 而且服务端要在"再投一轮"和"直接结束"之间维护更多状态，
-       * 出错面变大。随机是快的，且所有人都接受 —— 反正是个酒桌游戏。
+       * ============ 平票：重投一次，再平票则卧底赢 ============
+       *
+       * 2026-10-28 改（原来是什么：平票时**随机**挑一个人出局）。
+       *
+       * 随机的问题不在实现，在**桌上没法解释**：被随机选中的人会问
+       * "凭什么是我"，而服务端唯一能给的答案就是"随机"。
+       * 调研过的主流口径（腾讯欢乐斗地主系列攻略）是：
+       *   平票 → 平票的人各补一句 → 再投 → 仍平票则卧底胜。
+       * 这个口径的好处是**每一步都有桌上能懂的理由**，
+       * 而且"投不出结果 = 好人失败"本身就符合这个游戏的逻辑。
+       *
+       * 原来注释里"重投会拖很久"的担心是真的，所以只给**一次**重投机会：
+       * 第二次投票无论如何都要出结果（平票则直接判卧底胜）。
+       *
+       * 状态只有两个字段：uwTieBreak（这一轮是否已用过重投）、uwTieNames（平票名单）。
+       * 每轮结算后清零，所以"每轮都有一次重投机会"。
        */
-      const picked = top[Math.floor(Math.random() * top.length)]
+      if (top.length > 1) {
+        if (!room.uwTieBreak) {
+          const tieNames = top.map(oid => (players.filter(p => p.openid === oid)[0] || {}).name || '').join('、')
+          await rooms.doc(room._id).update({
+            data: {
+              players: players, votes: [], uwTieBreak: true, uwTieNames: tieNames,
+              uwStep: 'talk', updatedAt: ts
+            }
+          })
+          const rr0 = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rr0.data, OPENID) }
+        }
+        /* 第二次仍平票：不再淘汰任何人，直接判卧底胜 */
+        await rooms.doc(room._id).update({
+          data: {
+            players: players, votes: [], uwTieBreak: false, uwTieNames: '',
+            phase: 'over', uwStep: 'result', updatedAt: ts,
+            lastResult: {
+              kind: 'undercover', winner: 'spy', tieDeadlock: true,
+              civilianWord: (players.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+              spyWord: (players.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+            },
+            uwReveal: players
+              .filter(p => p.inRound !== false)
+              .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
+          }
+        })
+        const rr1 = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rr1.data, OPENID) }
+      }
+
+      const picked = top[0]
       const outP = players.filter(p => p.openid === picked)[0]
       outP.out = true
       outP.inRound = true
@@ -1441,8 +1499,11 @@ exports.main = async (event) => {
         players: players, votes: [], uwOut: uwOut,
         uwLastOut: {
           name: outRow.name, word: outRow.word, role: outRow.role,
-          tie: top.length > 1, votes: max
+          /* 平票已经走"重投"分支，能走到这里的都是单一最高票 */
+          tie: false, votes: max
         },
+        /* 本轮结束，重投机会下轮重新给 */
+        uwTieBreak: false, uwTieNames: '',
         updatedAt: ts
       }
 
