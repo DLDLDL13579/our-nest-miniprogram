@@ -77,7 +77,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   box-shadow: var(--sh-1);
 }
 .card.hl { border: 1.5px solid var(--brand); box-shadow: var(--sh-2) }
-.card.flat { background: #F5F1EB; box-shadow: none }
+
+.card.flat { background: rgba(255, 255, 255, .05); box-shadow: none }
 
 .lbl {
   font-size: 10.5px;
@@ -696,6 +697,72 @@ view, text, button, input, textarea { box-sizing: border-box }
   color: #fff; font-size: 16px; font-weight: 700;
   box-shadow: 0 4px 12px rgba(206,87,56,.4);
 }
+
+
+.over-hero {
+  position: relative; overflow: hidden;
+  width: 100%;
+  padding: 17px 12px 15px;
+  border-radius: var(--r-3);
+  display: flex; flex-direction: column; align-items: center;
+  background: linear-gradient(165deg, rgba(232,179,60,.16) 0%, rgba(232,179,60,.04) 60%, rgba(0,0,0,0) 100%);
+  border: 1px solid rgba(232,179,60,.30);
+  animation: heroWin .52s cubic-bezier(.34, 1.4, .64, 1) backwards;
+}
+@keyframes heroWin {
+  0%   { opacity: 0; transform: scale(.92) translateY(7px) }
+  100% { opacity: 1; transform: scale(1) translateY(0) }
+}
+.oh-glow {
+  position: absolute; width: 210px; height: 210px; border-radius: 50%;
+  left: 50%; top: 40%; margin-left: -105px; margin-top: -105px;
+  background: radial-gradient(circle, rgba(232,179,60,.30) 0%, rgba(232,179,60,0) 70%);
+  animation: ohPulse 2.2s ease-in-out infinite;
+}
+@keyframes ohPulse {
+  0%, 100% { opacity: .75; transform: scale(1) }
+  50%      { opacity: 1;   transform: scale(1.08) }
+}
+.oh-crown {
+  position: relative;
+  font-size: 9px; letter-spacing: 4px;
+  color: rgba(232,179,60,.9);
+}
+.oh-name {
+  position: relative;
+  margin-top: 3px;
+  font-size: 22px; font-weight: 700; color: #FFE9B8;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 10px rgba(232,179,60,.45);
+}
+.oh-dice {
+  position: relative;
+  margin-top: 9px;
+  display: flex; gap: 5px;
+}
+.oh-die {
+  width: 33px; height: 36px;
+  animation: ohDie .46s cubic-bezier(.34, 1.4, .64, 1) backwards;
+  animation-delay: calc(var(--i) * 60ms);
+}
+@keyframes ohDie {
+  0%   { opacity: 0; transform: translateY(-12px) rotate(-14deg) scale(.8) }
+  100% { opacity: 1; transform: translateY(0) rotate(0) scale(1) }
+}
+.oh-total {
+  position: relative;
+  margin-top: 6px;
+  font-size: 15px; font-weight: 700; color: #F6E7C3;
+}
+
+
+.pkr-face {
+  
+  width: 28px; height: 37.5px;
+  border-radius: 3px;
+  flex: none;
+}
+.pkr-face.out { opacity: .55; filter: saturate(.6) }
 
 
 .center-box { display: flex; flex-direction: column; align-items: center; padding: 20px 5px }
@@ -1879,32 +1946,38 @@ view, text, button, input, textarea { box-sizing: border-box }
       
         <div class="pkr-row">
           <span class="pkr-n">邓林</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥Q</span><span class="pkr-c">♣9</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c0-14.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c1-12.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-9.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">倩萍</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♣J</span><span class="pkr-c pk-red">♦8</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c1-13.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-11.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c3-8.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">阿杰</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♦10</span><span class="pkr-c">♠7</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-12.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c3-10.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c0-7.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">老王</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♠9</span><span class="pkr-c pk-red">♥6</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c3-11.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c0-9.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c1-6.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">小美</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c pk-red">♥8</span><span class="pkr-c">♣5</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c0-10.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c1-8.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-5.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
         <div class="pkr-row out">
           <span class="pkr-n">大刘</span>
-          <span class="pkr-c">♠Q</span><span class="pkr-c">♣7</span><span class="pkr-c pk-red">♦4</span>
+          
+          <img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c1-9.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c2-7.png" data-mode="scaleToFill" style="object-fit:fill;"><img class="pkr-face" src="file:///Users/meihaoshidai/Downloads/邓林work/个人项目/小程序/miniprogram/images/card/c3-4.png" data-mode="scaleToFill" style="object-fit:fill;">
         </div>
       
     </div><div class="settle-foot">邓林 没换过牌就赢了</div><div class="actbar">

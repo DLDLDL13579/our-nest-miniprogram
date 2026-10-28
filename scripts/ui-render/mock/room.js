@@ -197,17 +197,21 @@ module.exports = {
          * 牌不能重复 —— 第一版 i=0 时算出来两张 ♠Q，
          * 真实发牌（newDeck + shuffle）不会出现，但预览图会被它误导。
          */
-        cardsText: [
-          poker.cardText({ r: 12, s: 0 }),
-          poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
-          poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
+        /*
+         * ⚠️ 第一版每个 i 都用同一张 ♠Q 当第一张 —— 预览图上 6 个人拿着同一张牌，
+         *    看起来很像是真的 bug（其实是 mock 的锅）。真实发牌不会重复，
+         *    mock 也不能重复，否则截图会骗人。
+         */
+        cards: [
+          { r: 14 - i, s: i % 4 },
+          { r: 12 - i, s: (i + 1) % 4 },
+          { r: 9 - i, s: (i + 2) % 4 }
         ],
-        /* 模板现在读 cardsRich（wxml 不支持 indexOf，颜色在数据层算好） */
-        cardsRich: [
-          poker.cardText({ r: 12, s: 0 }),
+        cardsText: [
+          poker.cardText({ r: 14 - i, s: i % 4 }),
           poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
           poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
-        ].map(t => ({ t: t, red: /[♥♦]/.test(t) }))
+        ]
       }))
       return {
         stage: 'over',
