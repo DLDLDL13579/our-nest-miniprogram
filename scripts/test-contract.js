@@ -1722,6 +1722,48 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok(`白色文字全部达标（页面底色 #241A16 上 ≥ 4.5:1）`)
   }
 
+  /* ============ ③d-2 动态图片路径展开后必须齐全 ============ */
+  console.log('\n=== ③d-2 动态图片路径（骰子/扑克/骰盅）必须齐全 ===')
+  /*
+   * ★ 模板里的图片路径大多是**拼出来的**：
+   *     /game/images/dice/dice-{{item}}.png
+   *     /game/images/card/c{{item.s}}-{{item.r}}.png
+   *     /game/images/cup/{{cupSrc}}.png
+   *   正则抓不到这种路径，所以"某一张牌的文件缺了"在静态检查里是隐形的，
+   *   而真机上就是**那一局所有牌全空白**（小程序对缺图静默不显示）。
+   *
+   *   2026-10-28 加。同一天还发现 card/back.png 躺在包里从没被引用
+   *   （牌背是 CSS 画的），说明"图片文件"这一层从来没有过数量判据。
+   */
+  {
+    const IMG = path.join(ROOT, 'miniprogram', 'game', 'images')
+    const miss = []
+    /* 骰子 1..6 */
+    for (let i = 1; i <= 6; i++) {
+      if (!fs.existsSync(path.join(IMG, 'dice', 'dice-' + i + '.png'))) miss.push('dice-' + i + '.png')
+    }
+    /* 骰盅三态（入盅 / 摇 / 揭） */
+    for (const n of ['cup-down', 'cup-shake', 'cup-up']) {
+      if (!fs.existsSync(path.join(IMG, 'cup', n + '.png'))) miss.push(n + '.png')
+    }
+    /*
+     * 扑克 4 花色 × 13 点数 = 52 张。
+     * 编号必须和 utils/poker.js 对齐：s = 0黑桃 1红桃 2梅花 3方块，r = 2..14（11=J 12=Q 13=K 14=A）
+     */
+    for (let s = 0; s <= 3; s++) {
+      for (let r = 2; r <= 14; r++) {
+        const f = 'c' + s + '-' + r + '.png'
+        if (!fs.existsSync(path.join(IMG, 'card', f))) miss.push('card/' + f)
+      }
+    }
+    assert.deepStrictEqual(miss, [],
+      '这些图片文件缺失（真机上会**静默显示空白**，不报错）：\n    ' + miss.join('\n    '))
+    const nCard = fs.readdirSync(path.join(IMG, 'card')).length
+    assert.strictEqual(nCard, 52,
+      '牌面目录应正好 52 张（多出来的没人引用，少了的显示空白），实际 ' + nCard)
+    ok('骰子 6 张 / 骰盅 3 张 / 扑克 52 张全部齐全，且没有多余文件')
+  }
+
   /* ============ ④f wxml 表达式只能用"微信支持的那一小撮语法" ============ */
   console.log('\n=== ④f wxml 里不许出现函数调用 / 可选链 / 模板字符串 ===')
   /*
