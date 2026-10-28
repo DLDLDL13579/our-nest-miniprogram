@@ -762,7 +762,13 @@
     <view wx:elif="{{room.game === 'dice' && result}}" class="center-box">
       <view class="over-tag ok">结果出来了</view>
       <view class="revealbox">
-        <view wx:for="{{result.ranked}}" wx:key="seat" class="rv-row">
+        <!--
+          视觉层次：赢家在顶上、点数最高的那行给金色；垫底的给一句"喝一杯"。
+          ⚠️ 外层循环的 index 要改名（wx:for-index="ri"）——
+             内层骰子循环也用自己的 index，同名的两个会互相覆盖。
+        -->
+        <view wx:for="{{result.ranked}}" wx:key="seat" wx:for-index="ri"
+              class="rv-row {{item.total === result.top ? 'win' : ''}}">
           <text class="rv-name">{{item.name}}</text>
           <view class="dicebox mini">
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"

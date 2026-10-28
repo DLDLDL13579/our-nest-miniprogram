@@ -1694,3 +1694,16 @@
   transform: scale(1.08);
   transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
 }
+
+/* ---------- 比大小结算：赢家那一行 ----------
+   金色底 + 左侧竖条，和"今晚最惨"（冷蓝）形成对照。
+   并列第一时会有多行同时高亮 —— 这是对的，不该只让一个人亮。 */
+.rv-row.win {
+  background: rgba(232, 179, 60, .12);
+  border-radius: 14rpx;
+  padding-left: 16rpx;
+  padding-right: 12rpx;
+  box-shadow: inset 4rpx 0 0 rgba(232, 179, 60, .85);
+}
+.rv-row.win .rv-name { color: #F6E7C3; font-weight: 700 }
+.rv-row.win .rv-total { color: #FFD98A }
