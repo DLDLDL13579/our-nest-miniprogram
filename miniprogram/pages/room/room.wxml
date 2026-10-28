@@ -719,7 +719,8 @@
         <view class="ws-pointer"></view>
         <view class="ws-disc"
               style="background: {{wheelGradient}}; transform: rotate({{wheelDeg}}deg); transition-duration: {{wheelDur}}ms;">
-          <view wx:for="{{wheelSectors}}" wx:key="k" class="ws-lbl"
+          <view wx:for="{{wheelSectors}}" wx:key="k"
+                class="ws-lbl {{item.small ? 'small' : ''}}"
                 style="left:{{item.lx}}%; top:{{item.ly}}%;">{{item.t}}</view>
         </view>
         <view class="ws-hub">转</view>

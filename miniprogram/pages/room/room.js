@@ -92,11 +92,22 @@ function buildSectors() {
     acc = to
   })
   const gradient = 'conic-gradient(from 0deg, ' + stops.join(', ') + ')'
-  /* 标签位置：扇区中线、半径 33% 处（百分比，和单机版一致） */
+  /*
+   * 标签位置：扇区中线、半径 33% 处（百分比，和单机版一致）。
+   *
+   * ★★ 2026-10-28：小扇区（权重 4 的「免罚一次」、8 的「一起喝」）标签会挤在一起 ——
+   *   同一个半径上，扇区越窄、可用的弧长越短，而文字长度不变。
+   *   做法：**窄扇区往外挪**（越窄越靠外，弧长越大），并且窄扇区用小一号字。
+   *   这不是调参凑数：弧长 = 半径 × 弧度，半径翻倍等于可放字数翻倍。
+   */
   list.forEach(s => {
     const a = (s.mid - 90) * Math.PI / 180
-    s.lx = 50 + Math.cos(a) * 33
-    s.ly = 50 + Math.sin(a) * 33
+    /* 扇区越窄，半径越大（33% → 38%）；宽扇区保持在中间不贴边 */
+    const narrow = s.span < 28
+    const r = narrow ? 38 : 33
+    s.lx = 50 + Math.cos(a) * r
+    s.ly = 50 + Math.sin(a) * r
+    s.small = narrow
   })
   return { list: list, gradient: gradient }
 }

@@ -491,23 +491,55 @@
   width: 560rpx; height: 560rpx;
   margin: 20rpx auto 0;
 }
-/* 指针：在正上方，朝下 */
+/*
+ * 指针。
+ *
+ * ★★ 2026-10-28 重做。原来是一个纯色三角形（`border-top: 34rpx solid #E8B33C`）——
+ *   平涂、没有高光、没有厚度，是整个转盘上最先看出"这是 CSS 画的"的一处。
+ *
+ *   现在用三层叠出金属感：
+ *     ① 底层：深色三角，给一圈"暗边"（没有它，亮色三角像贴纸）
+ *     ② 中层：金色三角（主体）
+ *     ③ 顶层：一条窄的浅色三角，偏一点角度 —— 高光
+ *   再叠 drop-shadow。三层都是 border 三角，零图片、零体积。
+ */
 .ws-pointer {
-  position: absolute; left: 50%; top: -6rpx;
-  margin-left: -18rpx;
+  position: absolute; left: 50%; top: -10rpx;
+  margin-left: -20rpx;
   width: 0; height: 0;
-  border-left: 18rpx solid transparent;
-  border-right: 18rpx solid transparent;
-  border-top: 34rpx solid #E8B33C;
-  z-index: 5;
-  filter: drop-shadow(0 3rpx 6rpx rgba(0,0,0,.6));
+  border-left: 20rpx solid transparent;
+  border-right: 20rpx solid transparent;
+  border-top: 40rpx solid #7A5A18;          /* ① 暗边 */
+  z-index: 6;
+  filter: drop-shadow(0 4rpx 8rpx rgba(0,0,0,.65));
+}
+.ws-pointer::before {
+  content: ''; position: absolute;
+  left: -16rpx; top: -40rpx;
+  width: 0; height: 0;
+  border-left: 16rpx solid transparent;
+  border-right: 16rpx solid transparent;
+  border-top: 33rpx solid #E8B33C;          /* ② 金色主体 */
+}
+.ws-pointer::after {
+  content: ''; position: absolute;
+  left: -7rpx; top: -38rpx;
+  width: 0; height: 0;
+  border-left: 7rpx solid transparent;
+  border-right: 7rpx solid transparent;
+  border-top: 24rpx solid rgba(255, 244, 214, .78);   /* ③ 高光 */
 }
 .ws-disc {
   position: absolute; left: 0; top: 0;
   width: 560rpx; height: 560rpx;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 0 8rpx rgba(232,179,60,.35), 0 14rpx 40rpx rgba(0,0,0,.5);
+  box-shadow:
+    0 0 0 3rpx rgba(122, 90, 24, .5),        /* 最外暗边：让盘看起来有厚度 */
+    0 0 0 9rpx rgba(232, 179, 60, .30),      /* 金色外环 */
+    0 0 0 11rpx rgba(122, 90, 24, .35),      /* 金环再描一道暗边 */
+    inset 0 0 40rpx rgba(0, 0, 0, .28),      /* 盘面内侧暗角 */
+    0 16rpx 44rpx rgba(0, 0, 0, .55);
   /* 转 2.7 秒，先快后慢 —— 这是转盘最爽的部分。
      background 由 js 生成单条 conic-gradient（见 buildSectors 的说明）。 */
   transition: transform 2.7s cubic-bezier(.4, 0, .2, 1);
@@ -516,19 +548,35 @@
   position: absolute;
   transform: translate(-50%, -50%);
   font-size: 21rpx; color: #fff; font-weight: 600;
+  /* 窄扇区用小一号字（见 buildSectors 里半径分级的说明） */
   white-space: nowrap;
   text-shadow: 0 2rpx 6rpx rgba(0,0,0,.7);
   pointer-events: none;
 }
+/*
+ * 中心按钮。
+ * 平涂渐变 + 一个外阴影 → 看起来像贴上去的圆片。
+ * 补三样才有"实体按钮"的手感：外圈深色描边（厚度）、内圈顶部高光（受光）、
+ * 底部内阴影（凹陷感）。
+ */
+.ws-lbl.small { font-size: 18rpx; letter-spacing: 0 }
+
 .ws-hub {
   position: absolute; left: 50%; top: 50%;
   width: 96rpx; height: 96rpx; margin: -48rpx 0 0 -48rpx;
   border-radius: 50%;
-  background: linear-gradient(145deg, #F6E7C3, #D9B96A);
+  background: linear-gradient(160deg, #FFF3D6 0%, #F0D79A 42%, #C9A65A 100%);
   color: #4A3630; font-size: 32rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6rpx 18rpx rgba(0,0,0,.5);
-  z-index: 4;
+  letter-spacing: 2rpx;
+  box-shadow:
+    0 0 0 4rpx rgba(122, 90, 24, .55),      /* 外描边 = 厚度 */
+    inset 0 3rpx 5rpx rgba(255, 255, 255, .85),  /* 顶部高光 = 受光 */
+    inset 0 -5rpx 8rpx rgba(122, 90, 24, .35),   /* 底部内阴影 = 凹陷 */
+    0 8rpx 22rpx rgba(0, 0, 0, .55);
+  z-index: 5;
+  transition: transform .12s;
+  text-shadow: 0 1rpx 0 rgba(255,255,255,.6);
 }
 .ws-result {
   text-align: center;

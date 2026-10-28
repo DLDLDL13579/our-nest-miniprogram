@@ -396,6 +396,107 @@ module.exports = {
     }),
 
     /* ---------- 谁是卧底 ---------- */
+    /*
+     * 命运转盘（playing）—— 2026-10-28 补。
+     *
+     * ★ 为什么之前没有：这个界面**从来没被离线渲染验证过**。
+     *   而它是 5 个玩法之一，用户真机截图里的问题（指针像贴纸、
+     *   中心按钮像圆片）我在本地一次都看不到。
+     *   补上之后，转盘的每次改动才有"眼睛"。
+     */
+    wheel: () => {
+      const w = (() => {
+        /* 扇区表在页面 js 里（SECTORS + buildSectors），这里按同一份权重重算 */
+        const sec = [
+          { k: 'truth', t: '真心话', color: '#C4573A', weight: 22 },
+          { k: 'dare', t: '大冒险', color: '#5E7FA6', weight: 22 },
+          { k: 'drink', t: '喝一杯', color: '#7A5CA8', weight: 18 },
+          { k: 'youdrink', t: '你喝', color: '#4E8C6A', weight: 14 },
+          { k: 'medrink', t: '我喝', color: '#B8863C', weight: 12 },
+          { k: 'alldrink', t: '一起喝', color: '#A35A7A', weight: 8 },
+          { k: 'pass', t: '免罚一次', color: '#3F7EA6', weight: 4 }
+        ]
+        const total = sec.reduce((a, x) => a + x.weight, 0)
+        let acc = 0
+        const stops = []
+        const list = []
+        sec.forEach((x, i) => {
+          const deg = x.weight / total * 360
+          const from = acc, to = acc + deg
+          stops.push(x.color + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg')
+          const mid = (from + to) / 2
+          /* 标签放在半径 32% 处 */
+          const rad = (mid - 90) * Math.PI / 180
+          list.push({
+            k: x.k, t: x.t, color: x.color, i: i,
+            lx: 50 + Math.cos(rad) * (deg < 28 ? 38 : 33), ly: 50 + Math.sin(rad) * (deg < 28 ? 38 : 33), small: deg < 28
+          })
+          acc = to
+        })
+        return { gradient: 'conic-gradient(' + stops.join(',') + ')', list: list }
+      })()
+      return {
+        stage: 'playing',
+        wheelSectors: w.list,
+        wheelGradient: w.gradient,
+        wheelDeg: 0,
+        wheelDur: 2700,
+        wheelSpinning: false,
+        wheelText: '转一下，看看今晚谁喝',
+        decks: decks.DECKS,
+        room: pkRoom({
+          game: 'wheel', phase: 'playing', host: true, count: 3, dealDeck: 'friends',
+          gameName: '命运转盘', howList: GAMES.filter(g => g.id === 'wheel')[0].how, myCards: [],
+          minPlayers: 1, maxPlayers: 8, shortBy: 0
+        })
+      }
+    },
+
+    /* 转到真心话、题卡已经抽出来的那一刻（最该看的一屏） */
+    wheelCard: () => {
+      const base = (function () {
+        const sec = [
+          { k: 'truth', t: '真心话', color: '#C4573A', weight: 22 },
+          { k: 'dare', t: '大冒险', color: '#5E7FA6', weight: 22 },
+          { k: 'drink', t: '喝一杯', color: '#7A5CA8', weight: 18 },
+          { k: 'youdrink', t: '你喝', color: '#4E8C6A', weight: 14 },
+          { k: 'medrink', t: '我喝', color: '#B8863C', weight: 12 },
+          { k: 'alldrink', t: '一起喝', color: '#A35A7A', weight: 8 },
+          { k: 'pass', t: '免罚一次', color: '#3F7EA6', weight: 4 }
+        ]
+        const total = sec.reduce((a, x) => a + x.weight, 0)
+        let acc = 0
+        const stops = [], list = []
+        sec.forEach((x, i) => {
+          const deg = x.weight / total * 360
+          const from = acc, to = acc + deg
+          stops.push(x.color + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg')
+          const mid = (from + to) / 2
+          const rad = (mid - 90) * Math.PI / 180
+          list.push({ k: x.k, t: x.t, color: x.color, i: i,
+            lx: 50 + Math.cos(rad) * (deg < 28 ? 38 : 33), ly: 50 + Math.sin(rad) * (deg < 28 ? 38 : 33), small: deg < 28 })
+          acc = to
+        })
+        return { gradient: 'conic-gradient(' + stops.join(',') + ')', list: list }
+      })()
+      return {
+        stage: 'playing',
+        wheelSectors: base.list,
+        wheelGradient: base.gradient,
+        wheelDeg: 1234,
+        wheelDur: 2700,
+        wheelSpinning: false,
+        wheelText: '真心话',
+        card: { type: 'truth', deck: 'friends', deckName: '朋友聚会', text: '说出你在座各位里最想跟谁合伙做生意，为什么' },
+        decks: decks.DECKS,
+        room: pkRoom({
+          game: 'wheel', phase: 'playing', host: true, count: 3, deck: 'friends',
+          gameName: '命运转盘', howList: GAMES.filter(g => g.id === 'wheel')[0].how, myCards: [],
+          minPlayers: 1, maxPlayers: 8, shortBy: 0
+        })
+      }
+    },
+
     uwTalk: () => ({
       stage: 'playing',
       showWord: false,
