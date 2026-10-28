@@ -87,6 +87,14 @@ module.exports = {
     cd: () => ({ stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
     cdGo: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
 
+    /* 断线态（连续失败 3 次以上） */
+    netdown: () => ({
+      stage: 'lobby',
+      netTip: '连接断了，正在自动重连',
+      netDown: true,
+      room: pkRoom({ game: 'liar', phase: 'lobby', host: true, gameName: '大话骰' })
+    }),
+
     /* 页面级 loading */
     entering: () => ({ loading: true, stage: 'entry' }),
 

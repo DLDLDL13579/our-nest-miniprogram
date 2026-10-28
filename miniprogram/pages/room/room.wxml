@@ -9,7 +9,14 @@
     </view>
   </view>
 
-  <view wx:if="{{netTip}}" class="nettip">{{netTip}}</view>
+  <!--
+    网络提示分两档：抖动（黄，跟着呼吸）和真的断了（红，带手动重试的出口）。
+    只有一档的话，断网持续时玩家不知道该等还是该退。
+  -->
+  <view wx:if="{{netTip}}" class="nettip {{netDown ? 'down' : ''}}">
+    <text class="nettip-t">{{netTip}}</text>
+    <text wx:if="{{netDown}}" class="nettip-retry" catchtap="retryNow">重试</text>
+  </view>
 
   <!--
     ★ 页面级 loading 幕。

@@ -181,6 +181,7 @@ Page({
     result: null,
     /* 网络状态提示 */
     netTip: '',
+    netDown: false,      // true = 已经连续失败 3 次以上，真的断了
     /* 动效状态 */
     rolling: false,      // 摇盅中
     suspense: false,     // 开骰蓄力
@@ -463,6 +464,21 @@ Page({
     return false
   },
 
+  /**
+   * 断线时的手动重试。
+   * 自动重连本来就在跑（每 1.5 秒一次），这个按钮的价值是
+   * **给玩家一个"我在做点什么"的出口** —— 干等着最难受。
+   */
+  retryNow() {
+    if (this.data._retryBusy) return
+    this.data._retryBusy = true
+    sfx.play('tapSoft')
+    wx.showToast({ title: '正在重连', icon: 'none', duration: 900 })
+    this._failCount = 0
+    this.refresh().then(() => { this.data._retryBusy = false })
+      .catch(() => { this.data._retryBusy = false })
+  },
+
   /** 拉一次房间状态 */
   async refresh() {
     const r = this.data.room
@@ -483,8 +499,25 @@ Page({
        *   而它发生在下面 roomChanged() 去重**之前**，等于绕过了那层优化：
        *   断网持续时每 1.5 秒一次无效 setData（跨线程拷贝 + 视图 diff）。
        */
-      const tip = '网络不太好，正在重试…'
-      if (this.data.netTip !== tip) this.setData({ netTip: tip })
+      /*
+       * 连续失败计数 —— 分两档提示。
+       *
+       * 为什么不能只有一句"网络不太好，正在重试"：
+       *   断网持续时这句话每 1.5 秒刷一次，玩家**不知道该等还是该退**。
+       *   第 3 次失败基本可以确定不是抖动，而是真的断了 ——
+       *   这时候要给一个明确的状态 + 手动重试的出口。
+       */
+      this._failCount = (this._failCount || 0) + 1
+      if (this._failCount >= 3) {
+        const tip = '连接断了，正在自动重连'
+        if (this.data.netTip !== tip) {
+          this.setData({ netTip: tip, netDown: true })
+          sfx.play('toggleOff')
+        }
+      } else {
+        const tip = '网络不太好，正在重试…'
+        if (this.data.netTip !== tip) this.setData({ netTip: tip })
+      }
       return
     }
     if (!res.ok) {
@@ -495,6 +528,16 @@ Page({
         err: res.msg || '房间已结束'
       })
       return
+    }
+
+    /* 连回来时告诉一声 —— 断线期间玩家可能已经以为没救了 */
+    if (this._failCount >= 3) {
+      wx.showToast({ title: '已重新连上', icon: 'none', duration: 1400 })
+      sfx.play('toggleOn')
+    }
+    this._failCount = 0
+    if (this.data.netDown || this.data.netTip) {
+      this.setData({ netTip: '', netDown: false })
     }
 
     const prev = this.data.room
