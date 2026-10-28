@@ -178,6 +178,48 @@ async function playOne(opts) {
     ok('大话骰：叫骰 → 开 → 结算')
   }
 
+  /* ---------- 连玩三局：跨局状态不能残留 ---------- */
+  /*
+   * ★ 2026-10-28。test-flows 之前只跑"一局" —— 但真实场景是连玩一晚上。
+   *   而"跨局残留"恰恰是这个项目栽过的坑（again 只清了金花那批字段，
+   *   卧底那批靠"下次 start"兜底）。只跑一局永远不会暴露它。
+   */
+  {
+    OPENID = A
+    const cr = await room.main({ action: 'create', name: 'C1', game: 'liar' })
+    const cid = cr.room.id
+    OPENID = B
+    await room.main({ action: 'join', code: cr.room.code, name: 'C2' })
+
+    for (let round = 1; round <= 3; round++) {
+      OPENID = A
+      const st = await room.main({ action: 'start', id: cid })
+      assert.ok(st.ok, '第 ' + round + ' 局开局失败：' + (st.msg || ''))
+      await enterPlaying(cid)
+
+      OPENID = A
+      const b = await room.main({ action: 'bid', id: cid, n: 2, face: 3 })
+      assert.ok(b.ok, '第 ' + round + ' 局叫骰失败：' + (b.msg || ''))
+      OPENID = B
+      const o = await room.main({ action: 'open', id: cid })
+      assert.ok(o.ok, '第 ' + round + ' 局开骰失败：' + (o.msg || ''))
+
+      const fin = await room.main({ action: 'status', id: cid })
+      assert.strictEqual(fin.room.phase, 'over', '第 ' + round + ' 局应结算')
+      assert.ok(fin.room.lastResult && fin.room.lastResult.loserName,
+        '第 ' + round + ' 局要判出输家')
+
+      /* 再来一局 → 回到 lobby，且**不能带着上一局的叫骰/结果** */
+      OPENID = A
+      const ag = await room.main({ action: 'again', id: cid })
+      assert.ok(ag.ok, '第 ' + round + ' 局再来一局失败')
+      assert.strictEqual(ag.room.phase, 'lobby', '再来一局应回到 lobby')
+      assert.ok(!ag.room.bid, '★ 第 ' + round + ' 局结束后 bid 必须清空')
+      assert.ok(!ag.room.lastResult, '★ 第 ' + round + ' 局结束后 lastResult 必须清空')
+    }
+    ok('★ 连玩三局：每局都能正常结算，且跨局状态清干净')
+  }
+
   /* ---------- 比大小：两人各摇一次 ---------- */
   {
     const { room: r } = await playOne({
@@ -212,6 +254,43 @@ async function playOne(opts) {
     assert.ok(Array.isArray(r.uw.lastOut.ballots) && r.uw.lastOut.ballots.length === 3,
       '卧底：结算要保留票型（3 票）')
     ok('卧底：发词 → 投票 → 出结果，且票型留在结算里')
+  }
+
+  /* ---------- 卧底连玩两局：局内状态最多，也最容易残留 ---------- */
+  {
+    OPENID = A
+    const ur = await room.main({ action: 'create', name: 'U1', game: 'undercover' })
+    const uid = ur.room.id
+    for (const nm of [B, C]) {
+      OPENID = nm
+      await room.main({ action: 'join', code: ur.room.code, name: nm })
+    }
+
+    for (let round = 1; round <= 2; round++) {
+      OPENID = A
+      await room.main({ action: 'start', id: uid })
+      await enterPlaying(uid)
+      await room.main({ action: 'uwSay', id: uid })
+      /* 三人各投一个（投 A，单一最高票） */
+      for (const who of [B, C]) {
+        OPENID = who
+        await room.main({ action: 'uwVote', id: uid, target: A })
+      }
+      OPENID = A
+      await room.main({ action: 'uwVote', id: uid, target: B })
+
+      const fin = await room.main({ action: 'status', id: uid })
+      assert.strictEqual(fin.room.uw.step, 'result', '第 ' + round + ' 局应出结果')
+
+      OPENID = A
+      const ag = await room.main({ action: 'again', id: uid })
+      assert.ok(ag.ok, '第 ' + round + ' 局再来一局失败')
+      /* ★ 卧底那批字段必须全部清空 —— 之前只靠"下次 start"兜底 */
+      assert.ok(!ag.room.uw.lastOut, '★ 跨局 uwLastOut 必须清空')
+      assert.ok(!ag.room.uw.tieBreak, '★ 跨局平票标记必须清空')
+      assert.strictEqual(ag.room.uw.voteCount, 0, '★ 跨局票数必须归零')
+    }
+    ok('★ 卧底连玩两局：局内状态（出局/平票/票数）每局都清干净')
   }
 
   /* ---------- 梦幻金花：A 比 B ---------- */
