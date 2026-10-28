@@ -134,6 +134,25 @@ Page({
         } catch (e) { return '?' }
       })()
     ]
+    /*
+     * 顺手把最近的错误也带上（2026-10-28）。
+     * 原来"诊断信息"和"错误记录"是两个入口 —— 而用户遇到问题时
+     * **不知道该点哪个**，多半只点一个。一次复制全部，粘给我什么都有。
+     * 只带最近 5 条：20 条 × 160 字太长，微信输入框里翻起来很难受。
+     */
+    try {
+      var errs = wx.getStorageSync('errLog') || []
+      if (errs.length) {
+        lines.push('')
+        lines.push('最近 ' + errs.length + ' 条错误:' + (errs.length > 5 ? '（只列最近 5 条）' : ''))
+        errs.slice(-5).forEach(function (x) {
+          var d = new Date(x.t)
+          var hh = ('0' + d.getHours()).slice(-2)
+          var mm = ('0' + d.getMinutes()).slice(-2)
+          lines.push('  ' + hh + ':' + mm + '  ' + x.fn + (x.act ? '/' + x.act : '') + '  ' + x.raw)
+        })
+      }
+    } catch (e) {}
     wx.setClipboardData({
       data: lines.join('\n'),
       success: function () { wx.showToast({ title: '已复制', icon: 'none' }) }

@@ -77,7 +77,10 @@
         决定了我该往哪查（是老机型掉帧、还是基础库不支持某个 API）。
         没有它，我只能问一堆问题。
       -->
-      <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息</view>
+      <!--
+        一次复制全部（诊断信息 + 最近错误）。原来分两个入口，用户不知道该点哪个。
+      -->
+      <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
       <view class="ab-ver">v{{version}}</view>
     </view>
