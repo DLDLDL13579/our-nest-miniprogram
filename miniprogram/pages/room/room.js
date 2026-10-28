@@ -186,6 +186,14 @@ Page({
     suspense: false,     // 开骰蓄力
     impact: false,       // 屏幕震动
     cdText: '',          // 倒计时显示
+    /*
+     * 每次数字变化 +1 —— 只为了让模板能**交替两个 class**。
+     * 为什么需要：`animation: infinite` 是按时间无限循环的，
+     * 和"每秒一跳"的数字**不同步** —— 数字变的那一刻，动画可能停在
+     * 放大到一半、或者刚缩回去，观感是"随机弹"。
+     * 交替 class 会让动画每次重新开始，数字和动画就对上了。
+     */
+    cdTick: 0,
 
     /* ---------- 骰盅 ---------- */
     cupSrc: 'cup-down',  // 当前显示的盅图（cup-down / cup-shake / cup-up）
@@ -721,8 +729,17 @@ Page({
       if (!this.data.room || this.data.room.phase !== 'countdown') return
       const sec = Math.max(1, Math.ceil(left / 1000))
       const isLast = left <= 1000
-      sfx.play(isLast ? 'countdownUrgent' : 'countdown')
-      this.setData({ cdText: isLast ? '开始！' : String(sec) })
+      /*
+       * 最后一拍是"开始！"，它和读秒是**两种不同的事件**：
+       * 读秒用 countdown（嗒），开始用 countdownGo（重击）+ 重震。
+       * 原来两拍都用 countdownUrgent，听觉上分不出"最后一秒"和"开始"。
+       */
+      sfx.play(isLast ? 'countdownGo' : 'countdown')
+      if (isLast) feedback.vibrate('heavy')
+      this.setData({
+        cdText: isLast ? '开始！' : String(sec),
+        cdTick: (this.data.cdTick || 0) + 1
+      })
       left -= 1000
       if (left > -200) {
         this._cdTimers.push(setTimeout(tick, 1000))

@@ -83,6 +83,10 @@ module.exports = {
         options: []
       }
     }),
+    /* 开局倒计时（普通读秒 / 最后一拍） */
+    cd: () => ({ stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
+    cdGo: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
+
     /* 页面级 loading */
     entering: () => ({ loading: true, stage: 'entry' }),
 

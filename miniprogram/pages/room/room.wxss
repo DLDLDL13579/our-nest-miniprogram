@@ -809,13 +809,42 @@
   line-height: 1.05; margin: 14rpx 0 10rpx;
   letter-spacing: -2rpx;
   text-shadow: 0 6rpx 30rpx rgba(232,179,60,.45);
-  /* 每秒弹一次：数字从大到小砸下来 */
-  animation: cdPop .75s cubic-bezier(.22, 1.5, .5, 1) infinite;
 }
-@keyframes cdPop {
-  0%   { transform: scale(1.28); opacity: .55 }
-  22%  { transform: scale(1);    opacity: 1 }
+/*
+ * ★ 动画绑在两个**交替的 class** 上（pop-a / pop-b），不是 `infinite`。
+ *
+ *   原来写的是 `animation: ... infinite` —— 它是按时间无限循环的，
+ *   和"每秒一跳"的数字不同步：数字变的那一刻，动画可能停在放大到一半，
+ *   也可能刚缩回去，看起来像"随机弹一下"。
+ *   交替 class 会让动画每次重新开始，数字与动画就对上了。
+ *
+ *   两条 @keyframes 内容相同但**名字必须不同** —— 同名的话浏览器认为
+ *   动画没变，不会重播。
+ */
+.cd-num.pop-a { animation: cdPopA .82s cubic-bezier(.22, 1.45, .5, 1) both }
+.cd-num.pop-b { animation: cdPopB .82s cubic-bezier(.22, 1.45, .5, 1) both }
+@keyframes cdPopA {
+  0%   { transform: scale(1.34); opacity: .4 }
+  26%  { transform: scale(.97);  opacity: 1 }
   100% { transform: scale(1);    opacity: 1 }
+}
+@keyframes cdPopB {
+  0%   { transform: scale(1.34); opacity: .4 }
+  26%  { transform: scale(.97);  opacity: 1 }
+  100% { transform: scale(1);    opacity: 1 }
+}
+
+/* 最后一拍"开始！"：比读秒更大、更亮，给一次冲击 */
+.cd-num.go {
+  font-size: 120rpx;
+  color: #FFF3D6;
+  text-shadow: 0 0 40rpx rgba(255,210,140,.9), 0 8rpx 34rpx rgba(232,179,60,.6);
+  animation: cdGoBurst .5s cubic-bezier(.16, 1.3, .4, 1) both;
+}
+@keyframes cdGoBurst {
+  0%   { transform: scale(.72); opacity: 0 }
+  55%  { transform: scale(1.1); opacity: 1 }
+  100% { transform: scale(1);   opacity: 1 }
 }
 .cd-sub { font-size: 23rpx; color: rgba(255,255,255,.45); margin-top: 18rpx }
 
