@@ -39,11 +39,17 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def run_test(script):
-    """跑测试，返回退出码。Windows/macOS 都用 bash 跑，和 test-all.sh 一致。"""
-    p = subprocess.run(
-        ['bash', '-c', 'node %s > /dev/null 2>&1' % script],
-        cwd=str(ROOT),
-    )
+    """跑测试，返回退出码。
+
+    按扩展名选解释器：`.py` 用 python3，其余当 node 脚本。
+    （响度层级是 `scripts/audio-levels.py`，不覆盖它的话
+     "音频响度"那一类断言永远验不了。）
+    """
+    if script.endswith('.py'):
+        cmd = 'python3 %s > /dev/null 2>&1' % script
+    else:
+        cmd = 'node %s > /dev/null 2>&1' % script
+    p = subprocess.run(['bash', '-c', cmd], cwd=str(ROOT))
     return p.returncode
 
 
