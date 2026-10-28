@@ -11,7 +11,13 @@ module.exports = {
     muted: false,
     hapticOn: true,
     gameCount: GAMES.length,
-    gameNames: GAMES.map(g => g.name).join(' · '),
+    gameRows: [
+      { id: 'poker', name: '梦幻金花', color: '#B8863C', count: 7 },
+      { id: 'liar', name: '大话骰', color: '#C4573A', count: 4 },
+      { id: 'undercover', name: '谁是卧底', color: '#7A5CA8', count: 2 },
+      { id: 'dice', name: '比大小', color: '#5E7FA6', count: 0 },
+      { id: 'wheel', name: '命运转盘', color: '#7A5CA8', count: 0 }
+    ],
     version: '3.0.0'
   }),
   states: {

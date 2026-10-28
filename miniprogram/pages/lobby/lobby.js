@@ -135,6 +135,12 @@ Page({
     sfx.play('whoosh')
     /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
     try { wx.setStorageSync('lastGame', id) } catch (err) {}
+    /* 玩法次数统计：只记"开过几次桌"，不做胜率之类（酒桌上没有可靠的胜负归属） */
+    try {
+      const st = wx.getStorageSync('gameStats') || {}
+      st[id] = (Number(st[id]) || 0) + 1
+      wx.setStorageSync('gameStats', st)
+    } catch (err) {}
     wx.navigateTo({ url: '/pages/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
   },
 

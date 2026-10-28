@@ -28,17 +28,19 @@
     </view>
   </view>
 
-  <!-- ③ 玩法 -->
-  <view class="card" bindtap="goLobby">
-    <view class="lbl">玩法</view>
-    <view class="row2">
-      <view class="ico"><image class="mi-icon" src="{{ic.dice}}" mode="aspectFit" /></view>
-      <view class="row2-main">
-        <view class="gt">一共 {{gameCount}} 个玩法</view>
-        <view class="xs">{{gameNames}}</view>
+  <!-- ③ 玩法统计：按开过次数排，0 次的也列出来（"还没玩过"是个弱引导） -->
+  <view class="card">
+    <view class="lbl">玩法 · 一共 {{gameCount}} 个</view>
+    <block wx:for="{{gameRows}}" wx:key="id">
+      <view class="rline stat-row">
+        <view class="stat-dot" style="background:{{item.color}}"></view>
+        <view class="rl-main">
+          <view class="rl-t">{{item.name}}</view>
+        </view>
+        <text class="stat-n {{item.count ? '' : 'zero'}}">{{item.count ? '开过 ' + item.count + ' 次' : '还没玩过'}}</text>
       </view>
-      <image class="row2-arrow" src="{{ic.chevronRight}}" mode="aspectFit" />
-    </view>
+    </block>
+    <view class="stat-tip">只记开桌次数，不算胜负 —— 酒桌上的输赢本来就没法可靠地记</view>
   </view>
 
   <!-- ④ 关于 -->

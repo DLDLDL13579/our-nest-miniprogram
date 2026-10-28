@@ -25,7 +25,8 @@ Page({
     muted: false,
     hapticOn: true,
     gameCount: GAMES.length,
-    gameNames: GAMES.map(g => g.name).join(' · '),
+    /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
+    gameRows: [],
     version: '3.0.0'
   },
 
@@ -37,9 +38,27 @@ Page({
     })
   },
 
+  /**
+   * 玩法统计行。
+   * ★ 按"开过次数"降序，但**0 次的也列出来** —— 让"还没玩过"这件事可见，
+   *   等于一个弱引导（酒桌上翻到"还没玩过"会想试一下）。
+   */
+  loadStats() {
+    let st = {}
+    try { st = wx.getStorageSync('gameStats') || {} } catch (e) {}
+    const rows = GAMES.map(g => ({
+      id: g.id,
+      name: g.name,
+      color: g.color,
+      count: Number(st[g.id]) || 0
+    })).sort((a, b) => b.count - a.count)
+    this.setData({ gameRows: rows })
+  },
+
   /* 从房间回来时同步开关（房间页里也能改） */
   onShow() {
     this.setData({ muted: sfx.isMuted(), hapticOn: feedback.isHapticOn() })
+    this.loadStats()
   },
 
   onNick(e) { this.setData({ nick: e.detail.value }) },

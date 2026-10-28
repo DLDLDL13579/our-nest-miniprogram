@@ -278,6 +278,22 @@ view, text, button, input, textarea { box-sizing: border-box }
   font-size: 10px; color: var(--ink3); line-height: 1.7;
 }
 
+
+.stat-row { gap: 7px }
+.stat-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex: none;
+  opacity: .85;
+}
+.stat-n {
+  flex: none; font-size: 11px; color: var(--ink2);
+  font-variant-numeric: tabular-nums;
+}
+.stat-n.zero { color: var(--ink3) }
+.stat-tip {
+  margin-top: 9px; font-size: 10px; color: var(--ink3);
+  line-height: 1.6;
+}
+
 </style>
 </head><body>
 <!-- 小程序导航栏（简写近似） -->
@@ -315,15 +331,49 @@ view, text, button, input, textarea { box-sizing: border-box }
 
   
   <div class="card">
-    <div class="lbl">玩法</div>
-    <div class="row2">
-      <div class="ico"><img class="mi-icon" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23C4553F%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223.5%22%20y%3D%223.5%22%20width%3D%2217%22%20height%3D%2217%22%20rx%3D%223.4%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%228.3%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%228.3%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3Ccircle%20cx%3D%2215.7%22%20cy%3D%2215.7%22%20r%3D%221.35%22%20fill%3D%22currentColor%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;"></div>
-      <div class="row2-main">
-        <div class="gt">一共 5 个玩法</div>
-        <div class="xs">大话骰 · 比大小 · 谁是卧底 · 梦幻金花 · 命运转盘</div>
+    <div class="lbl">玩法 · 一共 5 个</div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#B8863C"></div>
+        <div class="rl-main">
+          <div class="rl-t">梦幻金花</div>
+        </div>
+        <span class="stat-n">开过 7 次</span>
       </div>
-      <img class="row2-arrow" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22none%22%20stroke%3D%22%23C4553F%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9.5%206l6%206-6%206%22%2F%3E%3C%2Fsvg%3E" data-mode="aspectFit" style="object-fit:contain;">
-    </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#C4573A"></div>
+        <div class="rl-main">
+          <div class="rl-t">大话骰</div>
+        </div>
+        <span class="stat-n">开过 4 次</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#7A5CA8"></div>
+        <div class="rl-main">
+          <div class="rl-t">谁是卧底</div>
+        </div>
+        <span class="stat-n">开过 2 次</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#5E7FA6"></div>
+        <div class="rl-main">
+          <div class="rl-t">比大小</div>
+        </div>
+        <span class="stat-n zero">还没玩过</span>
+      </div>
+    
+      <div class="rline stat-row">
+        <div class="stat-dot" style="background:#7A5CA8"></div>
+        <div class="rl-main">
+          <div class="rl-t">命运转盘</div>
+        </div>
+        <span class="stat-n zero">还没玩过</span>
+      </div>
+    
+    <div class="stat-tip">只记开桌次数，不算胜负 —— 酒桌上的输赢本来就没法可靠地记</div>
   </div>
 
   
