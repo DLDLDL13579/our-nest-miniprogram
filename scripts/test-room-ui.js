@@ -487,7 +487,14 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   /* 从模板里抓 {{... ? 'a' : 'b'}} 形式的类名，逐个查 wxss */
   const dyn = new Set()
   for (const mm of tpl.matchAll(/class="([^"]*\{\{[^"]*)"/g)) {
-    for (const lit of mm[1].matchAll(/'([a-zA-Z][\w-]*)'/g)) dyn.add(lit[1])
+    /*
+     * ⚠️ 先剥掉**比较用的字面量**再抓类名（2026-10-28）。
+     *   `{{room.uw.step === 'vote' ? 'compact' : ''}}` 里 `'vote'` 是判断条件，
+     *   不是 class 值 —— 第一版没剥，它被当成"缺少 .vote 样式"报了出来。
+     *   假阳性会让我去给一个不存在的类补样式，或者往白名单里塞垃圾。
+     */
+    const exprOnly = mm[1].replace(/[=!]==?\s*'[^']*'/g, '')
+    for (const lit of exprOnly.matchAll(/'([a-zA-Z][\w-]*)'/g)) dyn.add(lit[1])
   }
   /*
    * 确实不需要样式的类，用**显式白名单**放行 —— 不要放宽判据。
