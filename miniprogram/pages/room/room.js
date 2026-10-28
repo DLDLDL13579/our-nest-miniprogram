@@ -2318,9 +2318,24 @@ Page({
      * ★ 和 doBid 同样的坑：`call()` 业务失败时 throw，
      *   `.catch(() => null)` 把「这局还没开始」吞掉 → 点转盘**毫无反应**。
      *   必须把 e.friendly 显示出来。
+     *
+     * ★★ 2026-10-28 加了**乐观反馈**（用户反馈"点了像卡住"）。
+     *
+     *   原来是"等云函数回来才动"：点下去 → 1~2 秒什么都不发生（冷启动时更久）
+     *   → 突然开始转。玩家会以为没点上，于是再点一次。
+     *
+     *   现在：点下去**立刻**进入"转着呢"状态（按钮禁用 + 转盘先空转一小段），
+     *   云函数回来后再走正式的那一段。失败也安全 —— 把状态回滚、提示原因，
+     *   玩家看到的是"转了一下但没结果"，比"完全没反应"清楚得多。
      */
+    this.setData({ wheelSpinning: true })
+    /* 只给一个"收到了"的轻音：正式的起转声由 playWheel 负责，
+       两边都播会听到两下“起转”（第一版就这么干了） */
+    sfx.play('tapSoft')
     const r = await call('room', { action: 'spin', id: this.data.room.id }, { silent: true })
       .catch((e) => {
+        /* 回滚乐观状态，再把真实原因说出来 */
+        if (!this._dead) this.setData({ wheelSpinning: false })
         wx.showToast({
           title: (e && (e.friendly || e.message)) || '转不了，再试一次',
           icon: 'none', duration: 2200
@@ -2328,7 +2343,10 @@ Page({
         this.resyncAfterFail()
         return null
       })
-    if (!r || !r.ok) return
+    if (!r || !r.ok) {
+      if (!this._dead) this.setData({ wheelSpinning: false })
+      return
+    }
     this.playWheel(r.spin)
   },
 

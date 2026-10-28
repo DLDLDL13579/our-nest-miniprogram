@@ -61,11 +61,38 @@ function walkJs(dir, out) {
     lines.forEach((line, i) => {
       /* 找 `await call(...)...catch(handler)` —— handler 可能在下一行 */
       if (!/await\s+call\(|=\s*call\(/.test(line)) return
-      /* 往后看 6 行，找到 .catch( 的完整 handler */
-      const chunk = lines.slice(i, i + 6).join('\n')
-      const m = /\.catch\(\s*(\([^)]*\)\s*=>|function\s*\([^)]*\))\s*\{?([\s\S]*?)\}?\s*\)/.exec(chunk)
-      if (!m) return
-      const handler = m[2] || ''
+      /*
+       * 往后看 20 行（原来 6 行）。
+       * ⚠️ 6 行不够：handler 里只要有 showToast，块体就会跨过 6 行，
+       *    配平配不到闭合括号 → handler 被当成空 → 好代码被报成"静默吞错"。
+       *    （这是本文件第二次因为"窗口/正则太短"误判，记下来。）
+       */
+      const chunk = lines.slice(i, i + 20).join('\n')
+      /*
+       * ⚠️ 这里**不能用非贪婪正则抓块体**（2026-10-28 第二次栽在同一个坑）。
+       *   catch 里几乎一定嵌着 `wx.showToast({ ... })` 或 `setData({ ... })`，
+       *   那个 `})` 正好满足「}? + )」的结尾条件 —— handler 会在第一次嵌套调用
+       *   处被截断，而 showToast 常常就在它后面 → 明明是好的代码被报成"静默吞错"。
+       *
+       *   改成从 `=> {` 的那个 `{` 开始**数括号**，数到 0 为止。
+       */
+      const head = /\.catch\(\s*(?:\([^)]*\)|function\s*\([^)]*\))\s*=>\s*\{/.exec(chunk)
+      let handler = ''
+      if (head) {
+        const open = head.index + head[0].length - 1
+        let depth = 0, end = -1
+        for (let k = open; k < chunk.length; k++) {
+          if (chunk[k] === '{') depth++
+          else if (chunk[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+        }
+        if (end > open) handler = chunk.slice(open, end)
+      }
+      if (!handler) {
+        /* 单行形式 `.catch(() => null)` 没有花括号 —— 那本身就该被报出来 */
+        const one = /\.catch\(\s*(?:\([^)]*\)|function\s*\([^)]*\))\s*=>\s*([^\n]*)/.exec(chunk)
+        if (!one) return
+        handler = one[1] || ''
+      }
       checkedCalls++
 
       /* handler 里有没有给用户反馈？ */
