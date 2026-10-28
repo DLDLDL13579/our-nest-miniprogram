@@ -502,7 +502,14 @@
           而不是一个色块 —— 酒桌上握着手机看的是"一张牌"。
           按住亮起的交互理由同骰盅偷看：同桌的人就坐在旁边，松手即藏。
       -->
-      <view class="uw-card {{showWord ? 'on' : ''}}"
+      <!--
+        投票阶段词卡**收窄**（2026-10-28）。
+        投票页的主任务是"点一个人"，而词卡占了 1/4 屏 ——
+        那一屏真正需要空间的是 12 个投票按钮（之前为此还藏掉了座位条）。
+        收窄后按钮区多出约 140rpx，12 人局不用再挤。
+        按住看词的行为完全不变，只是静止时占的地方小了。
+      -->
+      <view class="uw-card {{showWord ? 'on' : ''}} {{room.uw.step === 'vote' ? 'compact' : ''}}"
             bindtouchstart="uwShowWord" bindtouchend="uwHideWord" bindtouchcancel="uwHideWord">
         <view class="uw-card-in">
           <block wx:if="{{showWord}}">

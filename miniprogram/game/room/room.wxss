@@ -1476,6 +1476,15 @@
 }
 .uw-card.on .uw-card-in { border-color: rgba(255,225,160,.9) }
 
+/* 投票阶段：词卡收窄，把空间让给投票按钮（主任务变了，占比就该跟着变） */
+.uw-card.compact { margin-bottom: 16rpx }
+.uw-card.compact .uw-card-in { padding: 22rpx 30rpx }
+.uw-card.compact .uw-lock { font-size: 27rpx; letter-spacing: 2rpx }
+.uw-card.compact .uw-wtip { display: none }
+.uw-card.compact .uw-wlbl { font-size: 18rpx }
+.uw-card.compact .uw-wtxt { font-size: 64rpx }
+.uw-card.compact .uw-wsub { display: none }
+
 .uw-lock {
   font-size: 36rpx; font-weight: 700; color: rgba(255,255,255,.85);
   letter-spacing: 3rpx;
