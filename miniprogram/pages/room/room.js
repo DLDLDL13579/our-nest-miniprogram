@@ -547,6 +547,34 @@ Page({
        于是 options/myTurn 被抹成 undefined（详见 decorate 的注释）。 */
     const room = this.decorate(res.room)
 
+    /*
+     * 有人进来 / 走了 —— 给一声。
+     *
+     * 多人游戏的音效有个特殊职责：**提示"不在这部手机上的事发生了"**。
+     * 名单会自己更新（roomChanged 比了 count），但玩家正低头看手机，
+     * 不会盯着名单；一声轻响让他抬眼就知道"桌上多/少了一个人"。
+     *
+     * ⚠️ `prev` 为 null 时不响 —— 那是自己刚进房间的第一次拉取。
+     */
+    if (prev && prev.count !== room.count) {
+      if (room.count > prev.count) sfx.play('chipBet')   // 有人进来：筹码落桌的轻响
+      else sfx.play('toggleOff')                          // 有人走了：一声收尾
+    }
+
+    /*
+     * 房主转移：原来的房主离开了，责任落到我头上。
+     * ★ 界面上的"开始/换玩法"按钮会自己出现（roomChanged 比较了 host），
+     *   但**没有任何东西告诉玩家"你现在是房主了"** ——
+     *   他大概率还在等别人点开始。
+     *   这一句和"房主换玩法"那条提示是互补的：那条说别人做了什么，这条说我该做什么。
+     */
+    if (prev && !prev.host && room.host) {
+      wx.showToast({ title: '你是房主了，可以开一局', icon: 'none', duration: 2400 })
+      sfx.play('toggleOn')
+      /* 房主转移往往发生在别人离开时，给一次轻震让"这件事发生了"被感知到 */
+      feedback.vibrate('light')
+    }
+
     /* 阶段变化时给声音反馈 —— 让"别人做了操作"这件事被听见。
        多人游戏的音效有个特殊职责：**提示"不在这部手机上的事发生了"**。 */
     if (prev && prev.phase !== room.phase) {
