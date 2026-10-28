@@ -39,5 +39,13 @@
       ],
       "name": "game"
     }
-  ]
+  ],
+  "preloadRule": {
+    "pages/lobby/lobby": {
+      "network": "all",
+      "packages": [
+        "game"
+      ]
+    }
+  }
 }
