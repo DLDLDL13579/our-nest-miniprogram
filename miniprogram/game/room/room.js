@@ -2053,6 +2053,26 @@ Page({
 
   /* ================= 开局 / 再来 ================= */
 
+  /**
+   * 记一局（2026-10-28）。
+   *
+   * 本地记"今晚玩了几局"，跨天自动归零 —— 酒桌上会有人问
+   * "咱们今晚第几把了？"，而这个数字只有手机知道。
+   *
+   * ⚠️ 只记局数，不记胜负：五个玩法的 lastResult 结构各不相同
+   *    （liar 有 loserName、dice 只有 winners、uw 只有 winner 是 spy/civilian），
+   *    硬凑"谁喝了几杯"必然漏，而漏了不报错 —— 宁可少给一个数字，不给一个错的。
+   */
+  bumpNightCount() {
+    try {
+      const d = new Date()
+      const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
+      const rec = wx.getStorageSync('nightGames') || {}
+      const n = rec.date === today ? (Number(rec.n) || 0) : 0
+      wx.setStorageSync('nightGames', { date: today, n: n + 1 })
+    } catch (e) {}
+  },
+
   async doStart() {
     /*
      * 人数不够就直接说，别让请求发出去再被服务端拒 ——
@@ -2082,6 +2102,7 @@ Page({
          裸播没有音量档位、没有震动分级，也进不了时间轴 ——
          表里定义的 `shaker` 因此一直是个**从没被触发的死动作**。 */
       feedback.fire('shaker')
+      this.bumpNightCount()
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */

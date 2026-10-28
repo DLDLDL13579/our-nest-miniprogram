@@ -25,6 +25,7 @@ Page({
     muted: false,
     hapticOn: true,
     reduceMotion: false,
+    nightGames: 0,
     gameCount: GAMES.length,
     /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
     gameRows: [],
@@ -43,7 +44,16 @@ Page({
       nick: wx.getStorageSync(NICK_KEY) || '',
       muted: sfx.isMuted(),
       hapticOn: haptic.isHapticOn(),
-      reduceMotion: haptic.isReduceMotion()
+      reduceMotion: haptic.isReduceMotion(),
+      nightGames: (function () {
+        /* 今晚玩了几局（跨天自动归零，见 room.js 的 bumpNightCount） */
+        try {
+          const d = new Date()
+          const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
+          const rec = wx.getStorageSync('nightGames') || {}
+          return rec.date === today ? (Number(rec.n) || 0) : 0
+        } catch (e) { return 0 }
+      })()
     })
   },
 

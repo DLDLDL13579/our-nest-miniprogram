@@ -42,7 +42,9 @@
 
   <!-- ③ 玩法统计：按开过次数排，0 次的也列出来（"还没玩过"是个弱引导） -->
   <view class="card">
-    <view class="lbl">玩法 · 一共 {{gameCount}} 个</view>
+    <view class="lbl">
+      玩法 · 一共 {{gameCount}} 个<text wx:if="{{nightGames > 0}}" class="night-n"> · 今晚 {{nightGames}} 局</text>
+    </view>
     <block wx:for="{{gameRows}}" wx:key="id">
       <view class="rline stat-row">
         <view class="stat-dot" style="background:{{item.color}}"></view>

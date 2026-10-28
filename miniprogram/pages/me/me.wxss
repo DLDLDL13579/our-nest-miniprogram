@@ -105,3 +105,6 @@
 /* 设置行按下反馈（2026-10-28 补）：这一页每行都可点，原来按下去毫无变化 */
 .rline { transition: background .12s }
 .rline:active { background: rgba(0,0,0,.045) }
+
+/* 今晚局数：紧跟"一共 N 个"后面，同一行 */
+.night-n { color: #E8B33C; opacity: .9 }
