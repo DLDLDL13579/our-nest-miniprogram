@@ -48,11 +48,14 @@ import argparse
 import os
 import sys
 
+import importlib.util
+
 import numpy as np
 import soundfile as sf
 from scipy.signal import resample_poly
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 OUT_DIR = os.path.join(ROOT, 'miniprogram', 'audio')
 DEFAULT_SRC = '/tmp/kenney-casino/Audio'
 
@@ -120,6 +123,25 @@ MAP = [
          seconds=0.22, sr=22050, fifty=-14.0,
          note='碰杯（罚酒/干杯那一刻；起音 0ms）'),
 ]
+
+
+def _load_spatialize():
+    """
+    复用 gen-audio.py 里的 spatialize（早期反射 + 房间尾巴 + 末道锐化）。
+
+    ★ 为什么不重写一份：那是同一套物理模型，两份实现迟早会不一致 ——
+      而"同一件事两个出口"正是这个项目反复吃亏的地方。
+      合成音效和真实录音必须过**同一套**空间处理，才会听起来在同一个房间里。
+    """
+    try:
+        spec = importlib.util.spec_from_file_location(
+            'genaudio', os.path.join(ROOT, 'scripts', 'gen-audio.py'))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.spatialize
+    except Exception as e:
+        print('⚠️ 加载 spatialize 失败（本批不做空间化）：', e)
+        return None
 
 
 def trim_silence(x, sr, floor_start=-25.0, floor_end=-40.0, pad_ms=6):
@@ -263,6 +285,27 @@ def process(one, src_dir, dry=False):
         from math import gcd
         g = gcd(int(sr), int(sr_out))
         d = resample_poly(d, sr_out // g, sr // g)
+
+    # ============ 空间化 ============
+    #
+    # ★★ 2026-10-28 补上。此前**只有合成音效过空间化**（gen-audio.py 的
+    #   spatialize：早期反射 + 房间尾巴 + 末道锐化），真实录音是直接进的包。
+    #   结果就是：画面里骰盅明明在"一个房间"里，声音却是贴着耳朵的 ——
+    #   单独听不明显，和合成音效混着放（同一局里两种都有）就会听出来。
+    #
+    #   "廉价感的根因是只有直达声"这条在 AGENTS.md 里记过，
+    #   而它同样适用于真实录音：真实录音也有直达声和空间感之分。
+    sp = _load_spatialize()
+    if sp:
+        # ★ 只加**早期反射**，不加房间尾巴（tail_ms=0）。
+        #   实测加 160ms 尾巴的代价：11 个音效体积 236KB → 321KB（+85KB），
+        #   而 RMS 被尾巴稀释掉 8~10dB —— 为了房间感牺牲了体积和响度，
+        #   不划算。早期反射（几十毫秒内的几次回声）才是在房间里的感知来源，
+        #   尾巴只是尾巴。
+        tail = one.get('tail_ms', 0)
+        seed = one.get('seed', 11)
+        # spatialize 内部是纯 Python list 运算，回来要转回 ndarray
+        d = np.asarray(sp(d, sr_out, tail_ms=tail, seed=seed), dtype=np.float64)
 
     if one.get('rms') is not None:
         d = normalize(d, sr_out, one['rms'], mode='rms')
