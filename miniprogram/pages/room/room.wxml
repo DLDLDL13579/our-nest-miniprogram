@@ -550,7 +550,24 @@
 
           <!-- 对比自己的词：这是这个玩法最核心的一步推理，省一次按住的操作 -->
           <view wx:if="{{room.uwCompare}}" class="uw-cmp">{{room.uwCompare}}</view>
+
+          <!--
+            票型：谁投了谁。
+            这是结算时桌上第一个会问的问题（"谁投的他"），
+            而投票一结束 votes 就被服务端清空了 —— 这条线索当场蒸发。
+            现在把它摆出来，不用谁去回忆。
+          -->
+          <view wx:if="{{room.uw.lastOut.ballots.length}}" class="uw-ballots">
+            <view wx:for="{{room.uw.lastOut.ballots}}" wx:key="by" class="uw-ballot">
+              <text class="ub-by">{{item.by}}</text>
+              <text class="ub-arrow">投</text>
+              <text class="ub-to">{{item.to}}</text>
+            </view>
+          </view>
         </view>
+        <!-- 局势：还剩几个人在场 —— 卧底还在不在是能推出来的（没结束=还在），
+             所以只报人数、不报身份，不泄露额外信息 -->
+        <view wx:if="{{room.uw.aliveCount}}" class="uw-alive">场上还剩 {{room.uw.aliveCount}} 人</view>
         <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">继续下一轮</view>
         <view wx:else class="uw-wait">等房主开下一轮</view>
       </block>

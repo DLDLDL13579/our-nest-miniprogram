@@ -567,7 +567,13 @@ module.exports = {
         players: UW_PLAYERS.map(p => p.name === '老王' ? Object.assign({}, p, { out: true }) : p), count: 4,
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
-          lastOut: { name: '老王', word: '梨', role: 'spy', tie: false, votes: 3 },
+          lastOut: {
+            name: '老王', word: '梨', role: 'spy', tie: false, votes: 3,
+            ballots: [
+              { by: '邓林', to: '老王' }, { by: '倩萍', to: '老王' },
+              { by: '阿杰', to: '老王' }, { by: '老王', to: '倩萍' }
+            ]
+          },
           reveal: null
         }
       })
@@ -581,7 +587,13 @@ module.exports = {
         players: UW_PLAYERS.map(p => p.name === '老王' ? Object.assign({}, p, { out: true }) : p), count: 4,
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
-          lastOut: { name: '老王', word: '梨', role: 'spy', tie: false, votes: 3 },
+          lastOut: {
+            name: '老王', word: '梨', role: 'spy', tie: false, votes: 3,
+            ballots: [
+              { by: '邓林', to: '老王' }, { by: '倩萍', to: '老王' },
+              { by: '阿杰', to: '老王' }, { by: '老王', to: '倩萍' }
+            ]
+          },
           reveal: [
             { name: '邓林', word: '苹果', role: 'civilian', out: false },
             { name: '倩萍', word: '苹果', role: 'civilian', out: false },

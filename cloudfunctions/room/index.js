@@ -1598,7 +1598,19 @@ exports.main = async (event) => {
         uwLastOut: {
           name: outRow.name, word: outRow.word, role: outRow.role,
           /* 平票已经走"重投"分支，能走到这里的都是单一最高票 */
-          tie: false, votes: max
+          tie: false, votes: max,
+          /*
+           * ★★ 票型：谁投了谁（2026-10-28）。
+           *
+           * 这是卧底玩法里**最该被看见、却一直没显示**的信息 ——
+           * 结算时大家第一个问题就是"谁投的他"，
+           * 而投票一结束 votes 就被清空了（见上一行 votes: []），
+           * 那条线索当场蒸发，桌上只能靠回忆。
+           *
+           * 它不改变任何规则，只是把"刚刚发生过的事"摆出来 ——
+           * 而这恰恰是这个游戏后半段讨论的燃料。
+           */
+          ballots: votes.map(v => ({ by: v.name, to: (players.filter(p => p.openid === v.target)[0] || {}).name || '' }))
         },
         /* 本轮结束，重投机会下轮重新给 */
         uwTieBreak: false, uwTieNames: '',

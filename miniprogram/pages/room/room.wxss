@@ -734,7 +734,7 @@
 .oh-total {
   position: relative;
   margin-top: 12rpx;
-  font-size: 30rpx; font-weight: 700; color: #F6E7C3;
+  font-size: 32rpx; font-weight: 700; color: #F6E7C3;
 }
 
 /* 结算页的小牌面：比游戏中的牌小一号，但用同一套真图 —— 一眼是同一副牌 */
@@ -1572,6 +1572,26 @@
 .uw-spy { color: #FFB4A0; font-weight: 700 }
 .uw-good { color: #9AD3A8; font-weight: 700 }
 .uw-otie { font-size: 21rpx; color: rgba(255,255,255,.38); margin-top: 10rpx }
+
+.uw-alive {
+  text-align: center; margin-top: 16rpx;
+  font-size: 21rpx; color: rgba(255,255,255,.42); letter-spacing: 1rpx;
+}
+
+/* ---------- 票型（谁投了谁） ---------- */
+.uw-ballots {
+  margin-top: 20rpx;
+  padding-top: 18rpx;
+  border-top: 2rpx dashed rgba(255,255,255,.12);
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10rpx 16rpx;
+}
+.uw-ballot {
+  display: flex; align-items: center; gap: 6rpx;
+  font-size: 21rpx;
+}
+.ub-by { color: rgba(255,255,255,.55) }
+.ub-arrow { color: rgba(232,179,60,.7); font-size: 18rpx }
+.ub-to { color: rgba(255,255,255,.82); font-weight: 600 }
 
 /* ---------- 全场摊牌 ---------- */
 .uw-reveal {
