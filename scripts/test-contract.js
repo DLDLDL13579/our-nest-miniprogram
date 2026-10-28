@@ -1997,6 +1997,51 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *    以后如果要重写这条，判据应该是"解析 CSS 规则块"，而不是一条正则。
    */
 
+  /* ============ ③l CSS 变量：用到的必须定义过 ============ */
+  console.log('\n=== ③l CSS 变量必须都有定义（未定义且无 fallback = 样式静默失效） ===')
+  /*
+   * ★ 2026-10-28。上一个 bug（`.rv-row` 的 `--i` 没赋值导致 stagger 失效）
+   *   的同类：**CSS 变量写了但没人定义**，属性会静默失效。
+   *
+   *   ⚠️ 白名单两条，都是"模板内联设置"的：
+   *     --accent  每个玩法卡自己的颜色（lobby.wxml 的 style）
+   *     --i       stagger 序号（room.wxml 的 style）
+   *
+   *   ⚠️ 这条检查第一版用 grep `^\s*--` 写的，而 **grep 的 ERE 不支持 `\s`**
+   *      → 带缩进的定义全被漏掉 → 差点报出一堆假阳性。现在用 JS 正则。
+   */
+  {
+    const INLINE_VARS = new Set(['--accent', '--i'])
+    const defined = new Set()
+    const used = new Map()
+    const files = [path.join(ROOT, 'miniprogram/app.wxss')]
+    for (const root of PAGE_ROOTS) {
+      if (!fs.existsSync(root)) continue
+      for (const d of fs.readdirSync(root, { withFileTypes: true })) {
+        if (!d.isDirectory()) continue
+        const dir = path.join(root, d.name)
+        for (const f of fs.readdirSync(dir)) {
+          if (f.endsWith('.wxss')) files.push(path.join(dir, f))
+        }
+      }
+    }
+    for (const f of files) {
+      const src = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      for (const m of src.matchAll(/(--[a-z0-9-]+)\s*:/g)) defined.add(m[1])
+      for (const m of src.matchAll(/var\(\s*(--[a-z0-9-]+)/g)) {
+        if (!used.has(m[1])) used.set(m[1], path.relative(ROOT, f))
+      }
+    }
+    const bad = []
+    for (const [name, where] of used) {
+      if (defined.has(name) || INLINE_VARS.has(name)) continue
+      bad.push(name + '（' + where + '）')
+    }
+    assert.deepStrictEqual(bad, [],
+      '这些 CSS 变量被用了但从来没有定义（属性会静默失效）：\n    ' + bad.join('\n    '))
+    ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
+  }
+
   /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
   console.log('\n=== ④j wxss 语法：不许通配符 / 不支持的属性 ===')
   /*
