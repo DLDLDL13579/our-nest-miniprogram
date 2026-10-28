@@ -26,6 +26,12 @@ const fs = require('fs')
 const path = require('path')
 
 const ROOT = path.join(__dirname, '..')
+/*
+ * ★ 真模块，不是源码副本。
+ *   ⑧ 要比较的是"实际生效的时刻"，只有加载真模块才算数 ——
+ *   从源码正则抓数字会在实现一改之后就静默失效（AGENTS.md 记过五次）。
+ */
+const feedback = require(path.join(ROOT, 'miniprogram/utils/feedback.js'))
 
 let n = 0
 function ok(msg) { n++; console.log('  ✓ ' + msg) }
@@ -228,20 +234,25 @@ function extractBuildSectors(src) {
   ok('摇盅不震（持续 1 秒的过程，震了用户会关掉震动）')
 
   console.log('\n=== ⑧ 音效三通道错开：震动必须晚于音效 ===')
+  /*
+   * ★★ 2026-10-28 改成**运行时读派生时间线**，不再从源码正则抓数字。
+   *
+   * 原因：feedback.js 把手写的 sfxDelay / hapticDelay 收敛成了派生字段
+   *      （sfxDelay = impactAt + 30，hapticDelay = impactAt + 50），
+   *      表里已经没有那两个数字了。
+   *      旧断言用 `/sfxDelay:(\d+)...hapticDelay:(\d+)/` 从源码抓，
+   *      抓不到时 `if (!m) return` **静默跳过** —— 一条永远不报错的断言，
+   *
+   *      AGENTS.md 里同类事故记过五次（判据失效但看着全绿），
+   *      所以这里改成调 timeline()：无论实现怎么变，比较的都是真实生效的时刻。
+   */
   const badOrder = []
   STEPS.forEach(step => {
-    const b = block(step[0])
-    /*
-     * ★ 必须先确认这一步**有**震动，再比较延迟。
-     *   第一版直接抓 sfxDelay / hapticDelay 两个数字就比，
-     *   但 `haptic: null` 的步骤（摇盅、揭盅）里 hapticDelay 仍是 0，
-     *   于是报了两条假失败 —— 断言比被测代码更容易写错，这里就是例子。
-     */
-    if (!/haptic:\s*'/.test(b)) return      // 这一步不震，跳过
-    const m = /sfxDelay:\s*(\d+)[\s\S]*?hapticDelay:\s*(\d+)/.exec(b)
-    if (!m) return
-    if (Number(m[2]) <= Number(m[1])) {
-      badOrder.push(step[0] + ': 震动延迟(' + m[2] + ') 应大于音效延迟(' + m[1] + ')')
+    const t = feedback.timeline(step[0])
+    assert.ok(t, '⑧ 拿不到时间线：' + step[0])
+    if (!t.haptic) return                    // 这一步不震，跳过
+    if (t.hapticDelay <= t.sfxDelay) {
+      badOrder.push(step[0] + ': 震动延迟(' + t.hapticDelay + ') 应大于音效延迟(' + t.sfxDelay + ')')
     }
   })
   assert.deepStrictEqual(badOrder, [], '触觉最快，必须最后到：\n    ' + badOrder.join('\n    '))

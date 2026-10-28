@@ -37,7 +37,7 @@ global.wx = {
 
 const ROOT = path.join(__dirname, '..')
 const feedback = require(path.join(ROOT, 'miniprogram', 'utils', 'feedback.js'))
-const { FEEDBACK } = feedback
+const { FEEDBACK, timeline } = feedback
 
 let n = 0
 function ok(msg) { n++; console.log('  ✓ ' + msg) }
@@ -51,6 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   ok(`时间轴表定义了 ${keys.length} 个动作：${keys.join(' / ')}`)
 
   keys.forEach((k) => {
+    /* 结构断言看**原始表**：animMs / impactAt 是表里唯一该存在的东西 */
     const f = FEEDBACK[k]
     assert.strictEqual(typeof f.animMs, 'number', k + ' 缺 animMs')
     assert.strictEqual(typeof f.impactAt, 'number', k + ' 缺 impactAt')
@@ -72,6 +73,40 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   })
   ok('每个动作都定义了 animMs / impactAt，且冲击帧落在动画时长内')
 
+  /* ============ ①b 延迟必须是派生的 ============ */
+  console.log('\n=== ①b 音效/震动延迟必须由冲击帧派生（不许手写）===')
+  /*
+   * 2026-10-28 的改造：表里原来每个动作都手写 sfxDelay + hapticDelay，
+   * 规则是「视觉 → 音效 +30ms → 震动 +20ms」。
+   * 逐条核算发现 11 个撞击类动作里 6 条精确、4 条偏 +10ms、1 条完全没补偿 ——
+   * 同一条规律被写成三套数字，而且不会有任何地方报错。
+   *
+   * 现在表里只描述意图（哪个冲击帧、哪个音效、多重震动），
+   * 时刻统一由 timeline() 从 impactAt 推出来。
+   * 这条断言锁两件事：
+   *   ① 表里不许再出现手写的延迟字段（出现了就是又开了第二个出口）
+   *   ② 派生公式本身不许被悄悄改（+30 / +50 是规范值）
+   */
+  const handWritten = keys.filter(k => 'sfxDelay' in FEEDBACK[k] || 'hapticDelay' in FEEDBACK[k])
+  assert.deepStrictEqual(handWritten, [],
+    '这些动作在表里手写了延迟（延迟只能由 timeline() 派生）：\n    ' + handWritten.join('\n    '))
+
+  const drift = []
+  keys.forEach(k => {
+    const t = timeline(k)
+    if (!t) return
+    if (t.impactAt > 0) {
+      if (t.sfx && t.sfxDelay !== t.impactAt + 30) {
+        drift.push(`${k}: sfxDelay(${t.sfxDelay}) 应为 impactAt+30(${t.impactAt + 30})`)
+      }
+      if (t.haptic && t.hapticDelay !== t.impactAt + 50) {
+        drift.push(`${k}: hapticDelay(${t.hapticDelay}) 应为 impactAt+50(${t.impactAt + 50})`)
+      }
+    }
+  })
+  assert.deepStrictEqual(drift, [], '派生公式被改坏了（规范是音效 +30 / 震动 +50）：\n    ' + drift.join('\n    '))
+  ok(`${keys.length} 个动作的延迟全部由 impactAt 派生，没有手写漂移`)
+
   /* ============ ② ★ 音效不能早于冲击帧 ============ */
   console.log('\n=== ② ★ 音效必须晚于（或等于）冲击帧 ===')
   /*
@@ -83,7 +118,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
    */
   const tooEarly = []
   keys.forEach((k) => {
-    const f = FEEDBACK[k]
+    const f = timeline(k)
     if (!f.sfx || f.impactAt === 0) return
     if (f.sfxDelay < f.impactAt) {
       tooEarly.push(`${k}: sfxDelay(${f.sfxDelay}) < impactAt(${f.impactAt})`)
@@ -109,7 +144,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
    */
   const wrongOrder = []
   keys.forEach((k) => {
-    const f = FEEDBACK[k]
+    const f = timeline(k)
     if (!f.haptic) return
     if (f.hapticDelay < f.sfxDelay) {
       wrongOrder.push(`${k}: hapticDelay(${f.hapticDelay}) < sfxDelay(${f.sfxDelay})`)

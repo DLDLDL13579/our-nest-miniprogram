@@ -57,9 +57,7 @@ const FEEDBACK = {
     animMs: 420,
     impactAt: 60,
     sfx: 'diceSettle',
-    sfxDelay: 90,
-    haptic: 'light',
-    hapticDelay: 110
+    haptic: 'light'
   },
 
   /* ---------- 全部落定 / 开盅揭晓（重） ---------- */
@@ -67,9 +65,7 @@ const FEEDBACK = {
     animMs: 340,
     impactAt: 70,
     sfx: 'revealHit',
-    sfxDelay: 110,
-    haptic: 'heavy',
-    hapticDelay: 130
+    haptic: 'heavy'
   },
 
   /* ---------- 转盘停稳 ---------- */
@@ -77,9 +73,7 @@ const FEEDBACK = {
     animMs: 280,
     impactAt: 50,
     sfx: 'wheelStop',
-    sfxDelay: 90,
-    haptic: 'medium',
-    hapticDelay: 110
+    haptic: 'medium'
   },
 
   /* ---------- 抽到「免罚一次」（惊喜，双震区分） ---------- */
@@ -87,9 +81,7 @@ const FEEDBACK = {
     animMs: 400,
     impactAt: 60,
     sfx: 'confetti',
-    sfxDelay: 100,
-    haptic: 'double',
-    hapticDelay: 120
+    haptic: 'double'
   },
 
   /* ---------- 输了 / 要喝酒 ---------- */
@@ -97,19 +89,20 @@ const FEEDBACK = {
     animMs: 360,
     impactAt: 60,
     sfx: 'failDrop',
-    sfxDelay: 100,
-    haptic: 'long',
-    hapticDelay: 120
+    haptic: 'long'
   },
 
-  /* ---------- 开局倒计时读秒 ---------- */
+  /* ---------- 开局倒计时读秒 ----------
+     ★ 读秒**不震**（2026-10-28 按手感规范改）。
+       开局倒计时每 750ms 一下，3 秒就是 4 次震动 ——
+       手机在桌上一连串"嗡"，同桌的人都听得见，而且这 4 下没有任何信息量
+       （数到几是靠听的、靠看的，不是靠摸的）。
+       震动要留给**动作落定**，不是留给"时间在流逝"。 */
   countdownTick: {
     animMs: 750,
     impactAt: 0,
     sfx: 'countdown',
-    sfxDelay: 0,
-    haptic: 'light',
-    hapticDelay: 20
+    haptic: null
   },
 
   /* ---------- 「开始！」 ---------- */
@@ -117,9 +110,8 @@ const FEEDBACK = {
     animMs: 500,
     impactAt: 0,
     sfx: 'countdownGo',
-    sfxDelay: 0,
     haptic: 'heavy',
-    hapticDelay: 20
+    hapticAt: 20
   },
 
   /* ---------- 摇骰过程（连续音，不震 —— 避免整局嗡嗡响） ---------- */
@@ -127,9 +119,7 @@ const FEEDBACK = {
     animMs: 1300,
     impactAt: 0,
     sfx: 'diceTumbleWood',
-    sfxDelay: 0,
-    haptic: null,
-    hapticDelay: 0
+    haptic: null
   },
 
   /* ---------- 开局摇盅（金属） ---------- */
@@ -137,9 +127,8 @@ const FEEDBACK = {
     animMs: 900,
     impactAt: 0,
     sfx: 'shakerMetal',
-    sfxDelay: 0,
     haptic: 'light',
-    hapticDelay: 60
+    hapticAt: 60
   },
 
   /* ============================================================
@@ -155,9 +144,7 @@ const FEEDBACK = {
     animMs: 620,
     impactAt: 40,
     sfx: 'diceIntoCup',
-    sfxDelay: 40,
-    haptic: 'light',
-    hapticDelay: 70
+    haptic: 'light'
   },
 
   /* ② 摇盅（持续音，覆盖整个摇动过程）
@@ -168,9 +155,7 @@ const FEEDBACK = {
     animMs: 1050,
     impactAt: 0,
     sfx: 'cupShake',
-    sfxDelay: 0,
-    haptic: null,
-    hapticDelay: 0
+    haptic: null
   },
 
   /* ③ ★ 扣盅 —— 整个流程的重音。
@@ -181,9 +166,7 @@ const FEEDBACK = {
     animMs: 380,
     impactAt: 70,
     sfx: 'cupSlam',
-    sfxDelay: 110,
-    haptic: 'medium',
-    hapticDelay: 130
+    haptic: 'medium'
   },
 
   /* ④ 揭盅（盅提起，骰子露出来）—— 轻，主角是骰子 */
@@ -191,9 +174,7 @@ const FEEDBACK = {
     animMs: 420,
     impactAt: 0,
     sfx: 'cupLift',
-    sfxDelay: 20,
-    haptic: null,
-    hapticDelay: 0
+    haptic: null
   },
 
   /* ⑤ 骰子在桌上滚两下才停（揭盅之后） */
@@ -201,9 +182,8 @@ const FEEDBACK = {
     animMs: 750,
     impactAt: 0,
     sfx: 'diceOnTable',
-    sfxDelay: 0,
     haptic: 'light',
-    hapticDelay: 40
+    hapticAt: 40
   },
 
   /* ================= 全场通用 ================= */
@@ -213,9 +193,8 @@ const FEEDBACK = {
     animMs: 0,
     impactAt: 0,
     sfx: 'toggleOn',
-    sfxDelay: 0,
     haptic: 'light',
-    hapticDelay: 20
+    hapticAt: 20
   },
 
   /* 赢：撒花 + 长震（长震是"这局结束了"的体感信号） */
@@ -223,9 +202,8 @@ const FEEDBACK = {
     animMs: 0,
     impactAt: 0,
     sfx: 'confetti',
-    sfxDelay: 0,
     haptic: 'long',
-    hapticDelay: 20
+    hapticAt: 20
   },
 
   /* 输：下坠 + 长震 */
@@ -233,9 +211,8 @@ const FEEDBACK = {
     animMs: 0,
     impactAt: 0,
     sfx: 'failDrop',
-    sfxDelay: 0,
     haptic: 'long',
-    hapticDelay: 20
+    hapticAt: 20
   },
 
   /* ================= 谁是卧底 ================= */
@@ -245,9 +222,7 @@ const FEEDBACK = {
     animMs: 220,
     impactAt: 40,
     sfx: 'chipBet',
-    sfxDelay: 70,
-    haptic: 'light',
-    hapticDelay: 90
+    haptic: 'light'
   },
 
   /* 出局揭晓：全场焦点，重一些（配 slamIn 的 .44s 入场） */
@@ -255,9 +230,7 @@ const FEEDBACK = {
     animMs: 440,
     impactAt: 120,
     sfx: 'revealHit',
-    sfxDelay: 150,
-    haptic: 'medium',
-    hapticDelay: 170
+    haptic: 'medium'
   },
 
   /* ================= 梦幻金花 ================= */
@@ -267,9 +240,7 @@ const FEEDBACK = {
     animMs: 260,
     impactAt: 30,
     sfx: 'cardFlip',
-    sfxDelay: 60,
-    haptic: 'light',
-    hapticDelay: 80
+    haptic: 'light'
   },
 
   /*
@@ -282,13 +253,56 @@ const FEEDBACK = {
     animMs: 420,
     impactAt: 80,
     sfx: 'cardSpread',
-    sfxDelay: 110,
     sfx2: 'revealHit',
     sfx2Delay: 270,
-    haptic: 'medium',
-    hapticDelay: 130
+    haptic: 'medium'
   },
 
+}
+
+/* ============================================================
+   派生：音效 / 震动相对于冲击帧的时刻
+   ------------------------------------------------------------
+   原来每个动作都手写 `sfxDelay` + `hapticDelay` 两个数字，
+   规则是「视觉最先 → 音效 +30ms → 震动再 +20ms」。
+   手写的后果是**漂移**：2026-10-28 逐条核算 11 个撞击类动作，
+   6 条精确（+30 / +50）、4 条偏 +10ms、1 条只 +40ms ——
+   同一条规律被写成三套数字，而且没有任何地方会报错。
+
+   这和 AGENTS.md 记的「派生字段有 7 个出口」是同一个病：
+   规律只该有一个出口，就是下面这两个常量。
+
+   ★ 为什么 impactAt === 0 的条目还留一个手写的 `hapticAt`：
+     那是起手音/持续音（摇盅 1 秒、揭盅、读秒），声音本来就在动作第一帧响，
+     "动作开始后多久震"是另一个语义（比如摇盅要等手真的动起来 60ms 才震），
+     塞进 impactAt 的公式里反而会算错。
+   ============================================================ */
+const SFX_LAG_MS = 30      // 音效：冲击帧之后 30ms
+const HAPTIC_LAG_MS = 50   // 震动：冲击帧之后 50ms（= 音效 + 20）
+
+/**
+ * 取一个动作的完整时间线（含派生出的延迟）。
+ * 表里只描述"意图"（哪个冲击帧、哪个音效、多重的震动），时刻全部由这里算。
+ *
+ * @param {string} key FEEDBACK 的键
+ * @returns {object|null}
+ */
+function timeline(key) {
+  const f = FEEDBACK[key]
+  if (!f) return null
+  const impact = f.impactAt || 0
+  return {
+    animMs: f.animMs,
+    impactAt: impact,
+    sfx: f.sfx || null,
+    sfxDelay: impact > 0 ? impact + SFX_LAG_MS : 0,
+    sfx2: f.sfx2 || null,
+    /* 第二层音效的间隔是**设计出来的**（"牌落桌 + 190ms 后揭示重击"），
+       不是通道补偿，所以保持手写，不参与派生 */
+    sfx2Delay: f.sfx2 ? (f.sfx2Delay || 0) : 0,
+    haptic: f.haptic || null,
+    hapticDelay: impact > 0 ? impact + HAPTIC_LAG_MS : (f.hapticAt || 0)
+  }
 }
 
 /* ============================================================
@@ -398,7 +412,7 @@ function setHapticOn(v) {
  */
 const _timers = []
 function fire(key, opt) {
-  const f = FEEDBACK[key]
+  const f = timeline(key)
   if (!f) {
     console.warn('[feedback] 没有这个动作:', key)
     return
@@ -448,6 +462,7 @@ function clear() {
 
 module.exports = {
   FEEDBACK,
+  timeline,
   fire,
   clear,
   vibrate,
