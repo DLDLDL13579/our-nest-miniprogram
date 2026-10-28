@@ -223,25 +223,30 @@ def march_ortho(sdf_world, size, ss, extent=0.95, cam_z=3.0, t_max=4.5,
 
 def render_dice(value, size=512, ss=2):
     """
-    渲染骰子的一个朝向：正面朝上的是 value。
+    渲染骰子的一个朝向：**顶面（朝上的那面）** 是 value。
+
+    ★★ 2026-10-28 修正：原来这里把 value 转到了 **+Z**，而 +Z 是"朝向相机"的
+       正面 —— 于是整张图把点数画在了**侧面**，顶面画的是别的数。
+       而骰子落地后，玩家看到的是"朝上的那面"，那是**顶面 (+Y)**。
+       这个错误很难在缩略图上看出来（骰子怎么都像骰子），
+       但玩家一读点数就会发现对不上。
 
     返回 RGBA 的 numpy 数组。
     """
-    # 让 value 转到 +Z（正面）
-    # 每个值的旋转：把该值的轴转到 +Z
+    # 让 value 转到 +Y（顶面 = 朝上的那面）
     AXIS_OF_VALUE = {v: n for n, v in FACE_VALUE.items()}
     target = np.array(AXIS_OF_VALUE[value], dtype=np.float64)
 
-    # 构造旋转：把 target 转到 (0,0,1)
-    z = np.array([0.0, 0.0, 1.0])
-    if np.allclose(target, z):
+    # 构造旋转：把 target 转到 (0,1,0)
+    up = np.array([0.0, 1.0, 0.0])
+    if np.allclose(target, up):
         R = np.eye(3)
-    elif np.allclose(target, -z):
-        R = np.array([[-1.0, 0, 0], [0, 1, 0], [0, 0, -1]])   # 绕 Y 转 180°
+    elif np.allclose(target, -up):
+        R = np.array([[1.0, 0, 0], [0, -1, 0], [0, 0, -1]])   # 绕 X 转 180°
     else:
-        axis = np.cross(target, z)
+        axis = np.cross(target, up)
         axis = axis / np.linalg.norm(axis)
-        ang = math.acos(np.clip(np.dot(target, z), -1, 1))
+        ang = math.acos(np.clip(np.dot(target, up), -1, 1))
         K = np.array([[0, -axis[2], axis[1]],
                       [axis[2], 0, -axis[0]],
                       [-axis[1], axis[0], 0]])
@@ -257,7 +262,10 @@ def render_dice(value, size=512, ss=2):
         return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
 
     VIEW_Y = math.radians(-27)      # 向右转，露出右面
-    VIEW_X = math.radians(24)       # 向下看，露出顶面
+    # ★ 俯角从 24° 加到 34°：点数现在画在**顶面**，而顶面在斜视角下是被压缩的
+    #   菱形 —— 24° 时顶面只占画面一小块，界面里（62rpx 宽）点数挤成一团。
+    #   加大俯角让顶面占更多面积，点数才读得清；同时仍保留正面和右面的立体感。
+    VIEW_X = math.radians(34)       # 向下看，露出顶面
     Rv = rot_x(VIEW_X) @ rot_y(VIEW_Y)
 
     Rtotal = Rv @ R
@@ -337,15 +345,30 @@ def render_dice(value, size=512, ss=2):
         # 注意容差：命中点落在**洞壁上**时，它恰好在球面上，ds ≈ 0。
         # 若判 ds < 0 会因数值误差漏掉一半内壁，所以要带一点正容差。
         # 平面上远离洞的点 ds 是明显的正值（>0.3），不会被误判。
+        # ★ 点数分两种颜色：**1 和 4 是红色**，其余深棕。
+        #   这是中式骰子的传统（红一是"眼"，1 和 4 都染红），
+        #   而全黑的点子在骰盅里看着像西式赌场骰子。
+        #
+        #   判定必须**按面**来：一颗骰子上顶面可能是 1（红），
+        #   侧面是 2（黑）——不能整颗统一染色。
         pip_dark = np.zeros(pl.shape[0], dtype=bool)
+        pip_red = np.zeros(pl.shape[0], dtype=bool)
         for n_local, val in vis_faces:
+            face_mask = np.zeros(pl.shape[0], dtype=bool)
             for c in pip_positions_on_face(n_local, val, half):
                 ds = np.linalg.norm(pl - c[None, :], axis=-1) - PIP_R
-                pip_dark |= ds < 1.5e-3
+                face_mask |= ds < 1.5e-3
+            if val in (1, 4):
+                pip_red |= face_mask
+            else:
+                pip_dark |= face_mask
 
         # 深棕（不用纯黑：纯黑在暖光下发死，和骨白材质不搭）
         base_pip = np.array([0.145, 0.125, 0.115])
+        # 朱红：真实骨白骰子上的红点是偏暗的红，不是荧光红
+        base_red = np.array([0.70, 0.135, 0.105])
         base = np.where(pip_dark[:, None], base_pip[None, :], base_bone[None, :])
+        base = np.where(pip_red[:, None], base_red[None, :], base)
 
         ao = ao_at(pl, nl, half, vis_faces)
 
