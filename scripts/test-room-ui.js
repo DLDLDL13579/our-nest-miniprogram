@@ -791,6 +791,36 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     noResync.map(b => b.trim().split('\n')[0]).join('\n    '))
   ok(`${catches.length} 个失败分支：弹提示的都必须先 resyncAfterFail`)
 
+  /* ============ ⑭ 房主专属的操作，前端必须藏起来 ============ */
+  console.log('\n=== ⑭ 房主专属操作必须只对房主可见 ===')
+  /*
+   * ★ 2026-10-28。逐屏检查时把"非房主点了会被服务端拒"这件事查了一遍：
+   *   doStart / doAgain / uwSay / pickNewGame / toggleLock / doNudge
+   *   —— 服务端都要求房主，前端都必须藏。
+   *
+   *   漏一处的症状是"点了没反应"（服务端返回 ok:false，前端只弹个 toast），
+   *   比"看不见"糟得多 —— 用户会以为卡了。
+   *
+   *   判据：这些 handler 所在的元素，往上 3 行内必须有 room.host。
+   */
+  {
+    const HOST_ONLY = ['doStart', 'doAgain', 'uwSay', 'pickNewGame', 'toggleLock', 'doNudge']
+    const wxml = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    const lines = wxml.split('\n')
+    const leaked = []
+    lines.forEach((ln, i) => {
+      for (const h of HOST_ONLY) {
+        if (!ln.includes('bindtap="' + h + '"')) continue
+        const ctx = lines.slice(Math.max(0, i - 3), i + 1).join('\n')
+        if (!/room\.host/.test(ctx)) leaked.push(h + '（第 ' + (i + 1) + ' 行）')
+      }
+    })
+    assert.deepStrictEqual([...new Set(leaked)], [],
+      '这些房主专属操作没有对非房主隐藏（点了会被服务端拒，用户以为卡了）：\n    ' +
+      [...new Set(leaked)].join('\n    '))
+    ok('房主专属操作全部只对房主可见')
+  }
+
   /* ============ ⑬ 撒花：只在不吃点击、且必须自己清空 ============ */
   console.log('\n=== ⑬ 撒花：不吃点击、必须清空 ===')
   /*
