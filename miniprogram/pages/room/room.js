@@ -1034,6 +1034,23 @@ Page({
     room.overBy = Math.max(0, (room.count || 0) - room.maxPlayers)
 
     /*
+     * 卧底出局时，把「我自己的词」也摆出来做对比。
+     *
+     * ★ 为什么不泄露信息：我的词我一直能按住看，这里的只是**省一次操作**。
+     *   而"他的词 vs 我的词"正是这个玩法最核心的一步推理 ——
+     *   原来要按住看自己的、再松手，两个信息不能同时看到。
+     *   出局者是自己时不显示（那就是同一张卡，没意义）。
+     */
+    room.uwCompare = ''
+    if (room.uw && room.uw.step === 'result' && room.uw.lastOut && room.uw.word) {
+      const lo = room.uw.lastOut
+      const mine = (room.me && room.me.name) || ''
+      if (lo.name !== mine) {
+        room.uwCompare = '你的词是「' + room.uw.word + '」'
+      }
+    }
+
+    /*
      * 「今晚谁输最多」—— 用服务端的 score（每输一局 -1）。
      *
      * ★ 这个字段一直在，但从没被展示过（前端 grep 不到），等于死数据；

@@ -1645,3 +1645,15 @@
   border-radius: 18rpx;
   animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
 }
+
+/* ---------- 出局揭示里的「你自己的词」 ----------
+   和"他的词"并排对比，是这个玩法最核心的推理动作。
+   用虚线框表示"这是给你对照的，不是新信息"。 */
+.uw-cmp {
+  margin-top: 16rpx;
+  padding: 14rpx 18rpx;
+  border: 2rpx dashed rgba(160, 130, 210, .45);
+  border-radius: 12rpx;
+  font-size: 23rpx;
+  color: rgba(200, 180, 235, .95);
+}

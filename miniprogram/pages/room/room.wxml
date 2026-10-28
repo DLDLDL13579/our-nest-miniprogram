@@ -460,6 +460,8 @@
             <text class="{{room.uw.lastOut.role === 'spy' ? 'uw-spy' : 'uw-good'}}">{{room.uw.lastOut.role === 'spy' ? '是卧底' : '不是卧底'}}</text>
           </view>
           <view wx:if="{{room.uw.lastOut.tie}}" class="uw-otie">平票，随机定的</view>
+          <!-- 对比自己的词：这是这个玩法最核心的一步推理，省一次按住的操作 -->
+          <view wx:if="{{room.uwCompare}}" class="uw-cmp">{{room.uwCompare}}</view>
         </view>
         <view wx:if="{{room.host}}" class="uw-btn" bindtap="uwSay">继续下一轮</view>
         <view wx:else class="uw-wait">等房主开下一轮</view>

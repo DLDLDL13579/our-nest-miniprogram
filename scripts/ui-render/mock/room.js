@@ -376,6 +376,8 @@ module.exports = {
       showWord: false,
       room: uwRoom({
         id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
+        /* 出局揭示时对比自己的词 —— 这是 decorate 写在 room 上的派生字段 */
+        uwCompare: '你的词是「苹果」',
         players: UW_PLAYERS.map(p => p.name === '老王' ? Object.assign({}, p, { out: true }) : p), count: 4,
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
