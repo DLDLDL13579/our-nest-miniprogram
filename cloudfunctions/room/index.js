@@ -1642,8 +1642,43 @@ exports.main = async (event) => {
         /* 最后一个人走了 → 房间解散 */
         active = false
       } else {
-        /* 房主走了 → 顺位转移给下一个人（不能让房间变成没人能管的死局） */
-        if (hostOpenid === OPENID) hostOpenid = players[0].openid
+        /*
+         * 房主走了 → 顺位转移给下一个人（不能让房间变成没人能管的死局）。
+         *
+         * ★★ 接任者如果是"中途加入、本局观战"的人，必须同时把他纳入本局。
+         *   否则会出现一条很隐蔽的死路：
+         *     3 人局 → 两人中途加入只能观战 → 原有的 3 人陆续离开 →
+         *     房主落到观战者头上，而他 inRound 仍是 false。
+         *   此时点"开始"：start 按 inRound 过滤，**没人发骰子、没人参与**，
+         *   一个人时直接卡死（turn 指向空气），而且一句错误都没有。
+         *   原有参与者都走光了，这一局实质上已经重置 —— 把他纳入是合理的。
+         */
+        /*
+         * ★★ 本局的人是不是已经走光了？
+         *   如果是，房间实质上"这一局没人了" —— 必须退回 lobby 并把所有人纳入，
+         *   否则会卡成一条死路：phase 停在 playing，剩下的人**没有骰子**，
+         *   又因为"这局已经开始了"而无法重开 —— 谁也玩不了，且没有一条错误提示。
+         */
+        const anyoneInRound = players.some(p => p.inRound !== false)
+
+        if (hostOpenid === OPENID) {
+          hostOpenid = players[0].openid
+          /* 接任者若在观战，纳入本局（见上面那段说明） */
+          if (anyoneInRound && players[0].inRound === false) players[0].inRound = true
+        }
+
+        if (!anyoneInRound) {
+          /* 本局参与者全部离开 → 房间回到大厅态，所有人（都是观战的）转为参与 */
+          players = players.map(p => Object.assign({}, p, {
+            inRound: true, dice: [], ready: false, score: 0, out: false,
+            cards: [], uwWord: '', uwRole: ''
+          }))
+          Object.assign(upd, {
+            phase: 'lobby', bid: null, lastResult: null, turn: 0, spin: null,
+            pkStep: null, pkLog: [], pkLast: null, pkWinner: null,
+            pkPublic: null, pkRest: [], pkDrink: {}
+          })
+        }
 
         /*
          * ★ 座位重编号时必须同步修正 turn，否则回合会指向不存在的座位。

@@ -1478,6 +1478,60 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '⑬ 结算的每手都必须是完整的三张')
   ok('★ 弃牌 → 只剩一人自动结束，结算摊开三人各自的三张牌')
 
+  /* ============ ⑮ 房主离开后接任的人必须能玩 ============ *
+   *
+   * 死路（修之前存在）：3 人局 → 两人中途加入只能观战 →
+   * 原有的 3 人陆续离开 → 房主落到观战者头上，而他 inRound 仍是 false。
+   * 此时点"开始"：start 按 inRound 过滤，**没人发骰子、没人参与**，
+   * 一个人时直接卡死（turn 指向空气），而且一句错误都没有。
+   */
+  {
+    OPENID = A
+    const mk = await room.main({ action: 'create', game: 'liar', name: '房主A' })
+    const RID = mk.room.id
+    const RCODE = mk.room.code
+
+    /* 再进来两个人，凑成 3 人局后开局 */
+    OPENID = B; await room.main({ action: 'join', code: RCODE, name: 'B' })
+    OPENID = 'D'; await room.main({ action: 'join', code: RCODE, name: 'D' })
+
+    OPENID = A
+    await room.main({ action: 'start', id: RID })
+    store.rooms.filter(x => x._id === RID)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: RID })
+
+    /* 中途再来一个人 —— 只能观战 */
+    OPENID = 'E'
+    const mid = await room.main({ action: 'join', code: RCODE, name: 'E' })
+    assert.ok(mid.ok, '中途加入应成功：' + (mid.msg || ''))
+    let doc = store.rooms.filter(x => x._id === RID)[0]
+    assert.strictEqual(doc.players.filter(p => p.openid === 'E')[0].inRound, false,
+      '中途加入者本局应观战')
+
+    /* 原有参与者全部离开，只剩中途加入的 E */
+    for (const who of [A, B, 'D']) {
+      OPENID = who
+      await room.main({ action: 'leave', id: RID })
+    }
+
+    doc = store.rooms.filter(x => x._id === RID)[0]
+    assert.ok(doc, '房间不该因为参与者走光而解散（E 还在）')
+    assert.strictEqual(doc.hostOpenid, 'E', '房主应转给剩下的那个人')
+    const E = doc.players.filter(p => p.openid === 'E')[0]
+    assert.strictEqual(E.inRound, true,
+      '★ 接任房主的观战者必须被纳入本局 —— 否则他点开始后没人参与（一个人时直接卡死）')
+
+    /* 而他确实能开局，并且拿到骰子 */
+    OPENID = 'E'
+    const st = await room.main({ action: 'start', id: RID })
+    assert.ok(st.ok, '接任房主应该能开局：' + (st.msg || ''))
+    doc = store.rooms.filter(x => x._id === RID)[0]
+    const E2 = doc.players.filter(p => p.openid === 'E')[0]
+    assert.ok(Array.isArray(E2.dice) && E2.dice.length === 5,
+      '★ 开局后他自己必须有 5 颗骰子 —— 否则这一局没有任何人能玩')
+    ok('★ 房主离开后接任的观战者会被纳入本局（不会开局即卡死）')
+  }
+
   /* ============ ⑭ 房间容量必须按玩法取 ============ *
    *
    * 注册表里每个玩法写着各自的 max，而云端原来用一个全局 MAX_PLAYERS=8 ——
