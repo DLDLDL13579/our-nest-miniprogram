@@ -657,7 +657,14 @@
       <view class="loserbox">{{result.loserName}} 喝一杯</view>
     </view>
 
-    <view wx:elif="{{result}}" class="center-box">
+    <!--
+      ★ 这里原来是 `wx:elif="{{result}}"` —— 一个接在大话骰后面的**兜底**。
+      卧底/金花的结算也会走到它（只要 result 非空），于是屏幕上多出一个
+      空的骰子框（result.ranked 不存在，wx:for 什么都不渲染）——
+      看起来就是"结果页有一条灰带"，而且不报错。
+      现在显式只认比大小。**这是"else 兜底"的第五次变体，别再用兜底。**
+    -->
+    <view wx:elif="{{room.game === 'dice' && result}}" class="center-box">
       <view class="over-tag ok">结果出来了</view>
       <view class="revealbox">
         <view wx:for="{{result.ranked}}" wx:key="seat" class="rv-row">
@@ -672,8 +679,12 @@
       <view class="loserbox">赢的是 {{result.winners}}</view>
     </view>
 
+    <!-- 结算的情绪收尾：一句结论，不重复上面的明细 -->
+    <view wx:if="{{room.settleFoot}}" class="settle-foot">{{room.settleFoot}}</view>
+
     <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>
     <view wx:else class="waiting">等房主开下一局</view>
+    <view wx:if="{{room.host}}" class="btn ghostb" style="margin-top:20rpx" bindtap="pickNewGame">换个玩法</view>
     <view class="btn ghostb" style="margin-top:20rpx" bindtap="leave">离开房间</view>
   </block>
 </view>

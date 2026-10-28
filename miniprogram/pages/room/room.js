@@ -888,6 +888,33 @@ Page({
     room.waitingCount = waiting.length
     room.waitingNames = waiting.map(p => p.name).join('、')
 
+    /*
+     * 结算的"情绪收尾"：一句话说清这局谁最惨 / 发生了什么。
+     * ★ 明细区已经展示了牌和骰子，这里只补**结论**，不重复数据。
+     *   按玩法分别算，但都收敛到 room.settleFoot 一个字段 ——
+     *   模板只判断"有没有"，不写五套 if。
+     */
+    room.settleFoot = ''
+    if (room.phase === 'over') {
+      const lr = room.lastResult || {}
+      if (room.game === 'liar' && lr.loserName) {
+        room.settleFoot = lr.loserName + ' 喝一杯'
+      } else if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
+        /* 点数最少的那个喝 —— 排序取第一个 */
+        const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
+        if (low) room.settleFoot = low.name + ' 点数最少，喝一杯'
+      } else if (room.game === 'undercover' && lr.kind === 'undercover') {
+        const rev = (room.uw && room.uw.reveal) || []
+        const spy = rev.filter(x => x.role === 'spy')[0]
+        if (spy) room.settleFoot = '卧底是 ' + spy.name
+      } else if (room.game === 'poker' && room.poker) {
+        /* 金花：说"我这局为了换牌喝了几杯" —— 个人化的收尾比复述输赢有用 */
+        const dv = Number(room.poker.myDrink) || 0
+        if (dv > 0) room.settleFoot = '你为了换牌喝了 ' + (dv % 1 === 0 ? dv : Math.floor(dv) + '.5') + ' 杯'
+        else if (room.poker.winner) room.settleFoot = room.poker.winner + ' 没换过牌就赢了'
+      }
+    }
+
     return room
   },
 
@@ -1260,6 +1287,22 @@ Page({
   },
 
   doAgain() { return this.backToLobby() },
+
+  /*
+   * 换个玩法：结算页直接选，不用退回大厅再进来。
+   * 用系统 actionSheet 而不是自绘面板 —— 这是一次性的选择动作，
+   * 自绘面板要多一套遮罩 + 进出动画，收益不值。
+   */
+  pickNewGame() {
+    const list = GAMES.map(g => g.name)
+    wx.showActionSheet({
+      itemList: list,
+      success: (r) => {
+        const g = GAMES[r.tapIndex]
+        if (g && g.k !== this.data.room.game) this.backToLobby(g.k)
+      }
+    })
+  },
 
   /* 房主换玩法（只在 lobby 可用；服务端会拦"正在玩"的时候） */
   changeGame(e) {

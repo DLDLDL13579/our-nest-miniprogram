@@ -1043,7 +1043,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(realRoom.ok && realRoom.room, '④ 取房间状态应成功')
   const providedRoom = new Set(Object.keys(realRoom.room))
   /* 服务端算的派生字段也要算数（前端 decorate 会补这些） */
-  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options'].forEach(k => providedRoom.add(k))
+  /* 前端 decorate 算的派生字段：服务端不返回，但确实是前端自己赋值的 */
+  ;['myTurn', 'turnName', 'waitingCount', 'waitingNames', 'options', 'settleFoot'].forEach(k => providedRoom.add(k))
 
   const stripComments = (s) => s.replace(/<!--[\s\S]*?-->/g, '')
   /* 自己的递归遍历：④ 在顶层 walk/pagesDir 定义之前，不能复用它们 */

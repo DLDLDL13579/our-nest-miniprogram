@@ -1426,3 +1426,19 @@
   transform: scale(.985) translateY(-2rpx);
   box-shadow: 0 0 0 5rpx rgba(160,120,220,.28), 0 12rpx 36rpx rgba(120,80,190,.35);
 }
+
+/* ---------- 结算的情绪收尾 ----------
+   一句话说清"这局谁最惨"。放在明细之后、按钮之前：
+   玩家看完牌和骰子，需要的是一个**结论**，不是一个数据表。 */
+.settle-foot {
+  margin: 28rpx 0 24rpx;
+  padding: 26rpx 24rpx;
+  text-align: center;
+  font-size: 27rpx; font-weight: 600;
+  color: #F6E7C3;
+  background: rgba(232,179,60,.10);
+  border: 2rpx solid rgba(232,179,60,.28);
+  border-radius: 20rpx;
+  letter-spacing: 1rpx;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}

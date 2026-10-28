@@ -148,6 +148,16 @@ module.exports = {
       },
       room: pkRoom({
         game: 'poker', phase: 'over', host: true, turn: 0, myTurn: false, turnName: '',
+        settleFoot: '你为了换牌喝了 1.5 杯',
+        lastResult: {
+          kind: 'poker', winner: '邓林',
+          winText: '邓林 赢',
+          hands: [
+            { name: '邓林', out: false, cardsText: ['♣Q', '♥K', '♠Q'] },
+            { name: '倩萍', out: true, cardsText: ['♣Q', '♦9', '♣9'] },
+            { name: '阿杰', out: true, cardsText: ['♣Q', '♠7', '♥5'] }
+          ]
+        },
         poker: {
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
@@ -203,6 +213,7 @@ module.exports = {
       result: { kind: 'undercover', winner: 'civilian', civilianWord: '苹果', spyWord: '梨' },
       room: uwRoom({
         id: 'r2', code: '418', game: 'undercover', phase: 'over', host: true,
+        settleFoot: '卧底是 老王',
         players: UW_PLAYERS.map(p => p.name === '老王' ? Object.assign({}, p, { out: true }) : p), count: 4,
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
