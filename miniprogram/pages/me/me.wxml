@@ -15,7 +15,7 @@
     <view class="rline" bindtap="toggleMute">
       <view class="rl-main">
         <view class="rl-t">音效</view>
-        <view class="rl-s">摇盅、扣盅、开盅都是合成音，不是随便的 beep</view>
+        <view class="rl-s">摇盅、扣盅、开盅都是真实录音，不是电子合成的 beep</view>
       </view>
       <view class="sw {{muted ? '' : 'on'}}"><view class="swdot"></view></view>
     </view>

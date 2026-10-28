@@ -2,6 +2,7 @@
   "navigationBarTitleText": "酒桌",
   "navigationBarBackgroundColor": "#2E211C",
   "navigationBarTextStyle": "white",
-  "backgroundColor": "#F5F0EA",
-  "enablePullDownRefresh": false
+  "backgroundColor": "#241A16",
+  "enablePullDownRefresh": false,
+  "backgroundTextStyle": "light"
 }

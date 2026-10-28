@@ -60,7 +60,12 @@ view, text, button, input, textarea { box-sizing: border-box }
   box-shadow: var(--sh-1);
 }
 .card.hl { border: 3rpx solid var(--brand); box-shadow: var(--sh-2) }
-.card.flat { background: #F5F1EB; box-shadow: none }
+/*
+ * ⚠️ 这里原来硬编码 #F5F1EB（米白）—— 深色主题铺开之后，
+ * 它变成"白底 + 白字"，整块内容**完全看不见**（不是低对比，是读不出来）。
+ * 硬编码浅色是主题化最容易漏的一处，统一改成半透明白。
+ */
+.card.flat { background: rgba(255, 255, 255, .05); box-shadow: none }
 
 .lbl {
   font-size: 21rpx;

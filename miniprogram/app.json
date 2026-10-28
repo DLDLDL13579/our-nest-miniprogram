@@ -5,17 +5,17 @@
     "pages/me/me"
   ],
   "window": {
-    "backgroundTextStyle": "dark",
-    "navigationBarBackgroundColor": "#F5F0EA",
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#2E211C",
     "navigationBarTitleText": "酒桌",
-    "navigationBarTextStyle": "black",
-    "backgroundColor": "#F5F0EA"
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#241A16"
   },
   "tabBar": {
-    "color": "#9A9188",
-    "selectedColor": "#E0714F",
-    "backgroundColor": "#FFFDF9",
-    "borderStyle": "white",
+    "color": "#8A8078",
+    "selectedColor": "#E8B33C",
+    "backgroundColor": "#1D1512",
+    "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/lobby/lobby",

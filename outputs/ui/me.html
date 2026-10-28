@@ -77,7 +77,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   box-shadow: var(--sh-1);
 }
 .card.hl { border: 1.5px solid var(--brand); box-shadow: var(--sh-2) }
-.card.flat { background: #F5F1EB; box-shadow: none }
+
+.card.flat { background: rgba(255, 255, 255, .05); box-shadow: none }
 
 .lbl {
   font-size: 10.5px;
@@ -212,6 +213,21 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 
 .tick { width: 13px; height: 13px; }
+
+
+.page {
+  --card: rgba(255, 255, 255, .075);
+  --ink: #F3ECE3;
+  --ink2: rgba(255, 255, 255, .62);
+  --ink3: rgba(255, 255, 255, .40);
+  --line: rgba(255, 255, 255, .13);
+  --brandsoft: rgba(224, 113, 79, .22);
+
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgba(232, 179, 60, .08) 0%, rgba(232, 179, 60, 0) 70%),
+    linear-gradient(180deg, #2E211C 0%, #241A16 55%, #1D1512 100%);
+}
 
 
 

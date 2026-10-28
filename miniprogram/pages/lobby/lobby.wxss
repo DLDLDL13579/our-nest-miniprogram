@@ -6,6 +6,35 @@
  */
 
 /* ============================================================
+   ⓪ 深色主题（2026-10-28）
+   ------------------------------------------------------------
+   改造前：大厅是**米白底 + 白卡片**，而房间页是深色酒桌 ——
+   点进房间像换了一个 App。这是"不像一个团队做的"里最刺眼的一处，
+   比任何单个组件的样式问题都显眼。
+
+   现在整站统一深色：变量层覆盖一次，下面的组件基本不用动
+   （说明当初把颜色收敛成 --card / --ink / --line 是对的）。
+   背景不是纯黑：深褐 + 顶部微光，和房间页同一个光源方向。
+   ============================================================ */
+.page {
+  --card: rgba(255, 255, 255, .075);
+  --ink: #F3ECE3;
+  --ink2: rgba(255, 255, 255, .62);
+  --ink3: rgba(255, 255, 255, .40);
+  --line: rgba(255, 255, 255, .13);
+  --brandsoft: rgba(224, 113, 79, .22);
+  --goldsoft: rgba(232, 179, 60, .22);
+  --bluesoft: rgba(94, 127, 166, .24);
+  --greensoft: rgba(109, 158, 106, .22);
+
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse 90% 42% at 50% 0%, rgba(232, 179, 60, .10) 0%, rgba(232, 179, 60, 0) 70%),
+    linear-gradient(180deg, #2E211C 0%, #241A16 55%, #1D1512 100%);
+  padding-bottom: calc(30rpx + env(safe-area-inset-bottom));
+}
+
+/* ============================================================
    ① 夜色头部
    ============================================================ */
 .lb-hero {
@@ -84,7 +113,7 @@
   display: flex; align-items: center; justify-content: center;
   border-radius: 18rpx; font-size: 27rpx; font-weight: 600;
   /* 未输满 3 位时是"待命"态：浅底浅字，而不是灰掉看不见 */
-  background: #F0EAE1; color: var(--ink3);
+  background: rgba(255,255,255,.1); color: var(--ink3);
   transition: background .16s, color .16s;
 }
 .join-btn.on { background: var(--brand); color: #fff }
@@ -92,7 +121,7 @@
 
 .errbox {
   margin: 0 0 var(--gap-2); padding: 18rpx 22rpx;
-  background: #FBEDE7; border-left: 6rpx solid var(--brand2);
+  background: rgba(224,113,79,.14); border-left: 6rpx solid var(--brand2);
   border-radius: 14rpx; font-size: 24rpx; color: var(--brand2); line-height: 1.6;
 }
 
@@ -204,8 +233,8 @@
 .gc-recent {
   font-size: 18rpx; padding: 3rpx 10rpx;
   border-radius: 6rpx;
-  background: var(--goldsoft);
-  color: #8A6A22;
+  background: rgba(232, 179, 60, .22);
+  color: #F0C860;
   flex: none;
 }
 
@@ -214,7 +243,7 @@
    ============================================================ */
 .lb-tip {
   margin-top: 8rpx; padding: 24rpx 26rpx;
-  background: #F5F1EB; border-radius: var(--r-2);
+  background: rgba(255,255,255,.045); border-radius: var(--r-2);
   font-size: 21rpx; color: var(--ink3); line-height: 1.9;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .78s backwards;
 }
