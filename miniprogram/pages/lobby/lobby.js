@@ -169,6 +169,12 @@ Page({
    * **把房间号念出来**。所以这里直接建，房间页一进去就是房间号。
    */
   openGame(e) {
+    /*
+     * 点玩法卡 = 开桌，是**大厅最重要的那一下**，原来完全没声音。
+     * 这里只能用主包的 `tick`：音效资源都在分包里，而大厅是主包页面 ——
+     * 主包不能引用分包资源（微信的硬规则，见 README 的"已知限制"）。
+     */
+    sfx.play('tick')
     const id = e.currentTarget.dataset.id
     /* 记住上次玩的是哪个 —— 酒桌上常常"再来那个"，下次进来它就排在最前面 */
     try { wx.setStorageSync('lastGame', id) } catch (err) {}
@@ -203,6 +209,7 @@ Page({
       this.setData({ err: '房间号是 3 位数字' })
       return
     }
+    sfx.play('tick')
     wx.navigateTo({ url: '/game/room/room?code=' + encodeURIComponent(code) })
   },
 

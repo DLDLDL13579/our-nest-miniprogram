@@ -808,10 +808,24 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    */
   {
     const SILENT_OK = new Set(['toggleMute'])
-    const wxml = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
-    const js = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
-    const handlers = [...new Set([...wxml.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]))]
+    /*
+     * ★ 2026-10-28 扩展：不只房间页，**三个页面都查**。
+     *   查完房间页（33 个操作里 9 个没声音）之后顺手看大厅 ——
+     *   结果发现"点玩法卡开桌"和"进房"这两个**最重要的操作**也没声音。
+     *   这正是"修一类 bug 必须全仓扫描"那条教训。
+     */
+    const PAGES = [
+      { name: '房间', wxml: 'miniprogram/game/room/room.wxml', js: 'miniprogram/game/room/room.js' },
+      { name: '大厅', wxml: 'miniprogram/pages/lobby/lobby.wxml', js: 'miniprogram/pages/lobby/lobby.js' },
+      { name: '我的', wxml: 'miniprogram/pages/me/me.wxml', js: 'miniprogram/pages/me/me.js' }
+    ]
     const silent = []
+    let totalHandlers = 0
+    for (const pg of PAGES) {
+    const wxml = fs.readFileSync(path.join(ROOT, pg.wxml), 'utf8')
+    const js = fs.readFileSync(path.join(ROOT, pg.js), 'utf8')
+    const handlers = [...new Set([...wxml.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]))]
+    totalHandlers += handlers.length
     for (const h of handlers) {
       if (SILENT_OK.has(h)) continue
       const m = new RegExp('\\n  (?:async )?' + h + '\\([^)]*\\)\\s*\\{').exec(js)
@@ -831,12 +845,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
        *    现在只认**直接的**声音调用。
        */
       if (!/sfx\.play|feedback\.fire|haptic\.|vibrate/.test(body)) {
-        silent.push(h)
+        silent.push(pg.name + ' → ' + h)
       }
+    }
     }
     assert.deepStrictEqual(silent, [],
       '这些可点击操作点了没声音（界面会切，但手上没反馈，像没点中）：\n    ' + silent.join('\n    '))
-    ok('全部 ' + handlers.length + ' 个可点击操作都有声音反馈')
+    ok('三个页面共 ' + totalHandlers + ' 个可点击操作都有声音反馈')
   }
 
   /* ============ ⑭ 房主专属的操作，前端必须藏起来 ============ */
