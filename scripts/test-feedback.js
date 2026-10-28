@@ -184,8 +184,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
    *   ② 装饰动作**真的更低** —— 否则分类等于没做
    *   ③ 两档差得够开（≥0.3）：差 0.1 听感上没区别，等于白分
    */
-  const DECOR = ['diceSettle', 'tumble', 'shaker', 'cupShake', 'diceIn', 'cupLift', 'diceTable', 'uwVote', 'pkFlip']
-  const CRITICAL = ['cupSlam', 'cupOpen', 'countdownGo', 'win', 'lose', 'penalized', 'uwReveal', 'pkSpread']
+  const DECOR = ['diceSettle', 'shaker', 'cupShake', 'diceIn', 'cupLift', 'diceTable', 'uwVote', 'pkFlip']
+  const CRITICAL = ['cupSlam', 'cupOpen', 'countdownGo', 'win', 'penalized', 'uwReveal', 'pkSpread']
   DECOR.forEach(k => {
     const t = timeline(k)
     assert.ok(t, '④b 时间线取不到：' + k)
@@ -201,6 +201,45 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   assert.ok(minCrit - maxDecor >= 0.3,
     `④b 关键音(${minCrit}) 与装饰音(${maxDecor}) 差得太小，听感上分不出来`)
   ok(`关键音 ${minCrit} / 装饰音 ${maxDecor}（差 ${(minCrit - maxDecor).toFixed(2)}，一局十几次的都是轻的那档）`)
+
+  /* ============ ④c 表里的每个动作都必须真的被接线 ============ */
+  console.log('\n=== ④c 死动作检测：定义了却从没被 fire 的动作 ===')
+  /*
+   * ★★ 2026-10-28 加的。起因：给 `penalized`（输了/罚酒）加了"下坠 + 碰杯"
+   *    两层音效，做完才发现它**从来没被 fire 过** —— 页面里输了走的是
+   *    `fire(iWon ? 'win' : 'lose')`，penalized 只是表里一行好看的配置。
+   *
+   *    同一次扫出 4 个死动作：penalized / countdownTick / tumble / shaker。
+   *    其中 shaker、countdownTick 是因为页面里用了**裸 sfx.play** 绕过时间轴 ——
+   *    绕过之后不但没有音量档位、没有震动分级，表里的配置也永远不生效。
+   *
+   *    判据：扫页面源码里所有 `feedback.fire(...)` 的**参数文本**，
+   *    把里面出现的动作名收集起来（能覆盖三元表达式 `fire(a ? 'win' : 'penalized')`，
+   *    这正是第一版按 `fire('key'` 精确匹配会漏掉的形态）。
+   */
+  const pageSrc = (() => {
+    const out = []
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) walk(fp)
+        else if (f.name.endsWith('.js')) out.push(fs.readFileSync(fp, 'utf8'))
+      }
+    }
+    walk(path.join(ROOT, 'miniprogram', 'pages'))
+    return out.join('\n')
+  })()
+  const fired = new Set()
+  pageSrc.replace(/feedback\.fire\(([\s\S]*?)\)/g, (_, args) => {
+    (args.match(/'([a-zA-Z0-9_]+)'/g) || []).forEach(mm => fired.add(mm.replace(/'/g, '')))
+    return ''
+  })
+  const dead = keys.filter(k => !fired.has(k))
+  assert.deepStrictEqual(dead, [],
+    '这些动作定义在时间轴里但**页面从没触发过**（配了等于没配）：\n    ' +
+    dead.join('\n    ') +
+    '\n    修法：要么在真实场景里 fire 它，要么从表里删掉。')
+  ok(`时间轴 ${keys.length} 个动作全部有真实触发点（无死动作）`)
 
   /* ============ ⑤ 震动分级要合理 ============ */
   console.log('\n=== ⑤ 震动分级（防滥用）===')
@@ -218,10 +257,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   assert.strictEqual(FEEDBACK.penalized.haptic, 'long', '输了的惩罚应该是唯一的 long')
   ok('开盅用 heavy、惩罚用 long（关键节点给足分量）')
 
-  /* 高频连续音不该震 —— 否则整局嗡嗡响 */
-  assert.strictEqual(FEEDBACK.tumble.haptic, null,
-    '摇骰过程是连续音，不该震（否则整局嗡嗡响）')
-  ok('摇骰过程不震（连续音不该配持续震动）')
+  /*
+   * 高频连续音不该震 —— 否则整局嗡嗡响。
+   * ★ 原来这里查的是 `tumble`，但那个动作 2026-10-28 已删除（页面从来没 fire 过它，
+   *   摇盅用的是 cupShake）。改查 cupShake —— 它才是真正跑在流程里的那 1 秒持续音。
+   */
+  assert.strictEqual(FEEDBACK.cupShake.haptic, null,
+    '摇盅是连续音，不该震（否则整局嗡嗡响）')
+  ok('摇盅不震（连续 1 秒的过程，震了用户会关掉震动）')
 
   /* ============ ⑥ 震动实际触发（节流 + 降级） ============ */
   console.log('\n=== ⑥ 震动运行行为 ===')

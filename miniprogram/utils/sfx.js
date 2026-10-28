@@ -46,6 +46,10 @@ const FILES = {
   countdownUrgent: 'audio/countdown-urgent.wav', // 最后三秒的急促
   chipBet: 'audio/chip-bet.wav',            // 筹码声（酒桌氛围）
   gulp: 'audio/gulp.wav',                   // 咽酒声
+  /* ★ 碰杯（2026-10-28 新增）：35 个音效里原来**一个杯子都没有**，
+     只有"咽酒"。而"碰一杯"才是酒桌上最有仪式感的那一下。
+     素材来自 Kenney Impact Sounds（CC0），真实玻璃碰撞，起音 0ms。 */
+  glassClink: 'audio/glass-clink.wav',      // 碰杯（罚酒/干杯那一刻）
   confetti: 'audio/confetti.wav',           // 撒花（赢了）
   /* v4 骰盅组：一个完整的摇盅流程，按现实顺序拆成五声。
      改造前只有"摇"这一声，且是一次性播放 —— 缺的正是扣盅那一下，

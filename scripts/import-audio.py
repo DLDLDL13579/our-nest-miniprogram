@@ -111,6 +111,14 @@ MAP = [
     # ---------- 筹码 ----------
     dict(dst='chip-bet',         src='chips-stack-4.ogg', seconds=0.30, sr=22050, fifty=-18.0,
          note='投票落定（一颗子放进碗里，起音 5ms）'),
+    # ---------- 酒桌本体：碰杯 ----------
+    # ★ 来自另一个包：Kenney Impact Sounds（同样是 CC0）。
+    #   Casino Audio 里没有玻璃，而"碰杯"是酒桌味儿最重的一声 ——
+    #   35 个音效里原来一个杯子都没有，只有"咽酒"（gulp）。
+    #   实测 impactGlass_light_002 起音 0ms、前 50ms −13.8，是这组里最跟手的一下。
+    dict(dst='glass-clink',      src='/tmp/k-imp/Audio/impactGlass_light_002.ogg',
+         seconds=0.22, sr=22050, fifty=-14.0,
+         note='碰杯（罚酒/干杯那一刻；起音 0ms）'),
 ]
 
 
@@ -225,7 +233,8 @@ MIN_SECONDS = 0.18   # 太短会像"咔"的一声，听不出是什么动作
 
 
 def process(one, src_dir, dry=False):
-    src = os.path.join(src_dir, one['src'])
+    # src 可以写绝对路径（素材来自多个包时用），否则相对 src_dir
+    src = one['src'] if os.path.isabs(one['src']) else os.path.join(src_dir, one['src'])
     dst = os.path.join(OUT_DIR, one['dst'] + '.wav')
     if not os.path.exists(src):
         return ('missing', one['dst'], src)

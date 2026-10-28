@@ -101,11 +101,21 @@ const FEEDBACK = {
   },
 
   /* ---------- 输了 / 要喝酒 ---------- */
+  /*
+   * 输了 / 要喝酒。
+   * ★ 2026-10-28 加了第二层音效：下坠之后 260ms 一声**碰杯**。
+   *   原来"输了"只有一声下坠 —— 那是游戏音，不是酒桌音。
+   *   真实的酒桌上，输了这个动作的落点是"碰一杯"，那才是这声的语义。
+   */
   penalized: {
     animMs: 360,
     impactAt: 60,
     sfx: 'failDrop',
-    haptic: 'long'
+    sfx2: 'glassClink',
+    /* 第二层的间隔是设计出来的（"下坠"落定之后才碰杯），不是通道补偿 */
+    sfx2Delay: 260,
+    haptic: 'long',
+    vol: VOL_CRITICAL
   },
 
   /* ---------- 开局倒计时读秒 ----------
@@ -130,14 +140,6 @@ const FEEDBACK = {
     hapticAt: 20
   },
 
-  /* ---------- 摇骰过程（连续音，不震 —— 避免整局嗡嗡响） ---------- */
-  tumble: {
-    animMs: 1300,
-    impactAt: 0,
-    sfx: 'diceTumbleWood',
-    haptic: null,
-    vol: VOL_DECOR
-  },
 
   /* ---------- 开局摇盅（金属） ---------- */
   shaker: {
@@ -228,14 +230,6 @@ const FEEDBACK = {
     hapticAt: 20
   },
 
-  /* 输：下坠 + 长震 */
-  lose: {
-    animMs: 0,
-    impactAt: 0,
-    sfx: 'failDrop',
-    haptic: 'long',
-    hapticAt: 20
-  },
 
   /* ================= 谁是卧底 ================= */
 

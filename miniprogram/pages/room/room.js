@@ -873,8 +873,9 @@ Page({
        * 读秒用 countdown（嗒），开始用 countdownGo（重击）+ 重震。
        * 原来两拍都用 countdownUrgent，听觉上分不出"最后一秒"和"开始"。
        */
+      /* 走 feedback：表里定义了 readtick 的档位与"读秒不震"（countdownTick 原来是死动作） */
       if (isLast) feedback.fire('countdownGo')
-      else sfx.play('countdown')
+      else feedback.fire('countdownTick')
       this.setData({
         cdText: isLast ? '开始！' : String(sec),
         cdTick: (this.data.cdTick || 0) + 1
@@ -1111,7 +1112,8 @@ Page({
       if (win !== (this._lastPkWin || '')) {
         this._lastPkWin = win
         const iWon = raw.me && win === raw.me.name
-        feedback.fire(iWon ? 'win' : 'lose')
+        /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
+        feedback.fire(iWon ? 'win' : 'penalized')
       }
     } else if (raw.game !== 'poker') {
       this._lastPkWin = ''
@@ -1124,7 +1126,8 @@ Page({
         this._lastUwWin = key
         const iAmSpy = raw.uw.myRole === 'spy'
         const iWon = (uwRes.winner === 'spy') === iAmSpy
-        feedback.fire(iWon ? 'win' : 'lose')
+        /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
+        feedback.fire(iWon ? 'win' : 'penalized')
       }
     } else if (!uwRes) {
       this._lastUwWin = ''
@@ -1696,7 +1699,10 @@ Page({
     const r = await call('room', { action: 'start', id: this.data.room.id }, { loading: '开始' })
       .catch((e) => { wx.showToast({ title: (e && e.friendly) || '开不了', icon: 'none' }); return null })
     if (r && r.ok) {
-      sfx.play('shakerMetal')
+      /* ★ 走 feedback 而不是裸 sfx.play（2026-10-28）：
+         裸播没有音量档位、没有震动分级，也进不了时间轴 ——
+         表里定义的 `shaker` 因此一直是个**从没被触发的死动作**。 */
+      feedback.fire('shaker')
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
@@ -1862,9 +1868,28 @@ Page({
       cupSrc: 'cup-up', cupCls: 'lift',
       diceShown: true, cupHint: '开了！'
     })
-    /* 骰子落在桌上滚两下 */
+    /*
+     * 骰子落在桌上滚两下。
+     *
+     * ★★ 2026-10-28：这里补上"逐颗落定"的声音。
+     *   视觉上五颗骰子是逐个落位的（`.cs-die` 的 animation-delay = index*90ms），
+     *   而声音只有一声 diceTable —— 画面在"啪啪啪啪啪"，耳朵只听到一下，
+     *   这是那种说不上来但一眼假的错位。
+     *
+     *   节奏直接取视觉的 90ms（改动画记得回来改这里，所以写成常量），
+     *   音效延迟压成 0（`sfxDelay` 覆盖）：逐颗音本身就是那一颗的落点，
+     *   再叠 90ms 的通道补偿就变成"晚于画面"了。
+     */
+    const DIE_DROP_MS = 90
     this._cupTimers.push(setTimeout(() => {
       feedback.fire('diceTable')
+      const n = (this.data.myDice || []).length
+      for (let k = 0; k < n; k++) {
+        this._cupTimers.push(setTimeout(() => {
+          if (this._dead) return
+          feedback.fire('diceSettle', { sfxDelay: 0, hapticDelay: 0 })
+        }, DIE_DROP_MS * k))
+      }
       this.bump()
     }, 180))
     /* 盅提走之后留在画面外 */
