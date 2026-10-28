@@ -25,6 +25,7 @@ echo "═══ 6/9 反馈时间轴 + 错误反馈（音画同步 / 不许静默
 node scripts/test-pitch.js
 node scripts/test-pool.js
 node scripts/test-room-changed.js
+node scripts/test-firsthint.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 
