@@ -455,6 +455,70 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
     ok(`写操作入口 ${methods.length ? '' : ''}全部有观战守卫`)
   }
 
+  /* ============ ⑫ ★ 骰盅流程不能被非骰子玩法触发 ============
+   *
+   * 2026-10-28 的真实缺陷：`prev.phase !== room.phase` 里
+   * `playing` 那一支**无条件**播 diceIn、1 秒后调 autoShake()（1 秒多摇盅声）。
+   * 而卧底 / 金花 / 转盘根本没有骰盅 —— 玩卧底开局时会听到一阵哗啦啦摇骰子。
+   *
+   * ★ 为什么一直没被发现：**界面上完全看不出来**，只有耳朵能听见。
+   *   这类"只有听觉暴露"的缺陷，静态断言是唯一可靠的防线。
+   *
+   * 判据：阶段变化块里只要出现骰盅专用调用（autoShake / diceIn / cupOpen / cupSrc），
+   *      同一个块里就必须出现玩法判断（room.game === 'liar' / 'dice'）。
+   */
+  {
+    const src = fs.readFileSync(JS, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    /*
+     * ⚠️ 必须匹配**带大括号**的那一处。
+     *    `indexOf('prev.phase !== room.phase')` 会先命中 roomChanged 里那行
+     *    `if (prev.phase !== room.phase) return true`（单行、没有块），
+     *    于是抽出来的是个空的 `{}` —— 所有检查都"通过"，断言形同虚设。
+     *    （这是第三次栽在"用 indexOf 找代码"上：位置对了不代表形态对了。）
+     */
+    const gateRe = /prev\.phase\s*!==\s*room\.phase\s*\)\s*\{/g
+    let hit = null, mm
+    while ((mm = gateRe.exec(src))) {
+      /* 取最后一个 —— refresh 里的那处才是我们要的阶段变化块 */
+      hit = mm
+    }
+    assert.ok(hit, '找不到"阶段变化"的代码块（抽取可能失效）')
+    const open = src.indexOf('{', hit.index)
+    let depth = 0, end = -1
+    for (let k = open; k < src.length; k++) {
+      if (src[k] === '{') depth++
+      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
+    }
+    assert.ok(end > open, '阶段变化块的括号没配平')
+    const block = src.slice(open, end + 1)
+
+    /*
+     * ⚠️ 判据必须按**位置**判，不能只判"块内出现过"。
+     *    第一版就是"块里只要有 room.game === 'liar' 就算过" ——
+     *    可 over 分支也有一处同样的判断，于是把 playing 那处的判断改成
+     *    `if (true)` 之后**断言照样通过**（反向验证当场发现的假绿）。
+     *
+     * 现在的判据：**每一处**骰盅调用都必须出现在某个玩法判断**之后**。
+     */
+    const DICE_CALLS = ['autoShake', "fire('diceIn')", "fire('cupOpen')", 'cupSrc']
+    const gateAt = block.search(/room\.game\s*===\s*'(?:liar|dice)'/)
+    const unguarded = []
+    for (const c of DICE_CALLS) {
+      let from = 0
+      while ((from = block.indexOf(c, from)) >= 0) {
+        if (gateAt < 0 || from < gateAt) unguarded.push(c + ' @' + from)
+        from += c.length
+      }
+    }
+    assert.deepStrictEqual(unguarded, [],
+      '★ 这些骰盅调用出现在玩法判断**之前**（或块里压根没有判断）—— ' +
+      '卧底 / 金花 / 转盘开局会听到摇骰子的声音：\n    ' + unguarded.join('\n    ') +
+      '\n    修法：用 `if (room.game === \'liar\' || room.game === \'dice\') { ... }` 包起来')
+    ok('阶段变化的骰盅调用全部在玩法判断之后')
+  }
+
   /* ============ ⑩ ★ 延迟回调里改 stage 必须有守卫 ============
    *
    * 2026-10-28 的真实竞态：比大小结算有一段

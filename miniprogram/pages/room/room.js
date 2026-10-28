@@ -586,18 +586,34 @@ Page({
         /* 开局倒计时开始：读秒声（最后一声更急促） */
         this.startCountdown(room.countdownMs)
       } else if (room.phase === 'playing') {
-        /* 开局：倒计时结束 → 骰子入盅。
-           ★ 按现实顺序：先把骰子放进盅（入盅声），再开始摇。
-           改造前是直接"摇"，没有入盅这一步，所以听起来像凭空开始的。 */
         feedback.fire('countdownGo')
-        this._cupTimers.push(setTimeout(() => {
-          feedback.fire('diceIn')
-          this.setData({ cupSrc: 'cup-down', cupCls: 'into', cupHint: '骰子进盅了' })
-        }, 260))
-        /* 入盅之后自动起摇 —— 现实里没人会放好骰子再等半天 */
-        this._cupTimers.push(setTimeout(() => this.autoShake(), 1000))
+        /*
+         * ★★ 进场的仪式感**按玩法分**，不能一律走骰盅。
+         *
+         *   原来这里是无条件执行骰子那套：播 diceIn（骰子入盅）、
+         *   1 秒后 autoShake()（播 1 秒多的摇盅声 + 设骰盅状态）。
+         *   而卧底 / 金花 / 转盘**根本没有骰盅** —— 于是玩卧底开局时
+         *   会听到一阵哗啦啦摇骰子的声音，界面上却什么都看不见。
+         *
+         *   这个 bug 一直没被发现，因为**界面上看不出来**，只有耳朵能听见。
+         */
+        if (room.game === 'liar' || room.game === 'dice') {
+          /* 骰子类：先把骰子放进盅（入盅声），再自动起摇 ——
+             现实里没人会放好骰子再等半天。 */
+          this._cupTimers.push(setTimeout(() => {
+            feedback.fire('diceIn')
+            this.setData({ cupSrc: 'cup-down', cupCls: 'into', cupHint: '骰子进盅了' })
+          }, 260))
+          this._cupTimers.push(setTimeout(() => this.autoShake(), 1000))
+        } else if (room.game === 'undercover') {
+          /* 卧底：词卡到手 —— 三声发牌，和"每人拿到一张卡"对应 */
+          sfx.play('cardDeal')
+        }
+        /* 金花的发牌声由发牌动画那段统一播（_pkDealt），这里不重复；
+           转盘开局不需要额外音效 —— 倒计时的"开始！"已经给了落点。 */
       } else if (room.phase === 'over') {
-        feedback.fire('cupOpen')
+        /* "开盅"是骰子类专属的收尾声，别的玩法有自己的（结算音效） */
+        if (room.game === 'liar' || room.game === 'dice') feedback.fire('cupOpen')
       }
     }
     /*
