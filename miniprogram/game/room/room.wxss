@@ -2398,3 +2398,6 @@
 }
 .rv-row.win .rv-name { color: #F6E7C3; font-weight: 700 }
 .rv-row.win .rv-total { color: #FFD98A }
+
+/* 结算页底部：今晚第几局 */
+.night-round { text-align: center; margin-top: 6rpx; font-size: 21rpx; color: rgba(255,255,255,.52) }

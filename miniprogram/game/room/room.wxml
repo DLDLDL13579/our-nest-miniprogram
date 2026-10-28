@@ -1103,6 +1103,11 @@
 
     <!-- 结算的情绪收尾：一句结论，不重复上面的明细 -->
     <view wx:if="{{room.settleFoot}}" class="settle-foot">{{room.settleFoot}}</view>
+    <!--
+      今晚第几局（2026-10-28）。酒桌上会有人问"咱们第几把了？"，
+      而这个数字只有手机知道 —— 它顺手就能给，不给反而奇怪。
+    -->
+    <view wx:if="{{nightRound > 0}}" class="night-round">今晚第 {{nightRound}} 局</view>
 
     <view class="actbar">
       <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>

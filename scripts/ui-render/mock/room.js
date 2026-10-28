@@ -140,6 +140,7 @@ module.exports = {
     /* 大话骰开盅结算：命中高亮的预览 */
     liarOver: () => ({
       stage: 'over',
+      nightRound: 3,
       result: {
         need: 5, face: 3, actual: 5, bidderWins: true,
         loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',

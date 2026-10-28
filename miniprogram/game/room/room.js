@@ -184,6 +184,8 @@ Page({
     soloTest: !!CFG.soloTest,
     /* 局内规则浮层（点"看规则"打开） */
     howOpen: false,
+    /* 今晚第几局（结算页底部显示，只在开局时更新） */
+    nightRound: 0,
     /* 减少动效（「我的」里可切）—— 房间页根容器据此挂 class */
     reduceMotion: false,
     pickGame: 'liar',
@@ -2081,7 +2083,9 @@ Page({
       const rec = wx.getStorageSync('nightGames') || {}
       const n = rec.date === today ? (Number(rec.n) || 0) : 0
       wx.setStorageSync('nightGames', { date: today, n: n + 1 })
-    } catch (e) {}
+      /* 返回"现在是今晚第几局"，结算页要显示它 */
+      return n + 1
+    } catch (e) { return 0 }
   },
 
   async doStart() {
@@ -2113,7 +2117,8 @@ Page({
          裸播没有音量档位、没有震动分级，也进不了时间轴 ——
          表里定义的 `shaker` 因此一直是个**从没被触发的死动作**。 */
       feedback.fire('shaker')
-      this.bumpNightCount()
+      /* 记一局，并留下"今晚第几局"给结算页 */
+      this.setData({ nightRound: this.bumpNightCount() })
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
