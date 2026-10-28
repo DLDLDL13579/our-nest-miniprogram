@@ -192,6 +192,8 @@
           {{item.name}}
           <text wx:if="{{item.isMe}}" class="ptag">我</text>
           <text wx:if="{{item.isHost}}" class="ptag host">房主</text>
+          <!-- 掉线要说出来（2026-10-28）：只有一个灰点的话，分不清"在思考"和"掉了" -->
+          <text wx:if="{{!item.online}}" class="poff">掉线</text>
           <text wx:if="{{item.isMe}}" class="pedit">改</text>
         </view>
         <view class="pdot {{item.online ? 'on' : ''}}"></view>

@@ -276,7 +276,13 @@ function shape(room, openid) {
     seat: p.seat,
     isMe: p.openid === openid,
     isHost: p.openid === room.hostOpenid,
-    online: now() - (p.lastSeen || 0) < 30000,   // 30 秒内有心跳算在线
+    /*
+     * 心跳窗口 30 → 20 秒（2026-10-28）。
+     * 轮询是 1.5 秒一次，30 秒意味着一个人锁屏后要等半分钟才被发现"掉了"——
+     * 而桌上最常发生的就是"他去接电话了，我们等他投完"。
+     * 20 秒仍留了充足容错（网络抖动一两次不会误判）。
+     */
+    online: now() - (p.lastSeen || 0) < 20000,
     /* ★ 是否参与本局：中途进来的是 false（这一局只观战），下一局自动变 true */
     /*
      * ⚠️ 这里原本还有两个死字段，已移除：
