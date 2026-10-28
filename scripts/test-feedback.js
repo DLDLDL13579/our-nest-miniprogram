@@ -173,6 +173,35 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     '这些音效触发太晚（动作都结束了）：\n    ' + tooLate.join('\n    '))
   ok('所有反馈的触发时刻都落在动画窗口内')
 
+  /* ============ ④b 音量分两档（关键音不能被装饰音带下去） ============ */
+  console.log('\n=== ④b 音量分档：关键音响、装饰音轻 ===')
+  /*
+   * 2026-10-28 加。原来所有音效 volume=1，用户嫌吵只有一个全开/全关的开关 ——
+   * 关掉之后连"该你了""开盅"都听不到，而那两声是功能性的（不知道就玩不下去）。
+   *
+   * 断言锁三件事：
+   *   ① 关键动作走高档（没写 vol 的默认就是 0.9，漏写也不会变轻）
+   *   ② 装饰动作**真的更低** —— 否则分类等于没做
+   *   ③ 两档差得够开（≥0.3）：差 0.1 听感上没区别，等于白分
+   */
+  const DECOR = ['diceSettle', 'tumble', 'shaker', 'cupShake', 'diceIn', 'cupLift', 'diceTable', 'uwVote', 'pkFlip']
+  const CRITICAL = ['cupSlam', 'cupOpen', 'countdownGo', 'win', 'lose', 'penalized', 'uwReveal', 'pkSpread']
+  DECOR.forEach(k => {
+    const t = timeline(k)
+    assert.ok(t, '④b 时间线取不到：' + k)
+    assert.ok(t.vol <= 0.55, `④b ${k} 是装饰音，音量应 ≤0.55，实际 ${t.vol}`)
+  })
+  CRITICAL.forEach(k => {
+    const t = timeline(k)
+    assert.ok(t, '④b 时间线取不到：' + k)
+    assert.ok(t.vol >= 0.85, `④b ${k} 是关键音（缺了玩不下去），音量应 ≥0.85，实际 ${t.vol}`)
+  })
+  const minCrit = Math.min.apply(null, CRITICAL.map(k => timeline(k).vol))
+  const maxDecor = Math.max.apply(null, DECOR.map(k => timeline(k).vol))
+  assert.ok(minCrit - maxDecor >= 0.3,
+    `④b 关键音(${minCrit}) 与装饰音(${maxDecor}) 差得太小，听感上分不出来`)
+  ok(`关键音 ${minCrit} / 装饰音 ${maxDecor}（差 ${(minCrit - maxDecor).toFixed(2)}，一局十几次的都是轻的那档）`)
+
   /* ============ ⑤ 震动分级要合理 ============ */
   console.log('\n=== ⑤ 震动分级（防滥用）===')
   const VALID = ['light', 'medium', 'heavy', 'double', 'long']

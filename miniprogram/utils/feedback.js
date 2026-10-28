@@ -51,13 +51,29 @@ const sfx = require('./sfx.js')
      haptic      震动强度：'light' | 'medium' | 'heavy' | 'long' | 'double'
      hapticDelay 震动相对动画开始的延迟（比音效再晚，因为触觉最快）
    ============================================================ */
+/* ============================================================
+   两档播放音量
+   ------------------------------------------------------------
+   2026-10-28 加。原来所有音效都是 volume=1，用户嫌吵只有一个全开/全关的开关 ——
+   关掉之后连"该你了""开盅"都听不到，而那两声是**功能性**的
+   （不知道就玩不下去），装饰音才是吵的来源。
+
+   按"缺了它会不会玩不下去"分两档：
+     · 关键（0.9）：开盅 / 扣盅 / 结算 / 该你了 / 读秒最后一拍
+     · 装饰（0.45）：逐颗落定 / 摇盅过程 / 翻牌 / 投票落子
+   装饰音一局出现十几次（骰子逐颗落定），关键音一次。
+   ============================================================ */
+const VOL_CRITICAL = 0.9
+const VOL_DECOR = 0.45
+
 const FEEDBACK = {
   /* ---------- 骰子逐颗落定 ---------- */
   diceSettle: {
     animMs: 420,
     impactAt: 60,
     sfx: 'diceSettle',
-    haptic: 'light'
+    haptic: 'light',
+    vol: VOL_DECOR
   },
 
   /* ---------- 全部落定 / 开盅揭晓（重） ---------- */
@@ -119,7 +135,8 @@ const FEEDBACK = {
     animMs: 1300,
     impactAt: 0,
     sfx: 'diceTumbleWood',
-    haptic: null
+    haptic: null,
+    vol: VOL_DECOR
   },
 
   /* ---------- 开局摇盅（金属） ---------- */
@@ -128,7 +145,8 @@ const FEEDBACK = {
     impactAt: 0,
     sfx: 'shakerMetal',
     haptic: 'light',
-    hapticAt: 60
+    hapticAt: 60,
+    vol: VOL_DECOR
   },
 
   /* ============================================================
@@ -144,7 +162,8 @@ const FEEDBACK = {
     animMs: 620,
     impactAt: 40,
     sfx: 'diceIntoCup',
-    haptic: 'light'
+    haptic: 'light',
+    vol: VOL_DECOR
   },
 
   /* ② 摇盅（持续音，覆盖整个摇动过程）
@@ -155,7 +174,8 @@ const FEEDBACK = {
     animMs: 1050,
     impactAt: 0,
     sfx: 'cupShake',
-    haptic: null
+    haptic: null,
+    vol: VOL_DECOR
   },
 
   /* ③ ★ 扣盅 —— 整个流程的重音。
@@ -174,7 +194,8 @@ const FEEDBACK = {
     animMs: 420,
     impactAt: 0,
     sfx: 'cupLift',
-    haptic: null
+    haptic: null,
+    vol: VOL_DECOR
   },
 
   /* ⑤ 骰子在桌上滚两下才停（揭盅之后） */
@@ -183,7 +204,8 @@ const FEEDBACK = {
     impactAt: 0,
     sfx: 'diceOnTable',
     haptic: 'light',
-    hapticAt: 40
+    hapticAt: 40,
+    vol: VOL_DECOR
   },
 
   /* ================= 全场通用 ================= */
@@ -222,7 +244,8 @@ const FEEDBACK = {
     animMs: 220,
     impactAt: 40,
     sfx: 'chipBet',
-    haptic: 'light'
+    haptic: 'light',
+    vol: VOL_DECOR
   },
 
   /* 出局揭晓：全场焦点，重一些（配 slamIn 的 .44s 入场） */
@@ -240,7 +263,8 @@ const FEEDBACK = {
     animMs: 260,
     impactAt: 30,
     sfx: 'cardFlip',
-    haptic: 'light'
+    haptic: 'light',
+    vol: VOL_DECOR
   },
 
   /*
@@ -280,6 +304,7 @@ const FEEDBACK = {
 const SFX_LAG_MS = 30      // 音效：冲击帧之后 30ms
 const HAPTIC_LAG_MS = 50   // 震动：冲击帧之后 50ms（= 音效 + 20）
 
+
 /**
  * 取一个动作的完整时间线（含派生出的延迟）。
  * 表里只描述"意图"（哪个冲击帧、哪个音效、多重的震动），时刻全部由这里算。
@@ -301,7 +326,9 @@ function timeline(key) {
        不是通道补偿，所以保持手写，不参与派生 */
     sfx2Delay: f.sfx2 ? (f.sfx2Delay || 0) : 0,
     haptic: f.haptic || null,
-    hapticDelay: impact > 0 ? impact + HAPTIC_LAG_MS : (f.hapticAt || 0)
+    hapticDelay: impact > 0 ? impact + HAPTIC_LAG_MS : (f.hapticAt || 0),
+    /* 没写 vol 的就是关键档 —— 默认取高，漏写宁可响一点也不要听不见 */
+    vol: typeof f.vol === 'number' ? f.vol : VOL_CRITICAL
   }
 }
 
@@ -419,9 +446,14 @@ function fire(key, opt) {
   }
   opt = opt || {}
 
-  /* 音效 */
+  /*
+   * 音效。
+   * ★ 音量按档位走（关键 0.9 / 装饰 0.45），调用方显式传的 volume 优先 ——
+   *   页面偶尔需要"这一次更轻"（比如连击叠加时）。
+   */
   if (f.sfx) {
-    const playIt = () => sfx.play(f.sfx, opt)
+    const vol = typeof opt.volume === 'number' ? opt.volume : f.vol
+    const playIt = () => sfx.play(f.sfx, Object.assign({}, opt, { volume: vol }))
     if (opt.sfxDelay !== undefined ? opt.sfxDelay : f.sfxDelay) {
       _timers.push(setTimeout(playIt, opt.sfxDelay !== undefined ? opt.sfxDelay : f.sfxDelay))
     } else {
@@ -432,7 +464,8 @@ function fire(key, opt) {
   /* 第二层音效（如"牌落桌 + 揭示重击"这种两层设计） */
   if (f.sfx2) {
     const d2 = opt.sfx2Delay !== undefined ? opt.sfx2Delay : f.sfx2Delay
-    const play2 = () => sfx.play(f.sfx2, opt)
+    const play2 = () => sfx.play(f.sfx2, Object.assign({}, opt,
+      { volume: typeof opt.volume === 'number' ? opt.volume : f.vol }))
     if (d2) _timers.push(setTimeout(play2, d2))
     else play2()
   }
