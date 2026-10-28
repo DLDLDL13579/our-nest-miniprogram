@@ -85,7 +85,7 @@ module.exports = {
         howList: GAMES.filter(g => g.id === 'liar')[0].how,
         id: 'r1', code: '352', game: 'liar', phase: 'lobby', host: true,
         me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
-        players: PLAYERS, count: 3, turn: 0, round: 0,
+        players: PLAYERS, count: 3, turn: 0, round: 0, locked: false,
         bid: null, lastResult: null, spin: null, deck: 'friends',
         myTurn: false, turnName: '', waitingCount: 0, waitingNames: '',
         options: []

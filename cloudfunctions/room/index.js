@@ -313,6 +313,7 @@ function shape(room, openid) {
     /* 倒计时剩余毫秒（前端本地算更准，这里给基准） */
     countdownMs: room.phase === 'countdown' ? Math.max(0, (room.countdownEnd || 0) - now()) : 0,
     turn: room.turn || 0,           // 轮到第几号座位
+    locked: !!room.locked,          // 房主锁房（别人进不来）
     round: room.round || 0,
     /*
      * bid 里补一个 lastSeat = 「最近一次动作」是谁做的（叫骰或劈）。
@@ -633,6 +634,12 @@ exports.main = async (event) => {
       }
       if (isStale(room)) return { ok: false, code: 'STALE', msg: '这个房间已经过期了，让房主重新开一个' }
 
+      /* 锁房：新房客直接拒；房里的人重进不受影响（already 分支在下面） */
+      const alreadyIn = (room.players || []).some(p => p.openid === OPENID)
+      if (room.locked && !alreadyIn) {
+        return { ok: false, msg: '房主锁房了，进不去' }
+      }
+
       const already = (room.players || []).some(p => p.openid === OPENID)
       if (already) {
         /* 已在房里（比如退出重进）→ 只刷新心跳，不重复加人 */
@@ -801,6 +808,28 @@ exports.main = async (event) => {
       const players = (room.players || []).map(p =>
         p.openid === OPENID ? Object.assign({}, p, { name: raw }) : p)
       await rooms.doc(room._id).update({ data: { players: players, updatedAt: ts } })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 锁房 =================
+     *
+     * ★★ 2026-10-28（调研第 25 条）。
+     *
+     *   房间号是 3 位数字（1000 个），而且**任何人知道号就能进** ——
+     *   隔壁桌听见你们报号、或者随手撞号，人就进来了，房主没有任何办法。
+     *   Plato / Houseparty 都有"锁房"，而且把开关常驻在界面上。
+     *
+     * 只在 lobby 能切：玩到一半锁房没有意义（已经在里面的人不受影响），
+     * 反而会让"想拉个朋友进来"的人困惑为什么进不来。
+     */
+    if (action === 'lock') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能锁房' }
+      if (room.phase !== 'lobby') return { ok: false, msg: '玩到一半没法锁房' }
+      const want = event.locked === true
+      await rooms.doc(room._id).update({ data: { locked: want, updatedAt: ts } })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID) }
     }

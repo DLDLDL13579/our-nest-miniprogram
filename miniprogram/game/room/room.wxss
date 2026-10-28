@@ -278,6 +278,16 @@
 .pav.s2 { background: #7FA890 }
 .pav.s3 { background: #9AA8C8 }
 
+/* 玩家列表标题行的右侧：锁房开关 + 人数 */
+.plist-r { display: flex; align-items: center; gap: 10rpx }
+.lockbtn {
+  padding: 4rpx 12rpx; border-radius: 10rpx;
+  font-size: 18rpx; color: rgba(255,255,255,.62);
+  background: rgba(255,255,255,.07);
+}
+.lockbtn.on { color: #F0C860; background: rgba(232,179,60,.22) }
+.locks { font-size: 18rpx; color: #F0C860 }
+
 .pseat {
   width: 52rpx; height: 52rpx; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;

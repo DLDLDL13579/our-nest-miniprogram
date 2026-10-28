@@ -170,7 +170,25 @@
 
     <view class="sechead">
       <text>已经进来的人</text>
-      <text class="xs">{{room.count}} 人</text>
+      <view class="plist-r">
+        <!--
+          锁房（2026-10-28，调研第 25 条）：3 位房间号，任何人知道号就能进。
+          做成**小图标**而不是按钮 —— 它是个状态，不是每天都要按的操作。
+          锁定后旁边显示「已锁」两个字；没锁时**什么都不显示**
+          （不锁是默认状态，不需要每次都讲一遍）。
+        -->
+        <!--
+          锁房开关。这里试过两版：
+            ① emoji（🔒/🔓）—— 违反项目铁律（跨机型渲染不一致，实测渲染成方块）
+            ② 内联 SVG —— 但 `ic` 是 iconSet.build() 的结果，新加的 lock/unlock
+              不在它的清单里，渲染出来是空方块
+          最后用**文字**：中文两个字比图标更清楚，也不依赖图标集。
+        -->
+        <view wx:if="{{room.host}}" class="lockbtn {{room.locked ? 'on' : ''}}"
+              bindtap="toggleLock">{{room.locked ? '解锁' : '锁房'}}</view>
+        <text wx:if="{{room.locked}}" class="locks">已锁房</text>
+        <text class="xs">{{room.count}} 人</text>
+      </view>
     </view>
 
     <!--

@@ -487,6 +487,49 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 重开一局把卧底的全部局内状态清干净（不依赖下一次 start 兜底）')
   }
 
+  /* ============ ⑦e 锁房：房主能拦人，别人进不来 ============ */
+  /*
+   * 2026-10-28（调研第 25 条）：3 位房间号，任何人知道号就能进 ——
+   * 隔壁桌听见你们报号就进来了，房主没有任何办法。
+   */
+  {
+    OPENID = A
+    const lr = await room.main({ action: 'create', name: 'K1', game: 'liar' })
+    const lrId = lr.room.id
+    const lrCode = lr.room.code
+
+    /* 非房主不能锁 */
+    OPENID = B
+    await room.main({ action: 'join', code: lrCode, name: 'K2' })
+    const notHost = await room.main({ action: 'lock', id: lrId, locked: true })
+    assert.ok(!notHost.ok, '非房主不能锁房')
+
+    /* 房主锁 */
+    OPENID = A
+    const locked = await room.main({ action: 'lock', id: lrId, locked: true })
+    assert.ok(locked.ok, '房主锁房应成功：' + (locked.msg || ''))
+    assert.strictEqual(locked.room.locked, true, 'shape 要把 locked 透给前端')
+
+    /* 新人进不来 */
+    OPENID = 'oid_k3'
+    const blocked = await room.main({ action: 'join', code: lrCode, name: 'K3' })
+    assert.strictEqual(blocked.ok, false, '★ 锁房后新人必须进不来')
+    assert.ok(/锁/.test(blocked.msg || ''), '提示要说清是锁房了，实际：' + (blocked.msg || ''))
+
+    /* 房里的人重进不受影响 */
+    OPENID = B
+    const rejoin = await room.main({ action: 'join', code: lrCode })
+    assert.ok(rejoin.ok, '★ 已经在房里的人重进不该被锁挡住')
+
+    /* 解锁后能进 */
+    OPENID = A
+    await room.main({ action: 'lock', id: lrId, locked: false })
+    OPENID = 'oid_k3'
+    const okJoin = await room.main({ action: 'join', code: lrCode, name: 'K3' })
+    assert.ok(okJoin.ok, '解锁后应该能进')
+    ok('★ 锁房：房主能拦人、房里的人不受影响、解锁后能进')
+  }
+
   /* ============ ⑦d 回合超时：有人锁屏不能把全桌卡死 ============ ============ */
   /*
    * 2026-10-28 补（调研第 3 条）。这个项目在 AGENTS.md 里记过两次

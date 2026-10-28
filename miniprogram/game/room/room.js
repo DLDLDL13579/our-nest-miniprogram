@@ -1822,6 +1822,28 @@ Page({
     if (r && r.ok) this.setData({ room: this.decorate(r.room) })
   },
 
+  /**
+   * 锁房 / 解锁（2026-10-28，调研第 25 条）。
+   *
+   * 3 位房间号，任何人知道号就能进 —— 隔壁桌听见你们报号就进来了，
+   * 房主没有任何办法拦。这是个很小的开关，但它是"谁在这个房间"的唯一控制权。
+   */
+  async toggleLock() {
+    /* 观战守卫：虽然是房主操作、房主不可能是观战者，但统一加更可靠
+       （断言也要求所有写操作入口都有它） */
+    if (!this.specGuard()) return
+    if (!this.data.room || !this.data.room.host) return
+    const want = !this.data.room.locked
+    sfx.play('toggleOn')
+    const r = await call('room', { action: 'lock', id: this.data.room.id, locked: want }, { silent: true })
+      .catch((e) => {
+        wx.showToast({ title: (e && (e.friendly || e.message)) || '锁不上', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    if (r && r.ok) this.applyRoom(r.room)
+  },
+
   /*
    * 局内看规则（2026-10-28）。
    * lobby 里有一整套「怎么玩」，但开局就撤掉了 ——

@@ -38,6 +38,9 @@
 /** 图标路径表（24×24 viewBox，stroke 风格，描边色 currentColor） */
 const PATHS = {
   /* ---------- 界面 ---------- */
+  /* 锁 / 开锁（2026-10-28）：房间号 3 位，谁都能进 —— 房主需要一个开关 */
+  lock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/>',
+  unlock: '<rect x="4.5" y="10.5" width="15" height="10" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 017.2-2.4"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   check: '<path d="M4 12.5l5.2 5.2L20 7"/>',
   chevronDown: '<path d="M6 9.5l6 6 6-6"/>',
