@@ -211,6 +211,26 @@ function extractBuildSectors(src) {
   assert.deepStrictEqual(missing, [], '摇盅流程不完整：\n    ' + missing.join('\n    '))
   ok('入盅 → 摇盅 → 扣盅 → 揭盅 → 桌上滚动，五步齐全且音效已注册')
 
+  /* ★ 2026-10-28：题库不许有**不可控的隐私指令**。
+     收题原则写在文档里（"不涉及在场某人隐私、不让人下不来台"），
+     但代码里没有对应的检查 —— 于是「你朋友圈屏蔽过谁」「让旁边的人翻你的相册」
+     这两条一直躺在题库里。前者可能当场得罪人（被屏蔽的人可能就在座），
+     后者根本不可控（翻到什么不知道）。
+     判据：出现这些动作词的题一律报错，要求换成"主动分享"级别的题。 */
+  {
+    const d = require(path.join(ROOT, 'miniprogram/utils/decks.js'))
+    const DANGER = /翻你的相册|翻他的相册|翻一下相册|屏蔽过谁|发朋友圈|打开你的微信|看你的聊天/
+    const bad = []
+    d.DECKS.forEach(deck => {
+      [...(deck.truth || []), ...(deck.dare || [])].forEach(q => {
+        if (DANGER.test(q)) bad.push(deck.name + ' → ' + q)
+      })
+    })
+    assert.deepStrictEqual(bad, [],
+      '这些题是**不可控的隐私指令**（可能当场得罪人，或翻到什么不知道）：\n    ' + bad.join('\n    '))
+    ok('题库里没有不可控的隐私指令')
+  }
+
   /* ★ 2026-10-28：每个玩法的规则必须提到"喝"。
      复核文案时发现大话骰六条规则从没写过"输了喝几杯"（桌上第一个会问的问题），
      而比大小和卧底**代码里根本没有惩罚量** —— 所以判据不是"每条都写 1 杯"
