@@ -1904,6 +1904,43 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('版本号单一来源（config.js ' + cfg.version + '），页面里没有硬编码')
   }
 
+  /* ============ ③j 文案里的数字必须和代码一致 ============ */
+  console.log('\n=== ③j 文案里的数字（小时数 / 颗数 / 玩法数）必须和代码一致 ===')
+  /*
+   * ★★ 2026-10-28。版本号那个坑的同类：**文案写死的数字会悄悄过时**。
+   *   版本号写在页面里 → 一路停在 3.7.4；
+   *   那"房间 2 小时后过期"凭什么不会错？
+   *
+   *   判据：从服务端源码里把真实值读出来，再和 wxml 里写的比。
+   *   不靠"记得改"。
+   */
+  {
+    const srv = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    /* 房间过期时间：const TTL_MS = 2 * 3600 * 1000 */
+    const m = /const TTL_MS\s*=\s*([\d\s*]+)/.exec(srv)
+    assert.ok(m, '找不到 TTL_MS 的定义')
+    const ttlHours = Math.round(m[1].split('*').reduce((a, x) => a * Number(x.trim()), 1) / 3600000)
+
+    const bad = []
+    const sweep = (dir) => {
+      for (const f of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fp = path.join(dir, f.name)
+        if (f.isDirectory()) { sweep(fp); continue }
+        if (!f.name.endsWith('.wxml')) continue
+        const src = fs.readFileSync(fp, 'utf8')
+        for (const mm of src.matchAll(/房间\s*(\d+)\s*小时/g)) {
+          if (Number(mm[1]) !== ttlHours) {
+            bad.push(path.relative(ROOT, fp) + ' → 写「' + mm[1] + ' 小时」，代码是 ' + ttlHours + ' 小时')
+          }
+        }
+      }
+    }
+    sweep(path.join(ROOT, 'miniprogram'))
+    assert.deepStrictEqual(bad, [],
+      '文案里的小时数和 TTL_MS 对不上：\n    ' + bad.join('\n    '))
+    ok('房间过期时长文案与 TTL_MS 一致（' + ttlHours + ' 小时）')
+  }
+
   /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
   console.log('\n=== ④j wxss 语法：不许通配符 / 不支持的属性 ===')
   /*
