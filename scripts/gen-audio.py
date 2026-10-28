@@ -301,6 +301,25 @@ def sharpen_transient(sig, sr=SR, ms=1.2, boost=1.0):
         # 高频脉冲用交替符号模拟（近似宽带）
         pulse = (1.0 if j % 2 == 0 else -1.0) * env * boost * best
         out[peak + j] += pulse * 0.5
+    # ★★ 锐化**不能顺手把峰值放大**（2026-10-28 实测出来的）。
+    #
+    #   上面那层脉冲是**加**在信号上的，幅度还是按峰值 best 算的，
+    #   于是锐化后峰值本身就涨了 1.5 倍；而 spatialize 里会锐化**两次**
+    #   （本体一次、空间处理后补一次 boost=1.4），累计放大到约 2.5 倍。
+    #
+    #   对"起音就是全部"的短音（tap / 骰子落定）没问题；
+    #   但对**重击型**（扣盅、开盅）是灾难：它们的分量来自 150ms 的低频体，
+    #   峰值被凭空抬高 8 dB 之后，loudness_normalize 为了不削顶只能整体缩下去
+    #   —— 实测扣盅半峰样本从 523 掉到 4（= 峰值成了一根 0.18ms 的针），
+    #   前 50ms RMS 从 0.3 掉到 −15.7，听感就是"啪一下，很轻"。
+    #
+    #   锐化真正起作用的机制是**起音变陡**（能量更集中在头 1ms），
+    #   不是"更响"。所以允许峰值最多涨 15%（保留那点"扎"），其余压回来。
+    after = max((abs(x) for x in out), default=0.0)
+    cap = best * 1.15
+    if after > cap > 0:
+        kk = cap / after
+        out = [x * kk for x in out]
     return out
 
 
@@ -321,7 +340,8 @@ def air_layer(sig, sr=SR, mix=0.16, seed=53):
     return out
 
 
-def spatialize(sig, sr=SR, reflections=True, tail_ms=220, transient=True, seed=11):
+def spatialize(sig, sr=SR, reflections=True, tail_ms=220, transient=True,
+               seed=11, final_sharpen=True):
     """
     一站式「空间化」：瞬态 → 反射 → 尾巴 → **再锐化一次**。
 
@@ -341,8 +361,15 @@ def spatialize(sig, sr=SR, reflections=True, tail_ms=220, transient=True, seed=1
         out = early_reflections(out, sr, seed=seed)
     if tail_ms and tail_ms > 0:
         out = room_tail(out, sr, ms=tail_ms, seed=seed + 7)
-    if transient:
+    if transient and final_sharpen:
         # 末道瞬态：把被空间处理拖慢的起音重新拉回来
+        #
+        # ⚠️ 但**重击型音效必须关掉它**（cup-slam / reveal-hit，2026-10-28 实测）。
+        #   这一道的用途是"起音被反射和尾巴推后了，把它拉回来"——
+        #   它假设能量主要在起音那一下（转盘停稳、骰子落定）。
+        #   而重击型的分量在 150ms 的低频体里：再叠一道瞬态，峰值又被抬高，
+        #   归一化只能整体缩下去，**体被压成一根针**。
+        #   实测扣盅：半峰样本 161 → 4，前 50ms RMS 反而掉了 3.3 dB。
         out = sharpen_transient(out, sr, ms=1.6, boost=1.4)
     return out
 
@@ -410,7 +437,7 @@ def _transient_peaks(sig, win_ms=10, top_n=3):
     return peaks[:top_n]
 
 
-def loudness_normalize(sig, peak_ceiling=0.97, target_rms=0.16, transient_peak=0.55):
+def loudness_normalize(sig, peak_ceiling=0.965, target_rms=0.16, transient_peak=0.55):
     """
     ★ 响度归一化：**尽量推到目标响度，但不削顶**。
 
@@ -438,6 +465,10 @@ def loudness_normalize(sig, peak_ceiling=0.97, target_rms=0.16, transient_peak=0
 
     之前留 0.92 的"安全余量"也是浪费：短音效的峰值本来就远低于满量程，
     留那么多余量等于白白让它变轻。现在放宽到 0.97。
+
+    ⚠️ 0.97 → **0.965（=−0.31 dBFS）**：0.97 对应 −0.26 dBFS，
+      比"峰值 ≤ −0.3 dBFS"的验收线还高 0.04 dB（lib 侧任何后处理都会越界）。
+       0.965 正好落在 −0.31，留出这条线。全表因此整体降 0.045 dB —— 听不出来。
     """
     if not sig:
         return sig
@@ -464,6 +495,17 @@ def loudness_normalize(sig, peak_ceiling=0.97, target_rms=0.16, transient_peak=0
             k = transient_peak / max(hits)
             if max(abs(x) for x in sig) * k <= peak_ceiling:
                 sig = [x * k for x in sig]
+        # ★★ 这条分支原来**完全不看峰值** —— 它在 2026-10-28 重做扣盅时炸过：
+        #   它默认"RMS 已经够响的音效，峰值一定没超 ceiling"，理由是原来的
+        #   音效要么是零散撞击（峰值高、RMS 低），要么是稳态旋律（峰值低）。
+        #   但"叠大量低频能量体"的重击型**两条都不属于**：原始峰值 1.9、
+        #   原始 RMS 也超过 target —— 于是它原样返回，quantize 的钳位把
+        #   峰值削平成一条直线（实测 f50 从 −12 变成 −5.6，听着是"破音"
+        #   而不是"重"）。
+        #   → 峰值上限必须在这条分支也执行。ceiling 是**契约**，不是某个分支的优化。
+        pk = max(abs(x) for x in sig)
+        if pk > peak_ceiling:
+            sig = [x * (peak_ceiling / pk) for x in sig]
         return sig
     scaled = [x * (target_rms / rms) for x in sig]
     pk = max(abs(x) for x in scaled)
@@ -520,6 +562,14 @@ def write_wav(name, sig, out_sr=None):
         sig = match_short_term(sig, LOUDNESS_FIX[name], sr_use)
     sig = remove_dc(sig)
     sig = fade_edges(sig)
+    # ★ 收尾再钳一次峰值（2026-10-28）。
+    #   remove_dc 是**整段平移**（减去均值），它会把正负两端的绝对峰值拉开 ——
+    #   一段均值偏负的信号在去直流之后，正峰可能被顶到 ceiling 之上。
+    #   实测 dice-tumble-wood 就是这样越界到 −0.23 dBFS（线是 −0.3）。
+    #   缩 0.7% 听不出来，但"绝不削顶"是契约，必须在落盘前保证。
+    pk = max((abs(x) for x in sig), default=0.0)
+    if pk > 0.96:
+        sig = [x * (0.96 / pk) for x in sig]
     ints = quantize(sig)
     with wave.open(path, 'w') as w:
         w.setnchannels(1)
@@ -855,10 +905,11 @@ def countdown_go():
     e = env_ad(n, int(SR * 0.001), SR * 0.06)
     return [s[i] * e[i] * 0.6 for i in range(n)]
 # _sp 包装器必须定义在 ALL / ALL_V3 之前（它们引用它）
-def _sp(fn, tail_ms=220, seed=11):
+def _sp(fn, tail_ms=220, seed=11, final_sharpen=True):
     """把合成函数包一层空间化（保持采样率契约不变）"""
     def wrapped():
-        return spatialize(fn(), SR, tail_ms=tail_ms, seed=seed)
+        return spatialize(fn(), SR, tail_ms=tail_ms, seed=seed,
+                          final_sharpen=final_sharpen)
     return wrapped
 
 
@@ -988,21 +1039,32 @@ def charge_up():
 
 def reveal_hit():
     """揭晓重击：一记"当"+ 低频冲击 + 金属尾音。
-    商业游戏里"结果出现"的那一下必须有分量。"""
-    n = int(SR * 0.75)
+    商业游戏里"结果出现"的那一下必须有分量。
+
+    ★★ 2026-10-28 实测修正：它是**全场第二重**的一下，但前 50ms RMS 只有 −18.8，
+    比"咽一口酒"（−15.6）和"失败下坠"（−8.3）都轻 —— 因果反了。
+    和高频明亮层、金属尾音相比，它**缺一层低频体**：
+    现实里"当"的那一下，胸腔是跟着震的，那部分能量在 60~120Hz 且持续 150ms 以上。
+    补上之后 loudness_normalize 才有东西可推（否则峰值顶格、整体太薄，推不动）。"""
+    n = int(SR * 0.85)
     # 高频明亮层
     a = sine(n, 1046.50)
     b = sine(n, 1567.98)
     e1 = env_ad(n, int(SR * 0.0015), SR * 0.16)
-    bright = [(a[i] * 0.5 + b[i] * 0.3) * e1[i] for i in range(n)]
+    bright = [(a[i] * 0.30 + b[i] * 0.18) * e1[i] for i in range(n)]
     # 低频冲击
     imp = impact_low()
-    # 金属尾音（不谐和泛音 → 像铜锣）
+    # 低频体：两个非整数倍的低频叠在一起，衰减 150ms（"轰"的那一层）
+    lowA = sine(n, 62)
+    lowB = sine(n, 93)
+    eL = env_ad(n, int(SR * 0.003), SR * 0.150)
+    low = [(lowA[i] * 1.10 + lowB[i] * 0.70) * eL[i] for i in range(n)]
+    # 金属尾音（不谐和泛音 → 像铜锣；90ms → 130ms 让它有余响）
     ring = sine(n, 2093)
     ring2 = sine(n, 3140)
-    e2 = env_decay(n, SR * 0.09)
+    e2 = env_decay(n, SR * 0.130)
     metal = [(ring[i] * 0.18 + ring2[i] * 0.1) * e2[i] for i in range(n)]
-    return mix(bright, place(imp, 0, n), metal)
+    return mix(bright, place(imp, 0, n), metal, low)
 
 
 def countdown_urgent():
@@ -1306,6 +1368,23 @@ def match_short_term(sig, target_db, sr=None):
 #    单独看响度低是**设计意图**，不是失衡。差点因为错误的指标改坏它们。
 LOUDNESS_FIX = {
     'drink':      -14.0,   # 咽酒：氛围，本来 -5.5 比摊牌还响 17 dB，喧宾夺主
+    # cup-lift（揭盅铺垫）：2026-10-28 实测前 50ms RMS −9.9，
+    # 比它要铺垫的那记扣盅（−17）响 7 dB —— 铺垫压住了重音。
+    # ★ 只改生成函数里的混音音量是**没用的**：loudness_normalize 会把它
+    #   推回 target_rms（实测把 0.55 降到 0.26，落盘的 RMS 一点没变）。
+    #   这类"要更轻"只能走这张**只做向下调**的表。
+    'cup-lift':   -19.0,
+    # ★★ 2026-10-28 层级校准：下面这几个的"前 50ms RMS"原来都高于扣盅/揭晓，
+    #   于是**过程音压过了重击**（实测 fail-drop −8.0、combo −8.0、wheel-stop −7.4，
+    #   而扣盅 −10.9、揭晓 −12.1）。听感是"输了很响、扣盅很轻"，因果反了。
+    #   数字是按「100ms 窗口最大 RMS」这个口径给的（本函数用 short_term_db），
+    #   与前 50ms RMS 差 −1 ~ −2 dB。
+    'fail-drop':  -13.2,   # 惩罚下坠：结果的情绪音，不该压过动作重击
+    'combo-1':    -14.9,   # 连击：好消息提示，同理
+    'combo-2':    -14.9,
+    'combo-3':    -14.9,
+    'combo-4':    -14.9,
+    'wheel-stop': -13.0,   # 转盘停稳：转盘玩法的高潮，但全局看是"结果音"档
     'wheel-slow': -20.0,   # 转盘慢转：1.6 秒长音，太响会累
     'charge-up':  -17.0,   # 蓄力：氛围铺垫，不是主角
 }
@@ -1392,6 +1471,17 @@ def card_spread():
         for j in range(tap_n):
             if off + j < n:
                 out[off + j] += hit[j] * he[j] * amp * 0.85
+    # ★★ 2026-10-28 补一层"桌面体"：
+    #   原来这份只有 0~41ms 的高频"嗒"，实测半峰样本 1 个（0.05ms）——
+    #   峰值是一根针，前 50ms RMS −20.6，比"抬盅"（−15.3）还轻 5 dB。
+    #   而它是金花摊牌那一刻的主音。真实里几张牌拍到实木桌上，
+    #   会带起桌面的低频共鸣（120~200Hz，衰减 60~90ms）。
+    body_n = n
+    b1 = sine(body_n, 132)
+    b2 = sine(body_n, 187)
+    be = env_ad(body_n, int(SR * 0.0015), SR * 0.070)
+    for i in range(body_n):
+        out[i] += (b1[i] * 0.30 + b2[i] * 0.18) * be[i] * 0.55
     return out
 
 
@@ -1409,21 +1499,31 @@ def cup_slam():
     ★ 最后那条"骰子在盅里被震得跳一下"是真实的物理，
     加上它立刻就有了"里面有东西"的实感 —— 空盅扣下去是没有这一下的。
     """
-    n = int(SR * 0.55)
+    n = int(SR * 0.80)
     # ① 口沿撞桌面：宽带噪声 + 快速衰减（"啪"的木质感）
     knock = lowpass(highpass(noise(n, 881), 0.25), 0.45)
     ke = env_ad(n, max(1, int(SR * 0.0008)), SR * 0.020)
     # ② 桌面的低频"咚"：起音稍慢（桌面是弹性体，不是硬碰硬）
+    #
+    # ★★ 2026-10-28 实测修正：这是**全场最重的一下**，但它的能量只有 0.07ms。
+    #   峰均比高到 loudness_normalize 完全推不动（按 RMS 放大 4.2 倍会削顶，
+    #   回退后整体响度又回到原样）—— 也就是说"调增益"对它是无效的，
+    #   必须**加能量体**：让这声"咚"在 150ms 里持续，而不是 45ms 就消失。
+    #   实测改前 前50ms RMS −17.0、半峰样本 3；改后见 scripts/audio-levels.py。
     thud = sine(n, 72)
     thud2 = sine(n, 108)          # 非整数倍 → 木桌的钝
-    te = env_ad(n, int(SR * 0.0025), SR * 0.045)
-    # ③ 木盅腔体共鸣
+    te = env_ad(n, int(SR * 0.0025), SR * 0.150)
+    # ②b 桌面本身的极低频体（55Hz）：现实里扣一下桌子，胸口是有感的
+    low = sine(n, 55)
+    le = env_ad(n, int(SR * 0.004), SR * 0.180)
+    # ③ 木盅腔体共鸣（30ms → 75ms：盅是个空腔，余振本来就比实木长）
     body = sine(n, 196)
-    be = env_decay(n, SR * 0.030)
+    be = env_decay(n, SR * 0.075)
 
-    out = [knock[i] * ke[i] * 1.0
-           + (thud[i] * 0.75 + thud2[i] * 0.4) * te[i] * 0.85
-           + body[i] * be[i] * 0.30
+    out = [knock[i] * ke[i] * 0.42
+           + (thud[i] * 0.95 + thud2[i] * 0.60) * te[i] * 1.95
+           + low[i] * le[i] * 1.15
+           + body[i] * be[i] * 0.90
            for i in range(n)]
 
     # ④ 盅内骰子被震得跳一下（延迟 55ms，两声轻响）
@@ -1450,7 +1550,10 @@ def cup_lift():
     # 上扬的气声（"提起来"的方向感）
     air = highpass(noise(n, 992), 0.55)
     ae = env_ad(n, int(SR * 0.012), SR * 0.055)
-    out = [fric[i] * fe[i] * 0.55 + air[i] * ae[i] * 0.20 for i in range(n)]
+    # ★★ 2026-10-28 实测：这一声原来是 0.55 / 0.20 混音，前 50ms RMS −9.8，
+    #   比它要铺垫的那记扣盅（−17.0）**响 7 dB** —— 铺垫压住了重音，
+    #   听感是"抬起来很响、砸下去很轻"。降一半左右。
+    out = [fric[i] * fe[i] * 0.26 + air[i] * ae[i] * 0.08 for i in range(n)]
     return out
 
 
@@ -1505,7 +1608,7 @@ ALL_V3 = [
     ('combo-4',           lambda: combo_up(3), SR_MID),
     ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_MID),
     ('charge-up',         charge_up,         SR_LO),
-    ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21), SR_HI),
+    ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21, final_sharpen=False), SR_HI),
     ('countdown-urgent',  countdown_urgent,  SR_MID),
     ('chip-bet',          _sp(chip_bet, tail_ms=160, seed=33), SR_HI),
     ('gulp',              gulp,              SR_MID),
@@ -1513,7 +1616,7 @@ ALL_V3 = [
     # v4 骰盅组：让摇骰子像现实 —— 入盅 / 摇盅 / 扣盅 / 揭盅 / 桌上滚动
     ('dice-into-cup',     _sp(dice_into_cup, tail_ms=160, seed=61), SR_HI),
     ('cup-shake',         _sp(cup_shake, tail_ms=200, seed=63), SR_HI),
-    ('cup-slam',          _sp(cup_slam, tail_ms=260, seed=65), SR_HI),
+    ('cup-slam',          _sp(cup_slam, tail_ms=260, seed=65, final_sharpen=False), SR_HI),
     ('cup-lift',          _sp(cup_lift, tail_ms=140, seed=67), SR_MID),
     ('dice-on-table',     _sp(dice_on_table, tail_ms=180, seed=69), SR_HI),
     # v5 纸牌组：牌是薄片，反射比骰子短得多（tail 只要 90~140ms）
