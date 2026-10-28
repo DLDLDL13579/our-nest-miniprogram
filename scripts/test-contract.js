@@ -1929,7 +1929,15 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
          *    现在按"独立的 *"判断：前后都是空白/分隔符才算选择器。
          *    （`content: '*'` 这种字符串里的星号项目里没有，不另做排除。）
          */
-        const star = /(^|[\s{},>+~])\*(?=[\s{},>+~:]|$)/m.exec(raw)
+        /*
+         * 只认**选择器位置**的星号：后面紧跟 `{` 或以 `,` 结尾。
+         *
+         * ⚠️ 前两版都错：①只认行首/`{` 之后的星号 → 漏报 `.a * ,`；
+         *    ②改成"独立星号"后 → 把注释里的 markdown 列表符号 `* ⚠️ ...`
+         *    当成了通配符（而那些注释剥不干净，里面有 ** 粗体）。
+         *    "后跟 { 或 ," 才是通配符选择器的特征。
+         */
+        const star = /\*\s*[{,]/.exec(raw)
         if (star) {
           const line = raw.slice(0, star.index).split('\n').length
           badCss.push(path.relative(ROOT, fp) + ':' + line + ' 通配符选择器 *（WXSS 不支持）')
