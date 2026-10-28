@@ -1,3 +1,29 @@
+<!--
+  ★★ loading 幕必须放在 .gamepage **外面**。
+     原因：.gamepage 的 .rolling / .suspense / .impact 三个动态 class 都带
+     transform 动画，而**带 transform 的元素会成为 position:fixed 子元素的
+     包含块** —— 于是遮罩不再相对视口铺满，而是相对 gamepage：
+     铺不满整屏、页面滚动时还会跟着滚。
+     （离线预览里表现为"遮罩只盖到 3/4，下面露出纯黑"，真机同理。）
+-->
+  <!--
+    ★ 页面级 loading 幕。
+    带房间号进来时（大厅快捷进房），原来会**先闪一下输入表单**、
+    80ms 后才弹系统的"进房间"提示 —— 观感是"页面在跳"。
+    现在从打开的那一刻就盖住，直到进房成功或失败。
+    （data.loading 之前是个声明了但从未被使用的死字段。）
+  -->
+  <view wx:if="{{loading}}" class="room-loading">
+    <view class="rl-dice">
+      <view class="rl-face rl-f1"></view>
+      <view class="rl-face rl-f2"></view>
+      <view class="rl-face rl-f3"></view>
+    </view>
+    <view class="rl-t">正在进入房间</view>
+    <view class="rl-s">马上就好</view>
+  </view>
+
+  <!-- ============ 入口：建房 / 加入 ============ -->
 <view class="gamepage {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}}">
   <view class="gbar">
     <view class="gbar-l" bindtap="goBack">
@@ -18,24 +44,6 @@
     <text wx:if="{{netDown}}" class="nettip-retry" catchtap="retryNow">重试</text>
   </view>
 
-  <!--
-    ★ 页面级 loading 幕。
-    带房间号进来时（大厅快捷进房），原来会**先闪一下输入表单**、
-    80ms 后才弹系统的"进房间"提示 —— 观感是"页面在跳"。
-    现在从打开的那一刻就盖住，直到进房成功或失败。
-    （data.loading 之前是个声明了但从未被使用的死字段。）
-  -->
-  <view wx:if="{{loading}}" class="room-loading">
-    <view class="rl-dice">
-      <view class="rl-face rl-f1"></view>
-      <view class="rl-face rl-f2"></view>
-      <view class="rl-face rl-f3"></view>
-    </view>
-    <view class="rl-t">正在进入房间</view>
-    <view class="rl-s">马上就好</view>
-  </view>
-
-  <!-- ============ 入口：建房 / 加入 ============ -->
   <block wx:if="{{stage === 'entry'}}">
     <view class="entry-hero">
       <view class="eh-glow"></view>

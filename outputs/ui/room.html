@@ -461,6 +461,8 @@ view, text, button, input, textarea { box-sizing: border-box }
   width: 180px; height: 280px;
   margin-left: -90px;
   z-index: 3;
+  
+  filter: drop-shadow(0 5px 11px rgba(0, 0, 0, .5));
   transition: transform .38s cubic-bezier(.22, 1.3, .45, 1),
               opacity .3s ease;
 }
@@ -1190,17 +1192,27 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 
 
-.uw-list { display: flex; flex-direction: column; gap: 7px }
+
+.uw-list {
+  display: flex; flex-wrap: wrap; gap: 7px;
+}
 .uw-p {
   display: flex; align-items: center; gap: 7px;
-  padding: 14px 13px;
+  
+  flex: 0 0 48.5%;
+  box-sizing: border-box;
+  padding: 12px 10px;
   background: rgba(255,255,255,.06);
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 10px;
   transition: background .14s, border-color .14s;
 }
 .uw-p:active { background: rgba(255,255,255,.12) }
-.uw-pn { flex: 1; font-size: 15px; font-weight: 600; color: #fff }
+.uw-pn {
+  flex: 1; min-width: 0;            
+  font-size: 13.5px; font-weight: 600; color: #fff;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .uw-tag {
   font-size: 9px; padding: 1.5px 6px; border-radius: 499.5px;
   background: rgba(232,179,60,.25); color: #F6E7C3;
@@ -1587,6 +1599,22 @@ view, text, button, input, textarea { box-sizing: border-box }
 }
 .specbar-i { width: 15px; height: 15px; flex: none; opacity: .85 }
 .specbar-t { font-size: 11px; color: rgba(180, 205, 230, .95) }
+
+
+.streak-bar {
+  margin: 10px 0 0;
+  padding: 11px 12px;
+  text-align: center;
+  background: linear-gradient(100deg, rgba(232,179,60,.16), rgba(232,179,60,.06));
+  border: 1px solid rgba(232,179,60,.4);
+  border-radius: 9px;
+  animation: slamIn .42s cubic-bezier(.2,.9,.3,1.18) both;
+}
+.streak-t {
+  font-size: 14px; font-weight: 700;
+  color: #FFD98A;
+  letter-spacing: 0.5px;
+}
 
 .phx1::placeholder{font-size:14px;font-weight:400;letter-spacing:0.5px;color:#A39B90}</style>
 </head><body>

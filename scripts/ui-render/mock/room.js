@@ -38,7 +38,15 @@ function pkRoom(r) {
       { openid: 'c', name: '阿杰', seat: 3, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 0, out: false }
     ],
     round: 1, bid: null, lastResult: null, spin: null, deck: 'friends',
-    myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [], uw: null
+    myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [], uw: null,
+    /*
+     * ★ 这些是**前端 decorate 算的派生字段**，真实运行时一定有；
+     *   mock 忘了给就会让模板里 `{{room.howList.length}}` 求值失败 →
+     *   渲染器只打一条警告，那块内容在预览里凭空消失。
+     *   凡是 "decorate 会补" 的字段，工厂函数都要给个默认值。
+     */
+    howList: [], gameName: '', spectating: false, settleFoot: '', streakText: '',
+    shortBy: 0, minPlayers: 2, maxPlayers: 8
   }, r)
 }
 
