@@ -995,6 +995,8 @@
       <block wx:for="{{room.lastResult.hands}}" wx:key="name">
         <view class="pkr-row {{item.out ? 'out' : ''}}">
           <text class="pkr-n">{{item.name}}</text>
+          <!-- 牌型名（对子 / 金花 / 豹子…）：结算页必须回答"他凭什么赢" -->
+          <text wx:if="{{item.handName}}" class="pkr-type">{{item.handName}}</text>
           <!-- 结算页也用真实牌面：文字画牌和游戏中的牌不是一回事，
                玩家一眼能看出"结算时牌变小了但图案还在"才是同一副牌 -->
           <image wx:for="{{item.cards}}" wx:key="index" class="pkr-face {{item.out ? 'out' : ''}}"

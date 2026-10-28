@@ -413,10 +413,22 @@ module.exports = {
         lastResult: {
           kind: 'poker', winner: '邓林',
           winText: '邓林 赢',
+          /*
+           * ★ 2026-10-28 补 `cards`：真机的 `hands` 里既有 cards（含 s/r，用来画牌面）
+           *   也有 cardsText（文字）。mock 原来只给了 cardsText，于是结算页
+           *   截图里**一个牌面都没有** —— 我差点以为是真机的 bug。
+           *   mock 少的字段会让截图变成"假界面"，这类漏要在 mock 侧补齐。
+           */
           hands: [
-            { name: '邓林', initial: '邓', out: false, cardsText: ['♣Q', '♥K', '♠Q'] },
-            { name: '倩萍', initial: '倩', out: true, cardsText: ['♣Q', '♦9', '♣9'] },
-            { name: '阿杰', initial: '阿', out: true, cardsText: ['♣Q', '♠7', '♥5'] }
+            { name: '邓林', initial: '邓', out: false, handName: '对子 Q',
+              cards: [{ r: 12, s: 2 }, { r: 13, s: 1 }, { r: 12, s: 0 }],
+              cardsText: ['♣Q', '♥K', '♠Q'] },
+            { name: '倩萍', initial: '倩', out: true, handName: '对子 9',
+              cards: [{ r: 12, s: 2 }, { r: 9, s: 3 }, { r: 9, s: 2 }],
+              cardsText: ['♣Q', '♦9', '♣9'] },
+            { name: '阿杰', initial: '阿', out: true, handName: '单张 Q',
+              cards: [{ r: 12, s: 2 }, { r: 7, s: 0 }, { r: 5, s: 1 }],
+              cardsText: ['♣Q', '♠7', '♥5'] }
           ]
         },
         poker: {

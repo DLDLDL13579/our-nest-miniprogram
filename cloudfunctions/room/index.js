@@ -2122,8 +2122,15 @@ exports.main = async (event) => {
           hands: players.filter(p => p.inRound !== false)
             .map(p => {
               const full = poker.fullHand(room.pkPublic, p.cards || [])
+              /*
+               * 牌型名（2026-10-28 补）。
+               * 结算页原来只有牌面 + "XX 赢"，**看不出为什么赢** ——
+               * 桌上第一个问题就是"他什么牌"。poker.rank 本来就算得出，
+               * 只是没透出来。
+               */
+              const rk = poker.rank(full)
               return {
-                name: p.name, cards: full,
+                name: p.name, cards: full, handName: rk.name,
                 /* 牌面文字（♠Q 这种）——模板直接用，前端不该再拼一遍 */
                 cardsText: full.map(c => poker.cardText(c)),
                 /*

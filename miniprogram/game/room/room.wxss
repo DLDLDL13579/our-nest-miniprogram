@@ -955,6 +955,12 @@
 }
 
 /* 结算页的小牌面：比游戏中的牌小一号，但用同一套真图 —— 一眼是同一副牌 */
+/* 牌型名：小一号的金色标签，紧跟名字 */
+.pkr-type {
+  margin-left: 10rpx; font-size: 18rpx;
+  color: #F0C860; opacity: .9;
+}
+
 .pkr-face {
   /* 46rpx 时牌上的点数糊成一团（真实牌面的细节全丢）—— 放到 56，行高还有余量 */
   width: 56rpx; height: 75rpx;
