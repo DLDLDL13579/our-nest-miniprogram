@@ -2085,6 +2085,25 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③t 上传压缩必须显式开着 ============ */
+  console.log('\n=== ③t 构建压缩不是"工具默认" ===')
+  /*
+   * ★ 2026-10-29。`project.config.json` 里四个 `minify*` 原来都是**未设置** ——
+   *   微信开发者工具默认会压缩，但那是**工具的行为**，不是我们的配置。
+   *   换个工具版本、换个人打开、或者某次手滑关掉，包体积就会涨回来，
+   *   而**本地 du 看不出区别**（压不压缩是上传时的事）。
+   *
+   *   显式写死 true，这样它就变成"我们要求的"，而不是"碰巧这样"。
+   */
+  {
+    const pc = JSON.parse(fs.readFileSync(path.join(ROOT, 'project.config.json'), 'utf8'))
+    const st = pc.setting || {}
+    const off = ['minifyWXML', 'minifyWXSS', 'minifyJS'].filter(k => st[k] !== true)
+    assert.deepStrictEqual(off, [],
+      '★ 这些压缩项没显式开着（包体积会悄悄变大）：' + off.join(', '))
+    ok('上传压缩显式开着（WXML / WXSS / JS）')
+  }
+
   /* ============ ③s 启动优化不能被误删 ============ */
   console.log('\n=== ③s 启动优化的两个开关 ===')
   /*

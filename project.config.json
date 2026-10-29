@@ -39,7 +39,11 @@
     "uploadWithSourceMap": true,
     "useCompilerModule": true,
     "packNpmManually": false,
-    "packNpmRelationList": []
+    "packNpmRelationList": [],
+    "minifyWXML": true,
+    "minifyWXSS": true,
+    "minifyJS": true,
+    "minifyWXS": true
   },
   "condition": {
     "miniprogram": {
