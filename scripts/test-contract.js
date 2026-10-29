@@ -323,8 +323,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
 
     /* ④ sitemap 文件 */
-    if (app.sitemapLocation && !fs.existsSync(path.join(MP, app.sitemapLocation))) {
+    const smPath = path.join(MP, app.sitemapLocation || 'sitemap.json')
+    if (app.sitemapLocation && !fs.existsSync(smPath)) {
       bad.push('sitemapLocation 指向的文件不存在：' + app.sitemapLocation)
+    }
+    /*
+     * ★ 内容也要查（2026-10-29）。
+     *   情侣版时代 `rules` 里写着 `{"action":"disallow","page":"*"}` ——
+     *   意味着**微信搜索里根本搜不到这个程序**，只有知道名字的人能用。
+     *   之前修过一次，但没有断言 —— 被改回去不会有任何报错。
+     */
+    if (fs.existsSync(smPath)) {
+      try {
+        const sm = JSON.parse(fs.readFileSync(smPath, 'utf8'))
+        const rules = sm.rules || []
+        const blocksAll = rules.some(r => r.action === 'disallow' && (r.page === '*' || r.page === 'all'))
+        if (blocksAll) {
+          bad.push('sitemap 把全部页面设为 disallow —— 微信里搜不到这个小程序')
+        }
+        if (!rules.some(r => r.action === 'allow')) {
+          bad.push('sitemap 里没有一条 allow 规则')
+        }
+      } catch (e) {
+        bad.push('sitemap.json 解析失败：' + e.message)
+      }
     }
 
     assert.deepStrictEqual(bad, [],
