@@ -2063,6 +2063,21 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③q 大话骰规则里的杯数要覆盖"反劈" ============ */
+  console.log('\n=== ③q 劈的倍数要在规则里说清 ===')
+  /*
+   * ★ 2026-10-29。`test-room` 里测了劈一次 2 倍、反劈 4 倍，
+   *   而 `games.js` 的规则只写了「劈过的翻倍，2 杯」—— **反劈的后果没说**。
+   *   玩家被反劈时不知道要喝 4 杯，这种"照规则玩却被罚更多"最容易起争执。
+   */
+  {
+    const gamesSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+    const liarBlock = gamesSrc.slice(gamesSrc.indexOf("id: 'liar'"), gamesSrc.indexOf("id: 'dice'"))
+    assert.ok(/4 杯|四杯/.test(liarBlock), '★ 规则里没提反劈是 4 杯 —— 玩家不知道反劈的后果')
+    assert.ok(/2 杯|两杯/.test(liarBlock), '★ 规则里没提劈一次是 2 杯')
+    ok('大话骰规则说清了 1 / 2 / 4 杯三档')
+  }
+
   /* ============ ③p 规则里写的场合数量要对得上 decks.js ============ */
   console.log('\n=== ③p 规则文案里的场合要和实际一致 ===')
   /*
