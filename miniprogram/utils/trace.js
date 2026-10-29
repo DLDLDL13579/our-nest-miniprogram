@@ -56,7 +56,20 @@ function add(name, note) {
 function lines() {
   var arr = list()
   if (!arr.length) return []
-  var out = ['轨迹（最近 ' + arr.length + ' 步）:']
+  /*
+   * ★ 先给一句结论："最远走到哪"。
+   *   用户报「玩不了」时，我最想知道的其实不是流水，而是
+   *   **他到底有没有完整玩完一局** —— 结算过 = 能玩通，卡在 playing = 走不下去。
+   *   把结论放在流水前面，一眼就能分诊。
+   */
+  var stages = arr.map(function (x) { return x.n })
+  var reached = '刚进房间'
+  if (stages.indexOf('over') >= 0) reached = '走完一局（到过结算）'
+  else if (stages.indexOf('playing') >= 0) reached = '卡在游戏中（没到结算）'
+  else if (stages.indexOf('countdown') >= 0) reached = '卡在倒计时'
+  else if (stages.indexOf('lobby') >= 0) reached = '停在房间大厅（没开局）'
+
+  var out = ['最远走到: ' + reached, '轨迹（最近 ' + arr.length + ' 步）:']
   arr.slice(-15).forEach(function (x) {
     var d = new Date(x.t)
     var hh = ('0' + d.getHours()).slice(-2)
