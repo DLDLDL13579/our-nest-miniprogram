@@ -1353,6 +1353,32 @@ Page({
     if (!nowPoker) this._pkDealt = false
   },
 
+  /**
+   * decorate 的**容错版**（2026-10-29）。
+   *
+   * 装饰字段算不出来（比如依赖的模块出问题）不该连累界面切换 ——
+   * 用户报"开房间转一会儿、有声音、但没反应一直进不去"，
+   * 而"有声音"说明建房成功了，卡住的只是这一句 setData。
+   *
+   * 兜底：用原始 room 显示（少几个派生字段，但至少进得去），并记一条错误。
+   */
+  safeDecorate(room) {
+    try {
+      return this.decorate(room)
+    } catch (e) {
+      try {
+        const log = wx.getStorageSync('errLog') || []
+        log.push({
+          t: Date.now(), fn: 'room', act: 'decorate',
+          raw: '装饰房间失败：' + ((e && e.message) || '未知')
+        })
+        if (log.length > 20) log.length = 20
+        wx.setStorageSync('errLog', log)
+      } catch (err) {}
+      return room
+    }
+  },
+
   decorate(room) {
     if (!room) return room
 
@@ -1964,25 +1990,40 @@ Page({
     this._didCreate = true          // 供 15 秒兜底时判断"请求到底发没发出去"
     if (this.data.creating) return
     this.setData({ creating: true, err: '' })
-    const r = await call('room', {
-      action: 'create',
-      name: this.data.myName || '房主',
-      game: this.data.pickGame,
-      /* 场合只有转盘用得到，但一起传过去无害 —— 房主中途换游戏也不用重开房 */
-      deck: this.data.pickDeck
-    }, { loading: '开一桌' })
-      .catch((e) => {
-        /*
-         * no-room: 建房失败时还没有房间可同步，这里是唯一合理的例外。
-         * ★ 必须把**具体原因**显示出来（2026-10-29）：原来只取 `e.friendly`，
-         *   而云函数返回的业务错误（如"房间号用满了"）只有 `message`、没有 friendly，
-         *   于是统一显示成"开不了这一桌" —— 用户拿这句话什么也做不了，我也查不出来。
-         */
-        this.setData({ err: (e && (e.friendly || e.message)) || '开不了这一桌' })
-        return null
-      })
-
-    this.setData({ creating: false })
+    /*
+     * ★★ 用 try/finally 保证 `creating` 一定复位（2026-10-29）。
+     *
+     * 原来它是"await 之后顺序执行"的：如果在 `call(...)` 这一步**同步抛异常**
+     * （比如 `wx.cloud` 没初始化、`showLoading` 在某些基础库上抛错），
+     * `.catch()` **不会执行**（它只接 Promise rejection），
+     * 于是 `creating` 永久停在 `true` —— 之后每次点卡都在第一行 `return`，
+     * 表现就是"点了没反应"，而且**重启小程序才恢复**。
+     */
+    let r = null
+    try {
+      r = await call('room', {
+        action: 'create',
+        name: this.data.myName || '房主',
+        game: this.data.pickGame,
+        /* 场合只有转盘用得到，但一起传过去无害 —— 房主中途换游戏也不用重开房 */
+        deck: this.data.pickDeck
+      }, { loading: '开一桌' })
+        .catch((e) => {
+          /*
+           * no-room: 建房失败时还没有房间可同步，这里是唯一合理的例外。
+           * ★ 必须把**具体原因**显示出来（2026-10-29）：原来只取 `e.friendly`，
+           *   而云函数返回的业务错误（如"房间号用满了"）只有 `message`、没有 friendly，
+           *   于是统一显示成"开不了这一桌" —— 用户拿这句话什么也做不了，我也查不出来。
+           */
+          this.setData({ err: (e && (e.friendly || e.message)) || '开不了这一桌' })
+          return null
+        })
+    } catch (e) {
+      /* 同步异常（不是 Promise rejection）—— 也要说话，不能就这么卡住 */
+      this.setData({ err: '开不了这一桌：' + ((e && e.message) || '未知错误') })
+    } finally {
+      this.setData({ creating: false })
+    }
     /*
      * ★★ 必须关掉全屏遮罩（2026-10-29 用户报障后修的）。
      *
@@ -2001,9 +2042,17 @@ Page({
          将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
       if (this._dead) return          // 云函数往返期间页面可能已卸载
       const newStage = stageOf(r.room.phase)
-    /* 玩游戏时别让屏幕锁掉（等别人的时间远多于操作时间）；大厅和结算页关掉省电 */
-    this.setKeepScreenOn(newStage === 'countdown' || newStage === 'playing')
-    this.setData({ room: this.decorate(r.room), stage: newStage })
+      /* 玩游戏时别让屏幕锁掉（等别人的时间远多于操作时间）；大厅和结算页关掉省电 */
+      this.setKeepScreenOn(newStage === 'countdown' || newStage === 'playing')
+      /*
+       * ★★ decorate 挂了**不能连累界面切换**（2026-10-29）。
+       *   用户报"开房间转一会儿、有声音、但没反应一直进不去" ——
+       *   "有声音"就是上面的 confetti，说明建房成功了；卡住的是这一句 setData。
+       *   如果 `decorate()` 抛异常（它依赖 settle.js / bidOptions.js），
+       *   整句都不会执行，界面就停在原处，而音效已经响过了。
+       *   兜底：用原始 room 显示（少几个派生字段，但至少进去了），并记一条错误。
+       */
+      this.setData({ room: this.safeDecorate(r.room), stage: newStage })
       this.startPoll()
     }
   },

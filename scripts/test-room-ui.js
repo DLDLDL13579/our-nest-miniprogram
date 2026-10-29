@@ -199,7 +199,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    */
   {
     const src = fs.readFileSync(JS, 'utf8')
-    const at = src.indexOf('decorate(room)')
+    /*
+     * ⚠️ 必须找**定义**而不是调用（2026-10-29）。safeDecorate 里有
+     * `this.decorate(room)`，而 safeDecorate 定义在 decorate 之前 ——
+     * `indexOf('decorate(room)')` 会先命中 safeDecorate 里的调用，
+     * 抽出来的是 safeDecorate 的函数体（4 行），不是 decorate（几百行）。
+     */
+    const at = src.indexOf('  decorate(room) {')
     assert.ok(at > 0, '找不到 decorate（抽取可能失效）')
     const open = src.indexOf('{', at)
     let depth = 0, end = -1
@@ -509,7 +515,7 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   for (const mm of code.matchAll(/setData\(\{[^}]*?\broom:\s*([^,}]+)/g)) {
     const expr = mm[1].trim()
     /* 允许：this.decorate(...) / null（清空）/ 变量（refresh 里已 decorate 过） */
-    const allowed = /^this\.decorate\(/.test(expr) || expr === 'null' || expr === 'room'
+    const allowed = /^this\.\w*[dD]ecorate\(/.test(expr) || expr === 'null' || expr === 'room'
     if (!allowed) {
       const line = code.slice(0, mm.index).split('\n').length
       badWrites.push(`第 ${line} 行附近  room: ${expr}`)
