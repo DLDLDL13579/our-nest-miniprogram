@@ -82,6 +82,7 @@
     <view class="lbl">关于</view>
     <view class="about">
       <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</view>
+      <view class="ab-line">理性饮酒 · 未成年人禁止饮酒 · 酒后不驾车</view>
       <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</view>
 
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>

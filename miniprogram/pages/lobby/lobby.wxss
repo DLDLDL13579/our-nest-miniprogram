@@ -308,3 +308,9 @@
   opacity: .9;
 }
 .gcard:active .gc-cta-t { opacity: 1 }
+
+/* 理性饮酒提示：比普通 tip 更低调 —— 它在，但不打扰 */
+.sober { margin-top: 10rpx; opacity: .78 }
+
+/* 理性饮酒提示：首屏可见（合规要求），但比内容量那行更淡 */
+.lb-sober { margin-top: 10rpx; font-size: 21rpx; color: rgba(255,255,255,.52); letter-spacing: .5rpx }
