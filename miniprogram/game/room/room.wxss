@@ -635,7 +635,7 @@
   font-size: 21rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
   max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
-.oc-stat { font-size: 18rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
+.oc-stat { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
 /* 已摇的人用金色标出来 —— 一眼扫过去就知道还差谁 */
 .oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
 
@@ -864,7 +864,7 @@
 /* 倍数徽章：被劈过就要一眼看到"这局赌注是几倍" */
 .bid-mult {
   margin-left: 10rpx; padding: 2rpx 12rpx; border-radius: 999rpx;
-  font-size: 18rpx; font-weight: 700;
+  font-size: 21rpx; font-weight: 700;
   background: rgba(232,179,60,.26); color: #F0C860;
 }
 .bid-pi { color: #F0A38C }
@@ -1661,7 +1661,7 @@
 .pk-swap:active { transform: scale(.96); background: rgba(232, 179, 60, .22) }
 .ps-t { font-size: 27rpx; font-weight: 700; color: #F6E7C3 }
 /* 代价直接写在按钮上：按之前就知道要喝多少，而不是按完才被告知 */
-.ps-c { font-size: 18rpx; color: rgba(232, 179, 60, .9) }
+.ps-c { font-size: 21rpx; color: rgba(232, 179, 60, .9) }
 
 /* ---------- 金花：桌上的人（换牌量是公开的读牌线索） ---------- */
 .pk-seats {
