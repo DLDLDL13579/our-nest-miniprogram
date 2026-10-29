@@ -1682,6 +1682,23 @@ exports.main = async (event) => {
         if (loserName) {
           nightDrinks[loserName] = (Number(nightDrinks[loserName]) || 0) + 1
         }
+        /*
+         * 金花（2026-10-29 补）：比牌输的人**出局**（out），可能有 1~2 个；
+         * 另外换牌是"付费选择"，喝的量记在 pkDrink 里（按 openid，要转成名字）。
+         * 两者都算"这一局喝了"，所以一起累加。
+         */
+        if (room.game === 'poker') {
+          const ps = room.players || []
+          ps.filter(p => p.out).forEach(p => {
+            nightDrinks[p.name] = (Number(nightDrinks[p.name]) || 0) + 1
+          })
+          const pkd = room.pkDrink || {}
+          Object.keys(pkd).forEach(oid => {
+            const p = ps.filter(x => x.openid === oid)[0]
+            const cups = Number(pkd[oid]) || 0
+            if (p && cups > 0) nightDrinks[p.name] = (Number(nightDrinks[p.name]) || 0) + cups
+          })
+        }
       }
 
       /*
