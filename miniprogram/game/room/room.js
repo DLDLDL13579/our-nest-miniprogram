@@ -1222,8 +1222,22 @@ Page({
     {
       const st = stageOf(raw.phase)
       if (st !== this._traceStage) {
+        /*
+         * 记「上一阶段停留了多久」—— 卡住的表现就是长时间不动：
+         *   · countdown 停超过 10 秒 = 网络断了推进不下去（已有兜底出口）
+         *   · playing 停超过 40 秒 = 可能要等回合超时（45 秒才自动跳）
+         * 光有"走到哪"看不出卡住，加上"停了多久"才看得出。
+         */
+        /* 「上一阶段停了多久」合并进这一条 —— 每个阶段只占一条，
+           30 条的缓冲够记录一整个会话（分开记的话只够 15 次转换）。 */
+        let note = (raw.game || '?') + (raw.count ? ' ' + raw.count + ' 人' : '')
+        if (this._traceStage && this._traceAt) {
+          const dur = Date.now() - this._traceAt
+          note += ' · 上一步 ' + (dur / 1000).toFixed(0) + 's' + (dur > 25000 ? ' 卡住?' : '')
+        }
         this._traceStage = st
-        trace.add(st, (raw.game || '?') + (raw.count ? ' ' + raw.count + '人' : ''))
+        this._traceAt = Date.now()
+        trace.add(st, note)
       }
     }
 
