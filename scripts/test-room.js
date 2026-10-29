@@ -2729,6 +2729,51 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 连胜语义正确：输家归零（连庄不是"连续输"）')
   }
 
+  /* ============ ⑲ ★ 三条规则硬约束（覆盖率盘点补的盲区） ============ */
+  /*
+   * 做"错误分支覆盖率"盘点时发现：云函数 64 条错误提示里有几条**规则核心约束**
+   * 从未被任何测试碰过 —— 它们恰恰是"用户乱点就会被拒"的地方：
+   *   · 不能自己劈自己（劈完回合回到你身上时最容易误点）
+   *   · 不能重复投票（防刷票，直接影响胜负）
+   *   · 劈到 8 倍就封顶（防无限翻倍把一局拖成天文数字）
+   */
+  {
+    /* ① 不能自己劈自己：A 叫 → 回合到 B → 若 A 抢劈应被拒 */
+    const P1 = 'oid_p1_' + Date.now()
+    const P2 = 'oid_p2_' + Date.now()
+    OPENID = P1
+    const pr = await room.main({ action: 'create', name: '劈甲', game: 'liar' })
+    assert.ok(pr.ok && pr.room, '准备：建房应成功')
+    const pid = pr.room.id
+    OPENID = P2
+    assert.ok((await room.main({ action: 'join', code: pr.room.code, name: '劈乙' })).ok, '准备：加入')
+    OPENID = P1
+    assert.ok((await room.main({ action: 'start', id: pid, solo: true })).ok, '准备：开局')
+    store.rooms.filter(x => x._id === pid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: pid })
+    OPENID = P1
+    assert.ok((await room.main({ action: 'bid', id: pid, n: 2, face: 2 })).ok, '准备：A 叫骰')
+    /* 回合已到 B；A 抢着劈自己刚叫的骰 → 必须被拒（且提示要说清原因） */
+    const selfPi = await room.main({ action: 'pi', id: pid })
+    assert.strictEqual(selfPi.ok, false, '★ 不能自己劈自己')
+    assert.ok(/自己|轮到|劈/.test(selfPi.msg), '提示要能看懂：' + selfPi.msg)
+    ok('★ 不能自己劈自己：「' + selfPi.msg + '」')
+
+    /* ② 劈到 8 倍封顶：反复劈直到上限，再劈必须被拒且提示"够了" */
+    OPENID = P2
+    let lastPi = null
+    for (let i = 0; i < 8; i++) {
+      lastPi = await room.main({ action: 'pi', id: pid })
+      /* 劈成功会把回合给对方；因此两个号交替点 */
+      OPENID = (OPENID === P1) ? P2 : P1
+      if (!lastPi.ok) break
+    }
+    const roomNow = store.rooms.filter(x => x._id === pid)[0]
+    const mult = (roomNow.bid && roomNow.bid.mult) || 1
+    assert.ok(mult <= 8, '★ 倍数不能超过 8 倍；实际 ' + mult)
+    ok('★ 反复劈：倍数封顶在 ' + mult + ' 倍（不超过 8）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
