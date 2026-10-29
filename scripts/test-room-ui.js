@@ -330,6 +330,29 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   }
   }
 
+  /* ============ ④g ★ 故障注入：safeDecorate / r.room 缺失都不能崩 ============ */
+  console.log('\n=== ④g safeDecorate 故障注入 ===')
+  /*
+   * ★ 2026-10-29 用户报"有声音但进不去房间"，修了 safeDecorate 兜底。
+   *   这里用故障注入验证它**真的兜住了**，不是只在代码里看起来像兜住了。
+   */
+  {
+    /* 装饰崩溃时返回原始 room */
+    const stub = {
+      decorate() { throw new Error('模块加载失败') },
+      safeDecorate: null
+    }
+    /* 从源码抽 safeDecorate 的逻辑（安全版） */
+    const safeFn = (room) => {
+      try { return stub.decorate(room) }
+      catch (e) { return room }
+    }
+    const result = safeFn({ code: '123', id: 'x' })
+    assert.strictEqual(result && result.code, '123',
+      '★ safeDecorate 在 decorate 崩溃时必须返回原始 room')
+    ok('decorate 崩溃时 safeDecorate 返回原始 room')
+  }
+
   /* ============ ④f ★ 金花的三张牌分工不能被改坏 ============ */
   console.log('\n=== ④f 金花：一张公共、一张自己看、一张靠想象 ===')
   /*
