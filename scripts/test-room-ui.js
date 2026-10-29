@@ -242,6 +242,22 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
       '换牌量应翻译成「1.5 杯」，实际：' + pk.players[1].drinkText)
     assert.strictEqual(pk.players[0].drinkText, '', '没换过牌的人不该显示数字')
 
+    /* ①b "还差谁没摇" —— 必须**排除自己**（自己不算"等的人"） */
+    const w = decorate.call(stub, {
+      game: 'dice', phase: 'playing', count: 3, me: { seat: 1, name: '我', dice: [] },
+      players: [
+        { openid: 'a', name: '我', seat: 1, isMe: true, inRound: true, diceCount: 0 },
+        { openid: 'b', name: '倩萍', seat: 2, isMe: false, inRound: true, diceCount: 0 },
+        { openid: 'c', name: '阿杰', seat: 3, isMe: false, inRound: true, diceCount: 5 },
+        { openid: 'd', name: '老王', seat: 4, isMe: false, inRound: true, diceCount: 0 }
+      ]
+    })
+    assert.strictEqual(w.waitingCount, 2,
+      '★ 还差 2 个人（倩萍、老王）；自己没摇不算"等的人"，实际 ' + w.waitingCount)
+    assert.strictEqual(w.waitingNames, '倩萍、老王',
+      '★ 名单只含没摇的**别人**，实际：' + w.waitingNames)
+    assert.ok(w.waitingNames.indexOf('我') < 0, '★ 名单里绝不能出现自己')
+
     /* ② 观战判定 */
     const sp = decorate.call(stub, {
       game: 'liar', phase: 'playing', count: 2, me: { seat: 1, name: '我' },
