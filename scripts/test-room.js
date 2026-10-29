@@ -121,7 +121,20 @@ const mock = {
   init() {}, DYNAMIC_CURRENT_ENV: 'mock',
   database() { return { collection, command, async createCollection(n) { store[n] = store[n] || []; return true } } },
   getWXContext() { return { OPENID } },
-  openapi: { security: { async msgSecCheck() { return { errCode: 0, result: { suggest: 'pass' } } } } }
+  /* 内容检查的 mock（2026-10-29 加故障开关）：global.__secFail = true 时抛异常，
+     用来验证"检查服务不可用"时的降级行为 —— 那正是用户"开不了房间"的现场。 */
+  openapi: {
+    security: {
+      async msgSecCheck() {
+        if (global.__secFail) {
+          const e = new Error('msgSecCheck timeout')
+          e.errCode = -404011
+          throw e
+        }
+        return { errCode: 0, result: { suggest: 'pass' } }
+      }
+    }
+  }
 }
 const ROOT = path.join(__dirname, '..')
 const orig = Module._load
@@ -2254,6 +2267,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 房间容量按玩法取（金花 6 / 卧底 12 / 全局 8 只作兜底）')
   }
 
+
+  /* ============ ⑭ ★ 内容检查服务挂了，建房不能被拦死 ============ */
+  /*
+   * ★★ 2026-10-29 用户报"所有游戏开不了房间"的真实现场：
+   *   `safe()` 对"检查服务**自身**调用失败"也返回 `pass: false`，
+   *   而建房是 `if (!sec.pass) return { ok: false }` —— 每次建房都被拒，
+   *   提示"内容检查服务暂时不可用"。触发条件很现实：openapi 权限在部署后
+   *   需要几次才绑定生效（本文件里就有这条笔记），而我这两天部署了十几次。
+   *
+   *   修法是分层降级：昵称这种低风险内容在服务不可用时放行，
+   *   自定义题卡（会给全场看）仍然严格拦截。
+   */
+  {
+    const prevFail = global.__secFail
+    global.__secFail = true
+    try {
+      OPENID = 'oid_secfail_' + Date.now()
+      const r = await room.main({ action: 'create', name: '服务挂了也要能建房', game: 'liar' })
+      assert.strictEqual(r.ok, true,
+        '★ 内容检查不可用时建房必须降级放行，否则整个产品不可用；实际：' + (r.msg || ''))
+      assert.ok(r.room && r.room.code, '★ 降级后仍要拿到房间号')
+
+      const cardFail = await room.main({
+        action: 'addCard', id: r.room.id, kind: 'truth', text: '测试一条自定义题'
+      })
+      assert.strictEqual(cardFail.ok, false,
+        '★ 自定义题卡**不能**降级（它会给全场看），必须仍然拒绝')
+    } finally {
+      global.__secFail = prevFail
+    }
+    ok('★ 内容检查服务挂了：建房降级放行，题卡仍严格拦截')
+  }
 
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
