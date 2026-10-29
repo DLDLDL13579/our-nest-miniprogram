@@ -59,35 +59,8 @@ console.log('  ✓ '+app.pages.length+' 个页面齐全，tabBar 正常');
 "
 
 echo "═══ 4/5 前后端共享模块一致 ───"
-# ⚠️ 这里原来是直接跑 `sync-derive.sh`（**写文件**），再报"一致" ——
-#    同步完当然一致，这一项**永远通过**，是个空检查（2026-10-29 发现）。
-#    现在改成**只读对比**：不一致就报出来，并提示去跑 sync。
-node -e "
-const fs = require('fs'), path = require('path');
-const MODS = ['games.js', 'decks.js', 'words.js', 'poker.js', 'dicerank.js'];
-let bad = [], checked = 0;
-for (const fn of fs.readdirSync('cloudfunctions')) {
-  const dir = path.join('cloudfunctions', fn);
-  if (!fs.existsSync(path.join(dir, 'index.js'))) continue;
-  for (const m of MODS) {
-    const src = path.join('miniprogram/utils', m);
-    const dst = path.join(dir, m);
-    if (!fs.existsSync(dst)) continue;          // 这个云函数不用这个模块
-    checked++;
-    if (!fs.existsSync(src)) { bad.push(dst + ' 在，但源文件 ' + src + ' 没了'); continue; }
-    if (fs.readFileSync(src, 'utf8') !== fs.readFileSync(dst, 'utf8')) {
-      bad.push(dst + ' 和 ' + src + ' 内容不同');
-    }
-  }
-}
-if (bad.length) {
-  console.log('  ✗ 前后端共享模块不一致（改完记得跑 bash scripts/sync-derive.sh）：');
-  for (const b of bad) console.log('     ' + b);
-  process.exitCode = 1;
-} else {
-  console.log('  ✓ ' + checked + ' 份共享模块前后端一致（只读比对，不写文件）');
-}
-"
+# 只读比对（原来跑 sync 报"一致"，是空检查）；和 health.sh 共用同一个脚本
+node scripts/check-sync.js
 
 echo "═══ 5/5 前端调用的云函数 action 必须真实存在 ───"
 # 独立脚本：原来用 node -e 嵌在 shell 里（转义脆、且只扫主包，子包扫不到就恒报 0 处）

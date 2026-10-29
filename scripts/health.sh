@@ -54,8 +54,10 @@ echo "③ 包体积"
 MAIN=$(du -sk miniprogram | cut -f1)
 SUB=$(du -sk miniprogram/game 2>/dev/null | cut -f1 || echo 0)
 echo "   整体 ${MAIN}KB（其中分包 game ${SUB}KB，主包约 $((MAIN - SUB))KB）"
-if [ "$MAIN" -gt 2048 ]; then
-  echo "   ⚠️ 超过 2MB，主包会超限"
+# ⚠️ 原来只打印一行、不退出 —— 真超限了脚本照样"通过"。
+if [ "$((MAIN - SUB))" -gt 2048 ]; then
+  echo "   ✗ 主包超过 2MB 限制"
+  exit 1
 fi
 
 # ---------- ④ 云函数：本地改了但没部署？ ----------
@@ -84,7 +86,9 @@ fi
 # ---------- ⑥ 前后端共享模块一致 ----------
 echo ""
 echo "⑥ 共享模块"
-bash scripts/sync-derive.sh 2>&1 | grep -E "不一致|同步 →" || echo "   ✓ games/decks/words/poker 前后端一致"
+# ⚠️ 这里原来也是跑 `sync-derive.sh`（写文件）再报"一致" —— 和 check.sh 第 4 项
+#    是同一个空检查。现在改成只读比对（同一个脚本，两处共用）。
+node scripts/check-sync.js
 
 echo ""
 echo "════════════════════════════════════════════════════════════"
