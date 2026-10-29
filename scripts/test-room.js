@@ -104,8 +104,8 @@ function collection(name) {
           const win = global.__dbFailGetAfter
           if ((global.__dbFailGet && global.__dbFailGet-- > 0) ||
               (typeof win === 'number' && global.__dbGetN > win)) {
-            const e = new Error('document.get:fail -502')
-            e.errMsg = 'document.get:fail -502'
+            const e = new Error('document.get:fail -502001')
+            e.errMsg = 'document.get:fail -502001'
             throw e
           }
           const d = rows().filter(x => x._id === id)[0]
@@ -113,8 +113,8 @@ function collection(name) {
         },
         async update({ data }) {
           if (global.__dbFailUpdate && global.__dbFailUpdate-- > 0) {
-            const e = new Error('document.update:fail -502')
-            e.errMsg = 'document.update:fail -502'
+            const e = new Error('document.update:fail -502001')
+            e.errMsg = 'document.update:fail -502001'
             throw e
           }
           const d = rows().filter(x => x._id === id)[0]
@@ -124,6 +124,12 @@ function collection(name) {
             else d[k] = data[k]
           })
           return { stats: { updated: 1 } }
+        },
+        /* selftest 用：删除文档（2026-10-29） */
+        async remove() {
+          const i = rows().findIndex(x => x._id === id)
+          if (i >= 0) rows().splice(i, 1)
+          return { stats: { removed: 1 } }
         }
       }
     },
@@ -2371,9 +2377,9 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
     assert.strictEqual(r2.ok, false, '连续失败应返回失败')
     assert.strictEqual(r2.msg, '操作失败了，再试一次')
-    assert.strictEqual(r2._diag, 'bid.update:-502',
+    assert.strictEqual(r2._diag, 'bid.update:-502001',
       '★ _diag 必须带「阶段名:错误码」—— 错误记录里只剩一句兜底就查不了问题；实际：' + (r2._diag || '(空)'))
-    ok('★ update 救不回时 _diag = bid.update:-502（线索不断）')
+    ok('★ update 救不回时 _diag = bid.update:-502001（线索不断）')
 
     /* ③ 读回（reload）失败同样要透出（回合仍停在 B2 —— 上一次没写成功）。
        ★ 用窗口式注入：loadRoom 的 get 是第 1 次、必须成功才走到 reload，
@@ -2390,15 +2396,67 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       global.__dbGetN = prevGN
     }
     assert.strictEqual(r3.ok, false)
-    assert.strictEqual(r3._diag, 'bid.reload:-502',
+    assert.strictEqual(r3._diag, 'bid.reload:-502001',
       '★ 读回失败也要能定位到 reload 阶段；实际：' + (r3._diag || '(空)'))
-    ok('★ reload 失败 _diag = bid.reload:-502')
+    ok('★ reload 失败 _diag = bid.reload:-502001')
 
     /* ④ 静态兜底：catch 必须把 _diag 放进响应（防止将来有人改回去） */
     const cloudSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
     assert.ok(/_diag\s*:\s*diag/.test(cloudSrc),
       '★ catch 兜底必须把 _diag 放进响应 —— 线索断了就只剩「操作失败了」')
     ok('★ catch 兜底透出 _diag（静态断言防回退）')
+  }
+
+  /* ============ ⑯ ★ 数据库自检 + _diag 语义标签 ============ */
+  /*
+   * 2026-10-29 晚：用户报「游戏从来没正常玩过」，而 -502001 是官方明说
+   * 「无特殊语义」的通用码。selftest 把最小写入链路每步的结果带回来，
+   * _diag 再多带 FailedOperation 操作名和特征标签 —— 下一次点击就是根因证据。
+   */
+  {
+    /* ① 全链路自检通过 */
+    const st = await room.main({ action: 'selftest' })
+    assert.strictEqual(st.ok, true, 'selftest 应成功返回')
+    assert.ok(Array.isArray(st.probe) && st.probe.length === 5,
+      '★ probe 必须有 5 步（add/get/update/remove/count）；实际： ' + JSON.stringify(st.probe))
+    assert.ok(st.probe.every(p => p.ok),
+      '★ 正常时 5 步全 ok；实际：' + JSON.stringify(st.probe))
+    st.probe.forEach(p => assert.ok(p.s, '每步要有步骤名'))
+    ok('★ selftest 5 步全链路（add/get/update/remove/count）')
+
+    /* ② 注入 update 失败：该步必须 FAIL 且带诊断标签（步骤级定位） */
+    const prevU = global.__dbFailUpdate
+    global.__dbFailUpdate = 1
+    let st2 = null
+    try {
+      st2 = await room.main({ action: 'selftest' })
+    } finally {
+      global.__dbFailUpdate = prevU
+    }
+    /* update 走 dbCall？不 —— selftest 故意用裸调用：它就是要测"数据库本身"，
+       加重试反而掩盖问题。所以 1 次注入 = update 步直接失败。 */
+    const upd = st2.probe.filter(p => p.s === 'update')[0]
+    assert.ok(upd && upd.ok === false,
+      '★ 注入后 update 步必须 FAIL；实际：' + JSON.stringify(st2.probe))
+    assert.strictEqual(upd.code, '-502001', 'FAIL 步必须带错误码')
+    ok('★ selftest 能定位到具体失败步骤（update FAIL + code）')
+
+    /* ③ _diag 的语义标签：FailedOperation.XXX + 特征词都要带出来。
+       （用 indexOf 而不是"正则套正则"—— 匹配正则源码的正则极易写错，前科多次） */
+    const cloudSrc2 = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    assert.ok(cloudSrc2.indexOf('FailedOperation') >= 0,
+      '★ _diag 必须提取 FailedOperation 操作名')
+    assert.ok(cloudSrc2.indexOf('keyTooLarge') >= 0 && cloudSrc2.indexOf('quota') >= 0,
+      '★ _diag 必须带特征标签（keyTooLarge/quota/…）')
+    ok('★ _diag 带语义标签（op + tag）')
+
+    /* ④ 前端诊断入口必须真的调 selftest（写了没人调 = 又一个死功能） */
+    const meSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/me/me.js'), 'utf8')
+    assert.ok(/action:\s*'selftest'/.test(meSrc),
+      '★ 「复制诊断信息」必须调 selftest —— 否则自检写了没人用')
+    assert.ok(/数据库自检/.test(meSrc),
+      '★ 诊断文本里必须有自检结果段')
+    ok('★ 复制诊断信息集成了 selftest')
   }
 
   console.log(`\n${'='.repeat(58)}`)

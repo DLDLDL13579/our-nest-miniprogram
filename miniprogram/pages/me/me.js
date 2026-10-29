@@ -13,6 +13,7 @@ const sfx = require('../../utils/sfx.js')
 const haptic = require('../../utils/haptic.js')
 const iconSet = require('../../utils/iconSet.js')
 const { GAMES } = require('../../utils/games.js')
+const { call } = require('../../utils/cloud.js')
 
 const _IC = iconSet.build(['dice', 'chevronRight'], '#C4553F')
 
@@ -230,21 +231,46 @@ Page({
         })
       }
     } catch (e) {}
-    wx.setClipboardData({
-      data: lines.join('\n'),
-      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
-      /*
-       * ★ fail 回调（2026-10-29）。用户反馈"复制不了"—— 而原来**没有 fail**，
-       * 失败时一片安静，看起来就像"按钮坏了"。
-       * 现在：失败会说清原因，并且告诉用户还能怎么办（往下看红字、截图）。
-       */
-      fail: function (e) {
-        wx.showModal({
-          title: '复制没成功',
-          content: '请把下面那段红字截图发我，效果一样。（' + ((e && e.errMsg) || '未知原因') + '）',
-          showCancel: false
+    /*
+     * ★ 复制前先跑一次数据库自检（2026-10-29 晚）。
+     *
+     * 用户报「游戏从来没正常玩过」，而 -502001 是官方明说"无特殊语义"的
+     * 通用码 —— 再靠猜就是浪费用户的时间。自检把「最小写入→读→改→删」
+     * 每步的结果拼进诊断文本：用户点一次按钮，根因证据就带走了。
+     * 自检失败也照样复制（降级），不让诊断入口自己变成新的故障点。
+     */
+    var finish = function () {
+      wx.setClipboardData({
+        data: lines.join('\n'),
+        success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
+        /*
+         * ★ fail 回调（2026-10-29）。用户反馈"复制不了"—— 而原来**没有 fail**，
+         * 失败时一片安静，看起来就像"按钮坏了"。
+         * 现在：失败会说清原因，并且告诉用户还能怎么办（往下看红字、截图）。
+         */
+        fail: function (e) {
+          wx.showModal({
+            title: '复制没成功',
+            content: '请把下面那段红字截图发我，效果一样。（' + ((e && e.errMsg) || '未知原因') + '）',
+            showCancel: false
+          })
+        }
+      })
+    }
+    call('room', { action: 'selftest' }, { silent: true }).then(function (r) {
+      if (r && r.probe && r.probe.length) {
+        lines.push('')
+        lines.push('数据库自检:')
+        r.probe.forEach(function (p) {
+          var tail = p.ok ? 'ok' : 'FAIL ' + [p.code, p.op, p.tag].filter(Boolean).join(':')
+          lines.push('  ' + p.s + ' ' + tail)
         })
       }
+      finish()
+    }).catch(function (e) {
+      lines.push('')
+      lines.push('数据库自检: 调用失败 ' + ((e && (e._diag || e.message)) || '?'))
+      finish()
     })
   },
 

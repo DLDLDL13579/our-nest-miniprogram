@@ -585,6 +585,53 @@ exports.main = async (event) => {
       return { ok: true, pong: ts, fn: 'room' }
     }
 
+    /* ================= 数据库自检（selftest） ================= */
+    /*
+     * ★ 2026-10-29 晚加。用户报「游戏从来没正常玩过」，而 -502001 是
+     *   **无语义的通用码**（官方文档原话）—— 再靠猜就是浪费用户的时间。
+     *
+     *   做法：对 rooms 集合跑一遍 最小写入→读→改→删 的完整链路，
+     *   每步只回「步骤名 + 成败 + 错误码/操作类别/特征标签」——
+     *   与 _diag 同一脱敏口径（不回原始错误串、不回文档 id）。
+     *   前端「我的 → 复制诊断信息」会先跑一次它，把结果拼进诊断文本。
+     *
+     *   自检文档即建即删；删失败也不影响（probe 字段过滤，且过期清理会带走）。
+     */
+    if (action === 'selftest') {
+      const steps = []
+      const snap = (s, ok, err) => {
+        const raw = err ? String((err.errMsg || err.message) || '') : ''
+        const opM = raw.match(/FailedOperation\.(\w+)/)
+        steps.push({
+          s: s, ok: !!ok,
+          code: (raw.match(/-\d{2,6}/) || [])[0] || '',
+          op: opM ? opM[1] : '',
+          tag: /key too large|Index/i.test(raw) ? 'keyTooLarge'
+            : /timeout|timed out/i.test(raw) ? 'timeout'
+            : /exceed|limit|quota|rate/i.test(raw) ? 'quota'
+            : /permission/i.test(raw) ? 'perm' : ''
+        })
+      }
+      let pid = null
+      try {
+        const r = await rooms.add({ data: { probe: true, createdAt: ts, updatedAt: ts } })
+        pid = r && r._id
+        snap('add', !!pid)
+      } catch (e) { snap('add', false, e) }
+      if (pid) {
+        try { await rooms.doc(pid).get(); snap('get', true) } catch (e) { snap('get', false, e) }
+        try {
+          await rooms.doc(pid).update({ data: { probe: 2, updatedAt: ts } })
+          snap('update', true)
+        } catch (e) { snap('update', false, e) }
+        try { await rooms.doc(pid).remove(); snap('remove', true) } catch (e) { snap('remove', false, e) }
+      } else {
+        snap('get', false); snap('update', false); snap('remove', false)
+      }
+      try { await rooms.where({ probe: true }).count(); snap('count', true) } catch (e) { snap('count', false, e) }
+      return { ok: true, probe: steps, ts: ts }
+    }
+
     /* ================= 建房间 ================= */
     if (action === 'create') {
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
@@ -1517,10 +1564,10 @@ exports.main = async (event) => {
         at: ts
       }
 
-      await rooms.doc(room._id).update({
+      await dbCall('spin.update', () => rooms.doc(room._id).update({
         data: { spin: spin, lastResult: null, updatedAt: ts }
-      })
-      const rr = await rooms.doc(room._id).get()
+      }))
+      const rr = await dbCall('spin.reload', () => rooms.doc(room._id).get())
       return { ok: true, room: shape(rr.data, OPENID), spin: spin }
     }
 
@@ -2391,7 +2438,22 @@ exports.main = async (event) => {
      *   不能返回客户端）—— _diag 不含 openid / 文档 id / 堆栈 / 用户数据。
      */
     const numCode = (raw.match(/-\d{2,6}/) || [])[0] || ''
-    const diag = ((err && err.stage) ? err.stage : action) + (numCode ? ':' + numCode : '')
+    /*
+     * ★ 再多带两个**脱敏语义标签**（2026-10-29 晚，用户报「从来没正常玩过」）：
+     *   · op  —— FailedOperation 后面的操作名（Insert/Update/Query…），
+     *     只是操作类别，不含数据；它决定"是写挂了还是读挂了"。
+     *   · tag —— 底层原因的关键特征词（索引键超限 / 超时 / 限流配额 / 权限）。
+     *   通用码 -502001 本身什么都不说（官方文档明确"无特殊语义"），
+     *   而用户已经等了很多轮 —— 必须让下一次点击直接给出根因证据。
+     */
+    const opM = raw.match(/FailedOperation\.(\w+)/)
+    const op = opM ? opM[1] : ''
+    const tag = /key too large|Index/i.test(raw) ? 'keyTooLarge'
+      : /timeout|timed out/i.test(raw) ? 'timeout'
+      : /exceed|limit|quota|rate/i.test(raw) ? 'quota'
+      : /permission/i.test(raw) ? 'perm' : ''
+    const diag = [((err && err.stage) || action), numCode, op, tag]
+      .filter(Boolean).join(':')
     return { ok: false, msg: '操作失败了，再试一次', _diag: diag }
   }
 }
