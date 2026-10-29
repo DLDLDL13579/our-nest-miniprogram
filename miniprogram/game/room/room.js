@@ -29,6 +29,7 @@ const sfx = require('../sfx.js')
 const settleFoot = require('../../game/settle.js')
 const bidOptions = require('../../game/bidOptions.js')
 const feedback = require('../feedback.js')
+const trace = require('../../utils/trace.js')
 /*
  * 酒桌题卡库。★ 前端这份**只用来渲染"有哪些场合可选"**（名字/说明），
  * 真正的抽题在服务端做 —— 见 cloudfunctions/room/index.js 的 spin。
@@ -1212,6 +1213,20 @@ Page({
     if (!raw) return
     if (this._dead) return
 
+    /*
+     * ★ 行为轨迹（2026-10-30）：只在**阶段真的变了**时记一条。
+     * 为什么不记每次轮询 —— 1.5 秒一次，30 条缓冲 45 秒就冲光了，
+     * 用户报障时反而看不出"他是从哪进来的"。
+     * 这里记录的是：他进了哪个玩法、开没开局、有没有走到结算。
+     */
+    {
+      const st = stageOf(raw.phase)
+      if (st !== this._traceStage) {
+        this._traceStage = st
+        trace.add(st, (raw.game || '?') + (raw.count ? ' ' + raw.count + '人' : ''))
+      }
+    }
+
     /* ---------- 结算前的 300ms 定格 ---------- */
     if (raw.phase === 'over') {
       if (this._htUntil && Date.now() < this._htUntil) {
@@ -2229,6 +2244,7 @@ Page({
       .catch((e) => {
         /* no-room: 进不去 = 没进到房间里，没有可同步的状态。
            同样要显示具体原因，理由见 doCreate 那段。 */
+        trace.add('join.fail', (e && (e.friendly || e.message)) || '')
         this.setData({ err: (e && (e.friendly || e.message)) || '进不去' })
         this.setLoading(false)
         return null

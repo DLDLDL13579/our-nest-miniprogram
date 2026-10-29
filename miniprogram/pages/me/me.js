@@ -239,6 +239,19 @@ Page({
      * 每步的结果拼进诊断文本：用户点一次按钮，根因证据就带走了。
      * 自检失败也照样复制（降级），不让诊断入口自己变成新的故障点。
      */
+    /*
+     * ★ 行为轨迹（2026-10-30）。诊断信息原来只有"版本/机型/错误记录"——
+     * 而错误记录只覆盖"报错的操作"，**没有报错的卡点（点了没反应、界面不动）一条线索都不留**。
+     * 轨迹补的就是这一段：用户从哪进来、走到哪个阶段、停在哪。
+     */
+    try {
+      var tr = require('../../utils/trace.js')
+      var tl = tr.lines()
+      if (tl.length) {
+        lines.push('')
+        tl.forEach(function (x) { lines.push(x) })
+      }
+    } catch (e) {}
     var finish = function () {
       wx.setClipboardData({
         data: lines.join('\n'),
@@ -338,6 +351,9 @@ Page({
           /* 最近玩过的排序（3.10.41 加的）也要清 —— 否则"清理后还是那几个排在前面"，
              和"会清掉玩过的记录"这句话对不上（2026-10-29） */
           wx.removeStorageSync('recentGames')
+          /* 行为轨迹也清 —— 它记录的是"这台机器上玩过什么"，属于本机数据。
+             （错误记录 errLog 有意保留：用户清完缓存来报障时，错误码还得在。） */
+          try { require('../../utils/trace.js').clear() } catch (e2) {}
         } catch (e) {}
         /* 开关走各自的 setter，别直接写 storage —— 内存里的状态也要跟着变，
            否则界面显示"开着"、实际已被清掉。 */
