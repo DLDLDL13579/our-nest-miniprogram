@@ -1868,7 +1868,7 @@ Page({
       return null
     })
     if (r && r.ok) {
-      this.setData({ room: this.decorate(r.room), cardText: '' })
+      this.setData({ room: this.safeDecorate(r.room), cardText: '' })
       wx.showToast({ title: '加好了，抽得到', icon: 'none' })
     }
   },
@@ -1889,7 +1889,7 @@ Page({
       this.resyncAfterFail()
       return null
     })
-    if (r && r.ok) this.setData({ room: this.decorate(r.room) })
+    if (r && r.ok) this.setData({ room: this.safeDecorate(r.room) })
   },
 
   /**
@@ -1980,7 +1980,7 @@ Page({
       return null
     })
     if (r && r.ok) {
-      this.setData({ room: this.decorate(r.room) })
+      this.setData({ room: this.safeDecorate(r.room) })
       const d = decks.deckOf(k)
       wx.showToast({ title: '换成「' + d.name + '」了', icon: 'none' })
     }
@@ -2289,7 +2289,7 @@ Page({
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
+      this.setData({ room: this.safeDecorate(r.room), stage: stageOf(r.room.phase) })
       /* 房主自己也要走倒计时读秒 —— 否则只有非房主听到读秒声 */
       if (r.room.phase === 'countdown') this.startCountdown(r.room.countdownMs)
     } else if (r && !r.ok) {
@@ -2328,7 +2328,7 @@ Page({
       if (this._dead) return          // 云函数往返期间页面可能已卸载
       /* 服务端回到 lobby；stage 从 phase 推导，不写死 */
       this.setData({
-        room: this.decorate(r.room),
+        room: this.safeDecorate(r.room),
         stage: stageOf(r.room.phase),
         result: null,
         /* 换玩法后，建房时选的那个玩法也要跟着切 —— 否则再点"开一局"会用旧玩法 */
@@ -2442,7 +2442,7 @@ Page({
 
     /* ③ 揭盅：盅提起来，我的骰子露出来 */
     if (this._dead) return          // 云函数往返期间页面可能已卸载
-    this.setData({ room: this.decorate(r.room), myDice: (r.room.me && r.room.me.dice) || [] })
+    this.setData({ room: this.safeDecorate(r.room), myDice: (r.room.me && r.room.me.dice) || [] })
     this._cupTimers.push(setTimeout(() => this.revealCup(), 260))
 
     if (r.result) {
@@ -2764,7 +2764,7 @@ Page({
     })
     if (r && r.ok) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room) })
+      this.setData({ room: this.safeDecorate(r.room) })
     }
   },
 
@@ -2830,7 +2830,7 @@ Page({
     this.setData({ suspense: false })
     if (r && r.ok) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room), result: r.result, stage: 'over' })
+      this.setData({ room: this.safeDecorate(r.room), result: r.result, stage: 'over' })
       /* ⚠️ 这处**刻意不走 feedback.fire**：它和 bump()（整屏震动动画）
          是同一拍的两件事，顺序被 cupOpen 表里的 110ms 延迟会打乱。
          例外要有理由，写在代码里而不是记在脑子里。 */
