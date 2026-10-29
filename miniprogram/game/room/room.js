@@ -1955,8 +1955,13 @@ Page({
       deck: this.data.pickDeck
     }, { loading: '开一桌' })
       .catch((e) => {
-        /* no-room: 建房失败时还没有房间可同步，这里是唯一合理的例外 */
-        this.setData({ err: (e && e.friendly) || '开不了这一桌' })
+        /*
+         * no-room: 建房失败时还没有房间可同步，这里是唯一合理的例外。
+         * ★ 必须把**具体原因**显示出来（2026-10-29）：原来只取 `e.friendly`，
+         *   而云函数返回的业务错误（如"房间号用满了"）只有 `message`、没有 friendly，
+         *   于是统一显示成"开不了这一桌" —— 用户拿这句话什么也做不了，我也查不出来。
+         */
+        this.setData({ err: (e && (e.friendly || e.message)) || '开不了这一桌' })
         return null
       })
 
@@ -2051,8 +2056,9 @@ Page({
       action: 'join', code: code, name: this.data.myName || '玩家'
     }, { loading: '进房间' })
       .catch((e) => {
-        /* no-room: 进不去 = 没进到房间里，没有可同步的状态 */
-        this.setData({ err: (e && e.friendly) || '进不去' })
+        /* no-room: 进不去 = 没进到房间里，没有可同步的状态。
+           同样要显示具体原因，理由见 doCreate 那段。 */
+        this.setData({ err: (e && (e.friendly || e.message)) || '进不去' })
         this.setLoading(false)
         return null
       })
