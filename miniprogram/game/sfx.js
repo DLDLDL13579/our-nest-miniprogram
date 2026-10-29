@@ -37,7 +37,6 @@ const FILES = {
   /* v3 补充：分层质感与情绪音（腾讯工作室级的那一层） */
   impactLow: '/game/audio/impact-low.wav',        // 低频冲击层，给"重"的动作垫底
   shakerMetal: '/game/audio/shaker-metal.wav',    // 金属骰盅（大话骰用）
-  diceTumbleWood: '/game/audio/dice-tumble-wood.wav', // 木质骰子（摇骰子用）
   combo1: '/game/audio/combo-1.wav',              // 连击（音高逐级递增）
   combo2: '/game/audio/combo-2.wav',
   combo3: '/game/audio/combo-3.wav',
@@ -45,7 +44,6 @@ const FILES = {
   failDrop: '/game/audio/fail-drop.wav',          // 失败下坠（比 lose 更重）
   chargeUp: '/game/audio/charge-up.wav',          // 蓄力（揭晓前的紧张）
   revealHit: '/game/audio/reveal-hit.wav',        // 揭晓重击（明亮+冲击+金属尾音）
-  countdownUrgent: '/game/audio/countdown-urgent.wav', // 最后三秒的急促
   chipBet: '/game/audio/chip-bet.wav',            // 筹码声（酒桌氛围）
   gulp: '/game/audio/gulp.wav',                   // 咽酒声
   /* ★ 碰杯（2026-10-28 新增）：35 个音效里原来**一个杯子都没有**，
@@ -103,7 +101,6 @@ const POOL_SIZE = {
   /* v3：金属盅碰撞极密（22ms 一次），必须多实例 */
   shakerMetal: 3,
   chipBet: 3,
-  countdownUrgent: 2,
   /* v4：扣盅那一下要和盅内骰子的跳动叠在一起播，单实例会互相打断 */
   cupSlam: 2,
   diceOnTable: 2
