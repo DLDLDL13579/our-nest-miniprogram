@@ -2432,3 +2432,21 @@
 
 /* 结算页底部：今晚第几局 */
 .night-round { text-align: center; margin-top: 6rpx; font-size: 21rpx; color: rgba(255,255,255,.52) }
+
+/* ============================================================
+   金花确认卡（2026-10-29）
+   ------------------------------------------------------------
+   替代 wx.showModal：同一套 sheet 底座 + 两个大按钮，
+   暗金主题内一致，也让 automator 能点到（原生弹窗点不到）。
+   ============================================================ */
+.pkask { text-align: center }
+.pkask-row { display: flex; gap: 18rpx; margin-top: 30rpx }
+.pkask-btn {
+  flex: 1; text-align: center;
+  padding: 26rpx 0; border-radius: 18rpx;
+  font-size: 27rpx; font-weight: 600;
+  transition: transform .1s, opacity .1s;
+}
+.pkask-btn:active { transform: scale(.97); opacity: .9 }
+.pkask-btn.no { background: rgba(255,255,255,.08); color: rgba(255,255,255,.72) }
+.pkask-btn.yes { background: linear-gradient(135deg,#E0714F,#C4573A); color: #fff }

@@ -461,6 +461,28 @@ module.exports = {
       })
     }),
 
+    /* 金花确认卡（2026-10-29 把 wx.showModal 换成页面内确认）：弃牌那一刻 */
+    pkAskFold: () => ({
+      stage: 'playing',
+      showCards: true,
+      pkAsk: { kind: 'fold' },
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: true,
+        turn: 1, myTurn: true, turnName: '邓林',
+        poker: {
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          hintText: poker.handHint(PK_PUB, PK_MINE[1]),
+          folded: false, aliveCount: 3, myDrink: 0,
+          drinks: [
+            { name: '邓林', initial: '邓', cups: 0, out: false },
+            { name: '倩萍', initial: '倩', cups: 1.5, out: false },
+            { name: '阿杰', initial: '阿', cups: 0, out: false }
+          ], log: [], last: null, winner: null
+        }
+      })
+    }),
+
     pkMine: () => ({
       stage: 'playing',
       showCards: true,

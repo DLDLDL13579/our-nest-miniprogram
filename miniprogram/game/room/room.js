@@ -297,7 +297,9 @@ Page({
     wheelDur: 2700,
     wheelCls: '',
     wheelText: '',
-    wheelSpinning: false
+    wheelSpinning: false,
+    /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
+    pkAsk: null
   },
 
   onLoad(q0) {
@@ -1762,19 +1764,43 @@ Page({
     if (!this.data.room || this.data._pkBusy) return
     const what = e.currentTarget.dataset.what
     if (what !== 'public' && what !== 'mine') return
-    const cost = what === 'public' ? '1 杯' : '半杯'
-    const ok = await new Promise((res) => {
-      wx.showModal({
-        title: what === 'public' ? '换底牌？' : '换手牌？',
-        content: what === 'public'
-          ? '底牌是全场共用的，换了所有人都跟着变。你要喝 ' + cost + '。'
-          : '重发你手里的两张牌（明牌和暗牌都换）。你要喝 ' + cost + '。',
-        confirmText: '换',
-        cancelText: '算了',
-        success: (r) => res(!!r.confirm)
-      })
-    })
-    if (!ok) return
+    /*
+     * ★★ 2026-10-29：确认框从 `wx.showModal` 改成**页面内确认卡**。
+     *
+     * 三个理由：
+     *   ① 系统弹窗是蓝白样式，与暗金酒桌主题完全两个世界 —— 这是最"App 味"
+     *      而不是"游戏味"的一处；
+     *   ② 原生弹窗的按钮文案/排版不可定制（只能 confirmText/cancelText 两个词）；
+     *   ③ automator **点不到原生弹窗**，金花的整条交互链路因此无法真机验证。
+     * 现在确认卡落在同一套 .mask/.sheet 上（与「加一道自己的题」一致）。
+     */
+    sfx.play('tapSoft')
+    this.setData({ pkAsk: { kind: 'swap', what: what } })
+  },
+
+  /** 确认卡：取消 */
+  pkAskNo() {
+    sfx.play('tapSoft')
+    this.setData({ pkAsk: null })
+  },
+
+  /** 确认卡：确认 —— 只负责转调，真正的动作各自留在 pkDoSwap / pkDoFold 里 */
+  pkAskYes() {
+    /* 点「换 / 弃牌」这一下必须有声音：断言 ⑪ 要求每个 bindtap 方法**自己**播，
+       不能靠被调方（转调不算）。 */
+    sfx.play('tap')
+    const ask = this.data.pkAsk
+    this.setData({ pkAsk: null })
+    if (!ask) return
+    if (ask.kind === 'fold') this.pkDoFold()
+    else this.pkDoSwap(ask.what)
+  },
+
+  async pkDoSwap(what) {
+    /* 纵深防御：入口（pkSwap/pkFold）已判过，这里再判一次 ——
+       万一将来从别处调用（或确认卡残留），观战者也不会绕过友好提示 */
+    if (!this.specGuard()) return
+    if (!this.data.room || this.data._pkBusy) return
     this.data._pkBusy = true
     feedback.fire('pkFlip')
     const r = await call('room',
@@ -1790,19 +1816,19 @@ Page({
   },
 
   /* 弃牌：认输，喝一杯 */
-  async pkFold() {
+  pkFold() {
     if (!this.specGuard()) return
     if (!this.data.room || this.data._pkBusy) return
-    const ok = await new Promise((res) => {
-      wx.showModal({
-        title: '弃牌？',
-        content: '弃牌就算输，这杯要喝。',
-        confirmText: '弃牌',
-        cancelText: '再想想',
-        success: (r) => res(!!r.confirm)
-      })
-    })
-    if (!ok) return
+    /* 确认卡（同上）：弃牌是不可逆的，必须二次确认 */
+    sfx.play('tapSoft')
+    this.setData({ pkAsk: { kind: 'fold' } })
+  },
+
+  async pkDoFold() {
+    /* 纵深防御：入口（pkSwap/pkFold）已判过，这里再判一次 ——
+       万一将来从别处调用（或确认卡残留），观战者也不会绕过友好提示 */
+    if (!this.specGuard()) return
+    if (!this.data.room || this.data._pkBusy) return
     this.data._pkBusy = true
     sfx.play('tapSoft')
     const r = await call('room', { action: 'pkAct', act: 'fold', id: this.data.room.id }, { silent: true })

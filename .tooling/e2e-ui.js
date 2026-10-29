@@ -30,9 +30,13 @@ const rec = (name, ok, extra) => {
     let d = await page.data()
     rec('进入大厅', page.path.indexOf('lobby') >= 0, 'path=' + page.path + ' 玩法数=' + (d.list || []).length)
 
-    /* ② 点第一张玩法卡 → 应该建房并跳到房间页 */
-    const card = await page.$('.gcard')
-    if (!card) { rec('找到玩法卡', false); return }
+    /* ② 点**大话骰**那张卡 → 建房并跳到房间页
+       ⚠️ 不能取第一张：大厅会把"上次玩的"置顶，顺序不固定 ——
+       第一版就踩了，第二次跑时第一张变成了别的玩法，脚本误报"找不到叫骰按钮"。 */
+    const liarIdx = (d.list || []).findIndex(g => g.id === 'liar')
+    const gcards = await page.$$('.gcard')
+    const card = liarIdx >= 0 ? gcards[liarIdx] : null
+    if (!card) { rec('找到大话骰卡片', false, 'list=' + (d.list || []).map(g => g.id).join(',')); return }
     await card.tap()
     /*
      * ★ 逐秒采样 stage：区分「慢」和「卡死」。
@@ -152,6 +156,70 @@ const rec = (name, ok, extra) => {
             rec('转完 → 出现具体结果', done, '结果=' + after.wheelText + (after.card ? ' · 题目: ' + after.card.text : ''))
           } else {
             rec('找到「转！」按钮', false)
+          }
+        }
+      }
+    }
+
+    /* ⑨ 金花：确认卡（把 wx.showModal 换成页面内之后，automator 才点得到） */
+    console.log('\n── 金花 ──')
+    await mini.navigateBack().catch(() => {})
+    await sleep(2500)
+    const lob2 = await mini.currentPage()
+    const ld2 = await lob2.data()
+    const pIdx = ((ld2 && ld2.list) || []).findIndex(g => g.id === 'poker')
+    const cards2 = await lob2.$$('.gcard')
+    if (pIdx < 0 || !cards2[pIdx]) {
+      rec('找到金花卡片', false, 'list=' + ((ld2 && ld2.list) || []).map(g => g.id).join(','))
+    } else {
+      await cards2[pIdx].tap()
+      let pkRoom = null
+      for (let i = 0; i < 20; i++) {
+        await sleep(1000)
+        pkRoom = await mini.currentPage()
+        const dd = await pkRoom.data()
+        if (dd.stage === 'lobby' && dd.room && dd.room.code) break
+      }
+      const startBtn3 = await pkRoom.$('.bigbtn')
+      if (startBtn3) { await startBtn3.tap(); await sleep(2000) }
+      let pd = await pkRoom.data()
+      for (let i = 0; i < 8 && pd.stage !== 'playing'; i++) { await sleep(1200); pd = await pkRoom.data() }
+      rec('金花开局 → playing', pd.stage === 'playing', 'stage=' + pd.stage)
+
+      /* 点「算了，我弃牌」→ 应该弹出页面内确认卡（而不是系统弹窗） */
+      const foldBtn = await pkRoom.$('.pk-fold')
+      if (!foldBtn) { rec('找到弃牌按钮', false) }
+      else {
+        await foldBtn.tap()
+        await sleep(900)
+        let ad = await pkRoom.data()
+        rec('点弃牌 → 弹出页面内确认卡', !!(ad.pkAsk && ad.pkAsk.kind === 'fold'),
+          'pkAsk=' + JSON.stringify(ad.pkAsk))
+
+        /* 点「再想想」→ 关掉，不生效 */
+        const noBtn = await pkRoom.$('.pkask-btn.no')
+        if (noBtn) {
+          await noBtn.tap()
+          await sleep(700)
+          ad = await pkRoom.data()
+          rec('点「再想想」→ 确认卡关闭且没弃牌', !ad.pkAsk && !(ad.room && ad.room.poker && ad.room.poker.folded),
+            'pkAsk=' + JSON.stringify(ad.pkAsk))
+        }
+
+        /* 再来一次，点「弃牌」→ 真的弃掉 */
+        const foldBtn2 = await pkRoom.$('.pk-fold')
+        if (foldBtn2) {
+          await foldBtn2.tap()
+          await sleep(800)
+          const yesBtn = await pkRoom.$('.pkask-btn.yes')
+          if (yesBtn) {
+            await yesBtn.tap()
+            await sleep(2500)
+            const fd = await pkRoom.data()
+            rec('点「弃牌」→ 真的弃掉', !!(fd.room && fd.room.poker && fd.room.poker.folded),
+              'folded=' + (fd.room && fd.room.poker ? fd.room.poker.folded : '?'))
+          } else {
+            rec('找到确认按钮', false)
           }
         }
       }

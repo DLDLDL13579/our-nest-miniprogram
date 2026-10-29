@@ -972,6 +972,23 @@
     </view>
   </view>
 
+  <!--
+    金花确认卡（弃牌 / 换牌）。
+    ★ 2026-10-29 替换掉原来的 wx.showModal：系统弹窗是蓝白样式，与暗金主题
+      两个世界；而且原生弹窗 automator 点不到，金花的交互链路根本没法真机验。
+      现在落在同一套 .mask/.sheet 上，与「加一道自己的题」视觉一致。
+  -->
+  <view wx:if="{{pkAsk}}" class="mask" bindtap="pkAskNo">
+    <view class="sheet pkask" catchtap="noop">
+      <view class="sheet-t">{{pkAsk.kind === 'fold' ? '弃牌？' : (pkAsk.what === 'public' ? '换底牌？' : '换手牌？')}}</view>
+      <view class="sheet-s">{{pkAsk.kind === 'fold' ? '弃牌就算输，这杯要喝。' : (pkAsk.what === 'public' ? '底牌是全场共用的，换了所有人都跟着变。你要喝 1 杯。' : '重发你手里的两张牌，明牌和暗牌都换。你要喝半杯。')}}</view>
+      <view class="pkask-row">
+        <view class="pkask-btn no" bindtap="pkAskNo">再想想</view>
+        <view class="pkask-btn yes" bindtap="pkAskYes">{{pkAsk.kind === 'fold' ? '弃牌' : '换'}}</view>
+      </view>
+    </view>
+  </view>
+
   <view wx:if="{{cardPanel}}" class="mask" bindtap="closeCards">
     <!-- catchtap 阻止冒泡：点面板内部不该把它关掉 -->
     <view class="sheet" catchtap="noop">
