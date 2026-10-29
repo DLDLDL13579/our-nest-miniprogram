@@ -939,7 +939,9 @@
       </view>
       <!-- 转到喝酒类扇区时给一句人话，别让屏幕空着 -->
       <view wx:elif="{{wheelText && !wheelSpinning && wheelText !== '转起来了…'}}" class="ws-note">
-        {{wheelText === '免罚一次' ? '这一下躲过去了，先记着' : '照着念一遍，然后执行'}}
+        <!-- 转到喝酒类扇区时给一个杯子 —— 这是转盘最常出现的结果，值得有个视觉锚点 -->
+        <image wx:if="{{wheelText !== '免罚一次'}}" class="ws-note-ic" src="{{cupIcon}}" />
+        <text>{{wheelText === '免罚一次' ? '这一下躲过去了，先记着' : '照着念一遍，然后执行'}}</text>
       </view>
 
       <!-- 场合选择：房主可换（局中服务端会拦） -->

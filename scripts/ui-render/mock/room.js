@@ -160,6 +160,23 @@ module.exports = {
      * 这是**拉新转化的第一屏** —— 他知不知道要等？知不知道房主是谁？
      */
     /* 超长名字：12 个字 + 房主/我/掉线三枚标签，验证不撑破 */
+    /* 转到喝酒类扇区（没有题卡，只有提示 + 酒杯图标） */
+    wheelDrink: () => {
+      const base = buildWheel()
+      return {
+        stage: 'playing',
+        wheelSectors: base.list,
+        wheelGradient: base.gradient,
+        wheelDeg: 1234,
+        wheelDur: 2700,
+        wheelSpinning: false,
+        wheelText: '喝一杯',
+        cupIcon: require('../../../miniprogram/utils/icons.js').dataUri('cup', '#C4553F'),
+        decks: decks.DECKS,
+        room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 3, gameName: '命运转盘' })
+      }
+    },
+
     /* 最长自定义题卡（60 字上限）—— 验证不会把转盘和按钮挤出屏幕 */
     wheelLongCard: () => {
       const base = buildWheel()

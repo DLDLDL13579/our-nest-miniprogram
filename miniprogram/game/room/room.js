@@ -344,6 +344,8 @@ Page({
     const patch = {
       muted: sfx.isMuted(),
       wheelSectors: w.list,
+      /* 转到喝酒类扇区时的图标（图标库早就有 cup，只是没接在这里） */
+      cupIcon: icons.dataUri('cup', '#C4553F'),
       wheelGradient: w.gradient,
       /*
        * ⚠️ loading 必须**显式初始化为 false**。

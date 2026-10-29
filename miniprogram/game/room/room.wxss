@@ -1395,11 +1395,13 @@
 
 /* 非题卡扇区（喝酒类）的一句说明，别让屏幕空着 */
 .ws-note {
-  text-align: center;
+  display: flex; align-items: center; justify-content: center; gap: 12rpx;
   font-size: 24rpx;
   color: rgba(255,255,255,.5);
   margin: 6rpx 0 4rpx;
 }
+/* <image> 必须显式宽高（缺了会按原尺寸撑满容器） */
+.ws-note-ic { width: 34rpx; height: 34rpx; flex: none }
 
 /* ================================================================
  * 场合选择
