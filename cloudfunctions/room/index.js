@@ -671,11 +671,22 @@ exports.main = async (event) => {
         const stale = await rooms.where({ code: code, active: true }).limit(1).get()
           .catch(() => ({ data: [] }))
         if ((stale.data || []).length) {
-          return { ok: false, code: 'STALE', msg: '这个房间已经过期了，让房主重新开一个' }
+          return { ok: false, code: 'STALE', msg: '这个房间已经过期了（2 小时没用会自动散），回大厅点一张玩法卡就能重开' }
         }
-        return { ok: false, code: 'NO_ROOM', msg: '没找到这个房间，确认一下房间号' }
+        /*
+         * ★ 文案里要给**下一步**（2026-10-29 用户报障后改）。
+         *   原来只说"没找到这个房间，确认一下房间号" ——
+         *   用户核对完号码，还是不知道该干什么。
+         *   实测场景：房间 2 小时过期后号码会被回收，
+         *   这时拿着老号码去试就是这条提示，而"重开一桌"才是正确动作。
+         */
+        return {
+          ok: false,
+          code: 'NO_ROOM',
+          msg: '这个号现在没有房间（可能已经散了）。想开一桌新的，回大厅点一张玩法卡就行'
+        }
       }
-      if (isStale(room)) return { ok: false, code: 'STALE', msg: '这个房间已经过期了，让房主重新开一个' }
+      if (isStale(room)) return { ok: false, code: 'STALE', msg: '这个房间已经过期了（2 小时没用会自动散），回大厅点一张玩法卡就能重开' }
 
       /* 锁房：新房客直接拒；房里的人重进不受影响（already 分支在下面） */
       const alreadyIn = (room.players || []).some(p => p.openid === OPENID)
