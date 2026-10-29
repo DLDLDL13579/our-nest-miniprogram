@@ -155,6 +155,24 @@ module.exports = {
         options: []
       }
     }),
+    /*
+     * 新人视角：朋友点分享进来、房间还没开局、自己不是房主。
+     * 这是**拉新转化的第一屏** —— 他知不知道要等？知不知道房主是谁？
+     */
+    lobbyGuest: () => ({
+      stage: 'lobby',
+      room: pkRoom({
+        game: 'liar', phase: 'lobby', host: false, count: 3,
+        gameName: '大话骰',
+        howList: GAMES.filter(g => g.id === 'liar')[0].how,
+        players: [
+          { seat: 1, name: '倩萍', initial: '倩', isMe: false, isHost: true, online: true, diceCount: 0 },
+          { seat: 2, name: '邓林', initial: '邓', isMe: true, isHost: false, online: true, diceCount: 0 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, diceCount: 0 }
+        ]
+      })
+    }),
+
     /* 开局倒计时（普通读秒 / 最后一拍） */
     cd: () => ({ stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
     cdGo: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),

@@ -235,6 +235,16 @@
     </view>
 
     <!--
+      ★ 等房主的提示放在**规则块之前**（2026-10-30）。
+        原来它排在 5 条规则后面，非房主进来时被挤到屏幕外 ——
+        而"我该干什么"恰恰是新人第一眼就要知道的事。
+        规则是"之后怎么玩"，等待状态是"现在在等什么"，顺序应该是后者在前。
+    -->
+    <view wx:if="{{!room.host}}" class="waiting">
+      等房主开始 · 房主是 {{room.players[0].name}}
+    </view>
+
+    <!--
       怎么玩 —— 从玩法注册表的 `how` 字段渲染。
       放在 lobby 是刻意的：**等人齐的那几十秒**正好是无事可做的时候，
       新人不用问"这游戏怎么玩"，扫一眼就知道。
@@ -304,9 +314,6 @@
       </view>
       <view wx:elif="{{room.host}}" class="btn main bigbtn" bindtap="doStart">
         开始（{{room.count}} 人）
-      </view>
-      <view wx:else class="waiting">
-        等房主开始 · 房主是 {{room.players[0].name}}
       </view>
 
       <view class="textbtn" bindtap="leave">离开房间</view>
