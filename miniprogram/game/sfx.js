@@ -243,7 +243,13 @@ function setMuted(v) {
  * （十几个），35 个全建会撞上限。这五个是"每个动作的第一下"，
  * 它们慢了最明显。
  */
-const PRELOAD_KEYS = ['shakerMetal', 'diceTumbleWood', 'cupSlam', 'cardFlip', 'tapSoft']
+/*
+ * 预加载哪些音效（2026-10-29）。
+ * ⚠️ 原来列表里有 `diceTumbleWood` —— 而那个音频在 3.10.52 已经被删了，
+ * 于是预加载时 FILES[key] 是 undefined、直接 return，**等于白占一个名额**。
+ * 现在换成真正用得最多的几个。
+ */
+const PRELOAD_KEYS = ['shakerMetal', 'cupSlam', 'revealHit', 'cardFlip', 'tapSoft', 'toggleOn']
 
 function preload() {
   PRELOAD_KEYS.forEach((k) => {

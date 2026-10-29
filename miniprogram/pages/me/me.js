@@ -27,6 +27,8 @@ Page({
     reduceMotion: false,
     nightGames: 0,
     errCount: 0,
+    /* 最近 2 条错误的内容（直接显示，方便截图反馈） */
+    errList: [],
     gameCount: GAMES.length,
     /* 每个玩法开过几次桌（本地统计）—— 0 次的也列出来，让"还没玩过"可见 */
     gameRows: [],
@@ -94,9 +96,10 @@ Page({
       const rec = wx.getStorageSync('nightGames') || {}
       n = rec.date === today ? (Number(rec.n) || 0) : 0
     } catch (e) {}
-    let errs = 0
-    try { errs = (wx.getStorageSync('errLog') || []).length } catch (e) {}
-    this.setData({ nightGames: n, errCount: errs })
+    let list = []
+    try { list = (wx.getStorageSync('errLog') || []).slice(-2) } catch (e) {}
+    /* 只显示最近 2 条：够判断问题，又不会把页面撑爆 */
+    this.setData({ nightGames: n, errCount: (list.length ? (wx.getStorageSync('errLog') || []).length : 0), errList: list })
   },
 
   /**

@@ -118,3 +118,9 @@
 
 /* 玩法统计那一行可点（直接开桌） */
 .stat-row:active { background: rgba(255,255,255,.05) }
+
+/* 错误原文：等宽、可换行，方便截图 */
+.errtext { margin: 4rpx 0 6rpx 8rpx; font-size: 21rpx; line-height: 1.5; color: #E8A08C; word-break: break-all; opacity: .9 }
+
+/* 错误记录那一行可点（复制），补上按压反馈 */
+.errline:active { opacity: .65 }

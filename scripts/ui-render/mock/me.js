@@ -27,7 +27,11 @@ module.exports = {
     /* 下面三个 2026-10-28 新加的字段，mock 没跟上 → 截图里是"缺一块"的界面 */
     reduceMotion: false,
     nightGames: 3,
-    errCount: 2
+    errCount: 2,
+    errList: [
+      { t: 1, fn: 'room', act: 'create', raw: 'cloud.callFunction:fail timeout' },
+      { t: 2, fn: 'room', act: 'create', raw: 'cloud.callFunction:fail timeout' }
+    ]
   }),
   states: {
     /* 新用户：还没起名字 */

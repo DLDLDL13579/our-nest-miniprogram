@@ -70,9 +70,19 @@
   -->
   <view class="card">
     <view class="lbl">反馈问题的时候</view>
-    <view wx:if="{{errCount > 0}}" class="ab-line errline" bindtap="copyErrLog">
-      最近有 {{errCount}} 条错误记录 · 点这里复制
-    </view>
+    <!--
+      ★★ 直接显示错误内容（2026-10-29）。
+      原来只显示"最近有 N 条错误记录 · 点这里复制" —— 而用户反馈
+      "复制不了也看不到，只看到两条错误记录"，等于**知道有错却拿不到内容**。
+      现在把最近 2 条的原始错误直接印在页面上，**截图就能发过来**。
+    -->
+    <block wx:if="{{errCount > 0}}">
+      <view class="ab-line errline">最近 {{errCount}} 条错误：</view>
+      <view wx:for="{{errList}}" wx:key="t" class="errtext">
+        {{index + 1}}. {{item.fn}}{{item.act ? '/' + item.act : ''}}：{{item.raw}}
+      </view>
+      <view class="ab-line errline" bindtap="copyErrLog">点这里复制全部错误记录</view>
+    </block>
     <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
     <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误。</view>
   </view>
