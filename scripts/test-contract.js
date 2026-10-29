@@ -2051,6 +2051,37 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③m scripts 里的测试脚本必须都在 test-all 里 ============ */
+  console.log('\n=== ③m 不许有"孤儿测试"（写了但没人跑） ===')
+  /*
+   * ★ 2026-10-29。做测试资产盘点时发现 `test-e2e-flows.js`：
+   *   它存在、**不在 test-all 里**、而且跑起来**直接崩** ——
+   *   引用的是 `cloudfunctions/pair/index.js`，而 `pair` 随情侣版一起删了。
+   *
+   *   这种"孤儿测试"比没有测试更糟：它躺在目录里让人以为"这块有覆盖"，
+   *   实际上从功能删除那天起就没跑过。
+   *
+   *   判据：scripts 下每个 test-*.js / test-*.py 都必须在 test-all.sh 里被调用。
+   */
+  {
+    const scriptsDir = path.join(ROOT, 'scripts')
+    const runner = fs.readFileSync(path.join(scriptsDir, 'test-all.sh'), 'utf8')
+    /*
+     * ⚠️ 判据必须是"**未注释的**调用行"，不能是 `includes(文件名)` ——
+     *    第一版用 includes，把调用注释掉之后文件名还在注释里，断言照样通过
+     *    （反向验证 exit=0，假绿）。删掉/注释调用必须都能被抓到。
+     */
+    const orphans = []
+    for (const f of fs.readdirSync(scriptsDir)) {
+      if (!/^test-.+\.(js|py)$/.test(f)) continue
+      const called = new RegExp('^\\s*(?:node|python3)\\s+scripts/' + f.replace(/[.]/g, '\\.') + '\\b', 'm')
+      if (!called.test(runner)) orphans.push(f)
+    }
+    assert.deepStrictEqual(orphans, [],
+      '这些测试脚本从来没被 test-all 跑过（要么接进去，要么删掉）：\n    ' + orphans.join('\n    '))
+    ok('没有孤儿测试（每个 test-* 都在 test-all 里）')
+  }
+
   /* ============ ④j wxss 不许用小程序不支持的语法（只在预览时报错） ============ */
   console.log('\n=== ④j wxss 语法：不许通配符 / 不支持的属性 ===')
   /*
