@@ -61,7 +61,14 @@ function call(name, data, opt) {
        */
       try {
         var log = wx.getStorageSync('errLog') || []
-        var act = (opt && opt.action) || ((opt && opt.payload && opt.payload.action) || '')
+                /*
+         * ★ action 要能从**真正带 action 的地方**取到（2026-10-29）。
+         *   原来只查 `opt.action`，而调用方都是 `call('room', { action: 'join' }, ...)` ——
+         *   action 在**第二个参数 data** 里。于是错误记录长这样：
+         *   `room：没找到这个房间` —— 看不出是哪个操作。
+         */
+        var act = (opt && opt.action) || (data && data.action) ||
+          ((opt && opt.payload && opt.payload.action) || '')
         log.push({
           t: Date.now(),
           fn: name,

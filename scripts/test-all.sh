@@ -35,6 +35,7 @@ node scripts/test-loser.js
 node scripts/test-settle.js
 node scripts/test-bidoptions.js
 node scripts/test-docs.js
+node scripts/test-errlog.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 
