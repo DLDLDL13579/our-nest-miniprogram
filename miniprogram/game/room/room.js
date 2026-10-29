@@ -57,13 +57,13 @@ const GAMES = GAME_LIST.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g
 /* 转盘扇区。权重决定扇区角度 —— 概率和视觉必须一致，
    否则玩家会感觉"明明指着喝一杯却判成真心话"（这类 bug 最伤信任）。 */
 const SECTORS = [
-  { k: 'truth', t: '真心话', weight: 22, color: '#C4573A' },
-  { k: 'dare',  t: '大冒险', weight: 20, color: '#5E7FA6' },
-  { k: 'drink', t: '喝一杯', weight: 18, color: '#7A5CA8' },
-  { k: 'you',   t: '你喝',   weight: 14, color: '#4E8C6A' },
-  { k: 'me',    t: '我喝',   weight: 12, color: '#B8863C' },
-  { k: 'both',  t: '一起喝', weight: 8,  color: '#A84E6B' },
-  { k: 'pass',  t: '免罚一次', weight: 6, color: '#5A8CA8' }
+  { k: 'truth', t: '真心话', weight: 22, color: '#9E4029' },
+  { k: 'dare',  t: '大冒险', weight: 20, color: '#3F5A7A' },
+  { k: 'drink', t: '喝一杯', weight: 18, color: '#573E7A' },
+  { k: 'you',   t: '你喝',   weight: 14, color: '#36654C' },
+  { k: 'me',    t: '我喝',   weight: 12, color: '#8C6226' },
+  { k: 'both',  t: '一起喝', weight: 8,  color: '#7D3549' },
+  { k: 'pass',  t: '免罚一次', weight: 6, color: '#3F6579' }
 ]
 
 /**
@@ -87,6 +87,19 @@ function buildSectors() {
     const from = acc
     const to = acc + deg
     stops.push(`${s.color} ${from.toFixed(2)}deg ${to.toFixed(2)}deg`)
+    /*
+     * ★ 扇区之间的金色细分隔线（2026-10-29）。
+     *
+     * 目的：把"七个彩色扇形拼成的圆"变成"有分格的赌盘"。纯色相邻时，
+     * 两个中饱和色块贴在一起像儿童转盘；一条 0.5deg 的金线立刻有实体盘的边。
+     *
+     * ⚠️ 只是**视觉**分隔线，不参与判定：判定用服务端抽出的 index（纯按权重），
+     *    而这里的 0.5deg 累计最多偏 3deg（<1%），指针视觉与结果的对应不受影响。
+     *    所以 list 里的 a0/a1 保持原值 —— 那条"扇区无缝覆盖 360°"的断言照旧成立。
+     */
+    if (i < SECTORS.length - 1) {
+      stops.push(`rgba(232,179,60,.62) ${to.toFixed(2)}deg ${(to + 0.7).toFixed(2)}deg`)
+    }
     list.push({
       k: s.k, t: s.t, color: s.color,
       a0: from, a1: to, mid: (from + to) / 2, span: deg, i: i

@@ -24,6 +24,51 @@ const poker = require('../../../miniprogram/utils/poker.js')
 const IC = iconSet.build(['speakerOn', 'speakerOff', 'bulb'], '#E8B33C')
 const GAME_SWITCH = GAMES.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g.desc }))
 
+/*
+ * ★★★ 转盘扇区**直接从真实源码抽取**（2026-10-29）。
+ *
+ * 原来这里手抄了一份扇区表，跟 room.js 的 SECTORS 早就漂了：
+ *   · 大冒险权重写 22（真实 20）、免罚写 4（真实 6）
+ *   · key 写成 youdrink/medrink/alldrink（真实 you/me/both）
+ *   · 颜色还停在改版前的糖果色
+ * → 所有转盘截图都是"假界面"。现在从 room.js 原样抽取，永远同步。
+ */
+const _fs = require('fs')
+const _path = require('path')
+const REAL_SECTORS = (function () {
+  const src = _fs.readFileSync(_path.join(__dirname, '../../../miniprogram/game/room/room.js'), 'utf8')
+  const i = src.indexOf('const SECTORS = [')
+  if (i < 0) return []
+  const j = src.indexOf(']', i) + 1
+  try { return eval('(' + src.slice(i + 'const SECTORS = '.length, j) + ')') } catch (e) { return [] }
+})()
+
+/* 与 room.js 的 buildSectors 同一套算法（含 0.5deg 金色分隔线） */
+function buildWheel() {
+  const sec = REAL_SECTORS
+  const total = sec.reduce((a, x) => a + x.weight, 0)
+  let acc = 0
+  const stops = [], list = []
+  sec.forEach((x, i) => {
+    const deg = x.weight / total * 360
+    const from = acc, to = acc + deg
+    stops.push(x.color + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg')
+    if (i < sec.length - 1) {
+      stops.push('rgba(232,179,60,.62) ' + to.toFixed(2) + 'deg ' + (to + 0.7).toFixed(2) + 'deg')
+    }
+    const mid = (from + to) / 2
+    const rad = (mid - 90) * Math.PI / 180
+    list.push({
+      k: x.k, t: x.t, color: x.color, i: i,
+      lx: 50 + Math.cos(rad) * (deg < 28 ? 38 : 33),
+      ly: 50 + Math.sin(rad) * (deg < 28 ? 38 : 33),
+      small: deg < 28
+    })
+    acc = to
+  })
+  return { gradient: 'conic-gradient(' + stops.join(',') + ')', list: list }
+}
+
 const PLAYERS = [
   { openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 5 },
   { openid: 'b', name: '倩萍', initial: '倩', seat: 2, isMe: false, isHost: false, online: true, inRound: true, score: 0, diceCount: 5 },
@@ -481,36 +526,7 @@ module.exports = {
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
     wheel: () => {
-      const w = (() => {
-        /* 扇区表在页面 js 里（SECTORS + buildSectors），这里按同一份权重重算 */
-        const sec = [
-          { k: 'truth', t: '真心话', color: '#C4573A', weight: 22 },
-          { k: 'dare', t: '大冒险', color: '#5E7FA6', weight: 22 },
-          { k: 'drink', t: '喝一杯', color: '#7A5CA8', weight: 18 },
-          { k: 'youdrink', t: '你喝', color: '#4E8C6A', weight: 14 },
-          { k: 'medrink', t: '我喝', color: '#B8863C', weight: 12 },
-          { k: 'alldrink', t: '一起喝', color: '#A35A7A', weight: 8 },
-          { k: 'pass', t: '免罚一次', color: '#3F7EA6', weight: 4 }
-        ]
-        const total = sec.reduce((a, x) => a + x.weight, 0)
-        let acc = 0
-        const stops = []
-        const list = []
-        sec.forEach((x, i) => {
-          const deg = x.weight / total * 360
-          const from = acc, to = acc + deg
-          stops.push(x.color + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg')
-          const mid = (from + to) / 2
-          /* 标签放在半径 32% 处 */
-          const rad = (mid - 90) * Math.PI / 180
-          list.push({
-            k: x.k, t: x.t, color: x.color, i: i,
-            lx: 50 + Math.cos(rad) * (deg < 28 ? 38 : 33), ly: 50 + Math.sin(rad) * (deg < 28 ? 38 : 33), small: deg < 28
-          })
-          acc = to
-        })
-        return { gradient: 'conic-gradient(' + stops.join(',') + ')', list: list }
-      })()
+      const w = buildWheel()
       return {
         stage: 'playing',
         wheelSectors: w.list,
@@ -530,31 +546,7 @@ module.exports = {
 
     /* 转到真心话、题卡已经抽出来的那一刻（最该看的一屏） */
     wheelCard: () => {
-      const base = (function () {
-        const sec = [
-          { k: 'truth', t: '真心话', color: '#C4573A', weight: 22 },
-          { k: 'dare', t: '大冒险', color: '#5E7FA6', weight: 22 },
-          { k: 'drink', t: '喝一杯', color: '#7A5CA8', weight: 18 },
-          { k: 'youdrink', t: '你喝', color: '#4E8C6A', weight: 14 },
-          { k: 'medrink', t: '我喝', color: '#B8863C', weight: 12 },
-          { k: 'alldrink', t: '一起喝', color: '#A35A7A', weight: 8 },
-          { k: 'pass', t: '免罚一次', color: '#3F7EA6', weight: 4 }
-        ]
-        const total = sec.reduce((a, x) => a + x.weight, 0)
-        let acc = 0
-        const stops = [], list = []
-        sec.forEach((x, i) => {
-          const deg = x.weight / total * 360
-          const from = acc, to = acc + deg
-          stops.push(x.color + ' ' + from.toFixed(2) + 'deg ' + to.toFixed(2) + 'deg')
-          const mid = (from + to) / 2
-          const rad = (mid - 90) * Math.PI / 180
-          list.push({ k: x.k, t: x.t, color: x.color, i: i,
-            lx: 50 + Math.cos(rad) * (deg < 28 ? 38 : 33), ly: 50 + Math.sin(rad) * (deg < 28 ? 38 : 33), small: deg < 28 })
-          acc = to
-        })
-        return { gradient: 'conic-gradient(' + stops.join(',') + ')', list: list }
-      })()
+      const base = buildWheel()
       return {
         stage: 'playing',
         wheelSectors: base.list,
