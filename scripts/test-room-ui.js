@@ -242,6 +242,25 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
       '换牌量应翻译成「1.5 杯」，实际：' + pk.players[1].drinkText)
     assert.strictEqual(pk.players[0].drinkText, '', '没换过牌的人不该显示数字')
 
+    /* ①a "轮到谁" —— 说错名字会让桌上催错人 */
+    const t2 = decorate.call(stub, {
+      game: 'liar', phase: 'playing', count: 3, turn: 2, me: { seat: 1, name: '我' },
+      players: [
+        { openid: 'a', name: '我', seat: 1, isMe: true, inRound: true, diceCount: 5 },
+        { openid: 'b', name: '倩萍', seat: 2, isMe: false, inRound: true, diceCount: 5 },
+        { openid: 'c', name: '阿杰', seat: 3, isMe: false, inRound: true, diceCount: 5 }
+      ]
+    })
+    assert.strictEqual(t2.turnName, '倩萍', '★ 轮到座位 2 就该说「倩萍」，实际：' + t2.turnName)
+    assert.strictEqual(t2.myTurn, false, '座位 2 轮到时，我不该显示"轮到你"')
+
+    /* 越界（有人退出后 turn 没修正之类）→ 空串，不能崩也不能显示 undefined */
+    const tBad = decorate.call(stub, {
+      game: 'liar', phase: 'playing', count: 2, turn: 99, me: { seat: 1, name: '我' },
+      players: [{ openid: 'a', name: '我', seat: 1, isMe: true, inRound: true, diceCount: 5 }]
+    })
+    assert.strictEqual(tBad.turnName, '', '★ turn 越界时应是空串（不是 undefined、也不崩）')
+
     /* ①b "还差谁没摇" —— 必须**排除自己**（自己不算"等的人"） */
     const w = decorate.call(stub, {
       game: 'dice', phase: 'playing', count: 3, me: { seat: 1, name: '我', dice: [] },
