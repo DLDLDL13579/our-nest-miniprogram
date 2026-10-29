@@ -1632,7 +1632,7 @@ Page({
    */
   specGuard() {
     if (this.data.room && this.data.room.spectating) {
-      wx.showToast({ title: '这一局你只能看，下一局自动加入', icon: 'none', duration: 1800 })
+      wx.showToast({ title: '这一局你只能看，下一局自动加入', icon: 'none', duration: 2600 })
       return false
     }
     return true
