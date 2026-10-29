@@ -2063,6 +2063,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③s 启动优化不能被误删 ============ */
+  console.log('\n=== ③s 启动优化的两个开关 ===')
+  /*
+   * ★ 2026-10-29。用户报过"手机加载特别慢"，做了一套分包改造：
+   *   · 主包 828KB → 248KB（音频和美术资源进分包）
+   *   · `preloadRule`：进大厅就预下载分包
+   *   · `lazyCodeLoading: requiredComponents`：按需注入，不用把全部代码先跑一遍
+   *
+   *   后两个是**一行配置**，删掉不会有任何报错，只会让首屏悄悄变慢 ——
+   *   而"变慢"用户只会说"有点卡"，不会说"preloadRule 没了"。
+   *   所以用断言锁住：这两项必须还在。
+   */
+  {
+    const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'miniprogram/app.json'), 'utf8'))
+    assert.strictEqual(app.lazyCodeLoading, 'requiredComponents',
+      '★ app.json 少了 lazyCodeLoading —— 启动要把全部页面代码先跑一遍，首屏会变慢')
+    assert.ok(app.preloadRule && Object.keys(app.preloadRule).length,
+      '★ app.json 少了 preloadRule —— 进大厅不会预下载分包，点玩法卡时还要等下载')
+    const keys = Object.keys(app.preloadRule)
+    assert.ok(keys.includes('pages/lobby/lobby'),
+      '★ preloadRule 没有挂在进大厅时（实际挂在：' + keys.join(', ') + '）')
+    ok('启动优化两项都在（按需注入 + 进大厅预下载分包）')
+  }
+
   /* ============ ③r 每个玩法都要说清"喝几杯" ============ */
   console.log('\n=== ③r 规则里必须说清惩罚量 ===')
   /*
