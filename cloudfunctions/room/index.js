@@ -63,6 +63,7 @@ const { pickPair } = require('./words.js')
  */
 const poker = require('./poker.js')
 const dicerank = require('./dicerank.js')
+const loser = require('./loser.js')
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -1694,20 +1695,23 @@ exports.main = async (event) => {
        * 金花的输家不在 hands 里（比牌过程才决定），卧底和转盘**根本没有输家** ——
        * 硬凑会算错，而"你欠几杯"在酒桌上是较真的事，**算错比不算更糟**。
        */
-      let nightDrinks = Object.assign({}, room.nightDrinks || {})
-      if (room.lastResult) {
-        const lr = room.lastResult
-        let loserName = null
-        if (room.game === 'liar' && lr.loserName) {
-          loserName = lr.loserName
-        } else if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
-          const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
-          if (low) loserName = low.name
-        }
-        if (loserName) {
-          nightDrinks[loserName] = (Number(nightDrinks[loserName]) || 0) + 1
-        }
-      }
+      /*
+       * 今晚战况：谁喝过几杯（2026-10-29）。
+       *
+       * 提取逻辑在 `loser.js`（纯函数，7 项单测）——
+       * 只统计**输家明确**的玩法：大话骰、比大小、金花（出局者 + 换牌代价）。
+       * 卧底和转盘没有明确输家，宁可留空也不凑数 ——
+       * "你欠几杯"在酒桌上是较真的事，**算错比不算更糟**。
+       */
+      const nightDrinks = Object.assign({}, room.nightDrinks || {})
+      loser.drinkers({
+        game: room.game,
+        lastResult: room.lastResult,
+        players: room.players || [],
+        pkDrink: room.pkDrink || {}
+      }).forEach(d => {
+        nightDrinks[d.name] = (Number(nightDrinks[d.name]) || 0) + d.cups
+      })
 
       /*
        * ★★ 这个 data 里**只放该清的**，不放该留的 —— 2026-10-29 整理。
