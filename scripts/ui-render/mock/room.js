@@ -160,6 +160,27 @@ module.exports = {
      * 这是**拉新转化的第一屏** —— 他知不知道要等？知不知道房主是谁？
      */
     /* 超长名字：12 个字 + 房主/我/掉线三枚标签，验证不撑破 */
+    /* 最长自定义题卡（60 字上限）—— 验证不会把转盘和按钮挤出屏幕 */
+    wheelLongCard: () => {
+      const base = buildWheel()
+      return {
+        stage: 'playing',
+        wheelSectors: base.list,
+        wheelGradient: base.gradient,
+        wheelDeg: 1234,
+        wheelDur: 2700,
+        wheelSpinning: false,
+        wheelText: '大冒险',
+        /* 60 字上限的极端值 —— 验证不会把转盘和「转！」挤出屏幕 */
+        card: {
+          type: 'dare', deck: 'friends', deckName: '朋友聚会',
+          text: '用一句话形容在场每个人今天的状态不能重复形容词说完之后自罚一杯然后让左边的人接着说到所有人都说完为止再来一轮'
+        },
+        decks: decks.DECKS,
+        room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 3, gameName: '命运转盘' })
+      }
+    },
+
     longName: () => ({
       stage: 'lobby',
       room: pkRoom({
