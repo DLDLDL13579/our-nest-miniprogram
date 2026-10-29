@@ -135,6 +135,7 @@ function play(key, opt) {
       a = pool[slot]
       if (!a) {
         a = wx.createInnerAudioContext()
+        watchAudioError(a, key)
         a.src = src
         a.obeyMuteSwitch = false
         pool[slot] = a
@@ -143,6 +144,7 @@ function play(key, opt) {
       a = pool[key]
       if (!a) {
         a = wx.createInnerAudioContext()
+        watchAudioError(a, key)
         a.src = src
         /* 音效不参与系统静音开关以外的音频焦点争夺：
            obeyMuteSwitch=false 让 iOS 静音键下仍能出声 —— 酒桌游戏需要这个，
@@ -279,6 +281,37 @@ const PRELOAD_KEYS = [
   'tapSoft', 'toggleOn', 'confetti', 'countdownGo'
 ]
 
+/**
+ * 给音频实例挂错误监听（2026-10-29）。
+ *
+ * 之前**一处 onError 都没有** —— 音频加载失败（文件缺失、路径错、解码不了）
+ * 是完全静默的：用户说"没声音"，而我这边日志里什么都没有。
+ *
+ * 记进和云函数错误同一份 `errLog`（「我的」页能直接看到），
+ * 但**同类只记一次**（一个坏文件可能在每次播放时都报错，不能刷屏）。
+ */
+const _audioErrSeen = {}
+function watchAudioError(a, key) {
+  if (!a || typeof a.onError !== 'function') return a
+  a.onError(function (e) {
+    const msg = (e && (e.errMsg || e.errCode)) || 'unknown'
+    if (_audioErrSeen[key] === msg) return          // 同类只记一次
+    _audioErrSeen[key] = msg
+    try {
+      const log = wx.getStorageSync('errLog') || []
+      log.push({
+        t: Date.now(),
+        fn: 'sfx',
+        act: key,
+        raw: '音频加载/播放失败：' + msg
+      })
+      if (log.length > 20) log.length = 20
+      wx.setStorageSync('errLog', log)
+    } catch (err) {}
+  })
+  return a
+}
+
 function preload() {
   PRELOAD_KEYS.forEach((k) => {
     const src = FILES[k]
@@ -289,6 +322,7 @@ function preload() {
     if (pool[k]) return
     try {
       const a = wx.createInnerAudioContext()
+      watchAudioError(a, k)
       a.src = src
       a.obeyMuteSwitch = false
       pool[k] = a
@@ -315,6 +349,7 @@ function playAmbient() {
   if (_ambient) return
   try {
     const a = wx.createInnerAudioContext()
+    watchAudioError(a, 'ambient')
     a.src = FILES.ambientRoom
     a.loop = true
     a.obeyMuteSwitch = false

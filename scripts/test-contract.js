@@ -2063,6 +2063,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③o 音频实例必须挂错误监听 ============ */
+  console.log('\n=== ③o 音频加载失败不能静默 ===')
+  /*
+   * ★ 2026-10-29。音频的 `onError` **一处都没有** ——
+   *   文件缺失、路径错、解码不了，全都没有任何痕迹。
+   *   用户说"没声音"，而日志里什么都没有，只能靠猜。
+   *
+   *   判据：`wx.createInnerAudioContext()` 之后 300 字符内必须出现 `onError`
+   *        （或调用了包了 onError 的封装函数）。
+   */
+  {
+    const bad = []
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) { walk(fp); continue }
+        if (!f.name.endsWith('.js')) continue
+        const src = fs.readFileSync(fp, 'utf8')
+        const clean = src.replace(/\/\*[\s\S]*?\*\//g, '')
+        for (const m of clean.matchAll(/wx\.createInnerAudioContext\(\)/g)) {
+          const after = clean.slice(m.index, m.index + 300)
+          if (!/onError/.test(after) && !/watchAudioError/.test(after)) {
+            const line = clean.slice(0, m.index).split('\n').length
+            bad.push(path.relative(ROOT, fp) + ':' + line)
+          }
+        }
+      }
+    }
+    walk(path.join(ROOT, 'miniprogram'))
+    assert.deepStrictEqual(bad, [],
+      '这些音频实例没有错误监听（加载失败会完全静默）：\n    ' + bad.join('\n    '))
+    ok('音频实例都挂了 onError')
+  }
+
   /* ============ ③n 会失败的微信 API 必须给用户反馈 ============ */
   console.log('\n=== ③n 跳转 / 复制失败时不能静默 ===')
   /*
