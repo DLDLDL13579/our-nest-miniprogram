@@ -318,6 +318,15 @@
         <view class="cd-sub">把手机拿好，别错过第一轮</view>
       </view>
     </view>
+    <!--
+      兜底出口（2026-10-30）：倒计时走完却迟迟没进游戏 = 网络断了。
+      此时顶部栏是隐藏的（它 wx:if 排除了 countdown），用户会**没有任何返回入口**。
+      正常情况下 3 秒内就进 playing 了，这个提示用户根本看不到。
+    -->
+    <view wx:if="{{cdStuck}}" class="cd-stuck">
+      <text class="cd-stuck-t">网络卡住了？</text>
+      <text class="cd-stuck-b" bindtap="goBack">回大厅重进一次</text>
+    </view>
   </block>
 
   <!-- ============ 游戏中 ============ -->

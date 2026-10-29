@@ -298,6 +298,8 @@ Page({
     wheelCls: '',
     wheelText: '',
     wheelSpinning: false,
+    /* 倒计时走完却迟迟没进游戏（通常是网络断了）—— 此时给一个回大厅的出口 */
+    cdStuck: false,
     /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
     pkAsk: null
   },
@@ -462,6 +464,7 @@ Page({
 
   /** 清掉倒计时定时器（页面卸载时不能留） */
   clearCountdown() {
+    if (this.data.cdStuck) this.setData({ cdStuck: false })
     if (this._cdTimers) { this._cdTimers.forEach(t => clearTimeout(t)); this._cdTimers = [] }
   },
 
@@ -1009,7 +1012,20 @@ Page({
       })
       if (left > -200) {
         this._cdTimers.push(setTimeout(tick, 1000))
+        return
       }
+      /*
+       * ★ 倒计时走完了，但**推进到 playing 靠的是 status 轮询**。
+       *   如果这期间网络断了，用户会看到「开始！」停在那里，
+       *   而倒计时阶段顶部栏是隐藏的（gbar 有 stage !== 'countdown'）——
+       *   也就是**没有任何返回入口**，只能杀小程序重进。
+       *   这里挂一个 2.6 秒的兜底：还没进游戏就把出口摆出来。
+       *   （正常情况 3 秒内就进 playing 了，用户根本看不到这个提示。）
+       */
+      this._cdTimers.push(setTimeout(() => {
+        if (this._dead) return
+        if (this.data.stage === 'countdown') this.setData({ cdStuck: true })
+      }, 2600))
     }
     tick()
   },
