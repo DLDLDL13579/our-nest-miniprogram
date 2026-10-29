@@ -465,6 +465,7 @@ Page({
        （2026-10-28：这行原来被压在 6 个 clearTimeout 后面 —— 注释写着
         "第一件事"，代码却不是。断言抓到了这个位置。 ）*/
     this._dead = true
+    clearTimeout(this._loadingFailsafe)
     clearTimeout(this._joinTimer)
     clearTimeout(this._pkDealTimer)
     clearTimeout(this._pkDealTimer2)
@@ -2006,13 +2007,33 @@ Page({
    */
   setLoading(on) {
     clearTimeout(this._loadingTimer)
+    clearTimeout(this._loadingFailsafe)
     this._loadingTimer = null
+    this._loadingFailsafe = null
     if (on) {
       this.setData({ loading: true, loadingSlow: false })
       this._loadingTimer = setTimeout(() => {
         if (this._dead) return
         this.setData({ loadingSlow: true })
       }, 5000)
+      /*
+       * ★★ 兜底（2026-10-29）：全屏遮罩拉起来之后，**15 秒还没有人关，就强制关掉**。
+       *
+       * 起因是真机报障"每个游戏都卡在正在进入房间"—— `doCreate` 只拉不关。
+       * 那是我的错，已经补上 setLoading(false)，也加了断言 ④d 防止复发。
+       *
+       * 但"只拉不关"是最容易复发的一类错（状态在 A 处打开、B 处关闭，
+       * 而两个地方常常不是同一个人改的）。所以再加一道：
+       * **就算将来又漏了，用户最多等 15 秒，而不是永远卡住。**
+       *
+       * 15 秒的选取：云函数超时是 3 秒，加上网络与冷启动，正常最慢 5~8 秒；
+       * 15 秒足够覆盖正常情况，又不至于让人干等太久。
+       */
+      this._loadingFailsafe = setTimeout(() => {
+        if (this._dead || !this.data.loading) return
+        this.setData({ loading: false, loadingSlow: false })
+        wx.showToast({ title: '这次没进去，再试一次', icon: 'none', duration: 2400 })
+      }, 15000)
     } else {
       this.setData({ loading: false, loadingSlow: false })
     }
