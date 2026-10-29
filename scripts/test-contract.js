@@ -61,7 +61,7 @@ function and() {
   const list = Array.prototype.slice.call(arguments)
   return { __op: 'and', v: Array.isArray(list[0]) ? list[0] : list }
 }
-const command = { neq, push: pushv, lt, gt, and }
+const command = { neq, push: pushv, lt, gt, and, set: v => ({ __op: 'set', v }) }
 
 /** 单条条件求值（供 and 递归） */
 function one(doc, key, c) {
@@ -120,6 +120,7 @@ function collection(name) {
           hit.forEach(d => {
             Object.keys(data).forEach(k => {
               if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+              else if (data[k] && data[k].__op === 'set') d[k] = data[k].v
               else d[k] = data[k]
             })
           })
@@ -134,6 +135,7 @@ function collection(name) {
           const d = rows().filter(x => x._id === id)[0]
           Object.keys(data).forEach(k => {
             if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+              else if (data[k] && data[k].__op === 'set') d[k] = data[k].v
             else d[k] = data[k]
           })
           return { stats: { updated: 1 } }

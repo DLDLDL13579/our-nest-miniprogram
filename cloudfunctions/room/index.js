@@ -70,7 +70,127 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
 const db = cloud.database()
 const _ = db.command
-const rooms = db.collection('rooms')
+
+/*
+ * ============================================================
+ * ★★★ 写库前清洗 undefined（2026-10-29 晚）—— 「游戏从来没正常玩过」的头号嫌疑
+ * ============================================================
+ *
+ * 症状链（用户三轮实测）：
+ *   · create（add）成功 —— 房间建得出来、开过几局
+ *   · bid / roll / spin（update）**全部**报 -502001 database request fail
+ *   · 本地 116+ 项断言全绿（mock 的 update 是 Object.assign，undefined 照写）
+ *
+ * 嫌疑：真实数据库要序列化，data 里一旦混进 `undefined`，整次写入就被拒，
+ * 报的还是**没有任何语义的通用码**。而这种表达式满仓都是：
+ *     byName: mySeat.name          （玩家没有 name 时 undefined）
+ *     lastResult: result           （result 为 undefined 时）
+ *     streaks: result ? result.streaks : (room.streaks || {})
+ * 为什么不加断言也能拦住？—— 本地 mock 不序列化，**永远测不出来**。
+ *
+ * 做法：在集合外面包一层，**所有写入的 data 都过 cleanData**。
+ *   · 一处改动，全链路生效（56 处调用点不用逐个改，也就不会漏）
+ *   · 只清洗**普通对象/数组**；Date、db.command 操作符（_.push 等）原样保留
+ *   · 与"收敛成唯一出口"的项目惯例一致：decorate / stageOf / dbCall 都是这么做的
+ */
+function cleanData(v) {
+  if (v === undefined) return undefined
+  if (v === null) return null
+  if (Array.isArray(v)) {
+    /* 数组里的 undefined 直接丢掉（JSON 里本来就是 null，但 null 会覆盖原值） */
+    return v.map(cleanData).filter(function (x) { return x !== undefined })
+  }
+  if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+    const out = {}
+    Object.keys(v).forEach(function (k) {
+      const cv = cleanData(v[k])
+      if (cv !== undefined) out[k] = cv
+    })
+    return out
+  }
+  /* Date / db.command 操作符 / 其它实例：原样返回，不能破坏它们 */
+  return v
+}
+
+/*
+ * ★★★ 对象值必须用 _.set 整体替换（2026-10-29 真机实测定案 —— 「从来没正常玩过」的根因）
+ *
+ * 微信云开发 update 对**普通对象**值是**深度合并**语义：内部展开成
+ *   $set: { 'bid.face': 1, 'bid.n': 1 }
+ * 而房间文档 create 时把 bid / lastResult 初始化成 **null**，于是第一次叫骰写
+ *   update({ data: { bid: { n: 1, face: 1 } } })
+ * 被 MongoDB 拒绝：
+ *   Cannot create field 'face' in element {bid: null}
+ * → 整次写入失败 → 前端只看到「操作失败了，再试一次」。
+ * **每一局、每一个房间、第一次叫骰/摇骰/转盘都必然失败**，与网络、配额无关。
+ *
+ * 真机实测（.tooling/repro-bid.js + probeWrite）：
+ *   turn / turnAt / updatedAt / players 回写 → ok
+ *   bid / lastResult / streaks（对象）      → FAIL -502001
+ *   bid = null / lastResult = null          → ok（null 不走深度合并）
+ *   本地 mock 原来是 d[k]=v 整体赋值 → 117 项断言全绿也永远发现不了。
+ *
+ * 修法：写出时对普通对象/数组包 _.set()（set 语义 = 直接设值，不合并）。
+ * 命令对象（_.push/_.inc 等）必须原样保留，不能包。
+ */
+function needsSet(v) {
+  if (v === null || v === undefined) return false
+  if (v.__op) return false                    /* mock 的命令对象标记 */
+  if (Array.isArray(v)) return true
+  /* 只包普通对象；wx-server-sdk 的 Command 实例原型不是 Object.prototype，天然被排除 */
+  return typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype
+}
+
+/** 清洗 undefined + 对象值改 _.set（写库的唯一出口） */
+function cleanOpt(opt) {
+  if (!opt || typeof opt !== 'object' || !('data' in opt)) return opt
+  const d = cleanData(opt.data)
+  if (!d || typeof d !== 'object') return Object.assign({}, opt, { data: d })
+  const out = {}
+  Object.keys(d).forEach(function (k) {
+    out[k] = needsSet(d[k]) ? _.set(d[k]) : d[k]
+  })
+  return Object.assign({}, opt, { data: out })
+}
+
+const _roomsRaw = db.collection('rooms')
+
+/** 文档包装：set / update 都过清洗 */
+function wrapDoc(d) {
+  return {
+    get: function () { return d.get() },
+    set: function (opt) { return d.set(cleanOpt(opt)) },
+    update: function (opt) { return d.update(cleanOpt(opt)) },
+    remove: function () { return d.remove() }
+  }
+}
+
+/** 查询包装：get/count 原样，update/remove 的 data 过清洗 */
+function wrapQuery(q) {
+  const self = {
+    get: function () { return q.get() },
+    count: function () { return q.count() },
+    limit: function (n) { q.limit(n); return self },
+    skip: function (n) { q.skip(n); return self },
+    orderBy: function (f, dir) { q.orderBy(f, dir); return self },
+    field: function (f) { q.field(f); return self },
+    update: function (opt) { return q.update(cleanOpt(opt)) },
+    remove: function () { return q.remove() }
+  }
+  return self
+}
+
+/* 前端所有写库都走它 —— 名字仍叫 rooms，调用点一行都不用改 */
+const rooms = {
+  doc: function (id) { return wrapDoc(_roomsRaw.doc(id)) },
+  where: function (cond) { return wrapQuery(_roomsRaw.where(cond)) },
+  /* add = Insert 整文档，**不能**用 _.set（命令对象不是合法字段值），只清洗 undefined */
+  add: function (opt) {
+    if (!opt || typeof opt !== 'object' || !('data' in opt)) return _roomsRaw.add(opt)
+    return _roomsRaw.add(Object.assign({}, opt, { data: cleanData(opt.data) }))
+  },
+  count: function () { return _roomsRaw.count() }
+}
 
 /*
  * 房间码：**3 位纯数字**（000~999）。
@@ -624,16 +744,142 @@ exports.main = async (event) => {
           await rooms.doc(pid).update({ data: { probe: 2, updatedAt: ts } })
           snap('update', true)
         } catch (e) { snap('update', false, e) }
+        /*
+         * ★★ 2026-10-29 晚的关键实验：微信云数据库**能不能写 undefined**。
+         *
+         * 怀疑链：本地 mock 的 update 是直接 Object.assign，undefined 照写不误；
+         * 而真实数据库要序列化，data 里一旦混进 undefined（`byName: p.name`、
+         * `lastResult: result`、`streaks: result ? ... : ...` 这类表达式极易产出），
+         * 整次写入就可能被拒成 -502001 —— 于是「add 能成（create 建房）、
+         * 所有 update 全挂（叫骰/摇骰/转盘）」，而 116 项断言全绿也发现不了。
+         *
+         * 两条一起测，才能分清是「undefined 不行」还是「update 本身不行」：
+         *   updateNull  写 null  → 应成功（对照组）
+         *   updateUndef 写 undefined → 若失败，假设成立，必须全链路清洗
+         */
+        try {
+          await rooms.doc(pid).update({ data: { probeN: null } })
+          snap('updateNull', true)
+        } catch (e) { snap('updateNull', false, e) }
+        try {
+          await rooms.doc(pid).update({ data: { probeU: undefined } })
+          snap('updateUndef', true)
+        } catch (e) { snap('updateUndef', false, e) }
         try { await rooms.doc(pid).remove(); snap('remove', true) } catch (e) { snap('remove', false, e) }
       } else {
-        snap('get', false); snap('update', false); snap('remove', false)
+        snap('get', false); snap('update', false); snap('updateNull', false)
+        snap('updateUndef', false); snap('remove', false)
       }
       try { await rooms.where({ probe: true }).count(); snap('count', true) } catch (e) { snap('count', false, e) }
+
+      /*
+       * ★ 对**用户正在玩的那个房间文档**做一次真实探测（2026-10-29）。
+       *   自检文档是新建的空文档，测不出"真实房间文档（有 players/bid/spin）"
+       *   上的问题 —— 前端出错时会自动把出事房间的 id 传进来（cloud.js）。
+       *   写入是无害的：updatedAt 写回它原本的值（心跳本来也在写这个字段）。
+       */
+      if (event.probeRoomId) {
+        const rid = String(event.probeRoomId)
+        try {
+          const rr0 = await rooms.doc(rid).get()
+          snap('room.get', !!(rr0 && rr0.data))
+          const keep = (rr0 && rr0.data && rr0.data.updatedAt) || ts
+          try {
+            await rooms.doc(rid).update({ data: { updatedAt: keep } })
+            snap('room.update', true)
+          } catch (e) { snap('room.update', false, e) }
+        } catch (e) {
+          snap('room.get', false, e)
+          snap('room.update', false, e)
+        }
+      }
       return { ok: true, probe: steps, ts: ts }
+    }
+
+    /* ================= 字段级写入探测（probeWrite） ================= */
+    /*
+     * ★★ 2026-10-29 晚。真实复现（.tooling/repro-bid.js）给出了决定性矛盾：
+     *     · selftest 的 add/get/update/remove 全 ok
+     *     · **start 的 update 也 ok**（写 phase/countdownEnd/players）
+     *     · 对真实房间文档写 updatedAt 也 ok
+     *     · 但 **bid / roll 的 update 必挂**（-502001）
+     *   → 问题不在"update 通道"，而在**这次写入的具体内容**。
+     *
+     *   所以这里把 bid/roll 写过的字段**逐个单写**，一次定位是哪一个引发失败：
+     *   turn / turnAt / bid 对象 / lastResult 对象 / streaks / players 数组回写。
+     *
+     * ⚠️ 安全约束：用例是**服务端硬编码**的（不接受前端任意 data），
+     *   只能写入上列字段，且只会写进你指定的那个探针房间。
+     */
+    if (action === 'probeWrite') {
+      const rid = String(event.probeRoomId || '')
+      if (!rid) return { ok: false, msg: '缺少探针房间' }
+      const cases = [
+        { k: 'zzNum新字段', d: { zzNum: 1 } },
+        { k: 'zzObj新字段', d: { zzObj: { a: 1 } } },
+        /* ★ 对照实验，用来区分三种假设（2026-10-29）：
+           A) 「已存在的字段」写不进去   B) 「值为对象」写不进去   C) 特定字段名有问题 */
+        { k: 'zzObj二次(已存在)', d: { zzObj: { b: 2 } } },
+        { k: 'phase(已存在字符串)', d: { phase: 'playing' } },
+        { k: 'turn', d: { turn: 1 } },
+        { k: 'turnAt', d: { turnAt: ts } },
+        { k: 'bid（对象）', d: { bid: { n: 1, face: 1 } } },
+        { k: 'bid=null', d: { bid: null } },
+        { k: 'lastResult（对象）', d: { lastResult: { winner: 'x' } } },
+        { k: 'lastResult=null', d: { lastResult: null } },
+        { k: 'streaks（空对象）', d: { streaks: {} } },
+        { k: 'streaks=null', d: { streaks: null } },
+        { k: 'zzObjDeep（深一层）', d: { zzObj2: { a: { b: 1 } } } },
+        { k: 'updatedAt', d: { updatedAt: ts } }
+      ]
+      const pick = e => {
+        const raw = String((e && (e.errMsg || e.message)) || '')
+        const opM = raw.match(/FailedOperation\.(\w+)/)
+        return {
+          code: (raw.match(/-\d{2,6}/) || [])[0] || '',
+          op: opM ? opM[1] : '',
+          hint: raw.slice(0, 460)
+        }
+      }
+      const writes = []
+      for (let i = 0; i < cases.length; i++) {
+        const c = cases[i]
+        try {
+          await rooms.doc(rid).update({ data: c.d })
+          writes.push({ k: c.k, ok: true })
+        } catch (e) {
+          writes.push(Object.assign({ k: c.k, ok: false }, pick(e)))
+        }
+      }
+      /* 最后单独测「把真实 players 数组原样写回」（大数组 + 嵌套对象） */
+      try {
+        const rr = await rooms.doc(rid).get()
+        const pl = (rr.data && rr.data.players) || []
+        await rooms.doc(rid).update({ data: { players: pl } })
+        writes.push({ k: 'players回写(' + pl.length + '人)', ok: true })
+      } catch (e) {
+        writes.push(Object.assign({ k: 'players回写', ok: false }, pick(e)))
+      }
+      return { ok: true, writes: writes, ts: ts }
     }
 
     /* ================= 建房间 ================= */
     if (action === 'create') {
+      /*
+       * ★ 顺手清理过期房间文档（2026-10-29）。
+       *
+       * "2 小时过期"只是**逻辑**过期（isStale 看 updatedAt），文档一直躺在
+       * 集合里没人删 —— 玩得越多集合越大，pickCode 的"查全 1000 号"和
+       * 按 code 查找都退化成慢查询，而慢查询正是 -502001（database request
+       * fail）的高发场景。用户报「从来没正常玩过」后查到这里。
+       *
+       * 只删 24 小时前的：给"房间过期后人又回来接着玩"留足余量。
+       * 尽力而为：清理失败不影响建房（catch 吞掉，下次 create 再试）。
+       */
+      try {
+        await rooms.where({ updatedAt: _.lt(ts - 24 * 3600 * 1000) }).remove()
+      } catch (e) { /* 清理失败不影响任何功能 */ }
+
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
       const game = gameOf(event.game) ? event.game : 'dice'
       /*

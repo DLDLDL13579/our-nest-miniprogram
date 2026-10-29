@@ -33,7 +33,8 @@ function pushv(v) { return { __op: 'push', v } }
 function lt(v) { return { __op: 'lt', v } }
 function gt(v) { return { __op: 'gt', v } }
 function and(...args) { return { __op: 'and', v: args } }
-const command = { neq, push: pushv, lt, gt, and }
+function setv(v) { return { __op: 'set', v } }
+const command = { neq, push: pushv, lt, gt, and, set: setv }
 
 /** 单条条件求值（供 and 递归） */
 function one(doc, key, c) {
@@ -117,11 +118,48 @@ function collection(name) {
             e.errMsg = 'document.update:fail -502001'
             throw e
           }
+          assertNoUndef(data, 'update')
           const d = rows().filter(x => x._id === id)[0]
           if (!d) throw new Error('doc not found: ' + id)
           Object.keys(data).forEach(k => {
-            if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
-            else d[k] = data[k]
+            const v = data[k]
+            if (v && v.__op === 'push') { d[k] = (d[k] || []).concat(v.v); return }
+            if (v && v.__op === 'set') { d[k] = v.v; return }
+            /*
+             * ★★★ 模拟微信云开发 update 的**深度合并**语义（2026-10-29 真机实测定案）：
+             *   对「普通对象」值，它展开成 $set: {'k.sub': ...}；
+             *   而**原值是 null 时**，MongoDB 报
+             *     Cannot create field 'sub' in element {k: null}
+             *   → 整次写入失败，前端只看到「操作失败了，再试一次」。
+             *
+             *   线上真实故障就是这么来的：房间文档 create 时把 bid/lastResult 初始化成
+             *   null，第一次叫骰写 {bid:{n,face}} 直接炸 —— **每局必挂**。
+             *   而原来的 mock 是 d[k]=v 整体赋值，117 项断言全绿也发现不了。
+             *
+             *   现在 mock 与真实语义一致：忘包 _.set 的写法会在这里报错。
+             */
+            if (isPlainObj(v)) {
+              /* 字段**不存在**时 MongoDB 允许按子路径创建（$set: {'k.sub': v}）；
+                 只有**值为 null** 才报 Cannot create field。
+                 实测依据：start 写 pkDrink:{}（新建字段）在真实环境是成功的。 */
+              if (d[k] === undefined) { d[k] = {} }
+              if (d[k] === null) {
+                const e = new Error('document.update:fail -502001 database request fail. ' +
+                  "[FailedOperation] multiple write errors: [{write errors: [{Cannot create field '" +
+                  Object.keys(v)[0] + "' in element {" + k + ': null}}]}]')
+                e.errMsg = e.message
+                throw e
+              }
+              if (!isPlainObj(d[k])) {
+                const e = new Error('document.update:fail -502001 cannot merge object into non-object ' + k)
+                e.errMsg = e.message
+                throw e
+              }
+              /* 深度合并（原值是对象） */
+              Object.keys(v).forEach(sub => { d[k][sub] = v[sub] })
+              return
+            }
+            d[k] = v
           })
           return { stats: { updated: 1 } }
         },
@@ -134,6 +172,7 @@ function collection(name) {
       }
     },
     async add({ data }) {
+      assertNoUndef(data, 'add')
       const d = Object.assign({ _id: nextId() }, data)
       rows().push(d)
       return { _id: d._id }
@@ -143,6 +182,48 @@ function collection(name) {
 }
 
 let OPENID = ''
+
+/*
+ * ★★★ 模拟真实数据库的"不能写 undefined"约束（2026-10-29 晚）
+ *
+ * 为什么必须有它：本地 mock 的 update 是 Object.assign，undefined 照写不误 ——
+ * 于是 117 项断言全绿，而线上 update 全部报 -502001 database request fail。
+ * **mock 缺一条真实约束，就等于线上那类故障永远测不出来。**
+ *
+ * 真实行为：微信云开发数据库序列化时遇到 undefined 直接拒整次写入，
+ * 且报的是无修改语义的通用码（-502001），所以线上只看得到"操作失败了"。
+ */
+function isPlainObj(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v) &&
+    Object.getPrototypeOf(v) === Object.prototype && !v.__op
+}
+
+function assertNoUndef(data, api) {
+  const bad = []
+  ;(function walk(v, path) {
+    /* selftest 的 updateUndef 步骤**故意**写 undefined（它就是要测真实数据库
+       能不能写）—— 这不是业务泄漏，豁免掉，否则自检自己就把自己判红了。
+       反向验证时踩过：假阳性会让人以为找到了业务 bug。 */
+    if (path === 'data.probeU') return
+    if (v === undefined) { bad.push(path); return }
+    if (Array.isArray(v)) {
+      v.forEach((x, i) => walk(x, path + '[' + i + ']'))
+      return
+    }
+    /* 只查普通对象；db.command 操作符（{"__op":...}）是合法值，不往下钻 */
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      if (v.__op) return
+      Object.keys(v).forEach(k => walk(v[k], path + '.' + k))
+    }
+  })(data, 'data')
+  if (bad.length) {
+    const e = new Error(api + ':fail -502001 [FailedOperation.' +
+      (api === 'add' ? 'Insert' : 'Update') + '] cannot serialize undefined at ' + bad[0])
+    e.errMsg = e.message
+    throw e
+  }
+}
+
 const mock = {
   init() {}, DYNAMIC_CURRENT_ENV: 'mock',
   database() { return { collection, command, async createCollection(n) { store[n] = store[n] || []; return true } } },
@@ -2417,12 +2498,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     /* ① 全链路自检通过 */
     const st = await room.main({ action: 'selftest' })
     assert.strictEqual(st.ok, true, 'selftest 应成功返回')
-    assert.ok(Array.isArray(st.probe) && st.probe.length === 5,
-      '★ probe 必须有 5 步（add/get/update/remove/count）；实际： ' + JSON.stringify(st.probe))
-    assert.ok(st.probe.every(p => p.ok),
-      '★ 正常时 5 步全 ok；实际：' + JSON.stringify(st.probe))
+    assert.ok(Array.isArray(st.probe), 'probe 必须是数组')
+    /*
+     * ★ 按**步骤名**断言，不锁步数 —— 诊断步骤会随排查深入增加
+     *   （判据必须只被"目标改动"影响；锁死 5 步会让每次增强都误报）。
+     */
+    const needSteps = ['add', 'get', 'update', 'updateNull', 'updateUndef', 'remove', 'count']
+    needSteps.forEach(function (k) {
+      assert.ok(st.probe.some(p => p.s === k),
+        '★ selftest 必须包含步骤 ' + k + '；实际：' + JSON.stringify(st.probe.map(p => p.s)))
+    })
+    assert.ok(st.probe.every(p => p.ok || p.s === 'updateUndef'),
+      '★ 正常时各步全 ok（updateUndef 例外：它故意写 undefined，结果要等真实环境）；实际：' + JSON.stringify(st.probe))
     st.probe.forEach(p => assert.ok(p.s, '每步要有步骤名'))
-    ok('★ selftest 5 步全链路（add/get/update/remove/count）')
+    ok('★ selftest 全链路（add/get/update/updateNull/updateUndef/remove/count）')
+
+    /* 补充：对**真实房间文档**的探测（probeRoomId）也要能跑通 */
+    const cProbe = await room.main({ action: 'create', name: '探针甲', game: 'liar' })
+    assert.ok(cProbe.ok, '探针建房应成功')
+    const stRoom = await room.main({ action: 'selftest', probeRoomId: cProbe.room.id })
+    assert.ok(stRoom.probe.some(p => p.s === 'room.get' && p.ok),
+      '★ 指定 probeRoomId 时必须探测真实房间文档（room.get）')
+    assert.ok(stRoom.probe.some(p => p.s === 'room.update' && p.ok),
+      '★ 真实房间文档的 update 探测必须能跑通')
+    ok('★ selftest 能对真实房间文档做无害探测')
 
     /* ② 注入 update 失败：该步必须 FAIL 且带诊断标签（步骤级定位） */
     const prevU = global.__dbFailUpdate

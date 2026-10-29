@@ -32,7 +32,8 @@ const command = {
   push: v => ({ __op: 'push', v }),
   lt: v => ({ __op: 'lt', v }),
   gt: v => ({ __op: 'gt', v }),
-  and: (...args) => ({ __op: 'and', v: args })
+  and: (...args) => ({ __op: 'and', v: args }),
+  set: v => ({ __op: 'set', v })
 }
 function one(doc, key, c) {
   if (c && c.__op === 'neq') return doc[key] !== c.v
@@ -90,6 +91,7 @@ function collection(name) {
           if (!d) throw new Error('doc not found: ' + id)
           Object.keys(data).forEach(k => {
             if (data[k] && data[k].__op === 'push') d[k] = (d[k] || []).concat(data[k].v)
+            else if (data[k] && data[k].__op === 'set') d[k] = data[k].v
             else d[k] = data[k]
           })
           return { stats: { updated: 1 } }
