@@ -218,7 +218,15 @@ function normCode(c) {
 function now() { return Date.now() }
 
 /** 内容安全。fail-closed（发布策略）：检查不通过或服务不可用都拒绝 */
-async function safe(text, openid) {
+/**
+ * @param {string} text
+ * @param {string} openid
+ * @param {object} [opt]
+ * @param {boolean} [opt.degradable] 检查服务**自身不可用**时是否放行。
+ *   昵称用 true（它不是公开内容、风险低、而且拦掉等于整个产品不可用）；
+ *   自定义题卡用 false（那是会展示给全场看的 UGC，必须严格）。
+ */
+async function safe(text, openid, opt) {
   if (!text) return { pass: true }
   try {
     const r = await cloud.openapi.security.msgSecCheck({
@@ -236,6 +244,23 @@ async function safe(text, openid) {
     const code = (err && (err.errCode || err.code)) || 'unknown'
     const detail = (err && (err.errMsg || err.message)) || ''
     console.error('[room] msgSecCheck 调用失败：', code, detail)
+    /*
+     * ★★ 可降级的场景放行（2026-10-29，用户报"所有游戏开不了房间"）。
+     *
+     * 原来这里**一律 fail-closed** —— 逻辑上合规，但实测后果是：
+     * openapi 权限在部署后需要几次才绑定生效（本文件下面就有这条笔记），
+     * 那段时间里**每一次建房都会被拒**，而且提示是"内容检查服务暂时不可用"，
+     * 用户完全不知道该怎么办。整个产品等于挂了。
+     *
+     * 权衡：
+     *   · 昵称 —— 12 个字、不公开展示给陌生人、风险极低，**放行**
+     *   · 自定义题卡 —— 会展示给全场，**仍然拦**
+     * 放行时打 `degraded: true`，调用方可以据此记日志。
+     */
+    if (opt && opt.degradable) {
+      console.error('[room] 内容检查不可用，按可降级放行：', code)
+      return { pass: true, degraded: true, _code: code }
+    }
     return {
       pass: false,
       code: 'SEC_UNAVAILABLE',
@@ -544,7 +569,7 @@ exports.main = async (event) => {
        *   却白白多吃一次 openapi 往返（实测几百毫秒）——
        *   而云函数默认超时只有 3 秒，这一下足够把开局拖到超时。
        */
-      const sec = await safe(String(event.name || '').trim().slice(0, 12), OPENID)
+      const sec = await safe(String(event.name || '').trim().slice(0, 12), OPENID, { degradable: true })
       /*
        * 这里原来写的是 `_debug: sec._debug` —— 而 safe() 返回的字段叫 **`_code`**
        * （见 safe 里 `return { pass:false, code:'SEC_UNAVAILABLE', _code: code }`）。
