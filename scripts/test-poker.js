@@ -175,3 +175,32 @@ const SPADE = 0, HEART = 1, CLUB = 2, DIAMOND = 3
   console.log('  牌型算法：全部 ' + n + ' 项断言通过')
   console.log('='.repeat(58) + '\n')
 })()
+
+/* ============ 规则文字里的牌型顺序必须和 RANK 一致 ============ */
+/*
+ * ★ 2026-10-29。玩家唯一能依据的就是规则里那句话：
+ *   「豹子 > 顺金 > 金花 > 顺子 > 对子 > 单张」
+ *   如果文案和 `RANK` 的数值对不上，玩家会记错大小，
+ *   而这种错**不会报任何错** —— 只会让人觉得"这游戏乱判"。
+ *
+ *   判据刻意做宽：只查首尾（豹子最大、单张最小）和相对顺序，
+ *   不锁具体写法 —— 不然每次改文案都要改断言，那条断言就没价值了。
+ */
+{
+  const fs = require('fs')
+  const path = require('path')
+  const gamesSrc = fs.readFileSync(path.join(__dirname, '..', 'miniprogram/utils/games.js'), 'utf8')
+  const m = /牌型大小：([^']+)'/.exec(gamesSrc)
+  assert.ok(m, '找不到规则里的牌型大小那句')
+  const order = m[1].split('>').map(x => x.trim())
+  const CN2KEY = { '豹子': 'TRIPLE', '顺金': 'STRAIGHT_FLUSH', '金花': 'FLUSH', '顺子': 'STRAIGHT', '对子': 'PAIR', '单张': 'HIGH' }
+  const keys = order.map(x => CN2KEY[x])
+  assert.ok(keys.every(Boolean), '规则里有不认识的牌型名：' + order.join(' > '))
+  for (let i = 1; i < keys.length; i++) {
+    assert.ok(TYPES[keys[i - 1]] > TYPES[keys[i]],
+      '★ 规则说「' + order[i - 1] + ' > ' + order[i] + '」，' +
+      '但 TYPES 里是 ' + keys[i - 1] + '=' + TYPES[keys[i - 1]] +
+      ' / ' + keys[i] + '=' + TYPES[keys[i]] + ' —— 玩家会记反')
+  }
+  console.log('  ✓ 规则里的牌型顺序和 RANK 一致（' + order.join(' > ') + '）')
+}
