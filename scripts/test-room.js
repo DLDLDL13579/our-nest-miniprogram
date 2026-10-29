@@ -2657,6 +2657,78 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 观战者摇骰被拒：「' + lateRoll.msg + '」')
   }
 
+  /* ============ ⑱ ★ 连玩三局：累积字段与残留（2026-10-29） ============ */
+  /*
+   * 真实酒桌是**连玩十几局**，而所有流程测试都只跑了一局。
+   * 多局之间最容易出两类问题（项目史上有前科）：
+   *   ① 上一局的局内状态没清干净（bid/turn/lastResult）→ 新一局开局就"带着脏数据"；
+   *   ② 累积字段算错 —— streaks（连胜）该累加/归零、nightDrinks（今晚杯数）该累加。
+   */
+  {
+    const M1 = 'oid_m1_' + Date.now()
+    const M2 = 'oid_m2_' + Date.now()
+    OPENID = M1
+    const mr = await room.main({ action: 'create', name: '连玩甲', game: 'liar' })
+    assert.ok(mr.ok && mr.room, '准备：建房应成功')
+    const mid = mr.room.id
+    OPENID = M2
+    assert.ok((await room.main({ action: 'join', code: mr.room.code, name: '连玩乙' })).ok, '准备：加入')
+
+    const rounds = []
+    for (let i = 0; i < 3; i++) {
+      OPENID = M1
+      const st = await room.main({ action: 'start', id: mid, solo: true })
+      assert.ok(st.ok, `第 ${i + 1} 局开局应成功：` + (st.msg || ''))
+      store.rooms.filter(x => x._id === mid)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: mid })
+
+      /* 开局后第一件事：局内字段必须是干净的 */
+      const fresh = await room.main({ action: 'status', id: mid })
+      assert.strictEqual(fresh.room.round, i + 1, `第 ${i + 1} 局的 round 应为 ${i + 1}`)
+      assert.strictEqual(fresh.room.bid, null, `第 ${i + 1} 局开局 bid 必须清空`)
+
+      /* 叫一口再开，读结算 */
+      OPENID = M1
+      const b = await room.main({ action: 'bid', id: mid, n: 1, face: 1 })
+      assert.ok(b.ok, `第 ${i + 1} 局叫骰应成功：` + (b.msg || ''))
+      OPENID = M2
+      const o = await room.main({ action: 'open', id: mid })
+      assert.ok(o.ok, `第 ${i + 1} 局开骰应成功：` + (o.msg || ''))
+      assert.strictEqual(o.room.phase, 'over', `第 ${i + 1} 局开完应结束`)
+      rounds.push(o.room.lastResult)
+
+      /* 再来一局（清局内状态回大厅） */
+      OPENID = M1
+      const ag = await room.main({ action: 'again', id: mid })
+      assert.ok(ag.ok, `第 ${i + 1} 局后"再来一局"应成功`)
+      assert.strictEqual(ag.room.phase, 'lobby', 'again 应回到 lobby')
+      assert.strictEqual(ag.room.bid, null, 'again 必须清 bid')
+      assert.strictEqual(ag.room.lastResult, null, 'again 必须清 lastResult')
+    }
+    ok('★ 连玩三局：round 递增、每局开局 bid 干净、again 清空局内状态')
+
+    /* 今晚杯数：三局各输 1 杯 → 某人 3 杯或分摊，总数必须等于 3 */
+    const finalRoom = store.rooms.filter(x => x._id === mid)[0]
+    const drinks = finalRoom.nightDrinks || {}
+    const totalCups = Object.keys(drinks).reduce((a, k) => a + Number(drinks[k] || 0), 0)
+    assert.strictEqual(totalCups, 3,
+      '★ 三局各 1 杯，今晚累计必须是 3 杯；实际：' + JSON.stringify(drinks))
+    ok('★ 今晚杯数跨局累计正确（3 局共 ' + totalCups + ' 杯）')
+
+    /* 连胜：最后一局的赢家 streak ≥ 1，输家必须归零 */
+    const last = rounds[rounds.length - 1]
+    assert.ok(last, '最后一局应有结算数据')
+    const streaks = finalRoom.streaks || {}
+    const loserSeat = last.loserSeat
+    Object.keys(streaks).forEach(k => {
+      if (Number(k) === Number(loserSeat)) {
+        assert.strictEqual(streaks[k], 0,
+          '★ 输家的连胜必须归零（连庄是"连续赢"，输一次就断）；实际 streak=' + streaks[k])
+      }
+    })
+    ok('★ 连胜语义正确：输家归零（连庄不是"连续输"）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
