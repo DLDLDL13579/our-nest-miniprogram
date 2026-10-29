@@ -216,8 +216,19 @@ async function playOne(opts) {
       assert.strictEqual(ag.room.phase, 'lobby', '再来一局应回到 lobby')
       assert.ok(!ag.room.bid, '★ 第 ' + round + ' 局结束后 bid 必须清空')
       assert.ok(!ag.room.lastResult, '★ 第 ' + round + ' 局结束后 lastResult 必须清空')
+      /*
+       * ★ 反过来的要求：**今晚战况不能被清掉**（2026-10-29）。
+       *   上面那批断言要求"局内状态清干净"，而 nightDrinks 是跨局累计的 ——
+       *   两类字段在同一处清理，很容易顺手一起清掉。
+       */
+      assert.ok(ag.room.nightDrinks && typeof ag.room.nightDrinks === 'object',
+        '★ nightDrinks 必须跨局保留（不能被 again 清掉）')
+      const total = Object.keys(ag.room.nightDrinks)
+        .reduce((n, k) => n + (Number(ag.room.nightDrinks[k]) || 0), 0)
+      assert.strictEqual(total, round,
+        '★ 第 ' + round + ' 局后，今晚累计应该是 ' + round + ' 杯（实际 ' + total + '）')
     }
-    ok('★ 连玩三局：每局都能正常结算，且跨局状态清干净')
+    ok('★ 连玩三局：每局都能正常结算，局内状态清干净，今晚战况跨局累计')
   }
 
   /* ---------- 比大小：两人各摇一次 ---------- */
