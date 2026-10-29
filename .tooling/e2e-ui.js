@@ -185,7 +185,48 @@ const rec = (name, ok, extra) => {
       }
     }
 
-    /* ⑨ 金花：确认卡（把 wx.showModal 换成页面内之后，automator 才点得到） */
+    /* ⑨ 比大小：摇骰 → 单人局摇完立刻结算 */
+    console.log('\n── 比大小 ──')
+    await mini.navigateBack().catch(() => {})
+    await sleep(2500)
+    const lob3 = await mini.currentPage()
+    const ld3 = await lob3.data()
+    const dIdx = ((ld3 && ld3.list) || []).findIndex(g => g.id === 'dice')
+    const cards3 = await lob3.$$('.gcard')
+    if (dIdx < 0 || !cards3[dIdx]) {
+      rec('找到比大小卡片', false, 'list=' + ((ld3 && ld3.list) || []).map(g => g.id).join(','))
+    } else {
+      await cards3[dIdx].tap()
+      let dp = null
+      for (let i = 0; i < 20; i++) {
+        await sleep(1000)
+        dp = await mini.currentPage()
+        const dd = await dp.data()
+        if (dd.stage === 'lobby' && dd.room && dd.room.code) break
+      }
+      const startBtn4 = await dp.$('.bigbtn')
+      if (startBtn4) { await startBtn4.tap(); await sleep(2000) }
+      let dd2 = await dp.data()
+      for (let i = 0; i < 8 && dd2.stage !== 'playing'; i++) { await sleep(1200); dd2 = await dp.data() }
+      rec('比大小开局 → playing', dd2.stage === 'playing', 'stage=' + dd2.stage)
+
+      /* 点摇骰（单人局：摇完即全员摇完，应立刻结算） */
+      const rollBtns = await dp.$$('.bigbtn')
+      const rollBtn = rollBtns.length ? rollBtns[rollBtns.length - 1] : null
+      if (!rollBtn) { rec('找到摇骰按钮', false) }
+      else {
+        await rollBtn.tap()
+        await sleep(1200)
+        let rd = await dp.data()
+        rec('点摇盅 → 摇出自己的骰子', !!(rd.myDice && rd.myDice.length),
+          '骰子=' + JSON.stringify(rd.myDice))
+        await sleep(3000)
+        rd = await dp.data()
+        rec('单人局摇完 → 立刻结算', rd.stage === 'over', 'stage=' + rd.stage)
+      }
+    }
+
+    /* ⑩ 金花：确认卡（把 wx.showModal 换成页面内之后，automator 才点得到） */
     console.log('\n── 金花 ──')
     await mini.navigateBack().catch(() => {})
     await sleep(2500)
