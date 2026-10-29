@@ -90,53 +90,9 @@ if (bad.length) {
 "
 
 echo "═══ 5/5 前端调用的云函数 action 必须真实存在 ───"
-node -e "
-const fs=require('fs'),path=require('path');
-/*
- * 为什么加这条：2026-10-08 真实踩过 ——
- *   前端调 room 的 spin action，但云端 room 还是旧版（没有这个 action），
- *   返回 { ok:false, msg:'不认识的操作：spin' }，转盘直接不能用。
- *
- *   这类错配**本地完全自洽**：语法对、绑定对、断言全绿，
- *   只有真正跑起来、且云端版本落后时才暴露。
- *   这条查的是「本地前后端是否一致」——
- *   云端版本落后要靠 deploy.sh 保证（那个脚本已改成自动扫描全部云函数）。
- */
-let bad=0, checked=0;
-const fnDirs=fs.readdirSync('cloudfunctions').filter(d=>fs.existsSync(path.join('cloudfunctions',d,'index.js')));
-const actionsOf={};
-fnDirs.forEach(fn=>{
-  const src=fs.readFileSync(path.join('cloudfunctions',fn,'index.js'),'utf8');
-  const set=new Set();
-  const re=/action\s*===\s*'([a-zA-Z_]+)'/g;
-  let m; while((m=re.exec(src))) set.add(m[1]);
-  actionsOf[fn]=set;
-});
-function walkJs(dir,out){out=out||[];fs.readdirSync(dir).forEach(f=>{const p=path.join(dir,f);
-  if(fs.statSync(p).isDirectory())walkJs(p,out);else if(f.endsWith('.js'))out.push(p)});return out}
-const pages=[];
-walkJs('miniprogram/pages',pages);
-pages.forEach(js=>{
-  const src=fs.readFileSync(js,'utf8');
-  /* 匹配 call('fn', { action: 'xxx' ... }) —— 先剥注释，避免把文档里的例子算进来 */
-  const clean=src.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[^:])\/\/[^\n]*/g,'\$1');
-  const re=/call\(\s*'([a-zA-Z]+)'\s*,\s*\{[^}]*?action:\s*'([a-zA-Z_]+)'/g;
-  let m;
-  while((m=re.exec(clean))){
-    const fn=m[1], act=m[2];
-    if(!actionsOf[fn]) continue;
-    checked++;
-    if(!actionsOf[fn].has(act)){
-      console.log('  ✗ '+path.relative('.',js)+' 调 '+fn+'.'+act+'，但云函数里没有这个 action');
-      bad++;
-    }
-  }
-});
-if(bad) process.exit(1);
-console.log('  ✓ '+checked+' 处云函数调用都有对应的 action（本地前后端一致）');
-"
+# 独立脚本：原来用 node -e 嵌在 shell 里（转义脆、且只扫主包，子包扫不到就恒报 0 处）
+node scripts/check-actions.js
 
-echo
 echo "全部检查通过，可以部署 ✓"
 
 echo "═══ 6/6 测试开关提醒 ═══"
