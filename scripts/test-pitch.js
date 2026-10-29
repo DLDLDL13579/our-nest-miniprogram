@@ -59,3 +59,34 @@ const missing = preloadKeys.filter(k => !sfx.FILES[k])
 assert.deepStrictEqual(missing, [],
   '★ 预加载列表里有不存在的音效（白占名额，等于没预加载）：' + missing.join(', '))
 console.log('  ✓ 预加载 ' + preloadKeys.length + ' 个音效，全部存在')
+
+/* ============ ③ 预加载真的会创建音频实例吗 ============ */
+/*
+ * ★ 只检查"列表里的名字都存在"是不够的 —— 列表写对了但 preload() 没被调用、
+ *   或者函数体里有 bug 提前 return，结果一样是"没预加载"，而代码看着完全正常。
+ *   所以这里**真跑一遍** preload()，数它建了几个实例。
+ */
+{
+  let made = 0
+  global.wx = {
+    getStorageSync: () => '', setStorageSync: () => {},
+    createInnerAudioContext: () => {
+      made++
+      return {
+        playbackRate: 1, volume: 1, play() {}, stop() {}, destroy() {},
+        onEnded() {}, onError() {},
+        set src(v) { this._s = v }, get src() { return this._s }
+      }
+    }
+  }
+  delete require.cache[require.resolve(path.join(__dirname, '..', 'miniprogram/game/sfx.js'))]
+  const fresh = require(path.join(__dirname, '..', 'miniprogram/game/sfx.js'))
+  made = 0
+  fresh.preload()
+  /*
+   * 会比列表短几个：POOL_SIZE > 1 的音效（shakerMetal 等）刻意跳过 ——
+   * 它们的实例按 slot 名建，预加载塞进去会和播放逻辑打架。
+   */
+  assert.ok(made >= 8, '★ 预加载只建了 ' + made + ' 个实例，至少要覆盖 8 个（列表 13 个，池化的会跳过）')
+  console.log('  ✓ 预加载真的建了 ' + made + ' 个音频实例')
+}
