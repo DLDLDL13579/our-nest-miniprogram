@@ -98,6 +98,18 @@ Page({
     } catch (e) {}
     let list = []
     try { list = (wx.getStorageSync('errLog') || []).slice(-2) } catch (e) {}
+    /*
+     * 给每条补一个可读时间（2026-10-29）。
+     * 用户报障时，**时间能立刻区分"这条是刚才的还是几小时前的"** ——
+     * 而这恰恰是判断"他看到的是新问题还是旧记录"的关键。
+     * wxml 表达式不能调函数，所以在数据层格式化好。
+     */
+    list = list.map(function (x) {
+      var d = new Date(x.t || 0)
+      var hh = ('0' + d.getHours()).slice(-2)
+      var mm = ('0' + d.getMinutes()).slice(-2)
+      return Object.assign({}, x, { time: hh + ':' + mm })
+    })
     /* 只显示最近 2 条：够判断问题，又不会把页面撑爆 */
     this.setData({ nightGames: n, errCount: (list.length ? (wx.getStorageSync('errLog') || []).length : 0), errList: list })
   },

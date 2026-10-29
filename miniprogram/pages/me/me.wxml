@@ -79,7 +79,7 @@
     <block wx:if="{{errCount > 0}}">
       <view class="ab-line errline">最近 {{errCount}} 条错误：</view>
       <view wx:for="{{errList}}" wx:key="t" class="errtext">
-        {{index + 1}}. {{item.fn}}{{item.act ? '/' + item.act : ''}}：{{item.raw}}
+        {{item.time}} · {{item.fn}}{{item.act ? '/' + item.act : ''}}：{{item.raw}}
       </view>
       <view class="ab-line errline" bindtap="copyErrLog">点这里复制全部错误记录</view>
     </block>

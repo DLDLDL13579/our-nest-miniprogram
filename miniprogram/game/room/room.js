@@ -465,6 +465,7 @@ Page({
        （2026-10-28：这行原来被压在 6 个 clearTimeout 后面 —— 注释写着
         "第一件事"，代码却不是。断言抓到了这个位置。 ）*/
     this._dead = true
+    this.setKeepScreenOn(false)
     clearTimeout(this._loadingFailsafe)
     clearTimeout(this._joinTimer)
     clearTimeout(this._pkDealTimer)
@@ -1960,6 +1961,7 @@ Page({
   },
 
   async doCreate() {
+    this._didCreate = true          // 供 15 秒兜底时判断"请求到底发没发出去"
     if (this.data.creating) return
     this.setData({ creating: true, err: '' })
     const r = await call('room', {
@@ -1998,7 +2000,10 @@ Page({
          手写常量等于在第二个地方重复描述"服务端是什么状态"，
          将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase) })
+      const newStage = stageOf(r.room.phase)
+    /* 玩游戏时别让屏幕锁掉（等别人的时间远多于操作时间）；大厅和结算页关掉省电 */
+    this.setKeepScreenOn(newStage === 'countdown' || newStage === 'playing')
+    this.setData({ room: this.decorate(r.room), stage: newStage })
       this.startPoll()
     }
   },
@@ -2051,6 +2056,27 @@ Page({
        */
       this._loadingFailsafe = setTimeout(() => {
         if (this._dead || !this.data.loading) return
+        /*
+         * 兜底触发时**记一条错误**（2026-10-29）。
+         * 用户报"开不了房间"时我完全看不到现场 —— 遮罩卡住了是"请求没回来"
+         * 还是"请求根本没发出去"，这两种的修法完全不同。
+         * 把当时的阶段、有没有调过 doCreate、有没有 err 都记下来，
+         * 下次用户截图就能直接看出来。
+         */
+        try {
+          const log = wx.getStorageSync('errLog') || []
+          log.push({
+            t: Date.now(),
+            fn: 'room',
+            act: 'stuck',
+            raw: '遮罩挂了 15 秒：阶段=' + (this.data.stage || '?') +
+              ' 建过房=' + (this._didCreate ? '是' : '否') +
+              ' err=' + ((this.data.err || '').slice(0, 30) || '无') +
+              ' 房间号=' + (this.data.pickGame || '无')
+          })
+          if (log.length > 20) log.length = 20
+          wx.setStorageSync('errLog', log)
+        } catch (e) {}
         this.setData({ loading: false, loadingSlow: false })
         wx.showToast({ title: '这次没进去，再试一次', icon: 'none', duration: 2400 })
       }, 15000)
@@ -2120,6 +2146,28 @@ Page({
    *    （liar 有 loserName、dice 只有 winners、uw 只有 winner 是 spy/civilian），
    *    硬凑"谁喝了几杯"必然漏，而漏了不报错 —— 宁可少给一个数字，不给一个错的。
    */
+  /**
+   * 游戏时保持屏幕常亮（2026-10-29）。
+   *
+   * 酒桌上大量时间是**看着屏幕等别人**：等别人叫骰、等别人投票、等别人摇。
+   * 而手机 30 秒没操作就自动锁屏 —— 锁了要重新解锁，节奏直接断。
+   *
+   * 所以**只在真正在玩的时候**开着（countdown / playing）；
+   * lobby 和结算页关掉，省电。`reduce-motion` 那类设置不冲突。
+   *
+   * ⚠️ 失败要静默容错：低版本基础库没有这个 API，或系统有省电限制。
+   *    这不是功能，关不掉也不该弹窗。
+   */
+  setKeepScreenOn(on) {
+    if (this._keepOn === on) return          // 避免每次 poll 都调一遍
+    this._keepOn = on
+    try {
+      if (typeof wx.setKeepScreenOn === 'function') {
+        wx.setKeepScreenOn({ keepScreenOn: !!on, fail: () => {} })
+      }
+    } catch (e) {}
+  },
+
   bumpNightCount() {
     try {
       const d = new Date()
