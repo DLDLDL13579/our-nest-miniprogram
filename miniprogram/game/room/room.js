@@ -2242,7 +2242,21 @@ Page({
 
   async doRoll() {
     if (!this.specGuard()) return
-    if (this.data.rolling || this.data.myRolled) return
+    /*
+     * ★ 守卫不能静默（2026-10-29）。
+     *   正常情况下这个按钮在"已摇"时不显示，但有两条路会让它还能被点到：
+     *   · 视图层比逻辑层旧一拍（服务端已返回，界面还没重绘）
+     *   · 用户在动画期间连点
+     *   原来这里直接 `return` —— 用户点了毫无反应，然后报"点了没反应"。
+     */
+    if (this.data.rolling) {
+      wx.showToast({ title: '正在摇', icon: 'none', duration: 1200 })
+      return
+    }
+    if (this.data.myRolled) {
+      wx.showToast({ title: '你这一局已经摇过了', icon: 'none', duration: 1600 })
+      return
+    }
     this.clearCupTimers()
     this.setData({ rolling: true })
 
@@ -2431,7 +2445,11 @@ Page({
   onCupPress() {
     if (this.data.stage !== 'playing') return
     if (this.data.room && this.data.room.game !== 'liar') return
-    if (!this.data.myDice.length) return
+    if (!this.data.myDice.length) {
+      /* 没骰子时按盅不吭声，用户会以为盅坏了（2026-10-29） */
+      wx.showToast({ title: '骰子还没发下来', icon: 'none', duration: 1400 })
+      return
+    }
     feedback.vibrate('light')
     sfx.play('cupLift', { volume: 0.5 })
     this.setData({
@@ -2622,7 +2640,17 @@ Page({
    */
   async doPi() {
     if (!this.specGuard()) return
-    if (!this.data.room || !this.data.room.myTurn) return
+    if (!this.data.room) return
+    /*
+     * ★ 不是我的回合要给一句（2026-10-29）。
+     *   正常情况下按钮只在轮到自己时渲染，但视图层可能比逻辑层旧一拍 ——
+     *   那时点下去是**静默 return**，用户就是"点了没反应"。
+     *   （`_uwBusy` / `_pkBusy` 这类防重入的静默是对的，别一起改。）
+     */
+    if (!this.data.room.myTurn) {
+      wx.showToast({ title: '还没轮到你', icon: 'none', duration: 1400 })
+      return
+    }
     sfx.play('tap')
     const r = await call('room', { action: 'pi', id: this.data.room.id }, { silent: true })
       .catch((e) => {
