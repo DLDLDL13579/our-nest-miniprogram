@@ -90,12 +90,22 @@ try {
     '--name', 'room', '--path', outDir
   ], { stdio: 'pipe', timeout: 180000 })
 
-  /* CLI 的落盘结构不固定，递归找 index.js */
+  /*
+   * CLI 的落盘结构不固定，递归找 index.js。
+   *
+   * ⚠️ 必须跳过 node_modules（2026-10-29 实测踩坑）：
+   *   递归 find 先命中的是依赖包（如 wx-server-sdk）的 index.js（82900 字节），
+   *   拿它和本地 index.js（115940 字节）比指纹 —— 5 条老指纹碰巧全中，
+   *   打出「部署已生效」的误导结论，而比的根本不是云函数本体。
+   *   判据错的时候结论也可能对，这比报错更危险。
+   */
   ;(function find(d) {
     for (const f of fs.readdirSync(d)) {
       const p = path.join(d, f)
-      if (fs.statSync(p).isDirectory()) find(p)
-      else if (f === 'index.js' && !downloaded) downloaded = p
+      if (fs.statSync(p).isDirectory()) {
+        if (f === 'node_modules') continue
+        find(p)
+      } else if (f === 'index.js' && !downloaded) downloaded = p
     }
   })(outDir)
 } catch (e) {
@@ -122,8 +132,17 @@ FINGERPRINTS.forEach(f => {
 })
 
 console.log()
-if (bad === 0) {
-  console.log('  ✓ 云端 room 与本地一致 —— 部署已生效')
+if (bad === 0 && cloud.length === local.length) {
+  console.log('  ✓ 云端 room 与本地一致（指纹 + 字节数都吻合）—— 部署已生效')
+} else if (bad === 0) {
+  /*
+   * ★ 指纹全中但字节数不同 —— 说明指纹太粗（都是旧功能），
+   *   云端实际仍有差异（2026-10-29 实测：差 33KB）。
+   *   这种情况**不能**报"一致"，宁可报可疑。
+   */
+  console.log(`  ★ 指纹全中但字节数不同（云端 ${cloud.length} / 本地 ${local.length}）`)
+  console.log('    指纹都是旧功能、抓不住新差异 —— 请 download 后 diff 确认')
+  bad = 1
 } else {
   console.log(`  ✗ 有 ${bad} 处不一致 → 云端还是旧版，需要重新部署 room`)
 }

@@ -19,6 +19,10 @@ function call(name, data, opt) {
       if (r.ok !== true) {
         var e = new Error(r.msg || '操作没成功')
         e.code = r.code || 'BIZ_ERROR'
+        /* ★ 云端脱敏诊断码（阶段名+错误码，如 bid.update:-502）——
+           只进本地错误记录，不弹给用户。2026-10-29 加：
+           以前兜底文案把线索全吞了，报障时只剩一句「操作失败了」没法查。 */
+        if (r._diag) e._diag = r._diag
         throw e
       }
       return r
@@ -73,7 +77,9 @@ function call(name, data, opt) {
           t: Date.now(),
           fn: name,
           act: act,
-          raw: String(raw).slice(0, 160)
+          /* 云端脱敏诊断码拼在 raw 末尾（如 `操作失败了，再试一次 [bid.update:-502]`），
+             复制错误记录时就带走了排查线索 */
+          raw: String(raw).slice(0, 160) + (err && err._diag ? ' [' + err._diag + ']' : '')
         })
         if (log.length > 20) log = log.slice(log.length - 20)
         wx.setStorageSync('errLog', log)

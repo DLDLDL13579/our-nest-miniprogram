@@ -484,6 +484,36 @@ function shape(room, openid) {
   }
 }
 
+/*
+ * ★ 数据库操作的统一重试 + 失败标记（2026-10-29）。
+ *
+ * 背景：用户实测「点叫骰 → 操作失败了，再试一次」，错误记录里只剩这一句
+ * 人话兜底，**排查线索全断了** —— 根本不知道是 update 还是 get、错误码是多少。
+ * （历史遗留：2026-10-10 就复现过「叫骰 → document.update:fail -502」，
+ *   当时只建了复现脚本 .tooling/diag-bid.js，没把线索接进产品。）
+ *
+ * 做两件事：
+ *   ① **重试一次**：数据库偶发抖动（-502 这类）第二次通常就过。
+ *      bid 的 update 是覆盖式赋值（bid/turn/turnAt/updatedAt），重试安全；
+ *      get 是纯读，天然幂等。
+ *   ② **给错误打 stage 标记**：外层 catch 只把「阶段名 + 数字错误码」
+ *      透给前端的错误记录（_diag），**不透原始错误串、不透数据** ——
+ *      与 _code 的安全口径一致（见 create 分支 _code 处的说明）。
+ */
+async function dbCall(stage, fn) {
+  try {
+    return await fn()
+  } catch (e1) {
+    try {
+      return await fn()
+    } catch (e2) {
+      const err = e2 || e1 || new Error('db fail')
+      err.stage = stage
+      throw err
+    }
+  }
+}
+
 /** 统一取房间：按 id 或 code，并校验"我是不是房间里的人" */
 async function loadRoom(event, openid, needMember) {
   let room = null
@@ -1249,7 +1279,7 @@ exports.main = async (event) => {
       const myIdx = ring.indexOf(mySeat.seat)
       const nextSeat = ring.length === 0 ? 1
         : ring[(myIdx + 1 + ring.length) % ring.length]
-      await rooms.doc(room._id).update({
+      await dbCall('bid.update', () => rooms.doc(room._id).update({
         data: {
           bid: { n: n, face: face, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
           turn: nextSeat,
@@ -1257,8 +1287,8 @@ exports.main = async (event) => {
           turnAt: ts,
           updatedAt: ts
         }
-      })
-      const rr = await rooms.doc(room._id).get()
+      }))
+      const rr = await dbCall('bid.reload', () => rooms.doc(room._id).get())
       return { ok: true, room: shape(rr.data, OPENID) }
     }
 
@@ -2348,6 +2378,20 @@ exports.main = async (event) => {
     if (/ResourceNotFound|not exist|Table not exist/i.test(raw)) {
       return { ok: false, code: 'NO_TABLE', msg: '数据表还没建好，重启一次小程序即可' }
     }
-    return { ok: false, msg: '操作失败了，再试一次' }
+    /*
+     * ★ 透出脱敏诊断码（2026-10-29）。
+     *
+     * 这句兜底以前把**所有线索都吞了**：错误记录里只剩「操作失败了，再试一次」，
+     * 连是哪一步失败都不知道（2026-10-29 用户实测报障就卡在这里）。
+     *
+     * 现在把「阶段名（代码常量）+ 数字错误码（微信官方错误码，如 -502）」
+     * 放进 _diag 随响应带回去，前端只写进本地错误记录（不弹给用户）。
+     *
+     * ⚠️ **只透码、不透原始错误串**（安全审计结论⑩：数据库原始错误
+     *   不能返回客户端）—— _diag 不含 openid / 文档 id / 堆栈 / 用户数据。
+     */
+    const numCode = (raw.match(/-\d{2,6}/) || [])[0] || ''
+    const diag = ((err && err.stage) ? err.stage : action) + (numCode ? ':' + numCode : '')
+    return { ok: false, msg: '操作失败了，再试一次', _diag: diag }
   }
 }

@@ -93,10 +93,30 @@ function collection(name) {
     doc(id) {
       return {
         async get() {
+          /* ★ 数据库故障注入（2026-10-29）：
+             · global.__dbFailGet = N  → 前 N 次 get 抛错（次数式）
+             · global.__dbFailGetAfter = N → 前 N 次成功、之后全抛（窗口式）
+             窗口式的用途：bid 流程里 loadRoom 的 get（第 1 次）必须成功才走到
+             reload，要单测 reload 失败就得跳过第 1 次 —— 次数式做不到。
+             本地 mock 的读写永远成功，不注入就永远复现不出
+             「叫骰 → document.update:fail -502」那类故障。 */
+          global.__dbGetN = (global.__dbGetN || 0) + 1
+          const win = global.__dbFailGetAfter
+          if ((global.__dbFailGet && global.__dbFailGet-- > 0) ||
+              (typeof win === 'number' && global.__dbGetN > win)) {
+            const e = new Error('document.get:fail -502')
+            e.errMsg = 'document.get:fail -502'
+            throw e
+          }
           const d = rows().filter(x => x._id === id)[0]
           return { data: d ? JSON.parse(JSON.stringify(d)) : undefined }
         },
         async update({ data }) {
+          if (global.__dbFailUpdate && global.__dbFailUpdate-- > 0) {
+            const e = new Error('document.update:fail -502')
+            e.errMsg = 'document.update:fail -502'
+            throw e
+          }
           const d = rows().filter(x => x._id === id)[0]
           if (!d) throw new Error('doc not found: ' + id)
           Object.keys(data).forEach(k => {
@@ -2298,6 +2318,87 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       global.__secFail = prevFail
     }
     ok('★ 内容检查服务挂了：建房降级放行，题卡仍严格拦截')
+  }
+
+  /* ============ ⑮ ★ 数据库偶发失败：重试救回 + 线索不能断 ============ */
+  /*
+   * 2026-10-29 用户实测报障：点叫骰 → 「操作失败了，再试一次」，
+   * 错误记录里**只剩这一句兜底**，不知道是哪一步、错误码是多少。
+   * （历史遗留：2026-10-10 就复现过「叫骰 → document.update:fail -502」。）
+   *
+   * 这组锁两件事：① 偶发失败重试一次能救回来；② 救不回来时
+   * _diag 必须带上「阶段名:错误码」，排查线索不能再断。
+   */
+  {
+    const A2 = 'oid_dbA_' + Date.now()
+    const B2 = 'oid_dbB_' + Date.now()
+    OPENID = A2
+    const c = await room.main({ action: 'create', name: '重试甲', game: 'liar' })
+    assert.ok(c.ok && c.room && c.room.code, '建房应成功（准备阶段必须断言，否则后面全测在假状态上）')
+    const rid = c.room.id
+    OPENID = B2
+    const j = await room.main({ action: 'join', code: c.room.code, name: '重试乙' })
+    assert.ok(j.ok, '加入应成功')
+    OPENID = A2
+    const st = await room.main({ action: 'start', id: rid })
+    assert.ok(st.ok, '开局应成功')
+    store.rooms.filter(x => x._id === rid)[0].countdownEnd = Date.now() - 100
+    const pl = await room.main({ action: 'status', id: rid })
+    assert.strictEqual(pl.room.phase, 'playing', '倒计时到点应进入 playing')
+
+    /* ① update 偶发失败一次 → 重试救回，bid 照常成功（轮到 1 号 = A2） */
+    const prevU = global.__dbFailUpdate
+    global.__dbFailUpdate = 1
+    try {
+      const retry = await room.main({ action: 'bid', id: rid, n: 1, face: 1 })
+      assert.strictEqual(retry.ok, true,
+        '★ 偶发的数据库失败（-502 这类）重试一次应救回；实际：' + JSON.stringify(retry))
+    } finally {
+      global.__dbFailUpdate = prevU
+    }
+    ok('★ update 偶发失败一次 → 重试救回，叫骰照常成功')
+
+    /* ② update 连续失败 → 兜底文案 + _diag 带阶段名与错误码。
+       ★ 上一次叫骰成功后回合已轮到 2 号（B2），这里必须用 B2，
+       否则被「还没轮到你」提前拦下，根本走不到 update —— 那就测了个假的。 */
+    OPENID = B2
+    global.__dbFailUpdate = 2
+    let r2 = null
+    try {
+      r2 = await room.main({ action: 'bid', id: rid, n: 2, face: 2 })
+    } finally {
+      global.__dbFailUpdate = prevU
+    }
+    assert.strictEqual(r2.ok, false, '连续失败应返回失败')
+    assert.strictEqual(r2.msg, '操作失败了，再试一次')
+    assert.strictEqual(r2._diag, 'bid.update:-502',
+      '★ _diag 必须带「阶段名:错误码」—— 错误记录里只剩一句兜底就查不了问题；实际：' + (r2._diag || '(空)'))
+    ok('★ update 救不回时 _diag = bid.update:-502（线索不断）')
+
+    /* ③ 读回（reload）失败同样要透出（回合仍停在 B2 —— 上一次没写成功）。
+       ★ 用窗口式注入：loadRoom 的 get 是第 1 次、必须成功才走到 reload，
+       所以「前 1 次成功、之后全失败」—— 次数式会被 loadRoom 消耗掉。 */
+    const prevG = global.__dbFailGetAfter
+    const prevGN = global.__dbGetN
+    global.__dbGetN = 0
+    global.__dbFailGetAfter = 1
+    let r3 = null
+    try {
+      r3 = await room.main({ action: 'bid', id: rid, n: 3, face: 3 })
+    } finally {
+      global.__dbFailGetAfter = prevG
+      global.__dbGetN = prevGN
+    }
+    assert.strictEqual(r3.ok, false)
+    assert.strictEqual(r3._diag, 'bid.reload:-502',
+      '★ 读回失败也要能定位到 reload 阶段；实际：' + (r3._diag || '(空)'))
+    ok('★ reload 失败 _diag = bid.reload:-502')
+
+    /* ④ 静态兜底：catch 必须把 _diag 放进响应（防止将来有人改回去） */
+    const cloudSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    assert.ok(/_diag\s*:\s*diag/.test(cloudSrc),
+      '★ catch 兜底必须把 _diag 放进响应 —— 线索断了就只剩「操作失败了」')
+    ok('★ catch 兜底透出 _diag（静态断言防回退）')
   }
 
   console.log(`\n${'='.repeat(58)}`)
