@@ -290,6 +290,33 @@ const rec = (name, ok, extra) => {
       }
     }
 
+    /* ⑩a 复制房间号（拉人的第一步，坏了整套就启动不了） */
+    console.log('\n── 复制房间号 ──')
+    {
+      const cp = await mini.currentPage()
+      const cd0 = await cp.data()
+      const code = cd0.room && cd0.room.code
+      if (!code) { rec('取到房间号', false) }
+      else {
+        const got = await mini.evaluate(function () {
+          const pages = getCurrentPages(); const p = pages[pages.length - 1]
+          globalThis.__clip = '__PENDING__'
+          const orig = wx.setClipboardData
+          wx.setClipboardData = function (o) {
+            globalThis.__clip = o.data
+            if (o.success) o.success({})
+            wx.setClipboardData = orig
+          }
+          try { p.copyCode() } catch (e) { globalThis.__clip = '__THREW__ ' + e.message }
+          return true
+        })
+        await sleep(600)
+        const clip = await mini.evaluate(function () { return globalThis.__clip })
+        rec('点房间号 → 剪贴板是房间号', String(clip) === String(code),
+          '剪贴板=' + clip + '（期望 ' + code + '）')
+      }
+    }
+
     /* ⑩b 离开房间的页面内确认卡（从系统弹窗换成页面内，改的是关键操作） */
     console.log('\n── 离开房间确认 ──')
     {
