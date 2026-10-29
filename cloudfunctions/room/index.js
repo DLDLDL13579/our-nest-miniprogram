@@ -64,6 +64,7 @@ const { pickPair } = require('./words.js')
 const poker = require('./poker.js')
 const dicerank = require('./dicerank.js')
 const loser = require('./loser.js')
+const liarCount = require('./liarCount.js')
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -1355,13 +1356,9 @@ exports.main = async (event) => {
        *   · 用户明确要求「游戏不能太烧脑，简单一些」。
        *   现在规则只有一句好记的：1 是万能。
        */
-      let actual = 0
-      ;(room.players || []).forEach(p => {
-        (p.dice || []).forEach(d => {
-          if (d === cur.face) actual++
-          else if (d === 1 && cur.face !== 1) actual++
-        })
-      })
+      /* 统计逻辑抽到 `liarCount.js`（纯函数）—— 原来内联在这里，
+         而骰子是随机发的，所以"1 是否算万能"这条规则一直没法单测。 */
+      const actual = liarCount.countActual(room.players, cur.face)
 
       const bidderWins = actual >= cur.n
       /* 叫的人没吹牛 → 开的人输；吹了 → 叫的人输 */
