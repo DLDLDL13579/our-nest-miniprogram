@@ -221,3 +221,27 @@ view, text, button, input, textarea { box-sizing: border-box }
 
 /* 对勾（代替 ✓ 字符） */
 .tick { width: 26rpx; height: 26rpx; }
+
+/*
+ * 禁用长按选择（2026-10-29）。
+ *
+ * 之前全仓**一处 user-select 都没设** —— 意味着长按任何文字都会弹出
+ * 系统的「复制 / 全选」菜单。
+ *
+ * 而这两个玩法核心交互恰恰是**按住**：
+ *   · 金花：按住看自己的明牌
+ *   · 卧底：按住看自己的词
+ *   · 大话骰：按住盅偷看自己的骰子
+ * 长按一下就弹出系统菜单，等于把这个交互毁掉。
+ *
+ * 需要能选中文字的地方（输入框）单独放行 —— 见下面 input/textarea。
+ */
+page {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* 输入框必须保留选择与光标，否则连字都改不了 */
+input, textarea {
+  user-select: auto;
+  -webkit-user-select: auto;
+}

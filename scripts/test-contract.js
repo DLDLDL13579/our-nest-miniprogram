@@ -2085,6 +2085,28 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③w 长按不能弹系统菜单（会毁掉"按住偷看"） ============ */
+  console.log('\n=== ③w 长按选择必须禁用 ===')
+  /*
+   * ★ 2026-10-29。全仓原来**一处 user-select 都没设** ——
+   *   长按任何文字都会弹出系统的「复制 / 全选」菜单。
+   *
+   *   而金花「按住看明牌」、卧底「按住看词」、大话骰「按住盅偷看」
+   *   这三个核心交互**都是按住** —— 长按一下弹菜单，交互就毁了。
+   *
+   *   判据：app.wxss 里 page 要禁用，而 input/textarea 要放行
+   *        （否则连字都改不了）。
+   */
+  {
+    const appCss = fs.readFileSync(path.join(ROOT, 'miniprogram/app.wxss'), 'utf8')
+    const clean = appCss.replace(/\/\*[\s\S]*?\*\//g, '')
+    assert.ok(/page\s*\{[^}]*user-select\s*:\s*none/.test(clean),
+      '★ app.wxss 里 page 没有 user-select:none —— 长按会弹系统菜单，毁掉"按住偷看"')
+    assert.ok(/input[^{]*\{[^}]*user-select\s*:\s*auto/.test(clean),
+      '★ input 没有放行 user-select —— 输入框里连字都改不了')
+    ok('长按选择已禁用（输入框例外）')
+  }
+
   /* ============ ③v tabBar 也是外壳，也要对 ============ */
   console.log('\n=== ③v tabBar 的配色和对比度 ===')
   /*
