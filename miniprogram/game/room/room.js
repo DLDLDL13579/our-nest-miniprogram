@@ -2578,11 +2578,17 @@ Page({
 
     const mySeat = (r.room.me || {}).seat
     const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
-    /* ★ 赢了要撒花（2026-10-30）：金花/卧底早就有 celebrate()，
-       而比大小和大话骰只有音效 —— 同样是"赢"，一个有声有画面、一个只有声。 */
+    /*
+     * ★ 结算反馈走 feedback.fire（2026-10-30）。
+     *
+     * 原来这里是自己裸调 `sfx.play(iWon ? 'confetti' : 'failDrop')` ——
+     * 于是**赢和输都没有震动**，而其他三个玩法（金花/卧底/大话骰）的结算
+     * 都走 fire('win' / 'penalized')，带音效 + 震动 + 延时补偿。
+     * 同一个"这一局结束了"，手上有没有反馈不该看玩法。
+     */
     this._cupTimers.push(setTimeout(() => {
       if (this._dead) return
-      sfx.play(iWon ? 'confetti' : 'failDrop')
+      feedback.fire(iWon ? 'win' : 'penalized')
       if (iWon) this.celebrate()
     }, 620))
 
@@ -2663,7 +2669,17 @@ Page({
     if (this.data.stage !== 'playing') return
     if (this.data.room && this.data.room.game !== 'liar') return
     if (!this.data.diceShown) return
+    /*
+     * ★ 扣盅那一拍要有震动（2026-10-30）。
+     *
+     * `cupSlam` 在 feedback 表里写着 haptic: 'medium'，但这里是**裸播音效** ——
+     * 表里的震动从来没有被执行过。玩家松手把盅扣回去时，手上一点反馈都没有，
+     * 而这一步恰恰是"偷偷看完、赶紧盖回去"那个心虚动作的收尾。
+     * （不走 feedback.fire 是因为这里要和 setData 的盅落下动画对齐，
+     *   延时补偿会把人手感受到的时机推后。）
+     */
     sfx.play('cupSlam', { volume: 0.55 })
+    feedback.vibrate('medium')
     this.setData({
       cupSrc: 'cup-down', cupCls: '',
       diceShown: false,
