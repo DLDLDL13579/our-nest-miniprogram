@@ -297,6 +297,9 @@ Page({
           wx.removeStorageSync(NICK_KEY)
           wx.removeStorageSync('gameStats')
           wx.removeStorageSync('lastGame')
+          /* 最近玩过的排序（3.10.41 加的）也要清 —— 否则"清理后还是那几个排在前面"，
+             和"会清掉玩过的记录"这句话对不上（2026-10-29） */
+          wx.removeStorageSync('recentGames')
         } catch (e) {}
         /* 开关走各自的 setter，别直接写 storage —— 内存里的状态也要跟着变，
            否则界面显示"开着"、实际已被清掉。 */

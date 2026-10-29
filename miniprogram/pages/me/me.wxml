@@ -101,5 +101,5 @@
   </view>
 
   <view class="btn ghostb" bindtap="clearCache">清理本机缓存</view>
-  <view class="foot-tip">清理只会清掉昵称和开关状态，不影响任何对局数据</view>
+  <view class="foot-tip">清理只会清掉昵称和开关状态，不影响对局数据；错误记录会保留，方便反馈问题</view>
 </view>
