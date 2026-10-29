@@ -56,7 +56,18 @@ from scipy.signal import resample_poly
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-OUT_DIR = os.path.join(ROOT, 'miniprogram', 'audio')
+# ★ 2026-10-29：输出目录改成**分包**。
+#
+# 音频在 2026-10-28 随房间页一起搬进 miniprogram/game/（分包），
+# 而这里一直还写着 miniprogram/audio（主包）——
+# 于是跑这个脚本改音效，产物落在主包、游戏读的是分包，**改了等于没改**，
+# 而且不报错（只会觉得"怎么调完没变化"）。
+# 现场证据：miniprogram/audio/ 里躺着一个 836 字节的 tick.wav（03:16 的产物）。
+#
+# 注意 tick.wav 是特例：me 页（主包页面）要用它试听，所以额外复制一份到主包
+# —— 这与 gen-audio.py 的处理一致（见那边的 shutil.copyfile）。
+OUT_DIR = os.path.join(ROOT, 'miniprogram', 'game', 'audio')
+MAIN_AUDIO_DIR = os.path.join(ROOT, 'miniprogram', 'audio')
 DEFAULT_SRC = '/tmp/kenney-casino/Audio'
 
 PEAK_CEIL = 0.96          # ≈ −0.35 dBFS，给重采样/抖动留余量
@@ -92,27 +103,27 @@ MAP = [
     # ★ 这三个是**持续音**（1 秒的摇动），不能用"前 50ms"衡量 ——
     #   真实录音的摇盅在头 50ms 还在起势，硬把开头推响等于把包络压平。
     #   持续音用整体 RMS 定标（rms 字段）。
-    dict(dst='cup-shake',        src='dice-shake-3.ogg', seconds=1.05, sr=22050, rms=-22.0,
+    dict(dst='cup-shake',        src='dice-shake-3.ogg', seconds=1.05, sr=44100, rms=-22.0,
          note='摇盅 1 秒（feedback.cupShake 的 animMs=1050）'),
-    dict(dst='shaker-metal',     src='dice-shake-3.ogg', seconds=0.90, sr=22050, rms=-24.0,
+    dict(dst='shaker-metal',     src='dice-shake-3.ogg', seconds=0.90, sr=44100, rms=-24.0,
          note='金属盅摇动（大话骰开局那一下）'),
     dict(dst='dice-tumble-wood', src='dice-shake-3.ogg', seconds=1.00, sr=22050, rms=-21.0,
          note='骰子翻滚（比大小用）'),
-    dict(dst='dice-into-cup',    src='dice-throw-1.ogg', seconds=0.45, sr=22050, fifty=-20.0,
+    dict(dst='dice-into-cup',    src='dice-throw-1.ogg', seconds=0.45, sr=44100, fifty=-20.0,
          note='骰子入盅（起音 24ms）'),
-    dict(dst='dice-settle',      src='die-throw-1.ogg',  seconds=0.30, sr=22050, fifty=-15.5,
+    dict(dst='dice-settle',      src='die-throw-1.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
          note='逐颗落定（起音 3ms，一局十几下必须克制）'),
-    dict(dst='dice-on-table',    src='dice-throw-3.ogg', seconds=0.42, sr=22050, fifty=-18.0,
+    dict(dst='dice-on-table',    src='dice-throw-3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
          note='揭盅后骰子在桌上滚两下（起音 12ms）'),
     # ---------- 纸牌 ----------
-    dict(dst='card-deal',        src='card-place-1.ogg', seconds=0.32, sr=22050, fifty=-20.0,
+    dict(dst='card-deal',        src='card-place-1.ogg', seconds=0.32, sr=44100, fifty=-20.0,
          note='发牌（起音 31ms、前 50ms −16.6，整包里最跟手的一张）'),
-    dict(dst='card-flip',        src='card-slide-2.ogg', seconds=0.28, sr=22050, fifty=-21.0,
+    dict(dst='card-flip',        src='card-slide-2.ogg', seconds=0.28, sr=44100, fifty=-21.0,
          note='翻牌（起音 9ms，按住看牌那一刻）'),
-    dict(dst='card-spread',      src='card-shove-4.ogg', seconds=0.55, sr=22050, fifty=-18.0,
+    dict(dst='card-spread',      src='card-shove-4.ogg', seconds=0.55, sr=44100, fifty=-18.0,
          note='摊牌：几张牌一起拍在桌上（起音 22ms）'),
     # ---------- 筹码 ----------
-    dict(dst='chip-bet',         src='chips-stack-4.ogg', seconds=0.30, sr=22050, fifty=-18.0,
+    dict(dst='chip-bet',         src='chips-stack-4.ogg', seconds=0.30, sr=44100, fifty=-18.0,
          note='投票落定（一颗子放进碗里，起音 5ms）'),
     # ---------- 酒桌本体：碰杯 ----------
     # ★ 来自另一个包：Kenney Impact Sounds（同样是 CC0）。
@@ -120,7 +131,7 @@ MAP = [
     #   35 个音效里原来一个杯子都没有，只有"咽酒"（gulp）。
     #   实测 impactGlass_light_002 起音 0ms、前 50ms −13.8，是这组里最跟手的一下。
     dict(dst='glass-clink',      src='/tmp/k-imp/Audio/impactGlass_light_002.ogg',
-         seconds=0.22, sr=22050, fifty=-14.0,
+         seconds=0.22, sr=44100, fifty=-14.0,
          note='碰杯（罚酒/干杯那一刻；起音 0ms）'),
 ]
 
@@ -343,7 +354,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--src', default=DEFAULT_SRC)
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--only', default='',
+                    help='只处理这些音效（逗号分隔的 dst 名）——'
+                         '调整个别音效的采样率时用，避免把所有文件都重写一遍（diff 无法审）')
     args = ap.parse_args()
+    only = [x.strip() for x in args.only.split(',') if x.strip()]
 
     if not os.path.isdir(args.src):
         print('找不到素材目录：' + args.src)
@@ -354,7 +369,12 @@ def main():
     print(f'输出目录: {os.path.relpath(OUT_DIR, ROOT)}')
     print(f'{"目标":18s} {"时长":>5s} {"采样率":>6s} {"峰值":>6s} {"整体RMS":>7s} {"前50ms":>6s} {"体积":>6s}')
     total = 0
-    for one in MAP:
+    chosen = [x for x in MAP if (not only or x['dst'] in only)]
+    if only:
+        missing_names = [n for n in only if not any(x['dst'] == n for x in MAP)]
+        if missing_names:
+            print('  ⚠ 这些名字不在 MAP 里：' + ', '.join(missing_names))
+    for one in chosen:
         st, name, info = process(one, args.src, args.dry_run)
         if st == 'missing':
             print(f'  ✗ {name:16s} 素材缺失: {info}')
