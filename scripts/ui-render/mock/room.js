@@ -436,6 +436,31 @@ module.exports = {
     error: () => ({ joinCode: '999', err: '房间不存在或已解散' }),
 
     /* ---------- 梦幻金花 ---------- */
+    /*
+     * 金花：**不是我的回合**（等别人决定）。
+     * 这是 5-6 人局里最常停留的一屏，而之前没有状态覆盖它 ——
+     * 2026-10-29 补上，用来验证等待提示是否说清了"在等什么/轮到我能做什么"。
+     */
+    pkWait: () => ({
+      stage: 'playing',
+      showCards: false,
+      room: pkRoom({
+        game: 'poker', phase: 'playing', host: false,
+        turn: 2, myTurn: false, turnName: '倩萍',
+        poker: {
+          step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          hintText: poker.handHint(PK_PUB, PK_MINE[1]),
+          folded: false, aliveCount: 3, myDrink: 0,
+          drinks: [
+            { name: '邓林', initial: '邓', cups: 0, out: false },
+            { name: '倩萍', initial: '倩', cups: 0.5, out: false },
+            { name: '阿杰', initial: '阿', cups: 0, out: false }
+          ], log: [], last: null, winner: null
+        }
+      })
+    }),
+
     pkMine: () => ({
       stage: 'playing',
       showCards: true,

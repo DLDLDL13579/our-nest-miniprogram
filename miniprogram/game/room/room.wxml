@@ -864,7 +864,16 @@
       </block>
 
       <block wx:else>
-        <view class="pk-wait">等 {{room.turnName}} 决定</view>
+        <!--
+          2026-10-29：只说"等 X 决定"，玩家既不知道对方在纠结什么，
+          也不知道轮到自己时该干什么（Jackbox 的 Jack Principles：
+          always know what to do next；NN/g：提前为轮次做准备）。
+          所以补第二行，把"轮到我时的三个选项"先摆在眼前。
+        -->
+        <view class="pk-wait">
+          <text class="pw-t">等 {{room.turnName}} 决定</text>
+          <text class="pw-s">轮到你时可以：挑一个人比牌 · 换牌 · 弃牌</text>
+        </view>
       </block>
     </block>
 

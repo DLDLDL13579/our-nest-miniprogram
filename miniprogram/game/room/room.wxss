@@ -2121,6 +2121,11 @@
   text-align: center; padding: 44rpx 0;
   font-size: 24rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.8;
 }
+.pk-wait .pw-t { display: block; color: rgba(255,255,255,.68) }
+.pk-wait .pw-s {
+  display: block; margin-top: 10rpx;
+  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+}
 
 /* ---------- 结算摊牌 ---------- */
 .pk-reveal {
