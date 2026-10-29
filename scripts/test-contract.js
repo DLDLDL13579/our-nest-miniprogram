@@ -2085,6 +2085,42 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③u 导航栏必须和深色主题一致 ============ */
+  console.log('\n=== ③u 每个页面的导航栏都是深色 ===')
+  /*
+   * ★ 2026-10-29。整个界面是深色暖调，如果某个页面的 json 里漏了
+   *   `navigationBarBackgroundColor`，微信会用**默认白色** ——
+   *   于是那个页面顶上一条白带，和下面的深色内容**硬切开**。
+   *
+   *   这个我离线验证不了（渲染器不画导航栏），所以只能靠配置断言。
+   */
+  {
+    const WANT_BG = '#2E211C'
+    const WANT_TEXT = 'white'
+    const targets = [
+      ['miniprogram/app.json', 'window'],
+      ['miniprogram/pages/lobby/lobby.json', null],
+      ['miniprogram/pages/me/me.json', null],
+      ['miniprogram/game/room/room.json', null]
+    ]
+    const bad = []
+    for (const [f, key] of targets) {
+      const p = path.join(ROOT, f)
+      if (!fs.existsSync(p)) { bad.push(f + '：文件不存在'); continue }
+      const d = JSON.parse(fs.readFileSync(p, 'utf8'))
+      const w = key ? (d[key] || {}) : d
+      if (w.navigationBarBackgroundColor !== WANT_BG) {
+        bad.push(f + '：背景是 ' + (w.navigationBarBackgroundColor || '默认白') + '，应为 ' + WANT_BG)
+      }
+      if (w.navigationBarTextStyle !== WANT_TEXT) {
+        bad.push(f + '：标题字色是 ' + (w.navigationBarTextStyle || '默认黑') + '，应为 ' + WANT_TEXT)
+      }
+    }
+    assert.deepStrictEqual(bad, [],
+      '这些页面的导航栏会和深色内容割裂：\n    ' + bad.join('\n    '))
+    ok('4 处导航栏配置一致（深棕 + 白字）')
+  }
+
   /* ============ ③t 上传压缩必须显式开着 ============ */
   console.log('\n=== ③t 构建压缩不是"工具默认" ===')
   /*
