@@ -223,7 +223,9 @@
         <view class="pav s{{item.seat % 4}}">{{item.initial}}</view>
         <view class="pseat">{{item.seat}}</view>
         <view class="pname">
-          {{item.name}}
+          <!-- ★ 名字要能截断（2026-10-30）：最长允许 12 个字，加上「我/房主/掉线」
+               标签后会把这一行撑破。裸文本节点无法单独截断，先包成 <text>。 -->
+          <text class="pn">{{item.name}}</text>
           <text wx:if="{{item.isMe}}" class="ptag">我</text>
           <text wx:if="{{item.isHost}}" class="ptag host">房主</text>
           <!-- 掉线要说出来（2026-10-28）：只有一个灰点的话，分不清"在思考"和"掉了" -->

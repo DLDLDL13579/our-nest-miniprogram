@@ -302,15 +302,20 @@
   font-size: 24rpx; font-weight: 700; color: rgba(255,255,255,.75);
 }
 .pitem.me .pseat { background: rgba(232,179,60,.35); color: #F6E7C3 }
-.pname { flex: 1; font-size: 27rpx; color: rgba(255,255,255,.88); display: flex; align-items: center; gap: 12rpx }
+.pname { flex: 1; min-width: 0; font-size: 27rpx; color: rgba(255,255,255,.88); display: flex; align-items: center; gap: 12rpx }
+/* 名字超长时省略号 —— 标签（我/房主/掉线）永远不被挤掉 */
+.pn { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 /* 掉线标记：比灰点明确得多 —— 桌上最容易发生的是"他去接电话了" */
 .poff {
+  flex: none; white-space: nowrap;
   margin-left: 8rpx; padding: 1rpx 8rpx; border-radius: 6rpx;
   font-size: 18rpx; color: #E8A08C;
   background: rgba(224, 113, 79, .18);
 }
 
 .ptag {
+  /* 名字再长也不能把标签压成竖排（渲染长名字时实测：「房主」被挤成两行） */
+  flex: none; white-space: nowrap;
   font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 999rpx;
   background: rgba(255,255,255,.14); color: rgba(255,255,255,.6);
 }

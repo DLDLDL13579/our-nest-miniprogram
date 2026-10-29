@@ -159,6 +159,20 @@ module.exports = {
      * 新人视角：朋友点分享进来、房间还没开局、自己不是房主。
      * 这是**拉新转化的第一屏** —— 他知不知道要等？知不知道房主是谁？
      */
+    /* 超长名字：12 个字 + 房主/我/掉线三枚标签，验证不撑破 */
+    longName: () => ({
+      stage: 'lobby',
+      room: pkRoom({
+        game: 'liar', phase: 'lobby', host: true, count: 3, gameName: '大话骰',
+        howList: GAMES.filter(g => g.id === 'liar')[0].how,
+        players: [
+          { seat: 1, name: '一二三四五六七八九十甲乙', initial: '一', isMe: true, isHost: true, online: false, diceCount: 0 },
+          { seat: 2, name: '短名字', initial: '短', isMe: false, isHost: false, online: true, diceCount: 0 },
+          { seat: 3, name: '另一个也很长的名字啊', initial: '另', isMe: false, isHost: false, online: true, diceCount: 0 }
+        ]
+      })
+    }),
+
     lobbyGuest: () => ({
       stage: 'lobby',
       room: pkRoom({
