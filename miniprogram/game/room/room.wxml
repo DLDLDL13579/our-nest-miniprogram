@@ -455,7 +455,11 @@
           · 都能了   → 正常可叫
       -->
       <view wx:if="{{!liarReady}}" class="liarnudge">
-        <text class="ln-t">先按住盅偷看自己的骰子</text>
+        <!-- 眼睛图标：文字说"偷看"，图形直接表达"要看"（图标库里早就有 eye） -->
+        <view class="ln-line">
+          <image class="ln-ic" src="{{eyeIcon}}" />
+          <text class="ln-t">先按住盅偷看自己的骰子</text>
+        </view>
         <!--
           2026-10-29：两个信息必须同时给。
           原来是 if/elif 二选一 —— 没偷看时只说"先偷看"，"等谁叫完就轮到你"

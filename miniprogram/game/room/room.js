@@ -346,6 +346,8 @@ Page({
       wheelSectors: w.list,
       /* 转到喝酒类扇区时的图标（图标库早就有 cup，只是没接在这里） */
       cupIcon: icons.dataUri('cup', '#C4553F'),
+      /* 偷看提示的眼睛图标（图标库里有 eye，此前一直没接） */
+      eyeIcon: icons.dataUri('eye', '#E8B33C'),
       wheelGradient: w.gradient,
       /*
        * ⚠️ loading 必须**显式初始化为 false**。
