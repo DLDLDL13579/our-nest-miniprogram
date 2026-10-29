@@ -39,7 +39,7 @@
    ============================================================ */
 .lb-hero {
   position: relative; overflow: hidden;
-  border-radius: var(--r-3); margin-bottom: var(--gap-3);
+  border-radius: var(--r-3); margin-bottom: 16rpx;
   background: linear-gradient(135deg, #3E2E28 0%, #2E211C 60%, #241A16 100%);
   box-shadow: var(--sh-3);
   animation: heroDrop .62s cubic-bezier(.34, 1.56, .64, 1) backwards;
@@ -138,7 +138,7 @@
    48.5% × 2 + 18rpx gap = 97% + 18rpx，严格小于容器宽度。
    ============================================================ */
 .ggrid {
-  display: flex; flex-wrap: wrap; gap: 18rpx;
+  display: flex; flex-wrap: wrap; gap: 12rpx;
 }
 
 /*
@@ -166,9 +166,14 @@
   position: relative; overflow: hidden;
   flex: 0 0 48.5%; box-sizing: border-box;
   display: flex; flex-direction: column;
-  padding: 26rpx 22rpx 22rpx;
-  /* 卡片内边距 + 内容高度 ≈ 330rpx；给 min-height 让两列永远对齐 */
-  min-height: 322rpx;
+  padding: 16rpx 20rpx 12rpx;
+  /*
+   * ★ 2026-10-29：min-height 322 → 272rpx。
+   *   5 个玩法是 3 行，原来的高度让第 3 行（命运转盘）被 tabBar 切掉，
+   *   看起来像"只做了 4 个玩法" —— 而项目原则是"一屏放得下、不加一层筛选"。
+   *   实测真机内容区 753px：3×(272+20)rpx ≈ 428px，加上标题区/输入框仍有余量。
+   */
+  min-height: 272rpx;
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-1);
   /*
@@ -210,12 +215,12 @@
   display: flex; align-items: flex-start; justify-content: space-between;
 }
 .gc-icon {
-  width: 78rpx; height: 78rpx; border-radius: 22rpx; flex: none;
+  width: 66rpx; height: 66rpx; border-radius: 18rpx; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #F6E9D8, #EBD8C0);
   border: 2rpx solid rgba(200, 160, 120, .28);
   box-shadow: inset 0 2rpx 4rpx rgba(255,255,255,.7);
-  padding: 15rpx; box-sizing: border-box;
+  padding: 13rpx; box-sizing: border-box;
   transition: transform .2s;
 }
 .gcard:active .gc-icon { transform: scale(1.12) rotate(-7deg) }
@@ -224,19 +229,19 @@
 
 .gc-name {
   position: relative;
-  font-size: 32rpx; font-weight: 700; color: var(--ink);
-  margin-top: 16rpx; letter-spacing: .5rpx;
+  font-size: 28rpx; font-weight: 700; color: var(--ink);
+  margin-top: 12rpx; letter-spacing: .5rpx;
 }
 .gc-desc {
   position: relative;
-  font-size: 21rpx; color: var(--ink2); margin-top: 8rpx; line-height: 1.5;
+  font-size: 21rpx; color: var(--ink2); margin-top: 6rpx; line-height: 1.32;
   /* 两行封顶：两列宽度只有 166px，一句话必须能一眼读完 */
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   overflow: hidden;
 }
 .gc-foot {
   position: relative;
-  margin-top: auto; padding-top: 14rpx;
+  margin-top: auto; padding-top: 8rpx;
   display: flex; align-items: center; justify-content: space-between;
 }
 .gc-people {
