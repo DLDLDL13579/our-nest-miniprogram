@@ -1684,6 +1684,22 @@ exports.main = async (event) => {
         }
       }
 
+      /*
+       * ★★ 这个 data 里**只放该清的**，不放该留的 —— 2026-10-29 整理。
+       *
+       * 清（局内状态，每局重来）：
+       *   phase / bid / lastResult / turn / round / spin
+       *   pk*（金花：比牌步骤、公共牌、牌堆、喝的记录）
+       *   uw*（卧底：环节、出局名单、摊牌、票数、重投）
+       *   每人 dice / cards / uwWord / uwRole / out / score
+       *
+       * 留（跨局累计，**绝对不能清**）：
+       *   · nightDrinks —— 今晚谁喝过几杯（清了就每局从 0 开始）
+       *   · streaks     —— 连胜（清了连击音效永远触发不到 combo2 以上）
+       *
+       * 判据：**"这一局结束之后还有意义吗"** —— 有就留。
+       * 两类混在同一个入口，最容易顺手把该留的一起清掉，而不报错。
+       */
       const data = {
         /* 今晚累计的"喝过几杯"（跨局保留，换玩法也不清） */
         nightDrinks: nightDrinks,
