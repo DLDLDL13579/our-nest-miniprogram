@@ -2085,6 +2085,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③v tabBar 也是外壳，也要对 ============ */
+  console.log('\n=== ③v tabBar 的配色和对比度 ===')
+  /*
+   * ★ 2026-10-29。和导航栏同理：**渲染器画不准 tabBar**，
+   *   所以它是不是深色、字看不看得清，只能靠配置断言。
+   *
+   *   判两件事：
+   *   ① 背景是深色（和整体主题一致），选中色是金色
+   *   ② **未选中文字的对比度过 WCAG AA 的 4.5:1** ——
+   *      tabBar 是常驻的，看不清就是一直看不清。
+   */
+  {
+    const app = JSON.parse(fs.readFileSync(path.join(ROOT, 'miniprogram/app.json'), 'utf8'))
+    const tb = app.tabBar || {}
+    assert.ok(tb.list && tb.list.length >= 2, 'tabBar 至少要有两个 tab')
+
+    /* 相对亮度（WCAG 公式） */
+    const lum = (hex) => {
+      const n = parseInt(hex.replace('#', ''), 16)
+      const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(v => {
+        const c = v / 255
+        return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+      })
+      return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+    }
+    const contrast = (a, b) => {
+      const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
+      return (hi + 0.05) / (lo + 0.05)
+    }
+
+    const bgLum = lum(tb.backgroundColor || '#FFFFFF')
+    assert.ok(bgLum < 0.15, '★ tabBar 背景不够深（' + (tb.backgroundColor || '默认白') + '），会和深色内容割裂')
+
+    const cUnsel = contrast(tb.color || '#000000', tb.backgroundColor || '#FFFFFF')
+    assert.ok(cUnsel >= 4.5,
+      '★ tabBar 未选中文字对比度只有 ' + cUnsel.toFixed(2) + ':1（要 ≥ 4.5）—— 常驻元素看不清会一直碍眼')
+
+    const cSel = contrast(tb.selectedColor || '#000000', tb.backgroundColor || '#FFFFFF')
+    assert.ok(cSel >= 4.5,
+      '★ tabBar 选中文字对比度只有 ' + cSel.toFixed(2) + ':1（要 ≥ 4.5）')
+
+    ok('tabBar 深色背景 + 未选中 ' + cUnsel.toFixed(1) + ':1 / 选中 ' + cSel.toFixed(1) + ':1')
+  }
+
   /* ============ ③u 导航栏必须和深色主题一致 ============ */
   console.log('\n=== ③u 每个页面的导航栏都是深色 ===')
   /*
