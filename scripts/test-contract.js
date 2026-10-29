@@ -2063,6 +2063,35 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③r 每个玩法都要说清"喝几杯" ============ */
+  console.log('\n=== ③r 规则里必须说清惩罚量 ===')
+  /*
+   * ★ 2026-10-29。连着发现三处"规则没说清惩罚"：
+   *   · 大话骰反劈是 4 杯（只写了 2 杯）
+   *   · 金花出局喝 1 杯（完全没写）
+   *   而玩家照规则玩，输的时候才发现比预期多喝 —— 这在酒桌上最容易起争执。
+   *
+   *   判据：每个玩法的 how 里必须有"喝"字，且要么带**具体数字**，
+   *        要么明确写"你们定"（把决定权交给桌上，也是清楚的）。
+   */
+  {
+    const { GAMES } = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+    const bad = []
+    for (const g of GAMES) {
+      const how = (g.how || []).join(' ')
+      if (!/喝/.test(how)) { bad.push(g.name + '：规则里没提"喝"'); continue }
+      const hasNumber = /喝[^。；]{0,20}[0-9一二两三四五]\s*杯/.test(how) ||
+        /[0-9一二两三四五]\s*杯/.test(how)
+      const hasYours = /你们定|自己定/.test(how)
+      if (!hasNumber && !hasYours) {
+        bad.push(g.name + '：没说清喝几杯，也没说"你们定"')
+      }
+    }
+    assert.deepStrictEqual(bad, [],
+      '这些玩法的规则没说清惩罚量（玩家会不知道要喝多少）：\n    ' + bad.join('\n    '))
+    ok('五个玩法都说清了惩罚量（或明确交给桌上定）')
+  }
+
   /* ============ ③q 大话骰规则里的杯数要覆盖"反劈" ============ */
   console.log('\n=== ③q 劈的倍数要在规则里说清 ===')
   /*
