@@ -2063,6 +2063,31 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③p 规则里写的场合数量要对得上 decks.js ============ */
+  console.log('\n=== ③p 规则文案里的场合要和实际一致 ===')
+  /*
+   * ★ 2026-10-29。转盘的规则写着「题卡按今晚是什么局选：朋友、同事、家人」，
+   *   而 `decks.js` 实际有 **4 个场合**（还有"情侣 / 暧昧"）。
+   *   玩家按规则只看到 3 个，会以为少了一类题；而界面上明明有 4 个。
+   */
+  {
+    const gamesSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+    const decksSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/decks.js'), 'utf8')
+    const nDecks = (decksSrc.match(/^\s{2}\{[\s\S]*?k:\s*'/gm) || []).length ||
+      (decksSrc.match(/k:\s*'/g) || []).length
+    const wheelLine = (gamesSrc.match(/题卡按[^']*/) || [''])[0]
+    assert.ok(wheelLine, '找不到转盘那条讲场合的规则')
+    /*
+     * 规则里用顿号分隔的场合个数，应该等于 decks.js 的场合数。
+     * 这条容易过度严格（规则里可能只举例子），所以只查"个数明显少于实际"的情况。
+     */
+    const listed = wheelLine.split('：')[1] || ''
+    const parts = listed.split('、').filter(Boolean)
+    assert.ok(parts.length >= Math.min(4, nDecks),
+      '★ 规则里只列了 ' + parts.length + ' 个场合，而 decks.js 有 ' + nDecks + ' 个 —— 玩家会以为少一类题')
+    ok('转盘规则列了 ' + parts.length + ' 个场合（实际 ' + nDecks + ' 个）')
+  }
+
   /* ============ ③o 音频实例必须挂错误监听 ============ */
   console.log('\n=== ③o 音频加载失败不能静默 ===')
   /*
