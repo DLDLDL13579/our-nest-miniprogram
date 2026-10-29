@@ -1025,8 +1025,16 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   /* ============ ⑨ 开局前不能操作 ============ */
   console.log('\n=== ⑨ 大厅阶段不能叫骰 ===')
+  /*
+   * ★ 2026-10-29：改用**独立的大话骰房**。
+   *   原来复用 rid2 —— 而 ⑧d 的换玩法测试可能已把它换成别的玩法，
+   *   于是加了"玩法归属校验"之后，这里先被拦成「这个房间玩的不是大话骰」，
+   *   而用例期待的是「这局还没开始」。**用例之间不要共享可变状态**。
+   */
   OPENID = A
-  const notStarted = await room.main({ action: 'bid', id: rid2, n: 2, face: 2 })
+  const lobbyRoom = await room.main({ action: 'create', name: '大厅测', game: 'liar' })
+  assert.ok(lobbyRoom.ok && lobbyRoom.room && lobbyRoom.room.id, '准备：建一个大话骰房应成功')
+  const notStarted = await room.main({ action: 'bid', id: lobbyRoom.room.id, n: 2, face: 2 })
   assert.strictEqual(notStarted.ok, false)
   assert.ok(/还没开始/.test(notStarted.msg))
   ok('开局前叫骰被拒：「' + notStarted.msg + '」')
@@ -1159,7 +1167,10 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
       /* ---- ④ 观战者不能叫骰（且要有明确提示）---- */
       OPENID = 'C'
-      const cBid = await room.main({ action: 'bid', id: MID, n: 2, face: 3 })
+      /* ★ 2026-10-29：改用该房间**本来的玩法动作**（roll）。
+         拿 bid 测一个比大小房的观战提示，会在"玩法归属校验"那一步就被拦，
+         测到的提示是「这个房间玩的不是大话骰」—— 判据指向错了对象。 */
+      const cBid = await room.main({ action: 'roll', id: MID })
       assert.strictEqual(cBid.ok, false, '★ 观战者不该能操作')
       assert.ok(/下一局|中途/.test(cBid.msg), '提示应说清"下一局才能玩"：' + cBid.msg)
       ok('观战者被拒且提示明确：「' + cBid.msg + '」')
@@ -2583,6 +2594,67 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.ok(/数据库自检/.test(meSrc),
       '★ 诊断文本里必须有自检结果段')
     ok('★ 复制诊断信息集成了 selftest')
+  }
+
+  /* ============ ⑰ ★ 玩法归属校验 + 观战判定（2026-10-29 审计） ============ */
+  /*
+   * 起因：审计"每个 action 是否确认了房间玩的就是这个玩法"时，
+   * 发现 bid / pi / open / roll 都没查 game（而 spin / uwSay / pkAct 都查了），
+   * 以及 roll **没有观战判定** —— 中途进来只能看的人调 roll 能拿到一副骰子。
+   * 两者都是"前端藏了、后端没拦"的同类缺口。
+   */
+  {
+    const dx = 'oid_x_' + Date.now()
+    OPENID = dx
+    const diceRoom = await room.main({ action: 'create', name: '跨玩法甲', game: 'dice' })
+    assert.ok(diceRoom.ok && diceRoom.room && diceRoom.room.id, '准备：建比大小房应成功')
+    const crossBid = await room.main({ action: 'bid', id: diceRoom.room.id, n: 1, face: 1 })
+    assert.strictEqual(crossBid.ok, false, '★ 在比大小房调 bid 必须被拒')
+    assert.ok(/不是大话骰/.test(crossBid.msg),
+      '★ 拒绝理由要说清是玩法不符；实际：' + crossBid.msg)
+    ok('★ 跨玩法调用被拒：「' + crossBid.msg + '」')
+
+    /*
+     * ★ 四个玩法专属 action 都要覆盖到 —— 第一版只测了 bid 和 roll，
+     *   反向验证时拆掉 pi 的校验**测试照样通过**（断言是废的）。
+     *   "断言要覆盖这一类，不只是这一个"，这条已经踩过很多次。
+     */
+    const crossPi = await room.main({ action: 'pi', id: diceRoom.room.id })
+    assert.strictEqual(crossPi.ok, false, '★ 比大小房调 pi（劈）必须被拒')
+    assert.ok(/不是大话骰/.test(crossPi.msg), '实际：' + crossPi.msg)
+    const crossOpen = await room.main({ action: 'open', id: diceRoom.room.id })
+    assert.strictEqual(crossOpen.ok, false, '★ 比大小房调 open（开骰）必须被拒')
+    assert.ok(/不是大话骰/.test(crossOpen.msg), '实际：' + crossOpen.msg)
+    ok('★ bid / pi / open 三个大话骰动作都在比大小房被拒')
+
+    const wheelRoom = await room.main({ action: 'create', name: '跨玩法乙', game: 'wheel' })
+    assert.ok(wheelRoom.ok, '准备：建转盘房应成功')
+    const crossRoll = await room.main({ action: 'roll', id: wheelRoom.room.id })
+    assert.strictEqual(crossRoll.ok, false, '★ 在转盘房调 roll 必须被拒')
+    assert.ok(/不是比大小/.test(crossRoll.msg), '实际：' + crossRoll.msg)
+    ok('★ 转盘房调 roll 也被拒')
+
+    /* 观战者（中途加入、inRound=false）不能摇骰 */
+    const A9 = 'oid_w1_' + Date.now()
+    const B9 = 'oid_w2_' + Date.now()
+    const C9 = 'oid_w3_' + Date.now()
+    OPENID = A9
+    const rm9 = await room.main({ action: 'create', name: '观战甲', game: 'dice' })
+    assert.ok(rm9.ok, '准备：建房应成功')
+    OPENID = B9
+    assert.ok((await room.main({ action: 'join', code: rm9.room.code, name: '观战乙' })).ok, '准备：第二人加入')
+    OPENID = A9
+    assert.ok((await room.main({ action: 'start', id: rm9.room.id })).ok, '准备：开局')
+    store.rooms.filter(x => x._id === rm9.room.id)[0].countdownEnd = Date.now() - 100
+    assert.ok((await room.main({ action: 'status', id: rm9.room.id })).ok, '准备：推进到 playing')
+    OPENID = C9
+    const late = await room.main({ action: 'join', code: rm9.room.code, name: '观战丙' })
+    assert.ok(late.ok, '准备：第三人中途加入')
+    const lateRoll = await room.main({ action: 'roll', id: rm9.room.id })
+    assert.strictEqual(lateRoll.ok, false, '★ 中途进来的观战者不该能摇骰')
+    assert.ok(/下一局|中途/.test(lateRoll.msg),
+      '★ 提示要说清"下一局才能玩"；实际：' + lateRoll.msg)
+    ok('★ 观战者摇骰被拒：「' + lateRoll.msg + '」')
   }
 
   console.log(`\n${'='.repeat(58)}`)

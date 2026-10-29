@@ -1528,6 +1528,14 @@ exports.main = async (event) => {
     if (action === 'bid') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
+      /*
+       * ★ 玩法归属校验（2026-10-29 审计补）。
+       *   与 spin / uwSay / pkAct 保持一致：先确认这个房间**玩的就是这个玩法**。
+       *   缺了它的话，跨玩法直接调接口会写进不属于该玩法的字段
+       *   （比如在转盘房叫骰），把房间数据搞脏而且不报错。
+       *   前端藏按钮不算拦 ——「前端藏了、后端没拦的缺口必须后端补」。
+       */
+      if (room.game !== 'liar') return { ok: false, msg: '这个房间玩的不是大话骰' }
 
       /*
        * ★ 观战者判定要放在 `phase !== 'playing'` **之前**。
@@ -1619,6 +1627,14 @@ exports.main = async (event) => {
     if (action === 'pi') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
+      /*
+       * ★ 玩法归属校验（2026-10-29 审计补）。
+       *   与 spin / uwSay / pkAct 保持一致：先确认这个房间**玩的就是这个玩法**。
+       *   缺了它的话，跨玩法直接调接口会写进不属于该玩法的字段
+       *   （比如在转盘房叫骰），把房间数据搞脏而且不报错。
+       *   前端藏按钮不算拦 ——「前端藏了、后端没拦的缺口必须后端补」。
+       */
+      if (room.game !== 'liar') return { ok: false, msg: '这个房间玩的不是大话骰' }
       const meP = (room.players || []).filter(p => p.openid === OPENID)[0]
       if (!meP) return { ok: false, msg: '你不在这个房间里' }
       if (meP.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
@@ -1672,6 +1688,14 @@ exports.main = async (event) => {
     if (action === 'open') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
+      /*
+       * ★ 玩法归属校验（2026-10-29 审计补）。
+       *   与 spin / uwSay / pkAct 保持一致：先确认这个房间**玩的就是这个玩法**。
+       *   缺了它的话，跨玩法直接调接口会写进不属于该玩法的字段
+       *   （比如在转盘房叫骰），把房间数据搞脏而且不报错。
+       *   前端藏按钮不算拦 ——「前端藏了、后端没拦的缺口必须后端补」。
+       */
+      if (room.game !== 'liar') return { ok: false, msg: '这个房间玩的不是大话骰' }
 
       /* 同 bid：观战者判定必须在 phase 之前（否则提示会误导） */
       const mySeat = (room.players || []).filter(p => p.openid === OPENID)[0]
@@ -1834,6 +1858,29 @@ exports.main = async (event) => {
     if (action === 'roll') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
+      /*
+       * ★ 玩法归属校验（2026-10-29 审计补）。
+       *   与 spin / uwSay / pkAct 保持一致：先确认这个房间**玩的就是这个玩法**。
+       *   缺了它的话，跨玩法直接调接口会写进不属于该玩法的字段
+       *   （比如在转盘房叫骰），把房间数据搞脏而且不报错。
+       *   前端藏按钮不算拦 ——「前端藏了、后端没拦的缺口必须后端补」。
+       */
+      if (room.game !== 'dice') return { ok: false, msg: '这个房间玩的不是比大小' }
+      /*
+       * ★★ 观战者判定（2026-10-29 审计补上的真实缺口）。
+       *
+       * bid / pi / open / pkAct / uwSay 都有这道检查，**roll 漏了** ——
+       * 于是中途进来只能观战的人调 roll 会拿到自己的骰子：
+       * 他的 dice 从此有值，"全员摇完"的过滤虽然按 inRound 算（不卡局），
+       * 但这个人手里握着一副"本不属于本局"的骰子，结算边界很容易出错。
+       *
+       * 顺序也有讲究：观战判定必须在 phase 之前（AGENTS.md 记过——
+       * 否则一局结束后观战者收到的是"这局还没开始"，而真正原因是"你只能看"，
+       * **提示的顺序决定用户知不知道下一步该做什么**）。
+       */
+      const meRoll = (room.players || []).filter(p => p.openid === OPENID)[0]
+      if (!meRoll) return { ok: false, msg: '你不在这个房间里' }
+      if (meRoll.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
       if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
       /*
        * ★★ 已经摇过就不能再摇（2026-10-28 补的缺口）。
