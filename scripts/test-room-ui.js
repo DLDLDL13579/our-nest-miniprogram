@@ -324,6 +324,43 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   }
   }
 
+  /* ============ ④e ★ 轮询连续失败要分档提示 ============ */
+  console.log('\n=== ④e 断网时不能一直安静 ===')
+  /*
+   * ★ 2026-10-29。`refresh()` 失败时原来是 `catch(() => null)` 一路静默 ——
+   *   断网持续时用户只看到界面不动，不知道是卡了还是断了。
+   *
+   *   现在分两档：1~2 次「网络不太好，正在重试…」；
+   *   3 次以上（约 4.5 秒，基本可确定不是抖动）「连接断了，正在自动重连」
+   *   并置 `netDown` 标记（界面上那条黄条）；恢复时补一句「已重新连上」。
+   *
+   *   这是**核心体验**（酒桌上网络本来就不稳），所以要用断言锁住——
+   *   否则哪天有人把那个 catch 改回 `() => null`，也没人会发现。
+   */
+  {
+    const code = fs.readFileSync(JS, 'utf8')
+    /*
+     * ⚠️ 必须**剥掉注释**再查（2026-10-29）。
+     *    第一版直接查源码，而那段逻辑的注释里反复出现 `_failCount` /
+     *    `netTip` —— 把代码删了断言照样通过（反向验证 exit=0，假绿）。
+     */
+    const body = code.slice(code.indexOf('async refresh()'), code.indexOf('async refresh()') + 4000)
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    /*
+     * 必须是**累加**（`+ 1` / `+= 1`），不能只是"有赋值" ——
+     * 成功时的清零 `this._failCount = 0` 也是赋值，会把这个判据骗过去。
+     */
+    assert.ok(/this\._failCount\s*=\s*\(?\s*this\._failCount[^;]*\+\s*1/.test(body) ||
+      /this\._failCount\s*\+=\s*1/.test(body),
+      '★ refresh() 失败分支里没有"连续失败计数"的**累加** —— 断网会一直静默')
+    assert.ok(/_failCount\s*>=\s*3/.test(body), '★ 没有"达到 3 次"的分档判断')
+    assert.ok(/netTip/.test(body), '★ 没有 netTip 提示文案')
+    assert.ok(/netDown/.test(body), '★ 没有 netDown 标记（界面上那条黄条靠它）')
+    assert.ok(/已重新连上/.test(code), '★ 恢复连接时没有提示 —— 玩家断线期间可能已经以为没救了')
+    ok('断网分档提示齐全（重试中 / 已断开 / 已恢复）')
+  }
+
   /* ============ ④d ★ 拉起全屏遮罩的路径，必须有关闭 ============ */
   console.log('\n=== ④d 全屏遮罩不能只拉不关 ===')
   /*
