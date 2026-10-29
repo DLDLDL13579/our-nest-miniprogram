@@ -291,6 +291,7 @@
   font-size: 18rpx; color: rgba(255,255,255,.62);
   background: rgba(255,255,255,.07);
 }
+.lockbtn:active { transform: scale(.94); opacity: .8 }
 .lockbtn.on { color: #F0C860; background: rgba(232,179,60,.22) }
 .locks { font-size: 18rpx; color: #F0C860 }
 
@@ -1759,7 +1760,10 @@
   padding: 22rpx 30rpx; border-radius: 999rpx;
   font-size: 21rpx; color: #F0C860;
   background: rgba(232,179,60,.16);
+  transition: transform .1s, background .1s;
 }
+/* 房主催人时手上要有回弹 —— 没有 :active 的按钮按下去像网页链接 */
+.uw-nudge:active { transform: scale(.95); background: rgba(232,179,60,.28) }
 
 /* 上一轮出局提示（投票阶段的记忆辅助）：一行小字，不抢投票列表的视觉 */
 .uw-lastout {
