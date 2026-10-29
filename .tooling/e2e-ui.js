@@ -100,6 +100,30 @@ const rec = (name, ok, extra) => {
       const bidOk = !!(d.room && d.room.bid && d.room.bid.n)
       rec('点叫骰 → 界面出现叫骰结果', bidOk,
         'bid=' + (d.room && d.room.bid ? (d.room.bid.n + '个' + d.room.bid.face) : '无') + '（点了 ' + label + '）')
+      /* ★ 顺带验证「开骰 → 再来一局」的状态重置
+         （AGENTS.md 记过两次"重开一局漏清字段"：stage 手写死、spin 没清） */
+      if (bidOk) {
+        const openBtn = await page.$('.openbtn')
+        if (openBtn) {
+          await openBtn.tap()
+          await sleep(3000)
+          const od = await page.data()
+          rec('点「开」→ 本局结束（over）', od.stage === 'over', 'stage=' + od.stage)
+
+          const againBtn = await page.$('.bigbtn')
+          if (againBtn) {
+            await againBtn.tap()
+            await sleep(3000)
+            const ld3 = await page.data()
+            const cleared = ld3.stage === 'lobby' && ld3.room && !(ld3.room.bid && ld3.room.bid.n) && !ld3.room.lastResult
+            rec('点「再来一局」→ 回大厅且局内状态清空', cleared,
+              'stage=' + ld3.stage + ' bid=' + JSON.stringify(ld3.room && ld3.room.bid) + ' lastResult=' + JSON.stringify(ld3.room && ld3.room.lastResult))
+          }
+        } else {
+          rec('找到「开」按钮', false)
+        }
+      }
+
       const errs = (d.room && d.room.id) ? '' : ''
       if (!bidOk) {
         const log = await mini.evaluate(async () => {

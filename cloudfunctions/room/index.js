@@ -964,8 +964,20 @@ exports.main = async (event) => {
        */
       const rawName = String(event.name || '').trim().slice(0, 12)
       const name = rawName || '玩家'
-      /* 同 create：只有用户自己写的名字才过内容安全 */
-      const sec = await safe(rawName, OPENID)
+      /*
+       * 同 create：只有用户自己写的名字才过内容安全，并且**必须同样降级**。
+       *
+       * ★★ 2026-10-29 晚真实故障：用户拿另一个微信号加入房间，被拒
+       *    「内容检查服务暂时不可用，稍后再试」—— 建房能进、加入进不来。
+       *    根因就是这一行漏了 { degradable: true }：
+       *      · create 有降级 → 服务挂掉时建房照常
+       *      · join 没有   → 服务挂掉时**新玩家全部进不来**
+       *    而检查服务确实会不可用：openapi 权限在部署后要过一阵才重新生效，
+       *    我这几天部署了几十次云函数 —— 这是必现场景，不是理论风险。
+       *    昵称本来就只是桌上一句称呼（默认名还是系统生成的），
+       *    宁可放行一个可能不雅的昵称，也不能让人进不了房间。
+       */
+      const sec = await safe(rawName, OPENID, { degradable: true })
       if (!sec.pass) return { ok: false, msg: sec.msg }
 
       /*
@@ -1181,7 +1193,8 @@ exports.main = async (event) => {
       if (err) return { ok: false, msg: err }
       const raw = String(event.name || '').trim().slice(0, 12)
       if (!raw) return { ok: false, msg: '名字不能是空的' }
-      const sec = await safe(raw, OPENID)
+      /* 同 join：改名也是昵称，检查服务不可用时降级放行 */
+      const sec = await safe(raw, OPENID, { degradable: true })
       if (!sec.pass) return { ok: false, msg: sec.msg, _code: sec._code }
       const players = (room.players || []).map(p =>
         p.openid === OPENID ? Object.assign({}, p, { name: raw }) : p)

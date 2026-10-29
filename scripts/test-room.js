@@ -2405,6 +2405,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       global.__secFail = prevFail
     }
     ok('★ 内容检查服务挂了：建房降级放行，题卡仍严格拦截')
+
+    /*
+     * ★★ 2026-10-29 晚真实故障：用户用另一个微信号**加入房间**被拒
+     *   「内容检查服务暂时不可用，稍后再试」—— 建房进得去、别人加不进来。
+     *   根因：join 的 safe() 漏了 { degradable: true }，与 create 行为不一致。
+     *   这条断言锁死"同一类昵称检查必须行动一致"，防止再漏第三处。
+     */
+    const prevFail2 = global.__secFail
+    global.__secFail = false
+    const hostId = 'oid_join_host_' + Date.now()
+    const guestId = 'oid_join_guest_' + Date.now()
+    OPENID = hostId
+    const roomOk = await room.main({ action: 'create', name: '房主甲', game: 'liar' })
+    assert.ok(roomOk.ok && roomOk.room && roomOk.room.code, '准备：建房应成功')
+    global.__secFail = true
+    try {
+      OPENID = guestId
+      const joined = await room.main({ action: 'join', code: roomOk.room.code, name: '新来的' })
+      assert.strictEqual(joined.ok, true,
+        '★ 内容检查不可用时**加入房间**必须降级放行（否则新玩家全部进不来）；实际：' + (joined.msg || ''))
+      const renamed = await room.main({ action: 'rename', id: roomOk.room.id, name: '新来的乙' })
+      assert.strictEqual(renamed.ok, true,
+        '★ 改名同样要降级放行（都是昵称，低风险）；实际：' + (renamed.msg || ''))
+    } finally {
+      global.__secFail = prevFail2
+    }
+    ok('★ 检查服务挂了：加入房间 / 改名同样降级放行（与建房一致）')
   }
 
   /* ============ ⑮ ★ 数据库偶发失败：重试救回 + 线索不能断 ============ */
