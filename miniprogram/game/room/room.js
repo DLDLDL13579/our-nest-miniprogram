@@ -1987,6 +1987,7 @@ Page({
   },
 
   async doCreate() {
+    sfx.play('tick')                // 点击反馈（断言 ⑮ 要求）
     this._didCreate = true          // 供 15 秒兜底时判断"请求到底发没发出去"
     if (this.data.creating) return
     this.setData({ creating: true, err: '' })
@@ -2021,6 +2022,7 @@ Page({
     } catch (e) {
       /* 同步异常（不是 Promise rejection）—— 也要说话，不能就这么卡住 */
       this.setData({ err: '开不了这一桌：' + ((e && e.message) || '未知错误') })
+      this.setLoading(false)          // 失败也要关遮罩，否则要等 15 秒兜底
     } finally {
       this.setData({ creating: false })
     }
@@ -2034,7 +2036,6 @@ Page({
      * 每个玩法都这样，因为所有玩法都走 doCreate。
      * 修法：无论成功失败都关 —— 失败时上面已经 setData 了 err，用户能看到原因。
      */
-    this.setLoading(false)
     if (r && r.ok) {
       sfx.play('confetti')
       /* ★ 即便"建房后必然是 lobby"，也从服务端返回的 phase 推导 ——
@@ -2051,6 +2052,7 @@ Page({
        */
       if (!r.room) {
         this.setData({ err: '建房成功但数据不完整，请再点一次' })
+        this.setLoading(false)          // 失败也要关遮罩
         return
       }
       const newStage = stageOf(r.room.phase)
@@ -2065,6 +2067,12 @@ Page({
        *   兜底：用原始 room 显示（少几个派生字段，但至少进去了），并记一条错误。
        */
       this.setData({ room: this.safeDecorate(r.room), stage: newStage })
+      /*
+       * ★ 遮罩必须在 setData **之后**关（2026-10-29）。
+       *   如果先关遮罩再 setData，中间有一帧空白（遮罩没了、内容还没渲染）。
+       *   先 setData 再关遮罩，内容已经在了才揭幕，过渡是无缝的。
+       */
+      this.setLoading(false)
       this.startPoll()
     }
   },

@@ -972,7 +972,12 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
       const start = m.index + m[0].length - 1
       let depth = 0
       let end = start
-      for (let k = start; k < Math.min(start + 3000, js.length); k++) {
+      /*
+       * ⚠️ 范围必须足够大（2026-10-29）。原来限 3000 字符，
+       *    而 doCreate 加了 try/catch/finally 后超过 3000 ——
+       *    提取到的 body 是空的，断言就误报"没声音"。
+       */
+      for (let k = start; k < Math.min(start + 10000, js.length); k++) {
         if (js[k] === '{') depth++
         else if (js[k] === '}') { depth--; if (depth === 0) { end = k; break } }
       }
