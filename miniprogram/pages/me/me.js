@@ -229,6 +229,21 @@ Page({
           var mm = ('0' + d.getMinutes()).slice(-2)
           lines.push('  ' + hh + ':' + mm + '  ' + x.fn + (x.act ? '/' + x.act : '') + '  ' + x.raw)
         })
+        /*
+         * ★ 失败频次（2026-10-30）。20 条错误里"哪一类最多"比"最近 5 条"更有诊断价值：
+         *   最近 5 条可能全是同一个偶发错误，也可能被最后几次无关失败挤占；
+         *   而频次直接告诉你"这个人的问题集中在哪个操作上"。
+         *   只列前 3，避免诊断信息无限长。
+         */
+        var freq = {}
+        errs.forEach(function (x) {
+          var k = x.act || x.fn || '?'
+          freq[k] = (freq[k] || 0) + 1
+        })
+        var top = Object.keys(freq).sort(function (a, b) { return freq[b] - freq[a] }).slice(0, 3)
+        if (top.length) {
+          lines.push('失败最多: ' + top.map(function (k) { return k + ' ×' + freq[k] }).join(' · '))
+        }
       }
     } catch (e) {}
     /*

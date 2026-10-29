@@ -21,6 +21,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
     const seeded = await mini.evaluate(function () {
       try {
         const now = Date.now()
+        wx.setStorageSync('errLog', [
+          { t: now - 9000, fn: 'room', act: 'bid', raw: '-502001' },
+          { t: now - 7000, fn: 'room', act: 'bid', raw: '-502001' },
+          { t: now - 6000, fn: 'room', act: 'roll', raw: 'timeout' }
+        ])
         wx.setStorageSync('traceLog', [
           { t: now - 8000, n: 'entry', note: 'liar' },
           { t: now - 5000, n: 'lobby', note: 'liar 3人' },
@@ -56,6 +61,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
     rec('含版本号', /版本: *3\.10\.\d+/.test(s), (s.match(/版本: *[\d.]+/) || [''])[0])
     rec('含机型/系统', /机型:/.test(s) && /系统:/.test(s))
     rec('含错误记录段', /错误记录|最近|无记录|暂无/.test(s))
+    rec('含失败频次统计', /失败最多: .*×\d/.test(s), (s.match(/失败最多:.*/) || [''])[0])
     rec('含行为轨迹段', /轨迹（最近 \d+ 步）/.test(s) && /(entry|lobby|playing)/.test(s), (s.match(/轨迹（最近 \d+ 步）/) || [''])[0])
     console.log('\n  ── 内容前 5 行 ──')
     s.split('\n').slice(0, 5).forEach(l => console.log('  ' + l))
