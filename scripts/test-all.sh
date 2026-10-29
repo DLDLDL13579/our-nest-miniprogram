@@ -18,6 +18,10 @@ node scripts/test-room.js
 echo "═══ 3.5 并发写（乐观锁：同时摇骰不能互相覆盖）═══"
 node scripts/test-race.js
 
+# ★ 压测：8 人连玩 10 局 —— 查"状态只增不减"（连玩一晚会不会文档膨胀）
+echo "═══ 3.6 压测（8 人 × 10 局：文档不膨胀、累积字段正常）═══"
+node scripts/test-stress.js
+
 echo "═══ 4/9 骰盅几何（偷看时骰子必须真的露得出来）═══"
 node scripts/test-cup-geometry.js
 
