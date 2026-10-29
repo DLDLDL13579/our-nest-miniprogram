@@ -27,6 +27,7 @@ const { call } = require('../../utils/cloud.js')
 const CFG = require('../../config.js')
 const sfx = require('../sfx.js')
 const settleFoot = require('../../game/settle.js')
+const bidOptions = require('../../game/bidOptions.js')
 const feedback = require('../feedback.js')
 /*
  * 酒桌题卡库。★ 前端这份**只用来渲染"有哪些场合可选"**（名字/说明），
