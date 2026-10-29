@@ -95,10 +95,17 @@ function recentList() {
 function sortByRecent(list) {
   const recent = recentList()
   if (!recent.length) return list
+  /*
+   * 只有**最近玩的那一个**打「上次」标签（2026-10-28）。
+   * 三个都排到前面是对的，但三个都写"上次"就不通顺了 ——
+   * 第二、三个是"更早玩的"，不是"上次"。
+   */
   const hit = recent
-    .map(id => list.filter(g => g.id === id)[0])
+    .map((id, i) => {
+      const g = list.filter(x => x.id === id)[0]
+      return g ? Object.assign({}, g, { recent: i === 0 }) : null
+    })
     .filter(Boolean)
-    .map(g => Object.assign({}, g, { recent: true }))
   if (!hit.length) return list
   const rest = list.filter(g => recent.indexOf(g.id) < 0)
   return hit.concat(rest)
