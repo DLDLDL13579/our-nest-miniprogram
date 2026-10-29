@@ -2725,6 +2725,29 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '    修法：onUnload/onHide 里翻转 this._dead / this._visible，异步回调处判断')
   ok('所有带定时器的页面都声明了存活/可见标志（room 的 _dead、mood 的 _visible）')
 
+  /* ---------- ⑦-4 声音开关必须能停掉底噪（2026-10-30） ---------- */
+  /*
+   * 真实缺口：stopAll() 原来只停 pool 里的音效，**不管 _ambient**。
+   * 于是在房间里关声音（setMuted(true) → stopAll()）或切后台（onHide → stopAll()）时，
+   * 背景底噪还在响 —— 用户会以为"这个开关坏了"，后台还白占一个音频实例。
+   *
+   * ⚠️ 截取函数体用"函数边界"而不是正则非贪婪：`/[\s\S]*?\n\}/` 会被函数体
+   *    内部的 `\n}` 提前截断，反向验证时**残缺代码照样通过**（断言等于没写）。
+   */
+  {
+    const sfxSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+    const iStop = sfxSrc.indexOf('function stopAll()')
+    assert.ok(iStop >= 0, '应该能找到 stopAll 的实现')
+    const iNext = sfxSrc.indexOf('function ', iStop + 10)
+    const body = sfxSrc.slice(iStop, iNext > 0 ? iNext : sfxSrc.length)
+    /* ★ 必须先剥注释再判：我在注释里写了"这里可以安全地调用 stopAmbient"，
+       于是删掉真正的调用后 indexOf 仍在注释里命中 —— 第一版断言就是这么变成废的。 */
+    const code = body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    assert.ok(/stopAmbient\s*\(/.test(code),
+      '★ stopAll() 必须同时停掉环境底噪 —— 否则关声音后底噪还在响，开关看起来是坏的')
+    ok('★ stopAll 会停掉底噪（关声音/切后台时真的安静下来）')
+  }
+
   /* ---------- ⑦-3 定时器自重启不能形成无限循环 ---------- */
   console.log(`\n${'='.repeat(56)}\n  字段契约：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e => {

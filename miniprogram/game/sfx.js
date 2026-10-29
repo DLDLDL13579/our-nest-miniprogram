@@ -203,6 +203,16 @@ function stopAll() {
     try { pool[k].stop() } catch (e) {}
   })
   Object.keys(looping).forEach((k) => delete looping[k])
+  /*
+   * ★ 底噪也要一起停（2026-10-30 发现的真实缺口）。
+   *
+   * stopAll 原来只停 pool 里的音效，**不管 _ambient** ——
+   * 于是在房间里点喇叭关声音（setMuted(true) → stopAll()）时，
+   * 背景沙沙声还在响，用户会以为"这个开关坏了"；
+   * 切后台（onHide → stopAll()）时同理，底噪还在后台占着音频实例。
+   * 函数声明会 hoist，这里可以安全地调用 stopAmbient。
+   */
+  stopAmbient()
 }
 
 /**
