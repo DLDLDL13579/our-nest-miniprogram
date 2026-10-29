@@ -217,8 +217,11 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
      * 2026-10-29 把 settleFoot 抽成独立模块后，这里就崩过一次。
      */
     const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
-    const decorate = new Function('poker', 'gameOf', 'settleFoot',
-      'return function decorate(room){' + body + '}')(poker, games.gameOf, settleMod)
+    const bidMod = require(path.join(ROOT, 'miniprogram/game/bidOptions.js'))
+    /* 每抽一个模块出来，这里就多一个参数 —— 一天内栽了两次（settleFoot、bidOptions）。
+       再抽就该改成"注入一个依赖对象"，而不是继续往参数列表上加。 */
+    const decorate = new Function('poker', 'gameOf', 'settleFoot', 'bidOptions',
+      'return function decorate(room){' + body + '}')(poker, games.gameOf, settleMod, bidMod)
     const stub = { buildOptions: () => ['1个1'] }
 
     /* ① 金花牌型提示 + 换牌量 */
@@ -275,43 +278,14 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    * 或者干脆看不到能叫的选项。
    */
   {
-    const src = fs.readFileSync(JS, 'utf8')
-    const at = src.indexOf('buildOptions(room)')
-    assert.ok(at > 0, '找不到 buildOptions')
-    const open = src.indexOf('{', at)
-    let depth = 0, end = -1
-    for (let k = open; k < src.length; k++) {
-      if (src[k] === '{') depth++
-      else if (src[k] === '}') { depth--; if (depth === 0) { end = k; break } }
-    }
-    assert.ok(end > open, 'buildOptions 的括号没配平')
-    const build = new Function('return function buildOptions(room){' +
-      src.slice(open + 1, end) + '}')()
-
-    /* ① 没叫过：从最小的开始，24 个封顶（2 人 = 10 颗骰子） */
-    const first = build({ count: 2, bid: null })
-    assert.strictEqual(first.length, 24, '应封顶 24 个（全列 60 个没人看得完）')
-    assert.strictEqual(first[0], '1个1', '第一个应是最小的 1个1，实际：' + first[0])
-    assert.strictEqual(first[23], '4个6', '第 24 个应是 4个6，实际：' + first[23])
-
-    /* ② 上家叫了 3个4：合法的必须"更大" */
-    const after = build({ count: 2, bid: { n: 3, face: 4 } })
-    assert.ok(after.length > 0, '应该有合法选项')
-    assert.ok(!after.includes('3个4'), '★ 不能重复上家的叫法')
-    assert.ok(!after.includes('3个3'), '★ 同数量但点数更小不合法')
-    assert.ok(!after.includes('2个6'), '★ 数量更小不合法')
-    assert.strictEqual(after[0], '3个5', '第一合法项应是 3个5（同数量点数更大），实际：' + after[0])
-    assert.ok(after.includes('4个1'), '★ 数量变大时点数可以更小')
-
-    /* ③ 已经叫到顶（10 个 6）→ 没有合法选项 */
-    const max = build({ count: 2, bid: { n: 10, face: 6 } })
-    assert.strictEqual(max.length, 0, '叫到顶之后不该还有选项（否则能无限往上叫）')
-
-    /* ④ 人数越多，上限越高 */
-    const four = build({ count: 4, bid: { n: 10, face: 6 } })
-    assert.ok(four.length > 0, '4 人局有 20 颗骰子，10个6 之后仍可往上叫')
-
-    ok('★ buildOptions()：非法项全部排除、同数量点数可升、数量升后点数可降、封顶 24 个')
+    /*
+     * 这段原来在这里 eval 抽 buildOptions 的函数体来测。
+     * 2026-10-29 把规则搬到 `miniprogram/game/bidOptions.js`（纯函数）之后，
+     * 函数体只剩一句 `return bidOptions.list(...)` —— 抽出来跑必然
+     * "bidOptions is not defined"。
+     * **测试要跟着代码走**：断言已搬到 `scripts/test-bidoptions.js`，
+     * 直接 require 那个纯函数（核心几条全部保留，还多补了几条）。
+     */
   }
   }
 

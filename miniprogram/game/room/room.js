@@ -1001,22 +1001,12 @@ Page({
    * 规则：数量变大，或数量相同但点数变大。
    * 只给最接近上家的 24 个 —— 全列会有 40 个按钮，翻半天。
    */
+  /**
+   * 可点的叫法 —— 规则在 `game/bidOptions.js`（纯函数，可单测）。
+   * 这里只负责把 room 的两个字段递过去。
+   */
   buildOptions(room) {
-    const total = (room.count || 2) * 5
-    const cur = room.bid
-    const out = []
-    for (let n = 1; n <= total; n++) {
-      for (let f = 1; f <= 6; f++) {
-        if (!cur) {
-          out.push(n + '个' + f)
-        } else {
-          const higher = n > cur.n || (n === cur.n && f > cur.face)
-          if (higher) out.push(n + '个' + f)
-        }
-      }
-    }
-    /* 我的回合才需要显示；不是我的回合显示前几个当预览 */
-    return out.slice(0, 24)
+    return bidOptions.list(room.count, room.bid)
   },
 
   /**

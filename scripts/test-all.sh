@@ -33,6 +33,7 @@ node scripts/test-toast.js
 node scripts/test-assets.js
 node scripts/test-loser.js
 node scripts/test-settle.js
+node scripts/test-bidoptions.js
 node scripts/test-feedback.js
 node scripts/test-error-feedback.js
 

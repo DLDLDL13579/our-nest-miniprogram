@@ -1333,9 +1333,14 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *   正确写法：`new Function('room', 'this', body去掉外层花括号)`，
    *   把 room 和 this 都声明成形参。
    */
-  const boBody = rjs.slice(boOpen + 1, boEnd)     // 去掉最外层的 { }
-  // 形参名用 _room 并把 body 里的 room 一起改名（this 是保留字，不能当形参名）
-  const buildOptions = new Function('_room', boBody.replace(/\broom\b/g, '_room'))
+  /*
+   * ⚠️ 这里原来 eval 抽 buildOptions 的函数体来跑。
+   *    2026-10-29 规则搬到 `miniprogram/game/bidOptions.js` 之后，
+   *    函数体只剩一句 `return bidOptions.list(...)` —— eval 出来必然
+   *    "bidOptions is not defined"。直接 require 那个纯函数。
+   */
+  const bidOptions = require(path.join(__dirname, '..', 'miniprogram/game/bidOptions.js'))
+  const buildOptions = (room) => bidOptions.list(room.count, room.bid)
   const opts = buildOptions({ count: 2, bid: null })
   assert.ok(Array.isArray(opts) && opts.length > 0,
     '★ 叫骰选项不能为空 —— 为空的话前端一个按钮都渲染不出来')
