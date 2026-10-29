@@ -290,6 +290,33 @@ const rec = (name, ok, extra) => {
       }
     }
 
+    /* ⑪ 分享链接直达：?code= 应自动进房（朋友点分享卡片的主要路径，一直没测过） */
+    console.log('\n── 分享链接直达 ──')
+    const curPage = await mini.currentPage()
+    const curD = await curPage.data()
+    const shareCode = curD && curD.room && curD.room.code
+    if (!shareCode) {
+      rec('取到当前房间号', false)
+    } else {
+      /*
+       * ⚠️ 不能先 navigateBack 再带 code 进 —— 返回会触发本页 onUnload，
+       *   而 onUnload 里会主动 leave 退出房间，于是"重进"的是一间我刚退掉的空房，
+       *   join 必然失败（这是**测试设计**的问题，不是产品的）。
+       * 这里直接叠加一个新页面实例：验证 onLoad 收到 ?code 后会自动 doJoin
+       * 这条链路（同 openid 走 rejoined 分支）。
+       */
+      await mini.navigateTo('/game/room/room?code=' + shareCode).catch(e =>
+        rec('navigateTo 带 code', false, e.message))
+      await sleep(4500)
+      const sp = await mini.currentPage()
+      const sd = await sp.data()
+      /* 只要求"进到了同一个房间且没报错"——房间可能正好处在 over/playing，
+         不能死抠 stage === 'lobby'（第一版就这么写，把正常进房判成了失败）。 */
+      rec('分享链接直达 → 自动进房', !!(sd.room && sd.room.code === shareCode && !sd.err),
+        'code=' + (sd.room && sd.room.code) + ' stage=' + sd.stage + ' err=' + (sd.err || '无') +
+        '（期望 code=' + shareCode + '）')
+    }
+
     const bad = steps.filter(s => !s.ok)
     console.log('\n════ 汇总 ════')
     console.log('  ' + steps.length + ' 步，失败 ' + bad.length)
