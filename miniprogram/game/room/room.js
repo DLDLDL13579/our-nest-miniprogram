@@ -1960,6 +1960,17 @@ Page({
       })
 
     this.setData({ creating: false })
+    /*
+     * ★★ 必须关掉全屏遮罩（2026-10-29 用户报障后修的）。
+     *
+     * `doJoin` 一直有这一句，`doCreate` 没有 —— 而 3.10.26 我给"点玩法卡建房"
+     * 那条路径加上了 `patch.loading = true`（本意是别先闪一下空白），
+     * 于是：遮罩拉起 → 建房 → **没人关** → 永远停在"正在进入房间"。
+     *
+     * 每个玩法都这样，因为所有玩法都走 doCreate。
+     * 修法：无论成功失败都关 —— 失败时上面已经 setData 了 err，用户能看到原因。
+     */
+    this.setLoading(false)
     if (r && r.ok) {
       sfx.play('confetti')
       /* ★ 即便"建房后必然是 lobby"，也从服务端返回的 phase 推导 ——

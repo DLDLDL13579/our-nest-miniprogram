@@ -324,6 +324,35 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   }
   }
 
+  /* ============ ④d ★ 拉起全屏遮罩的路径，必须有关闭 ============ */
+  console.log('\n=== ④d 全屏遮罩不能只拉不关 ===')
+  /*
+   * ★ 2026-10-29 用户真机报障："每个游戏都卡在「正在进入房间」进不去"。
+   *
+   *   根因：3.10.26 给"点玩法卡建房"加了 `patch.loading = true`（本意是别闪空白），
+   *   而 `doCreate` **从来没有 setLoading(false)** —— `doJoin` 有，它漏了。
+   *   于是遮罩拉起后永远不关，每个玩法都卡死。
+   *
+   *   判据：源码里每出现一次"把 loading 设成 true / 调 setLoading(true)"，
+   *   同一个函数体里就必须有对应的关闭。
+   */
+  {
+    const code = fs.readFileSync(JS, 'utf8')
+    const problems = []
+    for (const fn of ['doCreate', 'doJoin']) {
+      const re = new RegExp('async ' + fn + '\\(\\)[\\s\\S]*?\\n  \\},')
+      const m = re.exec(code)
+      if (!m) { problems.push(fn + '：找不到函数'); continue }
+      const body = m[0]
+      /* 这个函数要么自己 setLoading(true)，要么调用方给它设过（onLoad） */
+      const turnsOn = /setLoading\(true\)/.test(body) || /onLoad|patch\.loading = true/.test(code.slice(0, m.index))
+      const turnsOff = /setLoading\(false\)/.test(body)
+      if (!turnsOff) problems.push(fn + '：没有任何 setLoading(false) —— 遮罩会一直挂着')
+    }
+    assert.deepStrictEqual(problems, [], '★ 这些路径会把全屏遮罩挂死：\n    ' + problems.join('\n    '))
+    ok('doCreate / doJoin 都会关闭全屏遮罩')
+  }
+
   /* ============ ⑤ 模板引用的字段必须在 js 里真的算出来 ============ */
   console.log('\n=== ⑤ 模板引用的状态字段必须有出处 ===')
 
