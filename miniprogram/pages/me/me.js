@@ -142,7 +142,20 @@ Page({
      而且中途的半截名字（比如"邓"）会覆盖掉完整的名字。 */
   saveNick() {
     const v = String(this.data.nick || '').trim().slice(0, 12)
-    wx.setStorageSync(NICK_KEY, v)
+    /*
+     * ★ 写失败要说（2026-10-29）。存储满了 / 权限异常时 setStorageSync 会抛异常，
+     *   而这里原来没有 try —— 用户以为名字存了，下次打开又变回「玩家N」，
+     *   而界面上一点提示都没有。
+     */
+    try {
+      wx.setStorageSync(NICK_KEY, v)
+    } catch (e) {
+      wx.showModal({
+        title: '名字没存住',
+        content: '本地存储写不进去了（可能空间满了）。这次房间里的名字仍然有效，但下次打开会变回默认。',
+        showCancel: false
+      })
+    }
   },
 
   toggleMute() {

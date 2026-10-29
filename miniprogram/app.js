@@ -104,7 +104,8 @@ App({
     const finish = (r) => {
       const inner = (r && r.initdb) || r || {}
       if (inner.ok) {
-        wx.setStorageSync('dbReady', DB_VERSION)
+        /* 写失败无所谓（下次会再初始化一次），但不能让它中断后面的流程 */
+        try { wx.setStorageSync('dbReady', DB_VERSION) } catch (e) {}
         /*
          * ★ 这里**不再弹模态框**。
          *   改造前它是给"首次安装的人"看的配置引导（建索引之类），
