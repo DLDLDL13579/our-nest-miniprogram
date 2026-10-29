@@ -23,7 +23,7 @@ $CLI cloud functions deploy --project "$(pwd)" --env cloudbase-d4goh1zdtc8eb9708
 **改完代码先跑测试，再部署：**
 
 ```bash
-bash scripts/test-all.sh    # 9 组 / 318 项，全部离线（不启动 GUI）
+bash scripts/test-all.sh    # 9 组 / 321 项，全部离线（不启动 GUI）
 bash scripts/check.sh       # 前后端一致 + 部署前检查
 ```
 
