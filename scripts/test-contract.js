@@ -2063,6 +2063,48 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('CSS 变量全部有定义（' + defined.size + ' 个定义 / ' + used.size + ' 个使用）')
   }
 
+  /* ============ ③n 会失败的微信 API 必须给用户反馈 ============ */
+  console.log('\n=== ③n 跳转 / 复制失败时不能静默 ===')
+  /*
+   * ★★ 2026-10-29。用户一整天报的几件事有个共同病根：
+   *   **出错的时候没把信息交出来** —— 遮罩不关、复制没 fail、错误只说"开不了"、
+   *   跳转静默失败。而我的断言全都在查"成功路径对不对"。
+   *
+   *   这里补上失败路径的检查：`wx.navigateTo` / `wx.setClipboardData`
+   *   失败时用户会以为"点了没反应"，所以必须有 fail 或整体包在 try 里。
+   *
+   *   ⚠️ `wx.showModal` / `wx.getStorageSync` 不在此列 ——
+   *      前者失败无影响（弹窗没弹而已），后者是同步 API 且有 try 兜着。
+   */
+  {
+    const RISKY = ['navigateTo', 'setClipboardData']
+    const bad = []
+    const walk = (d) => {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) { walk(fp); continue }
+        if (!f.name.endsWith('.js')) continue
+        const src = fs.readFileSync(fp, 'utf8')
+        const clean = src.replace(/\/\*[\s\S]*?\*\//g, '')
+        for (const m of clean.matchAll(/wx\.(\w+)\(/g)) {
+          if (!RISKY.includes(m[1])) continue
+          const after = clean.slice(m.index, m.index + 260)
+          const before = clean.slice(Math.max(0, m.index - 400), m.index)
+          const handled = /fail\s*:/.test(after) || /\.catch/.test(after) ||
+            before.lastIndexOf('try {') > before.lastIndexOf('} catch')
+          if (!handled) {
+            const line = clean.slice(0, m.index).split('\n').length
+            bad.push(path.relative(ROOT, fp) + ':' + line + ' wx.' + m[1])
+          }
+        }
+      }
+    }
+    walk(path.join(ROOT, 'miniprogram'))
+    assert.deepStrictEqual(bad, [],
+      '这些调用失败时会静默（用户以为点了没反应）：\n    ' + bad.join('\n    '))
+    ok('跳转 / 复制都有失败反馈')
+  }
+
   /* ============ ③m scripts 里的测试脚本必须都在 test-all 里 ============ */
   console.log('\n=== ③m 不许有"孤儿测试"（写了但没人跑） ===')
   /*
