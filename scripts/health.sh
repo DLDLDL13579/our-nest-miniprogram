@@ -24,7 +24,9 @@ echo "① 版本：v$VER"
 # ★ 2026-10-28：版本号收敛到 config.js 一处之后，**没人去改那一处** ——
 #   一口气做了 18 个 3.9.x 的功能，config.js 还停在 3.9.78。
 #   单一来源只解决了"两处不一致"，没解决"忘了改"。
-LASTV=$($GIT log -1 --format=%s 2>/dev/null | grep -oE '3\.9\.[0-9]+' | head -1 || true)
+# ⚠️ 原来的正则是 `3\.9\.[0-9]+` —— 写死了 3.9.x。升到 3.10 之后**永远匹配不到**，
+#    于是"版本号落后"这条从 3.10.0 起就没报过。改成通用的 x.y.z。
+LASTV=$($GIT log -1 --format=%s 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
 if [ -n "$LASTV" ] && [ "v$LASTV" != "v$VER" ]; then
   echo "   ⚠️ 版本号落后：config.js 是 $VER，最近提交写的是 $LASTV"
 fi
