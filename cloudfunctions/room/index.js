@@ -634,6 +634,47 @@ async function dbCall(stage, fn) {
   }
 }
 
+/*
+ * ★★★ 带乐观锁的文档更新（2026-10-30）。解决的是**多人同时操作导致数据被覆盖**。
+ *
+ * 真实场景：比大小开局，4 个人几乎同时点「摇骰」。每个请求都是
+ *   读房间 → 把自己 dice 塞进 players 数组 → 整体覆盖写回
+ * 而云函数之间没有共享内存，两个请求会读到**同一个旧快照**：
+ *   A 读 {players:[{},{}]} → 写 A 的骰子
+ *   B 读 {players:[{},{}]}（同一快照）→ 写 B 的骰子，**把 A 的冲掉**
+ * 后果不是"少一个骰子"这么轻：`全员摇完` 永远不成立 → **这局永远结束不了**。
+ * （用 .tooling/race-roll.js 真复现过：甲的骰子变成 []，phase 卡在 playing。）
+ *
+ * 做法：把"读最新 → 重算 → 写回"包成一个循环，写的时候带条件
+ * `updatedAt === 刚才读到的值`：
+ *   · 没人抢 → stats.updated = 1，成功
+ *   · 被抢了 → stats.updated = 0，重读、重算、再写（带一点随机退避，避免同步重撞）
+ *
+ * ⚠️ buildData 必须**完全基于传入的最新房间**计算，不能闭包捕获外面读到的旧 room，
+ *    否则重试等于用旧数据再冲一次。随机数（骰子点数）要在**循环外**生成，
+ *    不然每次重试都会换一个点数 —— 玩家会看到"我摇的骰子变了"。
+ */
+async function updateGuarded(roomId, buildData, tries) {
+  const max = tries || 4
+  for (let i = 0; i < max; i++) {
+    const r = await rooms.doc(roomId).get()
+    const room = r && r.data
+    if (!room) throw new Error('房间不见了')
+    const data = buildData(room)
+    if (!data) return room
+    /* 老文档可能没有 updatedAt：没有就不带这个条件（第一次写会补上） */
+    const cond = { _id: roomId }
+    if (typeof room.updatedAt === 'number') cond.updatedAt = room.updatedAt
+    const res = await rooms.where(cond).update({
+      data: Object.assign({}, data, { updatedAt: Date.now() })
+    })
+    if (res && res.stats && res.stats.updated > 0) return Object.assign({}, room, data)
+    /* 被抢先：退避一下再重试（随机，避免两个请求同步重撞） */
+    await new Promise(function (done) { setTimeout(done, 4 + Math.random() * 12) })
+  }
+  throw new Error('同时操作的人太多了，这次没抢上')
+}
+
 /** 统一取房间：按 id 或 code，并校验"我是不是房间里的人" */
 async function loadRoom(event, openid, needMember) {
   let room = null
@@ -1921,7 +1962,14 @@ exports.main = async (event) => {
       const dice = []
       for (let i = 0; i < n; i++) dice.push(1 + Math.floor(Math.random() * 6))
 
-      const players = (room.players || []).map(p =>
+      /*
+       * ★★★ 从"读快照拼数组再覆盖写"改成**乐观锁更新**（2026-10-30）。
+       * 原因见 updateGuarded 的注释：4 个人同时摇骰会互相覆盖，
+       * 丢骰子的一方让"全员摇完"永远不成立 → 这局卡死。
+       * `dice` 在闭包外生成一次，重试不会换点数。
+       */
+      const out = await dbCall('roll.update', () => updateGuarded(room._id, (fresh) => {
+      const players = (fresh.players || []).map(p =>
         p.openid === OPENID ? Object.assign({}, p, { dice: dice, rolledAt: ts }) : p)
 
       /*
@@ -1948,7 +1996,7 @@ exports.main = async (event) => {
         /* ★ 连庄（streak）：记录每个人连续赢了几局。
            这是酒桌游戏的真实机制 —— "你又赢了？连庄两把了，加倍喝"。
            不是为了让音效有用才加的：连赢本来就该被说出来。 */
-        const prevStreaks = room.streaks || {}
+        const prevStreaks = fresh.streaks || {}
         const streaks = {}
         players.forEach(p => {
           const won = winnerSeats.indexOf(p.seat) >= 0
@@ -1969,18 +2017,16 @@ exports.main = async (event) => {
         }
       }
 
-      await rooms.doc(room._id).update({
-        data: {
-          players: players,
-          phase: allRolled ? 'over' : 'playing',
-          lastResult: result,
-          /* 连庄要跨局保留，所以存在房间上而不是 result 里 */
-          streaks: result ? result.streaks : (room.streaks || {}),
-          updatedAt: ts
-        }
-      })
+      return {
+        players: players,
+        phase: allRolled ? 'over' : 'playing',
+        lastResult: result,
+        /* 连庄要跨局保留，所以存在房间上而不是 result 里 */
+        streaks: result ? result.streaks : (fresh.streaks || {})
+      }
+      }))
       const rr = await rooms.doc(room._id).get()
-      return { ok: true, room: shape(rr.data, OPENID), result: result }
+      return { ok: true, room: shape(rr.data, OPENID), result: out.lastResult || null }
     }
 
     /* ================= 再来一局 ================= */

@@ -88,7 +88,25 @@ function collection(name) {
           }
           return { data: out }
         },
-        async count() { return { total: rows().filter(d => match(d, cond)).length } }
+        async count() { return { total: rows().filter(d => match(d, cond)).length } },
+        /*
+         * ★ 条件更新（2026-10-30 补）：云函数用 where({_id, updatedAt}).update()
+         * 做乐观锁（并发写不互相覆盖，见 updateGuarded）。
+         * 真实 SDK 有这个 API，mock 没有 → 一跑到就 "q.update is not a function"。
+         * 按项目惯例：缺口补在 mock 里，不在业务代码里绕开。
+         */
+        async update({ data }) {
+          const hit = rows().filter(d => match(d, cond))
+          hit.forEach(d => {
+            Object.keys(data).forEach(k => {
+              const v = data[k]
+              if (v && v.__op === 'set') d[k] = v.v
+              else if (v && v.__op === 'push') d[k] = (d[k] || []).concat(v.v)
+              else d[k] = v
+            })
+          })
+          return { stats: { updated: hit.length } }
+        }
       }
     },
     doc(id) {

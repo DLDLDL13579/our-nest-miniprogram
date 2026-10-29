@@ -75,7 +75,14 @@ function collection(name) {
         async count() { return { total: rows().filter(d => match(d, q)).length } },
         async update({ data }) {
           const hit = rows().filter(d => match(d, q))
-          hit.forEach(d => Object.keys(data).forEach(k => { d[k] = data[k] }))
+          /* 与 doc().update 一致：要展开 __op 命令对象（set / push）——
+             云函数用 where().update() 做乐观锁，data 里的值已经是 _.set(...) 了。 */
+          hit.forEach(d => Object.keys(data).forEach(k => {
+            const v = data[k]
+            if (v && v.__op === 'push') d[k] = (d[k] || []).concat(v.v)
+            else if (v && v.__op === 'set') d[k] = v.v
+            else d[k] = v
+          }))
           return { stats: { updated: hit.length } }
         }
       }

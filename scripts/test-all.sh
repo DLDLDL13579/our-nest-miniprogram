@@ -14,6 +14,10 @@ node scripts/test-game.js
 echo "═══ 3/9 多人房间（房间码 / 骰子隔离 / 房主转移）═══"
 node scripts/test-room.js
 
+# ★ 并发：几个人同时摇骰/投票时，后写的不能把先写的冲掉（2026-10-30）
+echo "═══ 3.5 并发写（乐观锁：同时摇骰不能互相覆盖）═══"
+node scripts/test-race.js
+
 echo "═══ 4/9 骰盅几何（偷看时骰子必须真的露得出来）═══"
 node scripts/test-cup-geometry.js
 
