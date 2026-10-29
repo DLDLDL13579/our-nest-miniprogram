@@ -2041,6 +2041,18 @@ Page({
          手写常量等于在第二个地方重复描述"服务端是什么状态"，
          将来服务端一改（比如建房直接进倒计时），这里就悄悄错了。 */
       if (this._dead) return          // 云函数往返期间页面可能已卸载
+      /*
+       * ★★ r.room 可能缺失（2026-10-29）。
+       *   如果云函数返回 `{ ok: true }` 但 room 字段没带上（响应截断、
+       *   或 shape() 里某处抛错导致只返回了 ok），
+       *   `stageOf(r.room.phase)` 会在 setData **之前**就崩掉 ——
+       *   而 safeDecorate 兜住的是 decorate，不兜 stageOf。
+       *   症状：音效响了、界面不动，而且**没有任何错误记录**。
+       */
+      if (!r.room) {
+        this.setData({ err: '建房成功但数据不完整，请再点一次' })
+        return
+      }
       const newStage = stageOf(r.room.phase)
       /* 玩游戏时别让屏幕锁掉（等别人的时间远多于操作时间）；大厅和结算页关掉省电 */
       this.setKeepScreenOn(newStage === 'countdown' || newStage === 'playing')
@@ -2158,7 +2170,12 @@ Page({
     if (r && r.ok) {
       sfx.play('confetti')
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.decorate(r.room), stage: stageOf(r.room.phase), joinCode: '' })
+      if (!r.room) {
+        /* 和 doCreate 同理：r.room 缺失时 stageOf 会在 setData 之前崩掉 */
+        this.setData({ err: '进房成功但数据不完整，请再点一次' })
+        return
+      }
+      this.setData({ room: this.safeDecorate(r.room), stage: stageOf(r.room.phase), joinCode: '' })
       this.startPoll()
     } else if (r && !r.ok) {
       this.setData({ err: r.msg || '进不去这个房间' })
