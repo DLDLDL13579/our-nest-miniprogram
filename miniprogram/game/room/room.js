@@ -2083,7 +2083,13 @@ Page({
     sfx.play('tapSoft')
     wx.setClipboardData({
       data: c,
-      success: () => wx.showToast({ title: '房间号复制了', icon: 'none' })
+      success: () => wx.showToast({ title: '房间号复制了', icon: 'none' }),
+      /* 复制失败要说（2026-10-29）：否则用户以为复制好了，发出去是空的 */
+      fail: (e) => wx.showModal({
+        title: '复制没成功',
+        content: '房间号是 ' + c + '，手动记一下吧。（' + ((e && e.errMsg) || '未知原因') + '）',
+        showCancel: false
+      })
     })
   },
 

@@ -259,7 +259,21 @@ Page({
       st[id] = (Number(st[id]) || 0) + 1
       wx.setStorageSync('gameStats', st)
     } catch (err) {}
-    wx.navigateTo({ url: '/game/room/room?game=' + encodeURIComponent(id) + '&auto=1' })
+    wx.navigateTo({
+      url: '/game/room/room?game=' + encodeURIComponent(id) + '&auto=1',
+      /*
+       * ⚠️ 跳转失败必须说话（2026-10-29）。
+       * 分包没下载完、页面栈超限、路径写错 —— 这几种都会让 navigateTo 静默失败，
+       * 用户点了卡什么也没发生，然后报"点了没反应"。而我们没有真机，看不到。
+       */
+      fail: function (e) {
+        wx.showToast({
+          title: '打不开房间（' + ((e && e.errMsg) || '未知原因') + '）',
+          icon: 'none',
+          duration: 2600
+        })
+      }
+    })
   },
 
   /* 输房间号：3 位不是本地能判的（号段由服务端定），所以只做"非空"提示，
@@ -285,7 +299,21 @@ Page({
       return
     }
     sfx.play('tick')
-    wx.navigateTo({ url: '/game/room/room?code=' + encodeURIComponent(code) })
+    wx.navigateTo({
+      url: '/game/room/room?code=' + encodeURIComponent(code),
+      /*
+       * ⚠️ 跳转失败必须说话（2026-10-29）。
+       * 分包没下载完、页面栈超限、路径写错 —— 这几种都会让 navigateTo 静默失败，
+       * 用户点了卡什么也没发生，然后报"点了没反应"。而我们没有真机，看不到。
+       */
+      fail: function (e) {
+        wx.showToast({
+          title: '打不开房间（' + ((e && e.errMsg) || '未知原因') + '）',
+          icon: 'none',
+          duration: 2600
+        })
+      }
+    })
   },
 
   /* ---------- 我的 ---------- */
