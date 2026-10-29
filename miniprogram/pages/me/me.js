@@ -193,7 +193,19 @@ Page({
     } catch (e) {}
     wx.setClipboardData({
       data: lines.join('\n'),
-      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) }
+      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
+      /*
+       * ★ fail 回调（2026-10-29）。用户反馈"复制不了"—— 而原来**没有 fail**，
+       * 失败时一片安静，看起来就像"按钮坏了"。
+       * 现在：失败会说清原因，并且告诉用户还能怎么办（往下看红字、截图）。
+       */
+      fail: function (e) {
+        wx.showModal({
+          title: '复制没成功',
+          content: '请把下面那段红字截图发我，效果一样。（' + ((e && e.errMsg) || '未知原因') + '）',
+          showCancel: false
+        })
+      }
     })
   },
 
@@ -211,7 +223,14 @@ Page({
     })
     wx.setClipboardData({
       data: '酒桌 错误记录（' + log.length + ' 条）\n' + lines.join('\n'),
-      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) }
+      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
+      fail: function (e) {
+        wx.showModal({
+          title: '复制没成功',
+          content: '请把页面上的红字截图发我。（' + ((e && e.errMsg) || '未知原因') + '）',
+          showCancel: false
+        })
+      }
     })
   },
 
