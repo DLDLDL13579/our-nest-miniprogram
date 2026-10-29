@@ -94,6 +94,52 @@ const A='a', B='b'
   assert.strictEqual(r.phase, 'over',
     '★ 两人都摇完后这局必须结束 —— 丢骰子会让"全员摇完"永远不成立，卡死在 playing')
   console.log('\n  ✓ 并发摇骰：两人的骰子都在，且局正常结束\n')
+
+  /* ============ ② 卧底：两人同时投票，两票都要在 ============ */
+  /*
+   * 与摇骰同一类问题：votes 是"读快照 → 追加 → 覆盖写"，
+   * 同时投票会只剩一票 → "全员投完"永远不成立 → 卡死在投票页。
+   * 卧底至少要 3 人（soloMin=2，但三人局才测得出"投完结算"）。
+   */
+  console.log('  ── 并发投票 ──')
+  OPENID = A
+  const uc = await room.main({ action: 'create', name: '卧底甲', game: 'undercover' })
+  assert.ok(uc.ok && uc.room, '准备：建卧底房应成功：' + (uc.msg || ''))
+  const uId = uc.room.id
+  OPENID = B
+  assert.ok((await room.main({ action: 'join', code: uc.room.code, name: '卧底乙' })).ok, '准备：乙加入')
+  OPENID = 'c'
+  assert.ok((await room.main({ action: 'join', code: uc.room.code, name: '卧底丙' })).ok, '准备：丙加入')
+  OPENID = A
+  assert.ok((await room.main({ action: 'start', id: uId })).ok, '准备：开局')
+  /* ⚠️ 不能写 store.rooms[0]：那是上一段（dice 房）的房间 —— 拨错房间的
+     countdownEnd，卧底房就一直停在 countdown，后面 uwSay 报"这局还没开始"。 */
+  store.rooms.filter(x => x._id === uId)[0].countdownEnd = Date.now() - 100
+  await room.main({ action: 'status', id: uId })
+  assert.ok((await room.main({ action: 'uwSay', id: uId })).ok, '准备：进入投票环节')
+
+  /* 乙和丙几乎同时投甲 */
+  const aOid = (store.rooms.filter(x => x._id === uId)[0].players.filter(p => p.name === '卧底甲')[0] || {}).openid
+  OPENID = B
+  const vB = room.main({ action: 'uwVote', id: uId, target: aOid })
+  OPENID = 'c'
+  const vC = room.main({ action: 'uwVote', id: uId, target: aOid })
+  const [rB2, rC2] = await Promise.all([vB, vC])
+  const roomAfter = store.rooms.filter(x => x._id === uId)[0]
+  console.log('  乙返回: ' + JSON.stringify({ ok: rB2 && rB2.ok, msg: (rB2 && rB2.msg) || '' }))
+  console.log('  丙返回: ' + JSON.stringify({ ok: rC2 && rC2.ok, msg: (rC2 && rC2.msg) || '' }))
+  const votesNow = (roomAfter.votes || []).length
+  console.log('  已收票数: ' + votesNow + ' / 3 | uwStep: ' + roomAfter.uwStep)
+  assert.strictEqual(votesNow, 2,
+    '★ 两人同时投票，两票都必须记下来（只剩一票会让"全员投完"永远不成立、卡死在投票页）')
+
+  /* 第三个人再投 → 应立刻结算（"全员投完自动开票"这条不能因为并发而失效） */
+  OPENID = A
+  const vA2 = await room.main({ action: 'uwVote', id: uId, target: 'c' })
+  const after2 = store.rooms.filter(x => x._id === uId)[0]
+  console.log('  第三人投票 → uwStep: ' + after2.uwStep)
+  assert.ok(vA2 && (vA2.ok || /不能投自己/.test(vA2.msg || '')), '第三人投票应被受理：' + ((vA2 && vA2.msg) || ''))
+  console.log('\n  ✓ 并发投票：两票都在（未凑齐不误结算），凑齐后正常开票\n')
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
   process.exit(1)

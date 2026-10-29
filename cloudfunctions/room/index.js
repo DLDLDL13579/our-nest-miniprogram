@@ -2295,19 +2295,31 @@ exports.main = async (event) => {
       if (tP.out) return { ok: false, msg: '他已经出局了' }
       if (tP.inRound === false) return { ok: false, msg: '他是中途进来的，不参与这局' }
 
-      const votes = (room.votes || []).slice()
-      if (votes.some(v => v.by === OPENID)) return { ok: false, msg: '你已经投过票了' }
+      /*
+       * ★★★ 投票改成**乐观锁**（2026-10-30）。原因与 roll 相同：
+       *   多人同时投票时，各自读到旧的 votes 快照再整体覆盖写回，
+       *   最后只剩一张票 —— 于是"全员投完"永远不成立，**卡死在投票页**。
+       *
+       * 现在把「读最新票 → 追加我的票 → 判断投完没 → 结算」整体放进
+       * updateGuarded 的重算回调：被抢先就重读重算。
+       * 重试必须幂等 —— 我的票已经在里面时不重复追加（返回 null 表示无需再写）。
+       */
+      /* 初次重复点击：直接给友好提示（"同一人只能投一次"这条约束不能放宽）。
+         并发重试的情况由下面回调里的同名判断兜住（那里返回 null = 无需再写）。 */
+      if ((room.votes || []).some(v => v.by === OPENID)) {
+        return { ok: false, msg: '你已经投过票了' }
+      }
+      const out = await dbCall('uwVote.update', () => updateGuarded(room._id, (fresh) => {
+      const votes = (fresh.votes || []).slice()
+      if (votes.some(v => v.by === OPENID)) return null
       votes.push({ by: OPENID, target: target, name: mine.name, at: ts })
 
-      const alive = players.filter(p => p.inRound !== false && !p.out)
+      const fplayers = (fresh.players || []).map(p => Object.assign({}, p))
+      const alive = fplayers.filter(p => p.inRound !== false && !p.out)
       /* 全员投完就自动结算 —— 不让房主再点一次"开票" */
       const allDone = alive.every(p => votes.some(v => v.by === p.openid))
 
-      if (!allDone) {
-        await rooms.doc(room._id).update({ data: { players: players, votes: votes, updatedAt: ts } })
-        const rr = await rooms.doc(room._id).get()
-        return { ok: true, room: shape(rr.data, OPENID) }
-      }
+      if (!allDone) return { votes: votes }
 
       /* ---- 结算：票最多的出局 ---- */
       const tally = {}
@@ -2335,46 +2347,38 @@ exports.main = async (event) => {
        * 每轮结算后清零，所以"每轮都有一次重投机会"。
        */
       if (top.length > 1) {
-        if (!room.uwTieBreak) {
-          const tieNames = top.map(oid => (players.filter(p => p.openid === oid)[0] || {}).name || '').join('、')
-          await rooms.doc(room._id).update({
-            data: {
-              players: players, votes: [], uwTieBreak: true, uwTieNames: tieNames,
-              uwStep: 'talk', updatedAt: ts
-            }
-          })
-          const rr0 = await rooms.doc(room._id).get()
-          return { ok: true, room: shape(rr0.data, OPENID) }
+        if (!fresh.uwTieBreak) {
+          const tieNames = top.map(oid => (fplayers.filter(p => p.openid === oid)[0] || {}).name || '').join('、')
+          return {
+            players: fplayers, votes: [], uwTieBreak: true, uwTieNames: tieNames,
+            uwStep: 'talk'
+          }
         }
         /* 第二次仍平票：不再淘汰任何人，直接判卧底胜 */
-        await rooms.doc(room._id).update({
-          data: {
-            players: players, votes: [], uwTieBreak: false, uwTieNames: '',
-            phase: 'over', uwStep: 'result', updatedAt: ts,
-            lastResult: {
-              kind: 'undercover', winner: 'spy', tieDeadlock: true,
-              civilianWord: (players.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
-              spyWord: (players.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
-            },
-            uwReveal: players
-              .filter(p => p.inRound !== false)
-              .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
-          }
-        })
-        const rr1 = await rooms.doc(room._id).get()
-        return { ok: true, room: shape(rr1.data, OPENID) }
+        return {
+          players: fplayers, votes: [], uwTieBreak: false, uwTieNames: '',
+          phase: 'over', uwStep: 'result',
+          lastResult: {
+            kind: 'undercover', winner: 'spy', tieDeadlock: true,
+            civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+            spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+          },
+          uwReveal: fplayers
+            .filter(p => p.inRound !== false)
+            .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
+        }
       }
 
       const picked = top[0]
-      const outP = players.filter(p => p.openid === picked)[0]
+      const outP = fplayers.filter(p => p.openid === picked)[0]
       outP.out = true
       outP.inRound = true
 
       const outRow = { openid: outP.openid, name: outP.name, word: outP.uwWord, role: outP.uwRole }
-      const uwOut = (room.uwOut || []).concat([outRow])
+      const uwOut = (fresh.uwOut || []).concat([outRow])
 
       /* ---- 胜负判定 ---- */
-      const stillAlive = players.filter(p => p.inRound !== false && !p.out)
+      const stillAlive = fplayers.filter(p => p.inRound !== false && !p.out)
       const spiesLeft = stillAlive.filter(p => p.uwRole === 'spy').length
       let winner = ''
       if (spiesLeft === 0) winner = 'civilian'          // 卧底全出局
@@ -2382,7 +2386,7 @@ exports.main = async (event) => {
       else if (stillAlive.length <= 2) winner = 'spy'    // 只剩两人，卧底拖到底
 
       const patch = {
-        players: players, votes: [], uwOut: uwOut,
+        players: fplayers, votes: [], uwOut: uwOut,
         uwLastOut: {
           name: outRow.name, word: outRow.word, role: outRow.role,
           /* 平票已经走"重投"分支，能走到这里的都是单一最高票 */
@@ -2398,7 +2402,7 @@ exports.main = async (event) => {
            * 它不改变任何规则，只是把"刚刚发生过的事"摆出来 ——
            * 而这恰恰是这个游戏后半段讨论的燃料。
            */
-          ballots: votes.map(v => ({ by: v.name, to: (players.filter(p => p.openid === v.target)[0] || {}).name || '' }))
+          ballots: votes.map(v => ({ by: v.name, to: (fplayers.filter(p => p.openid === v.target)[0] || {}).name || '' }))
         },
         /* 本轮结束，重投机会下轮重新给 */
         uwTieBreak: false, uwTieNames: '',
@@ -2410,19 +2414,20 @@ exports.main = async (event) => {
         patch.uwStep = 'result'
         patch.lastResult = {
           kind: 'undercover', winner: winner,
-          civilianWord: (players.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
-          spyWord: (players.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+          civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+          spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
         }
-        patch.uwReveal = players
+        patch.uwReveal = fplayers
           .filter(p => p.inRound !== false)
           .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
       } else {
         patch.uwStep = 'result'
       }
 
-      await rooms.doc(room._id).update({ data: patch })
-      const rr = await rooms.doc(room._id).get()
-      return { ok: true, room: shape(rr.data, OPENID) }
+      return patch
+      }))
+      const rr2 = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr2.data, OPENID) }
     }
 
     /* ================= 梦幻金花：弃牌 / 比牌 =================
