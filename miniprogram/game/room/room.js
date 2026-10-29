@@ -298,8 +298,9 @@ Page({
     wheelCls: '',
     wheelText: '',
     wheelSpinning: false,
-    /* 倒计时走完却迟迟没进游戏（通常是网络断了）—— 此时给一个回大厅的出口 */
     cdStuck: false,
+    /* 离开房间的页面内确认卡（与金花的确认卡同一套样式，不再用系统弹窗） */
+    askLeave: false,
     /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
     pkAsk: null
   },
@@ -3030,13 +3031,27 @@ Page({
 
   /* ================= 离开 ================= */
 
+  /*
+   * ★ 2026-10-30：确认框从 wx.showModal 换成**页面内确认卡**（同金花的弃牌/换牌）。
+   *   系统弹窗是蓝白样式，与暗金主题两个世界 —— 这是页面里最后一处系统弹窗。
+   *   代价是"页面状态坏了就弹不出来"，所以遮罩本身也能关（点空白处 = 取消）。
+   */
   leave() {
-    wx.showModal({
-      title: '离开房间？',
-      content: '你走了之后位置会空出来。房主走了会自动转给下一个人。',
-      confirmText: '离开',
-      success: async (m) => {
-        if (!m.confirm) return
+    sfx.play('tapSoft')
+    this.setData({ askLeave: true })
+  },
+
+  /** 确认卡：取消 */
+  askLeaveNo() {
+    sfx.play('tapSoft')
+    this.setData({ askLeave: false })
+  },
+
+  /** 确认卡：确认离开 */
+  async askLeaveYes() {
+    this.setData({ askLeave: false })
+    sfx.play('tapSoft')
+    {
         this.stopPoll()
         /*
          * ★ 离开失败也要说 —— 原来 `.catch(() => {})` 静默吞掉，
@@ -3065,8 +3080,7 @@ Page({
         this.clearCupTimers()
         this.clearCountdown()
         this.setData({ room: null, stage: 'entry', result: null, err: '' })
-      }
-    })
+    }
   },
 
   toggleMute() {

@@ -290,6 +290,32 @@ const rec = (name, ok, extra) => {
       }
     }
 
+    /* ⑩b 离开房间的页面内确认卡（从系统弹窗换成页面内，改的是关键操作） */
+    console.log('\n── 离开房间确认 ──')
+    {
+      const lp = await mini.currentPage()
+      const leaveBtns = await lp.$$('.textbtn')
+      /* 底部的「离开房间」是最后一个 textbtn（前面可能有"看规则"） */
+      const leaveBtn = leaveBtns.length ? leaveBtns[leaveBtns.length - 1] : null
+      if (!leaveBtn) { rec('找到离开房间按钮', false) }
+      else {
+        await leaveBtn.tap()
+        await sleep(800)
+        let ad = await lp.data()
+        rec('点离开房间 → 弹页面内确认卡', ad.askLeave === true, 'askLeave=' + ad.askLeave)
+        const noBtn = await lp.$('.pkask-btn.no')
+        if (noBtn) {
+          await noBtn.tap()
+          await sleep(600)
+          ad = await lp.data()
+          rec('点「再想想」→ 留在房间里', ad.askLeave === false && !!ad.room,
+            'askLeave=' + ad.askLeave + ' room=' + (ad.room ? ad.room.code : 'null'))
+        } else {
+          rec('找到「再想想」按钮', false)
+        }
+      }
+    }
+
     /* ⑪ 分享链接直达：?code= 应自动进房（朋友点分享卡片的主要路径，一直没测过） */
     console.log('\n── 分享链接直达 ──')
     const curPage = await mini.currentPage()

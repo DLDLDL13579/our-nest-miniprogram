@@ -987,6 +987,21 @@
   </view>
 
   <!--
+    离开房间的确认卡（2026-10-30）—— 页面里最后一处系统弹窗也换掉了，
+    与金花的确认卡同一套 .mask/.sheet 底座。点遮罩空白处 = 取消。
+  -->
+  <view wx:if="{{askLeave}}" class="mask" bindtap="askLeaveNo">
+    <view class="sheet pkask" catchtap="noop">
+      <view class="sheet-t">离开房间？</view>
+      <view class="sheet-s">你走了之后位置会空出来。房主走了会自动转给下一个人。</view>
+      <view class="pkask-row">
+        <view class="pkask-btn no" bindtap="askLeaveNo">再想想</view>
+        <view class="pkask-btn yes" bindtap="askLeaveYes">离开</view>
+      </view>
+    </view>
+  </view>
+
+  <!--
     金花确认卡（弃牌 / 换牌）。
     ★ 2026-10-29 替换掉原来的 wx.showModal：系统弹窗是蓝白样式，与暗金主题
       两个世界；而且原生弹窗 automator 点不到，金花的交互链路根本没法真机验。
