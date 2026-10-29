@@ -285,7 +285,9 @@
 /* 玩家列表标题行的右侧：锁房开关 + 人数 */
 .plist-r { display: flex; align-items: center; gap: 10rpx }
 .lockbtn {
+  /* 可见尺寸不大，但**点按面积要够** —— 用 padding 撑到 88rpx 高（视觉上仍是个小标签） */
   padding: 4rpx 12rpx; border-radius: 10rpx;
+  min-height: 88rpx; display: flex; align-items: center;
   font-size: 18rpx; color: rgba(255,255,255,.62);
   background: rgba(255,255,255,.07);
 }
@@ -1098,8 +1100,15 @@
 /* 浮层里的规则列表：可滚动（12 条规则也不会撑破） */
 .how-sheet-list { max-height: 620rpx; overflow-y: auto }
 
+/*
+ * ⚠️ 高度从 64rpx 提到 88rpx（2026-10-28）。
+ * 64rpx ≈ 32pt，低于 Apple HIG 的 44pt 最小可点面积 ——
+ * 而"看规则""离开房间"都是**手指要准确点到**的东西，酒桌上手机还斜放。
+ * 提高的是**点按面积**，字号和颜色没变，视觉上只是上下宽松一点。
+ */
 .textbtn {
-  height: 64rpx;
+  min-height: 88rpx;
+  height: 88rpx;
   display: flex; align-items: center; justify-content: center;
   font-size: 24rpx; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 1rpx;
@@ -1741,7 +1750,8 @@
 /* 催一下：一个小小的文字按钮，只在还差人时出现 */
 .uw-nudge {
   display: inline-block; margin: 14rpx auto 0;
-  padding: 8rpx 22rpx; border-radius: 999rpx;
+  /* 可点面积也要够 44pt —— 视觉上是小药丸，点按范围比看上去大 */
+  padding: 22rpx 30rpx; border-radius: 999rpx;
   font-size: 21rpx; color: #F0C860;
   background: rgba(232,179,60,.16);
 }
