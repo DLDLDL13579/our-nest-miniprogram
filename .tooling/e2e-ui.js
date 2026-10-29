@@ -107,6 +107,56 @@ const rec = (name, ok, extra) => {
       rec('找到叫骰按钮', false, '（当前玩法可能不是大话骰）')
     }
 
+    /* ⑧ 转盘：回大厅 → 建转盘房 → 开局 → 点「转！」→ 结果出现 */
+    console.log('\n── 转盘 ──')
+    await mini.navigateBack().catch(() => {})
+    await sleep(2500)
+    let lobby = await mini.currentPage()
+    let ld = await lobby.data()
+    if (!ld || !ld.list) { rec('回到大厅', false, 'path=' + lobby.path); }
+    else {
+      const idx = (ld.list || []).findIndex(g => g.id === 'wheel')
+      const cards = await lobby.$$('.gcard')
+      if (idx < 0 || !cards[idx]) {
+        rec('找到转盘卡片', false, 'list=' + (ld.list || []).map(g => g.id).join(','))
+      } else {
+        await cards[idx].tap()
+        let wheelOK = false
+        let wp = null
+        for (let i = 0; i < 20; i++) {
+          await sleep(1000)
+          wp = await mini.currentPage()
+          const wd = await wp.data()
+          if (wd.stage === 'lobby' && wd.room && wd.room.code) { wheelOK = true; break }
+        }
+        rec('点转盘卡 → 建房成功', wheelOK)
+        if (wheelOK) {
+          const startBtn2 = await wp.$('.bigbtn')
+          if (startBtn2) { await startBtn2.tap(); await sleep(2000) }
+          let wd2 = await wp.data()
+          for (let i = 0; i < 8 && wd2.stage !== 'playing'; i++) {
+            await sleep(1200); wd2 = await wp.data()
+          }
+          rec('转盘开局 → playing', wd2.stage === 'playing', 'stage=' + wd2.stage)
+          /* 点「转！」 */
+          const spinBtns = await wp.$$('.bigbtn')
+          const spinBtn = spinBtns.length ? spinBtns[spinBtns.length - 1] : null
+          if (spinBtn) {
+            await spinBtn.tap()
+            await sleep(1200)
+            let mid = await wp.data()
+            rec('点「转！」→ 立即进入转动状态', mid.wheelSpinning === true, 'wheelText=' + mid.wheelText)
+            await sleep(3200)
+            const after = await wp.data()
+            const done = !after.wheelSpinning && !!after.wheelText && after.wheelText !== '转起来了…'
+            rec('转完 → 出现具体结果', done, '结果=' + after.wheelText + (after.card ? ' · 题目: ' + after.card.text : ''))
+          } else {
+            rec('找到「转！」按钮', false)
+          }
+        }
+      }
+    }
+
     const bad = steps.filter(s => !s.ok)
     console.log('\n════ 汇总 ════')
     console.log('  ' + steps.length + ' 步，失败 ' + bad.length)
