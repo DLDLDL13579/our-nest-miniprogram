@@ -624,6 +624,8 @@
             <view wx:if="{{!item.out && item.inRound !== false}}"
                   class="uw-p {{item.isMe ? 'self' : ''}} {{room.uw.myVote === item.openid ? 'picked' : ''}}"
                   data-oid="{{item.openid}}" bindtap="uwVote">
+              <!-- 首字头像（与大厅玩家列表同一套）：12 人局里"认脸"比"认名字"快得多 -->
+              <view class="pav s{{item.seat % 4}}">{{item.initial}}</view>
               <text class="uw-pn">{{item.name}}</text>
               <text wx:if="{{item.isMe}}" class="uw-tag">我</text>
               <text wx:if="{{room.uw.myVote === item.openid}}" class="uw-tick">已投</text>
@@ -634,16 +636,25 @@
         <!--
           还差谁（2026-10-28，调研第 2 条）：桌上只能干等的根源是**不知道在等谁**。
           只列第一个人 + 总数 —— 名字多了会变成一串，反而看不清。
+          ★ 催一下与它同行（2026-10-29）：原来单独占一行、孤零零悬在左边，
+            信息和动作分离了半屏。"在等谁"和"催谁"本就是一件事。
         -->
         <view wx:if="{{room.uw.waitingCount > 0}}" class="uw-waiting">
-          还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}
+          <text class="uw-waiting-t">还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}</text>
+          <!--
+            催一下（2026-10-28）：知道在等谁之后，房主还得有个"拍桌子"的手段。
+            服务端限流（一轮最多两次、间隔 15 秒）—— 没有它房主会一直点。
+          -->
+          <view wx:if="{{room.host}}" class="uw-nudge" bindtap="doNudge">催一下</view>
         </view>
         <!--
-          催一下（2026-10-28）：知道在等谁之后，房主还得有个"拍桌子"的手段。
-          服务端限流（一轮最多两次、间隔 15 秒）—— 没有它房主会一直点。
+          上一轮谁出局（2026-10-29）：投票最重要的线索就是上一轮的票型结果。
+          原来它只在结算那一拍显示，进了投票就忘了"刚才谁是卧底"。
+          只放一条小字：这是记忆辅助，不是新玩法。
         -->
-        <view wx:if="{{room.host && room.uw.waitingCount > 0}}" class="uw-nudge" bindtap="doNudge">
-          催一下
+        <view wx:if="{{room.uw.lastOut}}" class="uw-lastout">
+          上一轮 <text class="uw-lastout-n">{{room.uw.lastOut.name}}</text> 出局 ·
+          <text class="{{room.uw.lastOut.role === 'spy' ? 'uw-spy' : 'uw-good'}}">{{room.uw.lastOut.role === 'spy' ? '是卧底' : '不是卧底'}}</text>
         </view>
       </block>
 

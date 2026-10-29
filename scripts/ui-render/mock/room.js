@@ -592,13 +592,20 @@ module.exports = {
         uw: { step: 'talk', word: '苹果', myRole: '', myVote: '', voteCount: 0, voterCount: 4, aliveCount: 4, lastOut: null, reveal: null }
       })
     }),
+    /* 投票（第二轮：上一轮已有人出局，界面要带上那条记忆线索） */
     uwVote: () => ({
       stage: 'playing',
       showWord: false,
       room: uwRoom({
         id: 'r2', code: '418', game: 'undercover', phase: 'playing', host: true,
-        players: UW_PLAYERS, count: 4,
-        uw: { step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 2, voterCount: 4, aliveCount: 4, waitingCount: 2, waitingNames: ['老王', '阿杰'], lastOut: null, reveal: null }
+        players: UW_PLAYERS.map(p => p.name === '倩萍' ? Object.assign({}, p, { out: true }) : p),
+        count: 4,
+        uw: {
+          step: 'vote', word: '苹果', myRole: '', myVote: '', voteCount: 1, voterCount: 3,
+          aliveCount: 3, waitingCount: 1, waitingNames: ['老王'],
+          lastOut: { name: '倩萍', role: 'good', word: '橘子', ballots: [] },
+          reveal: null
+        }
       })
     }),
     /*

@@ -1741,20 +1741,32 @@
 }
 .uw-btn:active { transform: scale(.98); opacity: .9 }
 
-/* 还差谁：一行很轻的灰字，是"进度"不是"警告" */
+/* 还差谁：一行很轻的灰字，是"进度"不是"警告"。
+   ★ 2026-10-29 改成 flex 行：进度文字和「催一下」并排 ——
+     原来催一下单独悬在左边一行，"在等谁"和"催谁"被拆开了。 */
 .uw-waiting {
-  text-align: center; margin-top: 8rpx;
+  display: flex; align-items: center; justify-content: center;
+  gap: 16rpx; margin-top: 8rpx;
+}
+.uw-waiting-t {
   font-size: 21rpx; color: rgba(255,255,255,.52);
 }
 
 /* 催一下：一个小小的文字按钮，只在还差人时出现 */
 .uw-nudge {
-  display: inline-block; margin: 14rpx auto 0;
+  display: inline-block;
   /* 可点面积也要够 44pt —— 视觉上是小药丸，点按范围比看上去大 */
   padding: 22rpx 30rpx; border-radius: 999rpx;
   font-size: 21rpx; color: #F0C860;
   background: rgba(232,179,60,.16);
 }
+
+/* 上一轮出局提示（投票阶段的记忆辅助）：一行小字，不抢投票列表的视觉 */
+.uw-lastout {
+  margin-top: 18rpx; text-align: center;
+  font-size: 21rpx; color: rgba(255,255,255,.52);
+}
+.uw-lastout-n { color: rgba(255,255,255,.8); font-weight: 600 }
 
 .uw-wait {
   margin-top: 22rpx; text-align: center;
