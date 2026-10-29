@@ -30,6 +30,12 @@
 
   <!-- ============ 入口：建房 / 加入 ============ -->
 <view class="gamepage {{reduceMotion ? 'reduce-motion' : ''}} {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
+    <!--
+      ★ 错误提示放在**所有阶段之外**（2026-10-29）。
+      原来它只在 stage==='entry' 块里 —— 如果错误发生在别的阶段
+      （建房成功后装饰挂了、轮询失败、投票被拒），用户根本看不到。
+    -->
+    <view wx:if="{{err}}" class="errbox">{{err}}</view>
   <!--
     页面级材质（2026-10-28）。
     总览图里一眼能看出来：内容少的界面（投票、出局、等待）下半屏是**纯色空白**，
