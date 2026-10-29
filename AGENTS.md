@@ -552,7 +552,7 @@ wechatwebdevtools.app/Contents/MacOS/Electron --cli --remote-port 3799
 
 ## 音画同步 / 音效 / 画面优化（v2.4~v2.5.1）
 
-**统一反馈时间轴** `miniprogram/utils/feedback.js`：
+**统一反馈时间轴** `miniprogram/game/feedback.js`：
 改造前动画时长在 wxss、音效在页面 js、震动没做 —— **三者各写各的**，所以「没匹配上」。
 现在收敛到一张表 `FEEDBACK`，每个动作定义一次：
 
