@@ -242,6 +242,35 @@ module.exports = {
       })
     }),
 
+    /*
+     * 大话骰开局第一手：**还没偷看** + **不是我的回合**。
+     * 这是真机上最常出现的画面（几个人刚开局，谁还没轮到时都在看这一屏），
+     * 而之前没有任何 mock 状态覆盖它 —— 2026-10-29 补上，
+     * 用来验证「先按住盅偷看」与「等谁叫完就轮到你」两条信息能同时读到。
+     */
+    liarCold: () => ({
+      stage: 'playing',
+      events: [],
+      /* cupHint 必须与 myRolled 自洽：已扣盅的人看到的应该是"等其他人"，
+         而不是"先按住盅看看"（那句会和下方的金色引导重复，且与真实算值不符）。 */
+      cupSrc: 'cup-down', cupCls: '', cupHint: '已扣盅，等其他人摇完',
+      myRolled: true, diceShown: false, rolling: false, liarReady: false,
+      myDice: [3, 5, 1, 6, 3],
+      room: pkRoom({
+        game: 'liar', phase: 'playing', host: false, turn: 2, myTurn: false,
+        turnName: '倩萍', count: 3,
+        bid: { bySeat: 2, byName: '倩萍', n: 1, face: 1, zhai: false, mult: 1 },
+        players: [
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: false, online: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: true, online: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, diceCount: 5 }
+        ],
+        /* ⚠️ 没偷看也要有可叫项：真机 decorate 一律算 options（引导而不是上锁），
+           这里留空数组会让「叫一个」下面空一大截 —— mock 自己造出来的假布局。 */
+        options: ['2个2', '2个3', '2个4', '2个5', '3个1', '3个2']
+      })
+    }),
+
     /* 比大小：摇盅中 */
     diceRoll: () => ({
       stage: 'playing',

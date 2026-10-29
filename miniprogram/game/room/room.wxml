@@ -432,8 +432,15 @@
           · 都能了   → 正常可叫
       -->
       <view wx:if="{{!liarReady}}" class="liarnudge">
-        <text class="ln-t">先按住盅偷看自己的骰子，再叫</text>
-        <text class="ln-s">看完松手盖回去就行，你的骰子只有你能看到</text>
+        <text class="ln-t">先按住盅偷看自己的骰子</text>
+        <!--
+          2026-10-29：两个信息必须同时给。
+          原来是 if/elif 二选一 —— 没偷看时只说"先偷看"，"等谁叫完就轮到你"
+          被藏掉了；等他知道要偷看，又不知道自己要等多久。
+          Jackbox 的 Jack Principles 与 NN/g 的队列研究都指向同一条：
+          **提前让玩家知道接下来会发生什么**，不确定性本身就是体验损耗。
+        -->
+        <text class="ln-s">看完了松手盖回去 · 等 {{room.turnName || '别人'}} 叫完就轮到你</text>
       </view>
       <view wx:elif="{{!room.myTurn}}" class="liarnudge wait">
         <text class="ln-t">等 {{room.turnName || '别人'}} 叫完，就轮到你了</text>
