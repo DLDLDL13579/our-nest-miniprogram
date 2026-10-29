@@ -1592,8 +1592,23 @@ Page({
     const r = this.data.room
     if (r && r.code) {
       const g = gameOf(r.game)
+      /*
+       * 标题带上"几个人在等"（2026-10-29）。
+       * 原来只有「来玩大话骰，房间号 627」—— 群里看到的人不知道里面是什么情况。
+       * 有人已经在等，比一个光秃秃的房间号有力得多。
+       */
+      const n = r.count || 1
+      const gname = g ? g.name : '酒桌游戏'
+      /*
+       * ⚠️ 标题要短（2026-10-29）。
+       *   微信在群聊里大约只显示 20 个字，超出会被省略号截掉 ——
+       *   而"房间号 627"如果落在截断之后，这条分享就白发了。
+       *   所以先算长度：人少时用完整说法，人多时压成「X 人等 · 房号 N」。
+       */
+      const full = '来玩' + gname + '，' + (n > 1 ? '已经 ' + n + ' 个人在等' : '就等你来了') + '（房间号 ' + r.code + '）'
+      const tight = gname + ' · ' + (n > 1 ? n + ' 人等' : '等你来') + ' · 房号 ' + r.code
       return {
-        title: '来玩' + (g ? g.name : '酒桌游戏') + '，房间号 ' + r.code,
+        title: full.length <= 20 ? full : tight,
         path: '/game/room/room?code=' + r.code,
         /* 不带 imageUrl 时微信会截页面首屏当封面 —— 群里看是一堆文字，辨识度极低 */
         imageUrl: '/images/share-cover.png'
