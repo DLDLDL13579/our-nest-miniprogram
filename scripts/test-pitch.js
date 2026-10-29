@@ -29,6 +29,7 @@ global.wx = {
   }
 }
 const path = require('path')
+const assert = require('assert')
 const sfx = require(path.join(__dirname, '..', 'miniprogram/game/sfx.js'))
 const rates = []
 for (let i = 0; i < 20; i++) {
@@ -40,3 +41,21 @@ console.log('20 次播放的 playbackRate 取值数:', uniq.size)
 console.log('范围:', Math.min(...rates).toFixed(3), '~', Math.max(...rates).toFixed(3))
 if (uniq.size < 3) { console.log('✗ 抖动没生效（取值太少）'); process.exit(1) }
 console.log('✓ 抖动生效（每次略有不同，避免机械重复）')
+
+/* ============ ② 预加载列表里的 key 必须都存在 ============ */
+/*
+ * ★ 2026-10-29。这个列表里曾经出现过两个"不存在的名字"：
+ *   · `diceTumbleWood` —— 那个音频在 3.10.52 被删了，列表没跟着改
+ *   · `diceRollBig` / `uwReveal` —— 我照着印象写的，FILES 里根本没有
+ * 后果不是崩溃（preload 里有 `if (!src) return`），而是**那个名额白占**，
+ * 等于"以为预加载了、其实没有" —— 而用户听到的就是"声音慢半拍"。
+ */
+const preloadSrc = require('fs').readFileSync(
+  require('path').join(__dirname, '..', 'miniprogram/game/sfx.js'), 'utf8')
+const pm = /const PRELOAD_KEYS = \[([\s\S]*?)\]/.exec(preloadSrc)
+assert.ok(pm, '抽不出 PRELOAD_KEYS')
+const preloadKeys = [...pm[1].matchAll(/'([a-zA-Z][a-zA-Z0-9]*)'/g)].map(x => x[1])
+const missing = preloadKeys.filter(k => !sfx.FILES[k])
+assert.deepStrictEqual(missing, [],
+  '★ 预加载列表里有不存在的音效（白占名额，等于没预加载）：' + missing.join(', '))
+console.log('  ✓ 预加载 ' + preloadKeys.length + ' 个音效，全部存在')

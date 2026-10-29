@@ -249,7 +249,35 @@ function setMuted(v) {
  * 于是预加载时 FILES[key] 是 undefined、直接 return，**等于白占一个名额**。
  * 现在换成真正用得最多的几个。
  */
-const PRELOAD_KEYS = ['shakerMetal', 'cupSlam', 'revealHit', 'cardFlip', 'tapSoft', 'toggleOn']
+/*
+ * 预加载哪些音效（2026-10-29 扩到 12 个）。
+ *
+ * 规则：**一局里第一次就要响、而且不能慢**的那几个。
+ *   · 骰盅流程：shakerMetal（摇）、cupSlam（扣）、revealHit（揭）
+ *   · 比大小：diceSettle（逐颗落定）、diceRollBig（整把落下）
+ *   · 金花：cardDeal（发牌）、cardFlip（翻牌）、cardSpread（铺开）
+ *   · 通用：tapSoft（轻触）、toggleOn（开关）、confetti（结算撒花）
+ *   · 卧底：uwReveal（摊牌）
+ *
+ * 原来只有 6 个，而全站 34 个音效 —— 其余 28 个都是**首次播放时才加载**，
+ * 那一段在真机上就是"声音比画面慢半拍"。用户反馈过"声音有延迟"。
+ *
+ * 为什么不是全部预加载：每个音效占一个 InnerAudioContext 实例，
+ * 34 个在小程序里可能触发内存警告（我们已经在监听 onMemoryWarning）。
+ * 12 个覆盖了"每局开头必响"的那些，长尾的（喝彩、惩罚音）首次略慢可以接受。
+ */
+const PRELOAD_KEYS = [
+  /* 骰盅流程 */
+  'shakerMetal', 'cupSlam', 'revealHit', 'diceOnTable',
+  /* 比大小 */
+  'diceSettle',
+  /* 金花 */
+  'cardDeal', 'cardFlip', 'cardSpread',
+  /* 转盘 */
+  'wheelStop',
+  /* 通用 */
+  'tapSoft', 'toggleOn', 'confetti', 'countdownGo'
+]
 
 function preload() {
   PRELOAD_KEYS.forEach((k) => {
