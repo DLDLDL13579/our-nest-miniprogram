@@ -1108,6 +1108,14 @@
       而这个数字只有手机知道 —— 它顺手就能给，不给反而奇怪。
     -->
     <view wx:if="{{nightRound > 0}}" class="night-round">今晚第 {{nightRound}} 局</view>
+    <!--
+      今晚战况：谁喝过几杯（2026-10-29）。
+      只统计输家明确的玩法（大话骰 / 比大小）—— 金花的输家要按比牌过程算、
+      卧底和转盘没有输家。**算错比不算更糟**，所以宁可少显示。
+    -->
+    <view wx:if="{{room.nightDrinkList.length}}" class="night-round">
+      今晚：<text wx:for="{{room.nightDrinkList}}" wx:key="name">{{index ? ' · ' : ''}}{{item.name}} {{item.cups}} 杯</text>
+    </view>
 
     <view class="actbar">
       <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>

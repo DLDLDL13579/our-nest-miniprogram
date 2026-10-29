@@ -343,6 +343,8 @@ function shape(room, openid) {
     /* 题卡场合（转盘用）—— 全场要看到同一个，所以放在房间状态里。
        谁是卧底复用这个字段存"词库"。 */
     deck: room.deck || 'friends',
+    /* 今晚谁喝过几杯（只统计输家明确的玩法，见 again 分支的说明） */
+    nightDrinks: room.nightDrinks || {},
     /*
      * 谁是卧底：★★ 这一块是整个玩法的**命门**。
      *
@@ -1660,7 +1662,31 @@ exports.main = async (event) => {
         return { ok: false, msg: action === 'game' ? '只有房主能换玩法' : '只有房主能开新一局' }
       }
 
+      /*
+       * 今晚战况：谁喝过几杯（2026-10-29）。
+       *
+       * 只累加**输家明确的玩法**：大话骰（loserName）、比大小（点数最少）。
+       * 金花的输家不在 hands 里（比牌过程才决定），卧底和转盘**根本没有输家** ——
+       * 硬凑会算错，而"你欠几杯"在酒桌上是较真的事，**算错比不算更糟**。
+       */
+      let nightDrinks = Object.assign({}, room.nightDrinks || {})
+      if (room.lastResult) {
+        const lr = room.lastResult
+        let loserName = null
+        if (room.game === 'liar' && lr.loserName) {
+          loserName = lr.loserName
+        } else if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
+          const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
+          if (low) loserName = low.name
+        }
+        if (loserName) {
+          nightDrinks[loserName] = (Number(nightDrinks[loserName]) || 0) + 1
+        }
+      }
+
       const data = {
+        /* 今晚累计的"喝过几杯"（跨局保留，换玩法也不清） */
+        nightDrinks: nightDrinks,
         /*
          * ★ 新一局把**所有中途进来的人纳入**（inRound 置回 true）。
          *   这是"下一局才参与"这个承诺的兑现处 —— 漏了它，

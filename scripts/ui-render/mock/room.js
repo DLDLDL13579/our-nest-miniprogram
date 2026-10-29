@@ -47,6 +47,8 @@ const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
 /** 补上 derive 会算的派生字段，让模板里的 room.xxx 都有值 */
 function pkRoom(r) {
   return Object.assign({
+    /* 今晚战况（decorate 派生；mock 里给默认值，否则截图会缺这一行） */
+    nightDrinks: {}, nightDrinkList: [],
     id: 'r3', code: '627', count: 3,
     me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     players: [
@@ -141,6 +143,7 @@ module.exports = {
     liarOver: () => ({
       stage: 'over',
       nightRound: 3,
+      pkDrinks: 0,
       result: {
         need: 5, face: 3, actual: 5, bidderWins: true,
         loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
@@ -152,6 +155,9 @@ module.exports = {
       },
       room: pkRoom({
         game: 'liar', phase: 'over', host: true, count: 3,
+        /* 今晚战况（decorate 会排好序；这里直接给排好的） */
+        nightDrinks: { '倩萍': 2, '邓林': 1 },
+        nightDrinkList: [{ name: '倩萍', cups: 2 }, { name: '邓林', cups: 1 }],
         players: [
           { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
           { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },

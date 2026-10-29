@@ -1567,6 +1567,18 @@ Page({
       lr.restRanked = lr.ranked.filter(x => x.total !== lr.top)
     }
 
+    /*
+     * 今晚战况（2026-10-29）：把 { 名字: 杯数 } 排成前 3 名。
+     * ⚠️ 排序放在 decorate 里（派生字段的唯一出口），模板只取值 ——
+     *    wxml 表达式不支持函数调用，不能写在模板里。
+     */
+    const nd = room.nightDrinks || {}
+    room.nightDrinkList = Object.keys(nd)
+      .map(k => ({ name: k, cups: Number(nd[k]) || 0 }))
+      .filter(x => x.cups > 0)
+      .sort((a, b) => b.cups - a.cups)
+      .slice(0, 3)
+
     room.settleFoot = ''
     if (room.phase === 'over') {
       const lr = room.lastResult || {}
