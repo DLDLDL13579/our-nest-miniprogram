@@ -433,6 +433,8 @@ module.exports = {
 
     /* 页面级 loading */
     entering: () => ({ loading: true, stage: 'entry' }),
+    /* 进房遮罩等久了（5 秒后）—— 兜底出口该出现 */
+    enteringSlow: () => ({ loading: true, loadingSlow: true, stage: 'entry' }),
 
     /* 进房输错了号 */
     error: () => ({ joinCode: '999', err: '房间不存在或已解散' }),

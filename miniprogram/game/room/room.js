@@ -3077,6 +3077,19 @@ Page({
   goBack() {
     /* 返回也要有声 —— 页面切换有系统过渡，但手上没反馈会像没点中 */
     sfx.play('tapSoft')
-    wx.navigateBack()
+    /*
+     * ★ 分享链接直达时**没有上一页**（2026-10-30）。
+     *
+     * 朋友点分享卡片进来，页面栈里只有房间页自己，`wx.navigateBack()`
+     * 会静默失败 —— 用户点「‹ 大厅」**毫无反应**，看起来像按钮坏了。
+     * 而分享是酒桌拉人的主入口，这条路遇到的概率不低。
+     * 没有上一页就 reLaunch 到大厅（重新起一栈，栈里就有大厅了）。
+     */
+    const pages = (typeof getCurrentPages === 'function') ? getCurrentPages() : []
+    if (pages.length > 1) {
+      wx.navigateBack()
+    } else {
+      wx.reLaunch({ url: '/pages/lobby/lobby' })
+    }
   }
 })

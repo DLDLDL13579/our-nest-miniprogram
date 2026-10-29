@@ -1168,6 +1168,33 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   assert.ok(/\.gamepage\.freeze\s*\{/.test(css), '⑩ .gamepage.freeze 必须有样式定义')
   ok('结算前定格 300ms：不丢响应、会重入、定时器可清理、模板真的挂上了')
 
+  /* ============ ⑪ 每个"全屏状态"都必须有出口（2026-10-30） ============ */
+  /*
+   * 连续修了三处同类问题，都是"全屏界面没有退路"：
+   *   · 倒计时卡住（网络断在开局瞬间）→ 已加 cdStuck 出口
+   *   · 进入房间遮罩卡住 → 已加 rl-esc 出口
+   *   · 分享直达时没有上一页 → wx.navigateBack() 静默失败，点「‹ 大厅」没反应
+   * 这条断言锁住第三处：goBack 必须处理"栈里只有自己"的情况。
+   */
+  {
+    const js = fs.readFileSync(JS, 'utf8')
+    const iBack = js.indexOf('goBack() {')
+    assert.ok(iBack >= 0, '应该能找到 goBack 的实现')
+    const iEnd = js.indexOf('\n  },', iBack)
+    const body = js.slice(iBack, iEnd > 0 ? iEnd : iBack + 800)
+    assert.ok(/getCurrentPages/.test(body),
+      '★ goBack 必须看页面栈深度 —— 分享直达时栈里只有自己，navigateBack 会静默失败')
+    assert.ok(/reLaunch/.test(body),
+      '★ 没有上一页时必须 reLaunch 到大厅，否则「‹ 大厅」点了没反应')
+    ok('★ 返回有兜底：分享直达时回大厅靠 reLaunch，不是静默失败的 navigateBack')
+
+    /* 三处全屏状态都要有出口 */
+    const wxml = fs.readFileSync(WXML, 'utf8')
+    assert.ok(/rl-esc/.test(wxml), '★ 进入房间遮罩等久了必须有出口')
+    assert.ok(/cd-stuck/.test(wxml), '★ 倒计时卡住必须有出口')
+    ok('★ 三处全屏状态都有出口（遮罩 / 倒计时 / 返回）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

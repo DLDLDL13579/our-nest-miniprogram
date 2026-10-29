@@ -2465,3 +2465,13 @@
   transition: transform .1s;
 }
 .cd-stuck-b:active { transform: scale(.96) }
+
+/* 进入房间遮罩的兜底出口（5 秒后才出现，正常流程看不到） */
+.rl-esc {
+  margin-top: 36rpx;
+  font-size: 27rpx; font-weight: 600; color: #F0C860;
+  padding: 20rpx 48rpx; border-radius: 999rpx;
+  background: rgba(232,179,60,.16);
+  transition: transform .1s;
+}
+.rl-esc:active { transform: scale(.96) }
