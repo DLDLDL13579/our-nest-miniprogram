@@ -2139,7 +2139,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *   这个我离线验证不了（渲染器不画导航栏），所以只能靠配置断言。
    */
   {
-    const WANT_BG = '#2E211C'
+    const WANT_BG = '#2E211C'       // 导航栏
+    const WANT_WINBG = '#241A16'    // 窗口背景（下拉时露出来的底色）
     const WANT_TEXT = 'white'
     const targets = [
       ['miniprogram/app.json', 'window'],
@@ -2159,10 +2160,20 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       if (w.navigationBarTextStyle !== WANT_TEXT) {
         bad.push(f + '：标题字色是 ' + (w.navigationBarTextStyle || '默认黑') + '，应为 ' + WANT_TEXT)
       }
+      /*
+       * 窗口背景 —— 下拉刷新时会露出来。浅色的话**下拉一下就白闪**，
+       * 而这在静态截图里完全看不到（要真的下拉才出现）。
+       */
+      if (w.backgroundColor !== WANT_WINBG) {
+        bad.push(f + '：窗口背景是 ' + (w.backgroundColor || '默认白') + '，应为 ' + WANT_WINBG)
+      }
+      if (w.backgroundTextStyle !== 'light') {
+        bad.push(f + '：下拉文字样式是 ' + (w.backgroundTextStyle || '默认黑') + '，应为 light')
+      }
     }
     assert.deepStrictEqual(bad, [],
       '这些页面的导航栏会和深色内容割裂：\n    ' + bad.join('\n    '))
-    ok('4 处导航栏配置一致（深棕 + 白字）')
+    ok('4 处外壳配置一致（导航栏深棕白字 / 窗口背景深色 / 下拉 light）')
   }
 
   /* ============ ③t 上传压缩必须显式开着 ============ */
