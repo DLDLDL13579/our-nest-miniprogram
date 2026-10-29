@@ -31,6 +31,7 @@
  * 房间数据很小（一个文档），轮询成本可以忽略。
  */
 const cloud = require('wx-server-sdk')
+const loser = require('./loser.js')
 /*
  * 酒桌题卡库 —— 云函数独立打包、不能跨目录 require，所以这里是一份拷贝。
  * 源文件是 `miniprogram/utils/decks.js`，改完跑 `scripts/sync-derive.sh` 同步
@@ -1669,54 +1670,25 @@ exports.main = async (event) => {
        * 金花的输家不在 hands 里（比牌过程才决定），卧底和转盘**根本没有输家** ——
        * 硬凑会算错，而"你欠几杯"在酒桌上是较真的事，**算错比不算更糟**。
        */
-      let nightDrinks = Object.assign({}, room.nightDrinks || {})
-      if (room.lastResult) {
-        const lr = room.lastResult
-        let loserName = null
-        if (room.game === 'liar' && lr.loserName) {
-          loserName = lr.loserName
-        } else if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
-          const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
-          if (low) loserName = low.name
-        }
-        if (loserName) {
-          nightDrinks[loserName] = (Number(nightDrinks[loserName]) || 0) + 1
-        }
-        /*
-         * 金花（2026-10-29 补）：比牌输的人**出局**（out），可能有 1~2 个；
-         * 另外换牌是"付费选择"，喝的量记在 pkDrink 里（按 openid，要转成名字）。
-         * 两者都算"这一局喝了"，所以一起累加。
-         */
-        if (room.game === 'poker') {
-          const ps = room.players || []
-          ps.filter(p => p.out).forEach(p => {
-            nightDrinks[p.name] = (Number(nightDrinks[p.name]) || 0) + 1
-          })
-          const pkd = room.pkDrink || {}
-          Object.keys(pkd).forEach(oid => {
-            const p = ps.filter(x => x.openid === oid)[0]
-            const cups = Number(pkd[oid]) || 0
-            if (p && cups > 0) nightDrinks[p.name] = (Number(nightDrinks[p.name]) || 0) + cups
-          })
-        }
-      }
-
       /*
-       * ★★ 这个 data 里**只放该清的**，不放该留的 —— 2026-10-29 整理。
+       * 今晚战况：谁喝过几杯（2026-10-29）。
        *
-       * 清（局内状态，每局重来）：
-       *   phase / bid / lastResult / turn / round / spin
-       *   pk*（金花：比牌步骤、公共牌、牌堆、喝的记录）
-       *   uw*（卧底：环节、出局名单、摊牌、票数、重投）
-       *   每人 dice / cards / uwWord / uwRole / out / score
+       * 提取逻辑抽到了 `loser.js`（纯函数，可单测）—— 原来内联在这里，
+       * 想测就得模拟一整局金花，最后只能删测试留一句"没覆盖"。
        *
-       * 留（跨局累计，**绝对不能清**）：
-       *   · nightDrinks —— 今晚谁喝过几杯（清了就每局从 0 开始）
-       *   · streaks     —— 连胜（清了连击音效永远触发不到 combo2 以上）
-       *
-       * 判据：**"这一局结束之后还有意义吗"** —— 有就留。
-       * 两类混在同一个入口，最容易顺手把该留的一起清掉，而不报错。
+       * 只统计**输家明确**的玩法（大话骰 / 比大小 / 金花），
+       * 卧底和转盘没有明确的输家，宁可留空也不凑数。
        */
+      const nightDrinks = Object.assign({}, room.nightDrinks || {})
+      loser.drinkers({
+        game: room.game,
+        lastResult: room.lastResult,
+        players: room.players || [],
+        pkDrink: room.pkDrink || {}
+      }).forEach(d => {
+        nightDrinks[d.name] = (Number(nightDrinks[d.name]) || 0) + d.cups
+      })
+
       const data = {
         /* 今晚累计的"喝过几杯"（跨局保留，换玩法也不清） */
         nightDrinks: nightDrinks,
