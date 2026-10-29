@@ -781,7 +781,14 @@
 .optbtn {
   /* flex: none 必须写 —— 在 inline-flex 容器里，按钮默认可能被压缩 */
   flex: none;
-  padding: 16rpx 24rpx; border-radius: 16rpx;
+  /*
+   * ★ 触控高度（2026-10-30）：原来 padding 上下只有 16rpx，
+   * 实际高度约 61rpx（30px）—— 而这是**全页点得最多的按钮**
+   * （每次叫骰都要点一排里的一个）。酒桌上有酒、手不稳，
+   * Apple HIG 的最小触控是 44px（88rpx），这里按 88rpx 配。
+   * 24rpx 字号的行高约 34rpx → 上下 padding 各 27rpx。
+   */
+  padding: 27rpx 26rpx; border-radius: 16rpx;
   background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
   font-size: 24rpx; font-weight: 600; min-width: 118rpx; text-align: center;
   animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
