@@ -26,6 +26,7 @@ const { call } = require('../../utils/cloud.js')
 /* 测试开关（soloTest）：一个人也能开局，见 config.js 的说明 */
 const CFG = require('../../config.js')
 const sfx = require('../sfx.js')
+const settleFoot = require('../../game/settle.js')
 const feedback = require('../feedback.js')
 /*
  * 酒桌题卡库。★ 前端这份**只用来渲染"有哪些场合可选"**（名字/说明），
@@ -1579,26 +1580,8 @@ Page({
       .sort((a, b) => b.cups - a.cups)
       .slice(0, 3)
 
-    room.settleFoot = ''
-    if (room.phase === 'over') {
-      const lr = room.lastResult || {}
-      if (room.game === 'liar' && lr.loserName) {
-        room.settleFoot = lr.loserName + ' 喝一杯'
-      } else if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
-        /* 点数最少的那个喝 —— 排序取第一个 */
-        const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
-        if (low) room.settleFoot = low.name + ' 点数最少，喝一杯'
-      } else if (room.game === 'undercover' && lr.kind === 'undercover') {
-        const rev = (room.uw && room.uw.reveal) || []
-        const spy = rev.filter(x => x.role === 'spy')[0]
-        if (spy) room.settleFoot = '卧底是 ' + spy.name
-      } else if (room.game === 'poker' && room.poker) {
-        /* 金花：说"我这局为了换牌喝了几杯" —— 个人化的收尾比复述输赢有用 */
-        const dv = Number(room.poker.myDrink) || 0
-        if (dv > 0) room.settleFoot = '你为了换牌喝了 ' + (dv % 1 === 0 ? dv : Math.floor(dv) + '.5') + ' 杯'
-        else if (room.poker.winner) room.settleFoot = room.poker.winner + ' 没换过牌就赢了'
-      }
-    }
+    /* 结算页底部那句话（"谁喝一杯"）—— 逻辑抽到 game/settle.js，纯函数可单测 */
+    room.settleFoot = settleFoot.footText(room)
 
     return room
   },

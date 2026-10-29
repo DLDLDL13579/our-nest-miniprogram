@@ -212,7 +212,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
 
     const poker = require(path.join(ROOT, 'miniprogram/utils/poker.js'))
     const games = require(path.join(ROOT, 'miniprogram/utils/games.js'))
-    const decorate = new Function('poker', 'gameOf', 'return function decorate(room){' + body + '}')(poker, games.gameOf)
+    /*
+     * ⚠️ decorate 依赖的外部变量要**全部注入** —— 少一个就是 "xxx is not defined"。
+     * 2026-10-29 把 settleFoot 抽成独立模块后，这里就崩过一次。
+     */
+    const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
+    const decorate = new Function('poker', 'gameOf', 'settleFoot',
+      'return function decorate(room){' + body + '}')(poker, games.gameOf, settleMod)
     const stub = { buildOptions: () => ['1个1'] }
 
     /* ① 金花牌型提示 + 换牌量 */

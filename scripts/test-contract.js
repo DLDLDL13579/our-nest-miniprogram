@@ -490,9 +490,21 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       .replace(/<!--[\s\S]*?-->/g, ' ')
       .replace(/\/\*[\s\S]*?\*\//g, ' ')
       .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
-    const front = stripComments(
-      fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8') +
-      fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8'))
+    /*
+     * ⚠️ 范围要覆盖**分包里的全部前端 js/wxml**，不能只写死 room 那两个文件 ——
+     *    2026-10-29 把结算文案抽到 `game/settle.js` 之后，`poker.myDrink`
+     *    在 room.js 里不再出现，这条断言就把它误报成"死数据"了。
+     *    （引用搬了家，不等于没人用。）
+     */
+    const frontFiles = []
+    ;(function walk(d) {
+      for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+        const fp = path.join(d, f.name)
+        if (f.isDirectory()) { walk(fp); continue }
+        if (/\.(js|wxml)$/.test(f.name)) frontFiles.push(fp)
+      }
+    })(path.join(ROOT, 'miniprogram/game'))
+    const front = stripComments(frontFiles.map(f => fs.readFileSync(f, 'utf8')).join('\n'))
 
     /*
      * 白名单：确实"服务端返回但界面不用"的字段，每个都要有理由。
