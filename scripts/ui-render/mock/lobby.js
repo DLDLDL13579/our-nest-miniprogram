@@ -21,7 +21,25 @@ module.exports = {
     /* 首次引导：渲染器不跑 onShow，用环境变量模拟 LOBBY_FIRST=1 */
     firstHint: !!process.env.LOBBY_FIRST,
     err: '',
-    muted: false, stats: '5 个玩法 · 160 道题 · 120 对词',
+    muted: false,
+    /*
+     * ★ 内容量必须**从真实数据算**，不能手写死（2026-10-30）。
+     *   原来这里硬编码 '5 个玩法 · 160 道题 · 120 对词' ——
+     *   我把题卡加到 200 条之后，渲染截图里还显示 160，
+     *   差点以为"展示数字没跟着更新"是产品 bug。
+     *   渲染器的使命是**反映真实界面**，mock 里的数字过期 = 截图不可信。
+     */
+    stats: (function () {
+      try {
+        const decks = require('../../../miniprogram/utils/decks.js')
+        const words = require('../../../miniprogram/utils/words.js')
+        const games = require('../../../miniprogram/utils/games.js')
+        const cards = (decks.DECKS || []).reduce((n, d) => n + (d.truth || []).length + (d.dare || []).length, 0)
+        const pairs = (words.DECKS || []).reduce((n, d) => n + (d.pairs || []).length, 0)
+        const g = (games.GAMES || []).length
+        return [g + ' 个玩法', cards + ' 道题', pairs + ' 对词'].join(' · ')
+      } catch (e) { return '5 个玩法 · 200 道题 · 120 对词' }
+    })(),
     hapticOn: true
   }),
   states: {
