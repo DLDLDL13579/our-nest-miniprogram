@@ -59,6 +59,16 @@ async function call(mini, data) {
     await flow('liar', async (id) => {
       await step('liar.bid', { action: 'bid', id: id, n: 1, face: 1 })
       await step('liar.open', { action: 'open', id: id })
+      /* ★ 房间完整流转：再来一局 → 换玩法 → 新玩法的动作
+         （AGENTS.md 记过两次"重开一局漏清字段"，这里在真实环境把关） */
+      await step('liar.again', { action: 'again', id: id })
+      await step('liar.game→wheel', { action: 'game', id: id, game: 'wheel' })
+      await step('liar.after.game.start', { action: 'start', id: id, solo: true })
+      await sleep(4200)
+      /* ★ countdown→playing 由 status 推进（云函数没有定时器，靠 1.5 秒轮询触发）——
+         真实玩家一直在轮询，所以这一步在客户端是自动的；脚本必须补一次。 */
+      await step('liar.after.game.status', { action: 'status', id: id })
+      await step('liar.after.game.spin', { action: 'spin', id: id })
     })
     await flow('dice', async (id) => {
       await step('dice.roll', { action: 'roll', id: id })
