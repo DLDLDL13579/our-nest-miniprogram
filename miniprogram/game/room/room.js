@@ -2578,7 +2578,13 @@ Page({
 
     const mySeat = (r.room.me || {}).seat
     const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
-    this._cupTimers.push(setTimeout(() => sfx.play(iWon ? 'confetti' : 'failDrop'), 620))
+    /* ★ 赢了要撒花（2026-10-30）：金花/卧底早就有 celebrate()，
+       而比大小和大话骰只有音效 —— 同样是"赢"，一个有声有画面、一个只有声。 */
+    this._cupTimers.push(setTimeout(() => {
+      if (this._dead) return
+      sfx.play(iWon ? 'confetti' : 'failDrop')
+      if (iWon) this.celebrate()
+    }, 620))
 
     /* ★ 连庄音：连赢的音高逐级升高（combo-1 → combo-4）。
        这是"连庄"这件事的声音表达 —— 连赢两把和赢一把听感不同，
@@ -2902,6 +2908,7 @@ Page({
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
         feedback.fire(iLost ? 'lose' : 'win')
+        if (!iLost) this.celebrate()
       }, 340))
       this._cupTimers.push(setTimeout(() => {
         if (this._dead) return
