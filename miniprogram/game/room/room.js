@@ -2340,6 +2340,12 @@ Page({
       return this.setData({ err: '房间号是 3 位数字' })
     }
     if (this.data.joining) return
+    /*
+     * 点击瞬间就要有声音（2026-10-30）。
+     * 原来这一下要等云函数返回、进了房才播 confetti ——
+     * 中间那 1 秒只有 loading 转圈，"点了没反应"的观感就是这么来的。
+     */
+    sfx.play('tapSoft')
     this.setData({ joining: true, err: '' })
 
     const r = await call('room', {
@@ -2496,6 +2502,9 @@ Page({
    * @param {string} [game] 要换成的玩法；不传 = 只是再来一局
    */
   async backToLobby(game) {
+    /* 点「再来一局 / 换个玩法」的即时反馈，不等云函数（同 doJoin） */
+    sfx.play('tapSoft')
+
     const payload = { action: game ? 'game' : 'again', id: this.data.room.id }
     if (game) payload.game = game
     /* 换到转盘时顺便带上当前选的场合（建房时选的那个） */
