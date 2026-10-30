@@ -73,7 +73,7 @@
         房间号常驻顶栏（2026-10-28）。
         游戏进行到一半，桌上有人想再叫一个朋友进来 —— 而这时房间号只在
         lobby 阶段显示，他只能退出去看。一行小字就能省掉这次来回。
-        点一下还能复制（沿用 lobby 的同一套复制逻辑）。
+        点一下会引导转发（剪贴板 API 受隐私协议限制，2026-10-30 已移除）。
       -->
       <text class="gbar-code" bindtap="copyCode">{{room.code}}</text>
       <text class="gbar-codelbl">房间号</text>
@@ -170,9 +170,9 @@
   <!-- ============ 大厅：等人齐 ============ -->
   <block wx:elif="{{stage === 'lobby'}}">
     <view class="codecard" bindtap="copyCode">
-      <view class="cc-lbl">房间号 · 点一下复制</view>
+      <view class="cc-lbl">房间号 · 念给旁边的人</view>
       <view class="cc-code">{{room.code}}</view>
-      <view class="cc-hint">点上面复制，或者直接转发到群里 —— 点开就自动进这个房间</view>
+      <view class="cc-hint">点一下可以引导你转发到群里 —— 朋友点开就自动进这个房间</view>
     </view>
 
     <!--

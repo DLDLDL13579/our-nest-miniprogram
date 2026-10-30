@@ -83,7 +83,7 @@
       </view>
       <view class="ab-line errline" bindtap="copyDiag">错误记录也一起显示（点这里看全部诊断）</view>
     </block>
-    <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
+    <view class="ab-line diagline" bindtap="copyDiag">查看诊断信息（含最近的错误）</view>
     <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误。</view>
   </view>
 
