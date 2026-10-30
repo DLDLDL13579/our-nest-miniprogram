@@ -2791,7 +2791,22 @@ Page({
    */
   onCupPress() {
     if (this.data.stage !== 'playing') return
-    if (this.data.room && this.data.room.game !== 'liar') return
+    /*
+     * ★ 按住偷看同时服务两个玩法（2026-10-30）：
+     *   · 大话骰：开叫之前必须先看过自己的骰子
+     *   · **比大小：摇完之后想看再看一眼**
+     * 原来这里硬判 `game !== 'liar'`，于是比大小摇完就**再也看不到自己的点数** ——
+     * 而"我刚才摇的是几来着"是酒桌上极常出现的一句话。
+     * 两个骰子玩法在这件事上行为不一致，本身就是个 bug。
+     */
+    const g = this.data.room && this.data.room.game
+    if (g === 'dice' && !this.data.myRolled) {
+      /* 还没摇就按盅 —— 说一句，别让盅看起来坏了 */
+      wx.showToast({ title: '先摇骰', icon: 'none', duration: 1400 })
+      return
+    }
+    const canPeek = g === 'liar' || (g === 'dice' && this.data.myRolled)
+    if (!canPeek) return
     if (!this.data.myDice.length) {
       /* 没骰子时按盅不吭声，用户会以为盅坏了（2026-10-29） */
       wx.showToast({ title: '骰子还没发下来', icon: 'none', duration: 1400 })
@@ -2806,7 +2821,10 @@ Page({
 
   onCupRelease() {
     if (this.data.stage !== 'playing') return
-    if (this.data.room && this.data.room.game !== 'liar') return
+    /* 与 onCupPress 同一判据（比大小摇完之后也能按住看） */
+    const g = this.data.room && this.data.room.game
+    const canPeek = g === 'liar' || (g === 'dice' && this.data.myRolled)
+    if (!canPeek) return
     if (!this.data.diceShown) return
     /*
      * ★ 扣盅那一拍要有震动（2026-10-30）。
