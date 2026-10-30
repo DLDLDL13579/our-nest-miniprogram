@@ -582,9 +582,14 @@
       <view class="btn main bigbtn {{rolling || myRolled ? 'disabled' : ''}}" bindtap="doRoll">
         {{rolling ? '摇盅中…' : (myRolled ? '已扣盅，等其他人' : '摇盅！')}}
       </view>
-      <!-- 等别人的时候，明确说是**谁**还没摇 —— 不然就是干等 -->
+      <!--
+        等别人的时候，明确说是**谁**还没摇 —— 不然就是干等。
+        房主可以「催一下」（2026-10-30）：原来只有卧底投票能催，
+        而比大小等别人摇骰同样是干等，桌上没法推动。
+      -->
       <view wx:if="{{myRolled && !result}}" class="waitline">
-        {{room.waitingText}}
+        <text class="wl-t">{{room.waitingText}}</text>
+        <view wx:if="{{room.host}}" class="nudgeb" bindtap="doNudge">催一下</view>
       </view>
     </block>
 

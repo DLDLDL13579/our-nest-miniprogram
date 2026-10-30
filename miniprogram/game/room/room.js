@@ -471,6 +471,27 @@ Page({
      */
   },
 
+  /**
+   * 催一下（2026-10-30 扩到比大小）。
+   * 房主在等人摇骰/等人投票时，能拍一下桌子 —— 服务端限流两次。
+   */
+  doNudge() {
+    /* 观战者不能催（中途加入的人这局只能看）—— 与其他写操作保持一致 */
+    if (!this.specGuard()) return
+    sfx.play('tap')
+    call('room', { action: 'nudge', id: this.data.room.id }, { silent: true })
+      .then((r) => {
+        if (r && r.ok) {
+          wx.showToast({ title: '催了', icon: 'none', duration: 1200 })
+        } else if (r && r.msg) {
+          wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
+        }
+      })
+      .catch((e) => {
+        wx.showToast({ title: (e && e.friendly) || '没催上', icon: 'none', duration: 2000 })
+      })
+  },
+
   /** 清掉倒计时定时器（页面卸载时不能留） */
   clearCountdown() {
     if (this.data.cdStuck) this.setData({ cdStuck: false })

@@ -1300,16 +1300,26 @@ exports.main = async (event) => {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
       if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能催' }
-      if (room.game !== 'undercover' || room.uwStep !== 'vote') {
-        return { ok: false, msg: '现在不用催' }
-      }
-      /* 限流：一轮投票最多催两次，间隔至少 15 秒 */
-      const last = room.uwNudgeAt || 0
+      /*
+       * ★ 2026-10-30 扩到「比大小」（用户反馈这个玩法"没有游戏体验"）。
+       *
+       * 原来只有卧底投票能催 —— 而比大小**等别人摇骰**同样是干等：
+       * 屏幕上只有一行"还差 2 个人没摇（倩萍、阿杰）"，桌上没法推动。
+       * 两边都是"等人"这件事，不该只有一种玩法能催。
+       */
+      const isUW = room.game === 'undercover' && room.uwStep === 'vote'
+      const isDice = room.game === 'dice' && room.phase === 'playing'
+      if (!isUW && !isDice) return { ok: false, msg: '现在不用催' }
+      const atKey = isUW ? 'uwNudgeAt' : 'nudgeAt'
+      const cntKey = isUW ? 'uwNudgeCount' : 'nudgeCount'
+      /* 限流：一轮最多催两次，间隔至少 15 秒 */
+      const last = room[atKey] || 0
       if (ts - last < 15000) return { ok: false, msg: '刚催过，等一会儿' }
-      if ((room.uwNudgeCount || 0) >= 2) return { ok: false, msg: '催了两次了，再等等' }
-      await rooms.doc(room._id).update({
-        data: { uwNudgeAt: ts, uwNudgeCount: (room.uwNudgeCount || 0) + 1, updatedAt: ts }
-      })
+      if ((room[cntKey] || 0) >= 2) return { ok: false, msg: '催了两次了，再等等' }
+      const nudgeData = { updatedAt: ts }
+      nudgeData[atKey] = ts
+      nudgeData[cntKey] = (room[cntKey] || 0) + 1
+      await rooms.doc(room._id).update({ data: nudgeData })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID) }
     }
