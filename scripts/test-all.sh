@@ -5,6 +5,17 @@
 set -e
 cd "$(dirname "$0")/.."
 
+# ── 防御：本文件被 node 执行时必须立刻报清楚（2026-10-30）──
+# 现象：偶发出现 `test-all.sh:2 SyntaxError: Invalid or unexpected token`
+# 共 3 次，都是**在同一条命令里并发跑了好几个东西**时出现，单独跑 10 次不复现。
+# 排查过：没有共享 /tmp 文件冲突、没有脚本把 .sh 交给 node、字节头正常。
+# 定位不到根因，但至少要让它**崩得明白**而不是一行 SyntaxError。
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "✗ test-all.sh 被非 bash 解释器执行了（当前: $0）"
+  echo "  正确用法: bash scripts/test-all.sh"
+  exit 2
+fi
+
 echo "═══ 1/9 牌型算法（穷举 22100 手，对组合数学）═══"
 node scripts/test-poker.js
 
