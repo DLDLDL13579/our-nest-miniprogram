@@ -31,6 +31,37 @@ App({
     this.globalData.bootAt = Date.now()
 
     /*
+     * ★★★ 版本更新检测（2026-10-30）。
+     *
+     * 这是一个**交付链断裂**级别的漏洞：小程序没接 UpdateManager 时，
+     * 微信不会主动把你切到新版本 —— 它只在下次冷启动时"可能"更新。
+     * 也就是说**我在 55 轮里改的 20 多个版本，用户看到的可能一直是旧版**，
+     * 然后反馈"还是那样""从来没正常玩过" —— 而代码其实早就修好了。
+     * 这种"修了但用户拿不到"比 bug 本身更冤枉。
+     *
+     * 接上之后：微信在后台静默下载新版本 → 下好之后弹一次询问 → 用户点重启即生效。
+     * 不打断正在玩的对局（只在"已就绪"时问，不强制）。
+     */
+    if (wx.getUpdateManager) {
+      try {
+        const um = wx.getUpdateManager()
+        um.onUpdateReady(function () {
+          wx.showModal({
+            title: '有新版本了',
+            content: '这版修了不少问题，重启一下就生效。',
+            confirmText: '重启',
+            cancelText: '稍后',
+            success: function (r) {
+              if (r.confirm) um.applyUpdate()
+            }
+          })
+        })
+        /* 下载失败不打扰用户 —— 下次启动微信会再试 */
+        um.onUpdateFailed(function () {})
+      } catch (e) { /* 老基础库没有这个 API，忽略 */ }
+    }
+
+    /*
      * 内存警告监听（2026-10-28）。
      *
      * 酒桌游戏要同时活着：骰盅大图 + 20 片撒花 + 35 个音频实例（池化）。
