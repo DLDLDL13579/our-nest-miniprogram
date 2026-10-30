@@ -3376,10 +3376,21 @@ Page({
          看起来像"这题已经抽好了"，等停下再换会有一瞬间的错位感 */
       card: null,
       wheelDeg: finalDeg
+    }, () => {
+      /*
+       * ★ 2026-10-30 修：原来 `sfx.play('wheelStart')` 写在 setData **外面**，
+       *   而 setData 是异步的（跨线程 + 视图 diff）—— 于是**盘还没开始转，
+       *   "转"的声音先响了**。听感就是"声音抢在动作前面"，
+       *   正是用户说的"声音没卡在点上"。
+       *
+       * 放进回调：视图层真的应用了 wheelDeg 之后才出声。
+       * 同一个坑项目里记过（抬盅声、揭盅声），这处漏了。
+       */
+      if (this._dead) return
+      sfx.play('wheelStart')
+      /* 持续咔哒：用 tick 按递减频率排期，模拟"越转越慢" */
+      this.scheduleTicks(2600)
     })
-    sfx.play('wheelStart')
-    /* 持续咔哒：用 tick 按递减频率排期，模拟"越转越慢" */
-    this.scheduleTicks(2600)
 
     this._wheelTimer = setTimeout(() => {
       if (this._dead) return
