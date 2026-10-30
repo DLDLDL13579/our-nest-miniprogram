@@ -675,7 +675,7 @@ module.exports = {
         room: uwRoom({
           id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
           count: 12, players: players, gameName: '谁是卧底',
-          uw: { step: 'vote', word: '豆浆', myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
+          uw: { step: 'vote', word: '豆浆', aliveCount: 12, myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
         })
       }
     },
