@@ -1599,6 +1599,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   }
 
   /* ============ ④ 模板引用的房间字段必须真的有人提供 ============ */
+  /*
+   * ★★★ ④·深层 嵌套字段的幽灵检测（2026-10-30，真实踩到）。
+   *
+   * 比牌记录模板里写着 `room.poker.last.byText` / `targetText`，
+   * 而**服务端从来没返回过这两个字段**（它返回 byCards / targetCards）。
+   * 于是那三张牌一直是空的，而且不报错。
+   * mock 数据里恰好写了 byText，所以渲染截图看起来完全正常 —— 问题被盖住了。
+   *
+   * 上面 ④ 那条只查 `room.xxx` 一层，看不见 `room.poker.last.xxx` 这种深层的。
+   * 这里专门查已知会出问题的几个嵌套路径。
+   */
+  {
+    const tpl = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    const srv = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    /*
+     * ⚠️ 不能硬编码字段清单（第一版就是这么写的，反向验证时用 byText 替换
+     *    byCards —— 而 byText 不在清单里 → **根本没检查** → exit=0，假绿）。
+     * 改成**从模板里自动抽取**所有 room.poker.last.xxx。
+     */
+    const found = new Set()
+    const re = /room\.poker\.last\.(\w+)/g
+    let m
+    while ((m = re.exec(tpl))) found.add(m[1])
+    const ghost = []
+    found.forEach(key => {
+      if (!new RegExp('\\b' + key + '\\s*:').test(srv)) {
+        ghost.push('room.poker.last.' + key + '（服务端没有 key `' + key + '`）')
+      }
+    })
+    assert.deepStrictEqual(ghost, [],
+      '这些深层字段模板在用但服务端没返回（界面上会一直是空的，不报错）：\n    ' + ghost.join('\n    '))
+    ok('★ 深层嵌套字段（poker.last.*）模板与云端对得上')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，

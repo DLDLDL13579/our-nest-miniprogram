@@ -870,12 +870,25 @@
         <block wx:if="{{room.poker.last.kind === 'vs'}}">
           <view class="pkl-row">
             <view class="pkl-who {{room.poker.last.winner === room.poker.last.by ? 'win' : 'lose'}}">{{room.poker.last.by}}</view>
+            <!--
+              ★★★ 2026-10-30 修：这里原来引用 `byText` / `targetText`，
+              而**服务端从来没返回过这两个字段**（它返回的是 byCards / targetCards 对象数组）
+              —— 于是比牌记录那三张牌**一直是空的**，而且不报错。
+              mock 数据里恰好写了 byText，所以渲染截图看起来正常，把问题盖住了。
+
+              现在改用服务端真实返回的 byCards，并直接显示牌面图（和手牌区同一套素材），
+              不再用文字符号 —— 同一局里两种牌面风格本来就该统一。
+            -->
             <view class="pkl-cards">
-              <text wx:for="{{room.poker.last.byText}}" wx:key="*this" class="pkl-c">{{item}}</text>
+              <image wx:for="{{room.poker.last.byCards}}" wx:for-item="c" wx:key="index"
+                     class="pkl-card-img" mode="aspectFit"
+                     src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
             </view>
             <text class="pkl-vs">对</text>
             <view class="pkl-cards">
-              <text wx:for="{{room.poker.last.targetText}}" wx:key="*this" class="pkl-c">{{item}}</text>
+              <image wx:for="{{room.poker.last.targetCards}}" wx:for-item="c" wx:key="index"
+                     class="pkl-card-img" mode="aspectFit"
+                     src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
             </view>
             <view class="pkl-who {{room.poker.last.winner === room.poker.last.target ? 'win' : 'lose'}}">{{room.poker.last.target}}</view>
           </view>

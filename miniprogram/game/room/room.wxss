@@ -2570,3 +2570,11 @@
   width: 100%; height: 100%;
   border-radius: 10rpx;
 }
+
+/* 比牌记录里的牌面小图（2026-10-30，与手牌区同一套素材） */
+.pkl-card-img {
+  width: 34rpx; height: 48rpx;
+  border-radius: 3rpx;
+  background: #FFFDF9;
+  margin-right: 4rpx;
+}
