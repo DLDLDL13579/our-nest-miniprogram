@@ -816,9 +816,23 @@
    * Apple HIG 的最小触控是 44px（88rpx），这里按 88rpx 配。
    * 24rpx 字号的行高约 34rpx → 上下 padding 各 27rpx。
    */
-  padding: 27rpx 26rpx; border-radius: 16rpx;
+  /*
+   * ★ 2026-10-30 真机截图发现：一行只显示 5.5 个，第 6 个被切一半。
+   *
+   * 算一下：min-width 118rpx + 左右 padding 各 26rpx ≈ 170rpx/个，
+   * 屏幕 750rpx 减页面 padding 32rpx = 718rpx → 一排只能放 4.2 个。
+   * 而叫法有 24 个（8 人局更多）—— 用户看到的是"半截按钮"，
+   * 且**不会知道可以横向滑**（scroll-x 没有任何视觉提示）。
+   *
+   * 改成：左右 padding 收到 16rpx、min-width 收到 92rpx → 约 124rpx/个，
+   * 一排能放 5.8 个（多出 1.6 个可见）。
+   * 触控高度不变（上下 padding 仍是 27rpx，88rpx 高），符合 Apple HIG。
+   * ★ 而且这些按钮点得最多，**宁可矮一点也不能窄到点不准**——
+   *   所以宽度只收到 92rpx，仍远大于最小触控宽度的合理值。
+   */
+  padding: 27rpx 16rpx; border-radius: 16rpx;
   background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
-  font-size: 24rpx; font-weight: 600; min-width: 118rpx; text-align: center;
+  font-size: 24rpx; font-weight: 600; min-width: 90rpx; text-align: center;
   animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
 }
 .optbtn:active { background: rgba(232,179,60,.3); transform: scale(.94) }
