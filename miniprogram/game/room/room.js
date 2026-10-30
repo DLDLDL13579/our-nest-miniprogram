@@ -1925,7 +1925,7 @@ Page({
         return null
       })
     this.data._uwBusy = false
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* 投票：点一个人。
@@ -1950,7 +1950,7 @@ Page({
         return null
       })
     this.data._uwBusy = false
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* ================= 梦幻金花 ================= */
@@ -2053,7 +2053,7 @@ Page({
       })
     clearTimeout(dog)
     this.data._pkBusy = false
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* 弃牌：认输，喝一杯 */
@@ -2079,7 +2079,7 @@ Page({
         return null
       })
     this.data._pkBusy = false
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* 比牌：点一个人跟他比。
@@ -2099,7 +2099,7 @@ Page({
         return null
       })
     this.data._pkBusy = false
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* ================= 自定义题 ================= */
@@ -2186,8 +2186,7 @@ Page({
         this.resyncAfterFail()
         return null
       })
-    if (r && !r.ok) wx.showToast({ title: r.msg || '催不动', icon: 'none' })
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /**
@@ -2222,7 +2221,7 @@ Page({
      *   业务错误 → 把服务端的话显示出来
      *   null（已在 catch 里弹过）→ 不再重复弹
      */
-    if (r && r.ok) this.applyRoom(r.room)
+    if (this.okOrSay(r)) this.applyRoom(r.room)
     else if (r && r.msg) wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
   },
 
@@ -3032,6 +3031,29 @@ Page({
   resyncAfterFail() {
     if (this._dead) return
     this.pollTick()
+  },
+
+  /**
+   * 云函数**返回了业务错误**时的统一处理（2026-10-30）。
+   *
+   * ★ 和 catch 的区别（这是关键）：
+   *   · `catch` 只在**网络层/运行时**失败时触发（调用没通）
+   *   · 云函数**正常返回** `{ ok:false, msg:'只有房主能锁房' }` 时，
+   *     `catch` 不会跑，而很多方法只写了 `if (r && r.ok) ...`
+   *     → **业务错误被静默吞掉，用户点了没反应、也没提示**。
+   *
+   *   项目里这种写法有十几处（投票、弃牌、比牌、换牌、催一下…），
+   *   症状全是"点了没反应"—— 和真机反馈的那类一模一样。
+   *
+   * 用法：`if (this.okOrSay(r)) this.applyRoom(r.room)`
+   */
+  okOrSay(r) {
+    if (r && r.ok) return true
+    /* r 为 null = catch 已经弹过提示了，不要重复弹 */
+    if (r && r.msg && !this._dead) {
+      wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
+    }
+    return false
   },
 
   /**
