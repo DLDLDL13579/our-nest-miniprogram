@@ -518,7 +518,10 @@ def main():
     # 游戏里骰子显示 266rpx ≈ 133pt，@3x 设备需要约 399 物理像素 —— 刚好够。
     ap.add_argument('--size', type=int, default=600)
     ap.add_argument('--ss', type=int, default=2)
-    ap.add_argument('--out', default='miniprogram/images/dice')
+    # ★ 2026-10-30：默认输出改成**分包**路径 —— 2026-10-28 拆包时
+    #   美术资源移到了 miniprogram/game/images/，而这里还指向主包。
+    #   重跑一次就会把图写到旧位置 → 页面找不到图（且不报错，只是空白）。
+    ap.add_argument('--out', default='miniprogram/game/images/dice')
     ap.add_argument('--no-trim', action='store_true',
                     help='保留画布留白，不裁剪到骰子包围盒')
     ap.add_argument('--colors', type=int, default=64,
