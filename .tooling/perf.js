@@ -35,7 +35,17 @@ const sleep = ms => new Promise(r => setTimeout(r, ms))
       console.log('  ' + tag + ': 超时(>7s)')
       return 0
     }
-    await oneRound('第一次建房（含冷启动）')
+    /*
+     * ★ 验证分包预加载：preloadRule 配的是"进大厅就后台下载 game 分包"。
+     * 如果生效，在大厅停一会儿再进房间应该比"进大厅立刻点"更快；
+     * 如果没生效，两次都会卡在 1.6MB 分包下载上。
+     */
+    await oneRound('进大厅立刻建房')
+    console.log('  …在大厅等 6 秒（让 preloadRule 有时间下载分包）…')
+    await sleep(6000)
+    await mini.switchTab('/pages/lobby/lobby').catch(() => {})
+    await sleep(1200)
+    await oneRound('等 6 秒后再建房（预加载应已生效）')
     /* 回大厅再建一间 */
     await mini.switchTab('/pages/lobby/lobby').catch(() => {})
     await sleep(2500)
