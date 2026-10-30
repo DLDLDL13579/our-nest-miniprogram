@@ -481,7 +481,7 @@ Page({
     sfx.play('tap')
     call('room', { action: 'nudge', id: this.data.room.id }, { silent: true })
       .then((r) => {
-        if (r && r.ok) {
+        if (this.okOrSay(r)) {
           wx.showToast({ title: '催了', icon: 'none', duration: 1200 })
         } else if (r && r.msg) {
           wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
@@ -2148,7 +2148,7 @@ Page({
       this.resyncAfterFail()
       return null
     })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       this.setData({ room: this.safeDecorate(r.room), cardText: '' })
       wx.showToast({ title: '加好了，抽得到', icon: 'none' })
     }
@@ -2170,7 +2170,7 @@ Page({
       this.resyncAfterFail()
       return null
     })
-    if (r && r.ok) this.setData({ room: this.safeDecorate(r.room) })
+    if (this.okOrSay(r)) this.setData({ room: this.safeDecorate(r.room) })
   },
 
   /**
@@ -2273,7 +2273,7 @@ Page({
       this.resyncAfterFail()
       return null
     })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       this.setData({ room: this.safeDecorate(r.room) })
       const d = decks.deckOf(k)
       wx.showToast({ title: '换成「' + d.name + '」了', icon: 'none' })
@@ -2587,7 +2587,7 @@ Page({
         this.resyncAfterFail()
         return null
       })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       /* ★ 走 feedback 而不是裸 sfx.play（2026-10-28）：
          裸播没有音量档位、没有震动分级，也进不了时间轴 ——
          表里定义的 `shaker` 因此一直是个**从没被触发的死动作**。 */
@@ -2634,7 +2634,7 @@ Page({
         this.resyncAfterFail()
         return null
       })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       if (game === 'wheel') sfx.play('whoosh')
       else sfx.play('tap')
       if (this._dead) return          // 云函数往返期间页面可能已卸载
@@ -3208,7 +3208,7 @@ Page({
       this.resyncAfterFail()
       return null
     })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
       this.setData({ room: this.safeDecorate(r.room) })
     }
@@ -3241,7 +3241,7 @@ Page({
         this.resyncAfterFail()
         return null
       })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       feedback.fire('penalized')
       this.applyRoom(r.room)
     }
@@ -3296,7 +3296,7 @@ Page({
     /* 云函数回来了 —— 无论成败都先停蓄力音，再接揭盅那一拍 */
     sfx.stop('chargeUp')
     this.setData({ suspense: false })
-    if (r && r.ok) {
+    if (this.okOrSay(r)) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
       /*
        * ★★ 声音/震动放进 setData 的**回调**里（2026-10-30，用户实测

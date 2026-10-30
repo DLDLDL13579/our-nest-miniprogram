@@ -1934,6 +1934,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 三个页面的 bindtap 目标都有对应方法')
   }
 
+  /*
+   * ★★★ ④·g 云调用之后必须处理「业务错误」，不能只判 ok（2026-10-30）。
+   *
+   * 云函数**正常返回** `{ ok:false, msg:'只有房主能锁房' }` 时，`catch` 不会跑。
+   * 而很多方法只写了 `if (r && r.ok) this.applyRoom(r.room)` ——
+   * 失败分支**什么都不做**，用户看到的就是"点了没反应"。
+   *
+   * 真机反馈里"点了没反应"出现过多次，这轮扫出 7 处一起修了。
+   * 这条断言防止以后新增的云调用又写成静默。
+   *
+   * 判据：`await call(...)` 之后的 if 判断里，如果只出现 `r.ok` 而没有
+   * `okOrSay` / `else` / `!r.ok` 之一，就报。
+   */
+  {
+    /*
+     * 判据收紧（第二版）：直接要求**用了 okOrSay**，不看窗口。
+     *
+     * 第一版看"前后 25 行内有没有 showToast" —— 太宽，
+     * 附近别的方法里有个 showToast 就放行了，反向验证 exit=0（假绿）。
+     *
+     * 现在：所有 `call(...)` 之后的成功判断，必须是 `this.okOrSay(r)`。
+     * 唯一例外：把错误写进页面 err 条的方法（doCreate / doJoin），
+     * 它们用 `setData({ err })`，用白名单按方法名排除。
+     */
+    const jsG = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const linesG = jsG.split('\n')
+    const silent = []
+    let curFn = ''
+    for (let i = 0; i < linesG.length; i++) {
+      const l = linesG[i]
+      /* 记当前方法名，用于白名单 */
+      const fm = /^\s{2}(?:async\s+)?(\w+)\s*\(/.exec(l)
+      if (fm) curFn = fm[1]
+      if (/^\s*(\*|\/\/)/.test(l)) continue
+      if (!/if \(r && r\.ok\)/.test(l)) continue
+      if (curFn === 'doCreate' || curFn === 'doJoin') continue   /* 走页面 err 条 */
+      if (curFn === 'okOrSay') continue                          /* 它自己就是处理逻辑 */
+      silent.push((i + 1) + ' [' + curFn + '] ' + l.trim().slice(0, 50))
+    }
+    assert.deepStrictEqual(silent, [],
+      '这些云调用只判了 ok（业务错误被静默吞掉 → "点了没反应"）：\n    ' + silent.join('\n    '))
+    ok('★ 云调用都走 okOrSay 处理业务错误')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
