@@ -1801,6 +1801,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 全部 ' + Object.keys(states).length + ' 个 mock 状态的字段形状与模板一致')
   }
 
+  /*
+   * ★★★ ④·c 前端派生字段漏赋值（2026-10-30，真实抓到一个）。
+   *
+   * 模板第 889 行读 `room.poker.drinkText`（「换牌已经喝了 X 杯」），
+   * 而 `decorate()` 只给**玩家**设了 `p.drinkText`（每人一行），
+   * **从来没给 room.poker.drinkText 赋过值** →
+   * 那一行永远不显示，玩家看不到自己换牌喝了多少。
+   *
+   * 这是幽灵字段的第三种形态：
+   *   ① 服务端不返回（有断言 ④）
+   *   ② mock 造假（有断言 ④·mock）
+   *   ③ **前端派生字段漏赋值**（这一条）
+   *
+   * 判据：模板里每个 `room.X.Y`，必须能在 js 的 `.Y =` / `Y:` 或服务端的 `Y:` 里找到来源。
+   */
+  {
+    const tplC = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    const jsC = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const srvC = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    const pairs = [...new Set([...tplC.matchAll(/room\.(\w+)\.(\w+)/g)].map(m => m[1] + '.' + m[2]))]
+    const miss = []
+    pairs.forEach(ab => {
+      const k = ab.split('.')[1]
+      const has =
+        new RegExp('\\.' + k + '\\s*=').test(jsC) ||
+        new RegExp('\\b' + k + '\\s*:').test(jsC) ||
+        new RegExp('\\b' + k + '\\s*:').test(srvC)
+      if (!has) miss.push('room.' + ab)
+    })
+    assert.deepStrictEqual(miss, [],
+      '模板读了两层字段但没有任何地方赋值（界面上永远空白）：\n    ' + miss.join('\n    '))
+    ok('★ ' + pairs.length + ' 个两层字段都有赋值来源（含前端派生）')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
