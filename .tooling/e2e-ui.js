@@ -420,6 +420,49 @@ const rec = (name, ok, extra) => {
     }
 
     const bad = steps.filter(s => !s.ok)
+    /* ⑫ 比大小：完整一局（摇骰 → 看到自己的骰子 → 结算） */
+    console.log('\n── 比大小完整一局 ──')
+    {
+      await mini.switchTab('/pages/lobby/lobby').catch(() => {})
+      await sleep(1500)
+      const lp = await mini.currentPage()
+      const ld = await lp.data()
+      const cards = await lp.$$('.gcard')
+      const idx = ((ld && ld.list) || []).findIndex(g => g.id === 'dice')
+      if (idx < 0 || !cards[idx]) {
+        rec('找到比大小卡片', false)
+      } else {
+        await cards[idx].tap()
+        await sleep(3500)
+        let dp = await mini.currentPage()
+        let dd = await dp.data()
+        rec('点比大小卡 → 进入房间', dd.stage === 'lobby' && !!(dd.room && dd.room.code),
+          'stage=' + dd.stage + ' code=' + (dd.room && dd.room.code))
+        const sb = await dp.$('.bigbtn')
+        if (!sb) { rec('找到比大小开始按钮', false) }
+        else {
+          await sb.tap()
+          for (let i = 0; i < 8; i++) {
+            await sleep(1200); dp = await mini.currentPage(); dd = await dp.data()
+            if (dd.stage === 'playing') break
+          }
+          rec('比大小开局 → playing', dd.stage === 'playing', 'stage=' + dd.stage)
+          const rb = await dp.$('.rollbtn')
+          if (!rb) { rec('找到摇骰按钮', false) }
+          else {
+            await rb.tap()
+            await sleep(3200)
+            const d2 = await mini.currentPage()
+            const dd2 = await d2.data()
+            const mine = dd2.myDice || []
+            rec('点摇盅 → 拿到自己的 5 颗骰子', mine.length === 5, 'dice=' + JSON.stringify(mine))
+            rec('比大小结算（单人局）→ 出结果', !!(dd2.result || dd2.stage === 'over'),
+              'stage=' + dd2.stage + ' result=' + (dd2.result ? 'yes' : 'no'))
+          }
+        }
+      }
+    }
+
     console.log('\n════ 汇总 ════')
     console.log('  ' + steps.length + ' 步，失败 ' + bad.length)
     if (!bad.length) console.log('  ✓ UI 链路全部通过：点击 → 建房 → 开局 → 叫骰 → 界面更新')
