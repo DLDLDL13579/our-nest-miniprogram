@@ -587,9 +587,25 @@
         房主可以「催一下」（2026-10-30）：原来只有卧底投票能催，
         而比大小等别人摇骰同样是干等，桌上没法推动。
       -->
-      <view wx:if="{{myRolled && !result}}" class="waitline">
-        <text class="wl-t">{{room.waitingText}}</text>
-        <view wx:if="{{room.host}}" class="nudgeb" bindtap="doNudge">催一下</view>
+      <!--
+        ★ 揭晓进度（2026-10-30）。
+        酒桌上最有气氛的一刻是"等最后一个人摇完"——所有人都盯着，
+        而原来这里只有一行"还差 2 个人没摇"，没有任何"快到了"的感觉。
+        加一条进度条：已摇的人 / 总人数，越接近满格越紧张。
+        （bar 用纯 CSS 宽度百分比驱动，不用动画——轮询刷新时不会重播。）
+      -->
+      <view wx:if="{{myRolled && !result && room.waitingCount > 0}}" class="revealprog">
+        <view class="rp-row">
+          <text class="rp-t">揭晓进度</text>
+          <text class="rp-n">{{room.count - room.waitingCount}} / {{room.count}}</text>
+        </view>
+        <view class="rp-bar">
+          <view class="rp-fill" style="width:{{(room.count - room.waitingCount) * 100 / room.count}}%"></view>
+        </view>
+        <view class="waitline">
+          <text class="wl-t">{{room.waitingText}}</text>
+          <view wx:if="{{room.host}}" class="nudgeb" bindtap="doNudge">催一下</view>
+        </view>
       </view>
     </block>
 

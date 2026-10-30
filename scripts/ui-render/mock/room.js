@@ -314,6 +314,28 @@ module.exports = {
       })
     }),
 
+    /*
+     * 比大小：我已摇完，还差 1 个人（2026-10-30 加的"揭晓进度"就出现在这一刻）。
+     * 这是酒桌上最有气氛的一刻 —— 所有人都盯着最后一个没摇的人。
+     */
+    diceAlmost: () => ({
+      stage: 'playing',
+      myRolled: true, diceShown: false, rolling: false,
+      cupSrc: 'cup-down', cupCls: '',
+      myDice: [6, 3, 5, 2, 4],
+      room: pkRoom({
+        game: 'dice', phase: 'playing', host: true, count: 3,
+        count: 3,
+        waitingCount: 1, waitingNames: '阿杰',
+        waitingText: '等 阿杰 摇',
+        players: [
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, inRound: true, diceCount: 0 }
+        ]
+      })
+    }),
+
     /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
 
     /* 大话骰：扣盅后轮到我叫骰 */
