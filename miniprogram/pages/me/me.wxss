@@ -124,3 +124,35 @@
 
 /* 错误记录那一行可点（复制），补上按压反馈 */
 .errline:active { opacity: .65 }
+
+/* ===== 诊断信息弹层（2026-10-30，剪贴板被隐私限制后的替代） ===== */
+.diag-mask {
+  position: fixed; left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(14, 11, 9, .78);
+  z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 40rpx 28rpx;
+}
+/* 点遮罩会关闭弹层，按下要有反馈（断言 ④d 也要求） */
+.diag-mask:active { background: rgba(14, 11, 9, .88) }
+.diag-sheet {
+  width: 100%; max-height: 78vh;
+  background: #2A211C;
+  border-radius: 28rpx;
+  border: 2rpx solid rgba(255,255,255,.1);
+  padding: 30rpx 28rpx 26rpx;
+  display: flex; flex-direction: column;
+}
+.diag-t { font-size: 32rpx; font-weight: 700; color: #F6E7C3 }
+.diag-s { font-size: 21rpx; color: rgba(255,255,255,.52); margin: 6rpx 0 16rpx }
+.diag-body {
+  flex: 1; min-height: 200rpx;
+  background: rgba(0,0,0,.28);
+  border-radius: 14rpx;
+  padding: 18rpx;
+}
+.diag-text {
+  font-size: 21rpx; line-height: 1.6;
+  color: rgba(255,255,255,.78);
+  white-space: pre-wrap; word-break: break-all;
+}

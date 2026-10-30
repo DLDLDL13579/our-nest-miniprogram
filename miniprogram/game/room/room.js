@@ -2281,21 +2281,27 @@ Page({
     }
   },
 
-  /** 复制房间码 —— 要发给别人 */
+  /**
+   * 房间号卡片被点了。
+   *
+   * ★★ 2026-10-30 用户实测：`wx.setClipboardData` 报
+   *    `api scope is not declared in the privacy agreement`
+   *    —— 微信 2023 之后把剪贴板列为敏感 API，必须在「用户隐私保护指引」里声明，
+   *    否则调用直接被拒。而那个声明要在公众平台后台填，代码侧无法绕过。
+   *
+   * 用户明确说「可以删除复制功能」，所以这里改成**引导转发**：
+   * 转发走 `onShareAppMessage`（不需要任何敏感权限），对方点开自动进房，
+   * 比"复制一串数字再粘贴"还省一步。房间号仍然大号显示，念给旁边人也行。
+   */
   copyCode() {
     const c = this.data.room && this.data.room.code
     if (!c) return
-    /* 复制成功给一声"嗒"——否则用户不知道点到了没有 */
     sfx.play('tapSoft')
-    wx.setClipboardData({
-      data: c,
-      success: () => wx.showToast({ title: '房间号复制了', icon: 'none' }),
-      /* 复制失败要说（2026-10-29）：否则用户以为复制好了，发出去是空的 */
-      fail: (e) => wx.showModal({
-        title: '复制没成功',
-        content: '房间号是 ' + c + '，手动记一下吧。（' + ((e && e.errMsg) || '未知原因') + '）',
-        showCancel: false
-      })
+    wx.showModal({
+      title: '把房间号发给朋友',
+      content: '点右上角 · · · → 转发给微信好友，对方点开就直接进这个房间（不用再输号）。\n\n也可以直接把 ' + c + ' 念给他。',
+      confirmText: '知道了',
+      showCancel: false
     })
   },
 

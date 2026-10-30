@@ -26,6 +26,9 @@ Page({
     muted: false,
     hapticOn: true,
     reduceMotion: false,
+    /* 诊断信息弹层（剪贴板被隐私限制后改成页面内显示） */
+    diagOpen: false,
+    diagText: '',
     nightGames: 0,
     errCount: 0,
     /* 最近 2 条错误的内容（直接显示，方便截图反馈） */
@@ -191,6 +194,12 @@ Page({
    *   · 屏幕比例怪 → 布局可能错位
    * 没有这些数字，我只能一个个问，而用户往往会说"就是普通手机"。
    */
+  /** 空处理：阻止弹层内部的点击冒泡到遮罩 */
+  noop() {},
+
+  /** 关掉诊断弹层 */
+  closeDiag() { sfx.play('tick'); this.setData({ diagOpen: false }) },
+
   copyDiag() {
     sfx.play('tick')
     var info = {}
@@ -268,22 +277,16 @@ Page({
       }
     } catch (e) {}
     var finish = function () {
-      wx.setClipboardData({
-        data: lines.join('\n'),
-        success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
-        /*
-         * ★ fail 回调（2026-10-29）。用户反馈"复制不了"—— 而原来**没有 fail**，
-         * 失败时一片安静，看起来就像"按钮坏了"。
-         * 现在：失败会说清原因，并且告诉用户还能怎么办（往下看红字、截图）。
-         */
-        fail: function (e) {
-          wx.showModal({
-            title: '复制没成功',
-            content: '请把下面那段红字截图发我，效果一样。（' + ((e && e.errMsg) || '未知原因') + '）',
-            showCancel: false
-          })
-        }
-      })
+      /*
+       * ★★ 2026-10-30 用户实测：`wx.setClipboardData` 报
+       *    `api scope is not declared in the privacy agreement`
+       *    —— 剪贴板是敏感 API，必须在公众平台「用户隐私保护指引」里声明，
+       *    代码侧绕不过去。用户明确说「可以删除复制功能」。
+       *
+       * 改成**把诊断信息显示在页面上**：长按可以选中，也可以直接截图发我。
+       * 弹层比一次性 toast 好的地方是：内容不会消失，能慢慢看、能重看。
+       */
+      this.setData({ diagText: lines.join('\n'), diagOpen: true })
     }
     call('room', { action: 'selftest' }, { silent: true }).then(function (r) {
       if (r && r.probe && r.probe.length) {
@@ -302,30 +305,6 @@ Page({
     })
   },
 
-  copyErrLog() {
-    /* me 页是主包页面，只能用主包的 tick 试听音（音效资源在分包） */
-    sfx.play('tick')
-    var log = []
-    try { log = wx.getStorageSync('errLog') || [] } catch (e) {}
-    if (!log.length) return
-    var lines = log.map(function (x) {
-      var d = new Date(x.t)
-      var hh = ('0' + d.getHours()).slice(-2)
-      var mm = ('0' + d.getMinutes()).slice(-2)
-      return hh + ':' + mm + '  ' + x.fn + (x.act ? '/' + x.act : '') + '  ' + x.raw
-    })
-    wx.setClipboardData({
-      data: '酒桌 错误记录（' + log.length + ' 条）\n' + lines.join('\n'),
-      success: function () { wx.showToast({ title: '已复制', icon: 'none' }) },
-      fail: function (e) {
-        wx.showModal({
-          title: '复制没成功',
-          content: '请把页面上的红字截图发我。（' + ((e && e.errMsg) || '未知原因') + '）',
-          showCancel: false
-        })
-      }
-    })
-  },
 
   toggleMotion() {
     const v = haptic.setReduceMotion(!this.data.reduceMotion)

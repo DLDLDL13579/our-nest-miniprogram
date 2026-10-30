@@ -81,7 +81,7 @@
       <view wx:for="{{errList}}" wx:key="t" class="errtext">
         {{item.time}} · {{item.fn}}{{item.act ? '/' + item.act : ''}}：{{item.raw}}
       </view>
-      <view class="ab-line errline" bindtap="copyErrLog">点这里复制全部错误记录</view>
+      <view class="ab-line errline" bindtap="copyDiag">错误记录也一起显示（点这里看全部诊断）</view>
     </block>
     <view class="ab-line diagline" bindtap="copyDiag">复制诊断信息（含最近的错误）</view>
     <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误。</view>
@@ -97,6 +97,22 @@
 
       <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
       <view class="ab-ver">v{{version}}</view>
+    </view>
+  </view>
+
+  <!--
+    诊断信息弹层（2026-10-30）。
+    剪贴板 API 被隐私协议限制后，改成把内容显示在页面上 ——
+    可以长按选中、也可以直接截图。内容不会像 toast 一样消失。
+  -->
+  <view wx:if="{{diagOpen}}" class="diag-mask" bindtap="closeDiag">
+    <view class="diag-sheet" catchtap="noop">
+      <view class="diag-t">诊断信息</view>
+      <view class="diag-s">长按可选中，或直接截图发我</view>
+      <scroll-view scroll-y class="diag-body">
+        <text class="diag-text" user-select>{{diagText}}</text>
+      </scroll-view>
+      <view class="btn main" bindtap="closeDiag" style="margin-top:16rpx">关闭</view>
     </view>
   </view>
 
