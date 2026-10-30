@@ -49,18 +49,18 @@
     "miniprogram": {
       "list": [
         {
-          "name": "配对页",
-          "pathName": "pages/pair/pair",
+          "name": "大厅",
+          "pathName": "pages/lobby/lobby",
           "query": ""
         },
         {
-          "name": "今日",
-          "pathName": "pages/index/index",
-          "query": ""
+          "name": "房间（带房间号）",
+          "pathName": "game/room/room",
+          "query": "code=627"
         },
         {
-          "name": "答题",
-          "pathName": "pages/answer/answer",
+          "name": "我的",
+          "pathName": "pages/me/me",
           "query": ""
         }
       ]
