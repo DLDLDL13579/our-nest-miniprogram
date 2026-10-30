@@ -99,6 +99,17 @@ function pkRoom(r) {
      */
     soloOk: true,
     shortBy: 0,
+    /*
+     * ★★★ 图片源必须有默认值（2026-10-30 第四次踩同一个坑）。
+     *
+     * 模板写的是 `src="/game/images/cup/{{cupSrc}}.png"` ——
+     * cupSrc 为 undefined 时路径变成 `/game/images/cup/.png` → **破图**，
+     * 而且不报错。我给单个 mock 状态补过三次 cupSrc，每次都是下一个状态又忘。
+     *
+     * 现在在 pkRoom 的默认值里统一给 —— 所有状态自动继承。
+     */
+    wheelGradient: 'conic-gradient(#9E4029 0deg 79.2deg, #3F5A7A 79.2deg 151.2deg, #573E7A 151.2deg 216deg, #36654C 216deg 266.4deg, #8C6226 266.4deg 309.6deg, #7D3549 309.6deg 338.4deg, #3F6579 338.4deg 360deg)',
+    wheelDeg: 0,
     /* 今晚战况（decorate 派生；mock 里给默认值，否则截图会缺这一行） */
     nightDrinks: {}, nightDrinkList: [],
     id: 'r3', code: '627', count: 3,
@@ -134,6 +145,14 @@ module.exports = {
   data: () => ({
     ic: IC,
     loading: false,
+    /*
+     * ★★★ 页面级变量默认值（2026-10-30，第四次因为缺它破图）。
+     * 模板写的是 `src="/game/images/cup/{{cupSrc}}.png"`，
+     * 而 `cupSrc` 是**页面 data** 上的字段（不是 room.cupSrc）。
+     * 缺了它路径就变成 `/game/images/cup/.png` → 破图，且不报错。
+     * 之前给单个状态补过三次，每次下一个状态又忘 —— 现在放默认值，全体继承。
+     */
+    cupSrc: 'cup-down', cupCls: '', diceShown: false, diceRolling: false,
     stage: 'entry',
     room: null,
     games: GAME_SWITCH,
