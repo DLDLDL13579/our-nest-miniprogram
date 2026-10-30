@@ -1618,14 +1618,29 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
      *    byCards —— 而 byText 不在清单里 → **根本没检查** → exit=0，假绿）。
      * 改成**从模板里自动抽取**所有 room.poker.last.xxx。
      */
+    /*
+     * 从模板自动抽取**所有** room.X.Y 深层引用（不只 poker.last）。
+     *
+     * 来源可以是三种形式（2026-10-30 试错过）：
+     *   ① 对象字面量 `key: ...`
+     *   ② `obj.key = ...` 赋值（decorate 里大量这么写）
+     *   ③ `.length` 这类数组长度不需要构造
+     * 第一版只认 ①，把 poker.drinkText / hintText 误报成"没来源"。
+     */
     const found = new Set()
-    const re = /room\.poker\.last\.(\w+)/g
-    let m
-    while ((m = re.exec(tpl))) found.add(m[1])
+    const re2 = /room\.(\w+)\.(\w+)/g
+    let m2
+    while ((m2 = re2.exec(tpl))) found.add(m2[1] + '.' + m2[2])
     const ghost = []
-    found.forEach(key => {
-      if (!new RegExp('\\b' + key + '\\s*:').test(srv)) {
-        ghost.push('room.poker.last.' + key + '（服务端没有 key `' + key + '`）')
+    const jsSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    found.forEach(full => {
+      const key = full.split('.').pop()
+      if (key === 'length') return
+      const hasKey = new RegExp('\\b' + key + '\\s*:').test(srv)
+      const hasAssign = new RegExp('\\.' + key + '\\s*=').test(jsSrc) ||
+                        new RegExp('\\.' + key + '\\s*=').test(srv)
+      if (!hasKey && !hasAssign) {
+        ghost.push('room.' + full + '（服务端和前端都没有构造 `' + key + '`）')
       }
     })
     assert.deepStrictEqual(ghost, [],
