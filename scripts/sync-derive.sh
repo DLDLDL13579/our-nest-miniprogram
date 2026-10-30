@@ -25,7 +25,24 @@ sync_one() {
   local targets
   targets=$(ls "$@" 2>/dev/null || true)
   if [ -z "$targets" ]; then
-    echo "  $label：没有拷贝需要同步"
+# ★ 2026-10-30：新模块第一次同步时目标文件还不存在，`ls` 展开为空 →
+# 原来直接"没有拷贝需要同步"跳过了 —— **新文件永远同步不上去**。
+# 现在：目标是明确路径（不含通配）且父目录存在时，直接创建。
+# （含通配的保持原行为：那种写法本身就意味着"给已存在的拷贝"。）
+    local made=0
+    for t in "$@"; do
+      case "$t" in
+        \**) : ;;
+        *) if [ -d "$(dirname "$t")" ] && [ ! -e "$t" ]; then
+             cp "$src" "$t"
+             echo "  新建 → $t"
+             made=1
+           fi ;;
+      esac
+    done
+    if [ "$made" = "0" ]; then
+      echo "  $label：没有拷贝需要同步"
+    fi
     return
   fi
   local n=0
@@ -48,3 +65,5 @@ sync_one miniprogram/utils/words.js "words.js" cloudfunctions/*/words.js
 sync_one miniprogram/utils/poker.js "poker.js" cloudfunctions/*/poker.js
 # 2026-10-28：比大小的结算规则抽成纯函数 —— 内联在 roll 分支里的规则根本没法单测
 sync_one miniprogram/utils/dicerank.js "dicerank.js" cloudfunctions/*/dicerank.js
+# 2026-10-30：大话骰叫骰规则（斋/起叫档/破斋）—— 前端生成选项、服务端校验，必须同一份
+sync_one miniprogram/utils/liarRules.js "liarRules.js" cloudfunctions/room/liarRules.js

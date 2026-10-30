@@ -67,81 +67,10 @@ const loser = require('./loser.js')
 const liarCount = require('./liarCount.js')
 
 /*
- * ★★★ 大话骰的完整叫骰规则（2026-10-30 按调研重写）。
- *
- * 用户实测指出：缺斋、缺起叫档、缺斋/不斋混叫规则。
- * 规则依据见 docs/大话骰规则.md（广东开平主流玩法）。
- *
- * 三个概念：
- *   · **斋**：1 点不再万能，只算 1
- *   · **起叫档**：开局第一个喊数，要够人数档（2人2/2/3、3人3/4/5、4人4/5/6、5人5/6/8）
- *   · **破斋**：从斋回到不斋，数量必须**加倍**（这是最反直觉的一条）
- */
-
-/** 某个叫法最少要喊多少（分：叫1 / 斋 / 不斋 三档） */
-function openNeed(playerCount, zhai, face) {
-  const p = Math.max(2, Number(playerCount) || 2)
-  /* 叫 1 单独一档：几个人就几个 1（俗称「人头一」） */
-  if (face === 1) return p
-  if (p === 2) return zhai ? 2 : 3
-  if (p === 3) return zhai ? 4 : 5
-  if (p === 4) return zhai ? 5 : 6
-  if (p === 5) return zhai ? 6 : 8
-  return zhai ? p + 1 : p + 2
-}
-
-/**
- * 下家能不能这样叫。
- * @param {object|null} cur   上家的叫法 {n, face, zhai}；首叫传 null
- * @param {object} next       这一手 {n, face, zhai}
- * @param {number} playerCount
- * @returns {{ok:boolean, why:string}}
- */
-function canRaise(cur, next, playerCount) {
-  const p = Math.max(2, Number(playerCount) || 2)
-  /* ---------- 首叫：够起叫档 ---------- */
-  if (!cur) {
-    const need = openNeed(p, next.zhai, next.face)
-    if (next.n < need) return { ok: false, why: '起叫至少要 ' + need + ' 个' + (next.zhai ? '（斋）' : '') }
-    return { ok: true, why: '' }
-  }
-
-  const curZhai = !!cur.zhai
-  const nextZhai = !!next.zhai
-
-  /* ---------- 同一形态（都在斋里，或都在不斋里）：正常往上走 ---------- */
-  if (curZhai === nextZhai) {
-    /* 叫 1 有额外约束：至少要够「人头一」 */
-    if (next.face === 1 && cur.face !== 1) {
-      const need = openNeed(p, nextZhai, 1)
-      if (next.n < need) return { ok: false, why: '叫 1 至少要 ' + need + ' 个' }
-      return { ok: true, why: '' }
-    }
-    if (next.n > cur.n) return { ok: true, why: '' }
-    if (next.n === cur.n && next.face > cur.face) return { ok: true, why: '' }
-    return { ok: false, why: '只能往上叫（数量变大，或数量同、点数大）' }
-  }
-
-  /* ---------- 不斋 → 斋：可以同数量同点数，转成斋 ---------- */
-  if (!curZhai && nextZhai) {
-    if (next.n > cur.n) return { ok: true, why: '' }
-    if (next.n === cur.n) {
-      /* 同数量时点数只能更大或相等（相等就是「同一手翻成斋」） */
-      return next.face >= cur.face
-        ? { ok: true, why: '' }
-        : { ok: false, why: '改叫斋时点数不能降低' }
-    }
-    return { ok: false, why: '改叫斋时数量不能减少' }
-  }
-
-  /* ---------- 斋 → 不斋（破斋）：数量必须加倍 ---------- */
-  if (curZhai && !nextZhai) {
-    if (next.n >= cur.n * 2) return { ok: true, why: '' }
-    return { ok: false, why: '从斋改回不斋，数量要加倍（至少 ' + (cur.n * 2) + ' 个）' }
-  }
-
-  return { ok: false, why: '只能往上叫' }
-}
+/* 规则在 miniprogram/utils/liarRules.js（前后端共享，sync-derive 同步过来）——
+   两边各写一份必然不一致：会出现"按钮亮了但服务端说不行"，而且不报错。 */
+const liarRules = require('./liarRules.js')
+const canRaise = liarRules.canRaise
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 

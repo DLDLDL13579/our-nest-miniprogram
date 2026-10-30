@@ -474,7 +474,18 @@
         <text class="ln-s">你可以先按住盅，看看自己这局的骰子</text>
       </view>
 
-      <view class="sechead"><text>叫一个</text></view>
+      <!--
+        叫骰区标题 + **斋开关**（2026-10-30）。
+        斋是这个玩法最反直觉的一条：1 不再万能。所以开关必须显眼地摆在
+        "叫一个"旁边，并且打开/关闭时选项整体换一套（不是另加一排）。
+      -->
+      <view class="sechead zrow">
+        <text>叫一个</text>
+        <view class="ztoggle {{zhaiMode ? 'on' : ''}}" bindtap="toggleZhai">
+          <text class="zt-dot"></text>
+          <text class="zt-t">{{zhaiMode ? '斋 · 1 不算万能' : '不斋 · 1 当万能'}}</text>
+        </view>
+      </view>
       <!--
         ★ 叫骰选项改成**横向滚动一行**（原来 flex-wrap 排 6 行 = 516rpx）。
 

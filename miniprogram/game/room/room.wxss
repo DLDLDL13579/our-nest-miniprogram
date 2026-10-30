@@ -2514,3 +2514,23 @@
   transition: transform .1s;
 }
 .rl-esc:active { transform: scale(.96) }
+
+/* ===== 叫骰区的「斋」开关（2026-10-30） ===== */
+.zrow { display: flex; align-items: center; justify-content: space-between }
+.ztoggle {
+  display: flex; align-items: center; gap: 10rpx;
+  padding: 8rpx 18rpx; border-radius: 999rpx;
+  border: 2rpx solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+  font-size: 21rpx; color: rgba(255,255,255,.55);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.ztoggle.on {
+  background: rgba(232,179,60,.18);
+  border-color: rgba(232,179,60,.5);
+  color: #F6E7C3;
+}
+.ztoggle:active { transform: scale(.96) }
+.zt-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,.35); flex: none }
+.ztoggle.on .zt-dot { background: #E8B33C }
+.zt-t { font-size: 21rpx; line-height: 1.2; white-space: nowrap }

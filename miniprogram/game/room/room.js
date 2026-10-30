@@ -27,7 +27,7 @@ const { call } = require('../../utils/cloud.js')
 const CFG = require('../../config.js')
 const sfx = require('../sfx.js')
 const settleFoot = require('../../game/settle.js')
-const bidOptions = require('../../game/bidOptions.js')
+const liarRules = require('../../utils/liarRules.js')
 const feedback = require('../feedback.js')
 const trace = require('../../utils/trace.js')
 /*
@@ -302,6 +302,9 @@ Page({
     cdStuck: false,
     /* 离开房间的页面内确认卡（与金花的确认卡同一套样式，不再用系统弹窗） */
     askLeave: false,
+    /* 叫斋模式：打开后生成的叫法是斋形态（1 不万能） */
+    zhaiMode: false,
+
     /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
     pkAsk: null
   },
@@ -1045,8 +1048,28 @@ Page({
    * 可点的叫法 —— 规则在 `game/bidOptions.js`（纯函数，可单测）。
    * 这里只负责把 room 的两个字段递过去。
    */
+  /**
+   * 切换「叫斋」模式（2026-10-30）。
+   *
+   * 斋的意思是"1 不再当万能"—— 这是大话骰最反直觉、也最容易吵起来的一条规则。
+   * 用开关而不是"每个选项都出斋/不斋两份"：选项翻倍会挤满一屏，而酒桌上
+   * 一局里斋/不斋的切换就那么几次，一个开关比一堆按钮好点。
+   */
+  toggleZhai() {
+    sfx.play('tapSoft')
+    const next = !this.data.zhaiMode
+    this.setData({ zhaiMode: next })
+    /* 切换后选项整体换一套（斋的起叫档也不同） */
+    const room = this.data.room
+    if (room) this.setData({ options: this.buildOptions(room) })
+  },
+
+  /**
+   * 可点的叫法 —— 规则在 `utils/liarRules.js`（**前后端共享**，服务端校验用的是同一份）。
+   * zhaiMode 是界面上的「叫斋」开关：打开后生成的选项都是斋形态。
+   */
   buildOptions(room) {
-    return bidOptions.list(room.count, room.bid)
+    return liarRules.options(room.count, room.bid, this.data.zhaiMode, 24)
   },
 
   /**
@@ -2852,7 +2875,12 @@ Page({
     const opts = (this.data.room && this.data.room.options) || []
     const label = ds.l || opts[i] || ''
     /* 选项是 "3个4" 这种字符串，解析回 n / face */
-    const m = /^(\d+)个(\d)$/.exec(label)
+    /*
+     * ★ 标签格式带了「斋」后缀（2026-10-30）：`5个4` / `5个4斋`。
+     *   正则不加 `(斋?)` 的话后面全部匹配不到 → 落到下面的兜底分支 →
+     *   用户点按钮"没反应"（这个坑项目里记过：取不到就静默返回是最糟的）。
+     */
+    const m = /^(\d+)个(\d)(斋?)$/.exec(label)
 
     /*
      * ★★ 拿不到选项时**不能说走就走**（2026-10-09 用户实测报「点击 2个3 没反应」）。
@@ -2923,7 +2951,7 @@ Page({
      *    正确做法：catch 里把 `e.friendly`（cloud.js 已经整理好的人话）提示出来。
      */
     const r = await call('room', {
-      action: 'bid', id: this.data.room.id, n: n, face: face
+      action: 'bid', id: this.data.room.id, n: n, face: face, zhai: !!m[3]
     }, { silent: true }).catch((e) => {
       wx.showToast({
         title: (e && (e.friendly || e.message)) || '这一叫不行，换一个',
