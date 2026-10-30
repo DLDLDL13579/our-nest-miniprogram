@@ -24,7 +24,24 @@ const FILES = {
     '/game/audio/dice-settle-3.wav'
   ],
   // 转盘
-  tick: '/audio/tick.wav',
+  /*
+   * 转盘咔哒一局要响 40 次（转一圈八九下 × 四五圈）——
+   * 同一个声音连听 40 次，再短也会被听成"打点机"。
+   *
+   * 三份**波形不同**的变体（不是调音高：方波 1400/1330/1470Hz，
+   * 占空比 .50/.42/.58，指数尾巴 3.5/3.0/2.0ms）——
+   * 三个维度都略不同，听感是"指针划过不同的格子"。
+   * 三份的 RMS 已对齐到同一值（-16.9dBFS），不会一下轻一下响。
+   * 转盘那边仍然 pitch:false —— 咔哒声变调会很怪。
+   *
+   * 注意 tick 是唯一留在主包（「我的」页试听用）的音效，
+   * 所以第一项是主包路径、后两项在分包（分包可以引主包，反之不行）。
+   */
+  tick: [
+    '/audio/tick.wav',
+    '/game/audio/tick-2.wav',
+    '/game/audio/tick-3.wav'
+  ],
   /* 环境底噪（4 秒循环）—— 房间不该是绝对安静的 */
   ambientRoom: '/game/audio/ambient-room.wav',
   wheelStart: '/game/audio/wheel-start.wav',
