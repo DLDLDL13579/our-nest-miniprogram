@@ -904,16 +904,28 @@
               现在改用服务端真实返回的 byCards，并直接显示牌面图（和手牌区同一套素材），
               不再用文字符号 —— 同一局里两种牌面风格本来就该统一。
             -->
-            <view class="pkl-cards">
-              <image wx:for="{{room.poker.last.byCards}}" wx:for-item="c" wx:key="index"
-                     class="pkl-card-img" mode="aspectFit"
-                     src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
+            <!--
+              ★ 2026-10-30 补：牌面下面加**牌型名**（豹子/顺金/金花/顺子/对子/单张）。
+              服务端一直在返回 `byType` / `targetType`，但模板从没用过 ——
+              于是玩家只看到"谁赢了"，**不知道凭什么赢**。
+              酒桌上这是必然会追问的一句："他什么牌？"
+            -->
+            <view class="pkl-side">
+              <view class="pkl-cards">
+                <image wx:for="{{room.poker.last.byCards}}" wx:for-item="c" wx:key="index"
+                       class="pkl-card-img" mode="aspectFit"
+                       src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
+              </view>
+              <text wx:if="{{room.poker.last.byType}}" class="pkl-type">{{room.poker.last.byType}}</text>
             </view>
             <text class="pkl-vs">对</text>
-            <view class="pkl-cards">
-              <image wx:for="{{room.poker.last.targetCards}}" wx:for-item="c" wx:key="index"
-                     class="pkl-card-img" mode="aspectFit"
-                     src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
+            <view class="pkl-side">
+              <view class="pkl-cards">
+                <image wx:for="{{room.poker.last.targetCards}}" wx:for-item="c" wx:key="index"
+                       class="pkl-card-img" mode="aspectFit"
+                       src="/game/images/card/c{{c.s}}-{{c.r}}.png" />
+              </view>
+              <text wx:if="{{room.poker.last.targetType}}" class="pkl-type">{{room.poker.last.targetType}}</text>
             </view>
             <view class="pkl-who {{room.poker.last.winner === room.poker.last.target ? 'win' : 'lose'}}">{{room.poker.last.target}}</view>
           </view>
