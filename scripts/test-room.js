@@ -369,32 +369,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* ============ ③ 只能往上叫（服务端判定） ============ */
   console.log('\n=== ③ 叫骰：服务端判定，不信前端 ===')
   OPENID = A
-  const bid1 = await room.main({ action: 'bid', id: roomId, n: 3, face: 4 })
-  assert.ok(bid1.ok, '轮到 1 号（房主）叫，应成功')
-  assert.strictEqual(bid1.room.bid.n, 3)
+  /* ★ 3 人局起叫档是 5 个（不斋）—— 见 docs/大话骰规则.md */
+  const bid1 = await room.main({ action: 'bid', id: roomId, n: 5, face: 4 })
+  assert.ok(bid1.ok, '轮到 1 号（房主）叫，应成功；实际：' + (bid1.msg || ''))
+  assert.strictEqual(bid1.room.bid.n, 5)
   assert.strictEqual(bid1.room.turn, 2, '轮到下一家')
-  ok(`叫「3 个 4」成功，轮到 2 号`)
+  ok(`叫「5 个 4」成功，轮到 2 号`)
 
   /* 不是自己的回合 */
-  const wrongTurn = await room.main({ action: 'bid', id: roomId, n: 4, face: 4 })
+  const wrongTurn = await room.main({ action: 'bid', id: roomId, n: 6, face: 4 })
   assert.strictEqual(wrongTurn.ok, false, 'A 又叫一次应被拒（已轮到 B）')
   assert.ok(/没轮到/.test(wrongTurn.msg))
   ok('不是自己回合时被拒：「' + wrongTurn.msg + '」')
 
   /* 往下叫 */
   OPENID = B
-  const lower = await room.main({ action: 'bid', id: roomId, n: 2, face: 6 })
+  const lower = await room.main({ action: 'bid', id: roomId, n: 4, face: 6 })
   assert.strictEqual(lower.ok, false, '数量变小应被拒')
   assert.ok(/往上叫/.test(lower.msg))
   ok('往下叫被拒：「' + lower.msg + '」')
 
-  const sameLowerFace = await room.main({ action: 'bid', id: roomId, n: 3, face: 3 })
+  const sameLowerFace = await room.main({ action: 'bid', id: roomId, n: 5, face: 3 })
   assert.strictEqual(sameLowerFace.ok, false, '数量同、点数小应被拒')
   ok('数量同但点数变小也被拒')
 
-  const valid = await room.main({ action: 'bid', id: roomId, n: 3, face: 5 })
+  const valid = await room.main({ action: 'bid', id: roomId, n: 5, face: 5 })
   assert.ok(valid.ok, '数量同、点数大应成功')
-  ok('数量同、点数大 → 允许（3 个 4 → 3 个 5）')
+  ok('数量同、点数大 → 允许（5 个 4 → 5 个 5）')
 
   /* ============ ④ 开骰：此时才亮出所有人的骰子 ============ */
   console.log('\n=== ④ 开骰：这时才亮出所有人的骰子 ===')
@@ -723,7 +724,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     await room.main({ action: 'start', id: trId })
     store.rooms.filter(x => x._id === trId)[0].countdownEnd = Date.now() - 100
     await room.main({ action: 'status', id: trId })
-    await room.main({ action: 'bid', id: trId, n: 2, face: 3 })
+    await room.main({ action: 'bid', id: trId, n: 3, face: 3 })
 
     const raw = store.rooms.filter(x => x._id === trId)[0]
     /* ① 回合刚推进 10 秒、人也还活着 → 不该自动开 */
@@ -879,7 +880,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('小数 / NaN 的叫骰参数全部被拒（整数校验生效）')
 
     /* 合法的一叫必须仍然能过 —— 别把功能一起拦死了 */
-    const good = await room.main({ action: 'bid', id: lr.room.id, n: 2, face: 3 })
+    const good = await room.main({ action: 'bid', id: lr.room.id, n: 3, face: 3 })
     assert.ok(good.ok, '合法叫骰应能通过：' + (good.msg || ''))
     ok('合法叫骰（2个3）仍然通过')
   }
@@ -986,7 +987,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       await room.main({ action: 'status', id: GID })
 
       /* 造一点"局内状态"，这样才测得出"清干净了" */
-      await room.main({ action: 'bid', id: GID, n: 2, face: 3 })
+      await room.main({ action: 'bid', id: GID, n: 3, face: 3 })
       const dirty = store.rooms.filter(x => x._id === GID)[0]
       dirty.spin = { k: 'truth', t: '真心话', at: Date.now() }
       assert.ok(dirty.bid, '前置：应有一条叫骰')
@@ -1052,7 +1053,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   OPENID = A
   const lobbyRoom = await room.main({ action: 'create', name: '大厅测', game: 'liar' })
   assert.ok(lobbyRoom.ok && lobbyRoom.room && lobbyRoom.room.id, '准备：建一个大话骰房应成功')
-  const notStarted = await room.main({ action: 'bid', id: lobbyRoom.room.id, n: 2, face: 2 })
+  const notStarted = await room.main({ action: 'bid', id: lobbyRoom.room.id, n: 5, face: 2 })
   assert.strictEqual(notStarted.ok, false)
   assert.ok(/还没开始/.test(notStarted.msg))
   ok('开局前叫骰被拒：「' + notStarted.msg + '」')
@@ -1260,9 +1261,9 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   store.rooms.filter(x => x._id === midId)[0].countdownEnd = Date.now() - 100
   await room.main({ action: 'status', id: midId })
   /* A(seat1) → B(seat2) 各叫一次 → turn 变 3（轮到 C） */
-  await room.main({ action: 'bid', id: midId, n: 2, face: 3 })
+  await room.main({ action: 'bid', id: midId, n: 5, face: 3 })
   OPENID = B
-  await room.main({ action: 'bid', id: midId, n: 3, face: 3 })
+  await room.main({ action: 'bid', id: midId, n: 6, face: 3 })
   let midRoom = store.rooms.filter(r => r._id === midId)[0]
   assert.strictEqual(midRoom.turn, 3, '两人叫完应轮到 seat3')
 
@@ -1289,14 +1290,14 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   ok(`★ 末位玩家退出后 turn 修正为 ${midRoom.turn}（剩 ${remaining} 人）—— 不修正会越界卡死`)
 
   /* 现在轮到的人必须真的能操作。
-     注意叫的值要比当前 bid 大 —— 此时 bid 是「3 个 3」，
-     所以用「4 个 3」（数量变大）才是合法叫法。
+     注意叫的值要比当前 bid 大 —— 此时 bid 是「6 个 3」，
+     所以用「7 个 3」（数量变大）才是合法叫法。
      这里踩过一次：写成 3 个 3 会被"只能往上叫"挡掉，
      让人误以为是回合修正出了问题。 */
   const turnSeat = midRoom.turn
   const turnPlayer = midRoom.players.filter(p => p.seat === turnSeat)[0]
   OPENID = turnPlayer.openid
-  const canBid = await room.main({ action: 'bid', id: midId, n: 4, face: 3 })
+  const canBid = await room.main({ action: 'bid', id: midId, n: 7, face: 3 })
   assert.ok(canBid.ok, `轮到的人（${turnPlayer.name}）应能正常叫骰：` + (canBid.msg || ''))
   ok(`★ 轮到的人（${turnPlayer.name}）确实能操作 —— 回合没有指向空座`)
 
@@ -1597,7 +1598,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const st0 = await room.main({ action: 'status', id: lrId })
     assert.ok(st0.room.me.dice && st0.room.me.dice.length === 5, '单人局也要发 5 颗')
 
-    const bid = await room.main({ action: 'bid', id: lrId, n: 2, face: 3 })
+    const bid = await room.main({ action: 'bid', id: lrId, n: 3, face: 3 })
     assert.ok(bid.ok, '单人叫骰应成功：' + (bid.msg || ''))
 
     /* 叫完之后回合回到自己（1 人循环），此时必须能开 */
@@ -1767,7 +1768,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.ok(!piNoBid.ok, '★ 还没人叫骰时不能劈')
 
     /* 先由 P1 叫一个 */
-    const firstBid = await room.main({ action: 'bid', id: prId, n: 2, face: 3 })
+    const firstBid = await room.main({ action: 'bid', id: prId, n: 3, face: 3 })
     assert.ok(firstBid.ok, 'P1 叫骰应成功：' + (firstBid.msg || ''))
 
     /*
@@ -2497,7 +2498,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const prevU = global.__dbFailUpdate
     global.__dbFailUpdate = 1
     try {
-      const retry = await room.main({ action: 'bid', id: rid, n: 1, face: 1 })
+      const retry = await room.main({ action: 'bid', id: rid, n: 2, face: 1 })
       assert.strictEqual(retry.ok, true,
         '★ 偶发的数据库失败（-502 这类）重试一次应救回；实际：' + JSON.stringify(retry))
     } finally {
@@ -2711,7 +2712,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
       /* 叫一口再开，读结算 */
       OPENID = M1
-      const b = await room.main({ action: 'bid', id: mid, n: 1, face: 1 })
+      const b = await room.main({ action: 'bid', id: mid, n: 3, face: 1 })
       assert.ok(b.ok, `第 ${i + 1} 局叫骰应成功：` + (b.msg || ''))
       OPENID = M2
       const o = await room.main({ action: 'open', id: mid })
@@ -2774,7 +2775,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     store.rooms.filter(x => x._id === pid)[0].countdownEnd = Date.now() - 100
     await room.main({ action: 'status', id: pid })
     OPENID = P1
-    assert.ok((await room.main({ action: 'bid', id: pid, n: 2, face: 2 })).ok, '准备：A 叫骰')
+    assert.ok((await room.main({ action: 'bid', id: pid, n: 3, face: 2 })).ok, '准备：A 叫骰')
     /* 回合已到 B；A 抢着劈自己刚叫的骰 → 必须被拒（且提示要说清原因） */
     const selfPi = await room.main({ action: 'pi', id: pid })
     assert.strictEqual(selfPi.ok, false, '★ 不能自己劈自己')
@@ -2794,6 +2795,67 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const mult = (roomNow.bid && roomNow.bid.mult) || 1
     assert.ok(mult <= 8, '★ 倍数不能超过 8 倍；实际 ' + mult)
     ok('★ 反复劈：倍数封顶在 ' + mult + ' 倍（不超过 8）')
+  }
+
+  /* ============ ⑳ ★ 大话骰「斋」规则（2026-10-30 用户实测后补） ============ */
+  /*
+   * 用户原话：「大话筛的规则不对，现在的游戏你缺乏斋的功能（不加上1的纯数字数量），
+   *           还有起叫数量规则，斋和不斋混叫规则」
+   *
+   * 规则依据 docs/大话骰规则.md。锁四条：
+   *   ① 起叫按人数档  ② 不斋→斋可同数量  ③ 斋→不斋要加倍  ④ 开骰时斋不数 1
+   */
+  {
+    const Z1 = 'oid_z1_' + Date.now()
+    const Z2 = 'oid_z2_' + Date.now()
+    const Z3 = 'oid_z3_' + Date.now()
+    OPENID = Z1
+    const zr = await room.main({ action: 'create', name: '斋甲', game: 'liar' })
+    assert.ok(zr.ok && zr.room, '准备：建房应成功')
+    const zid = zr.room.id
+    OPENID = Z2
+    assert.ok((await room.main({ action: 'join', code: zr.room.code, name: '斋乙' })).ok, '准备：乙加入')
+    OPENID = Z3
+    assert.ok((await room.main({ action: 'join', code: zr.room.code, name: '斋丙' })).ok, '准备：丙加入')
+    OPENID = Z1
+    assert.ok((await room.main({ action: 'start', id: zid })).ok, '准备：开局')
+    store.rooms.filter(x => x._id === zid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: zid })
+
+    /* ① 起叫档：3 人局不斋起叫 5，斋起叫 4 */
+    const tooLow = await room.main({ action: 'bid', id: zid, n: 4, face: 3 })
+    assert.strictEqual(tooLow.ok, false, '★ 3 人局不斋起叫要 5 个，4 个应被拒')
+    assert.ok(/起叫至少要 5/.test(tooLow.msg), '实际：' + tooLow.msg)
+    ok('★ 起叫档生效：「' + tooLow.msg + '」')
+
+    /* ② 合法首叫：5 个 3（不斋） */
+    const open = await room.main({ action: 'bid', id: zid, n: 5, face: 3 })
+    assert.ok(open.ok, '5 个 3 应合法：' + (open.msg || ''))
+    assert.ok(!open.room.bid.zhai, '首叫默认不斋')
+
+    /* ③ 不斋 → 斋：同数量同点数即可 */
+    OPENID = Z2
+    const toZhai = await room.main({ action: 'bid', id: zid, n: 5, face: 3, zhai: true })
+    assert.ok(toZhai.ok, '★ 同数量同点数可以改成斋：' + (toZhai.msg || ''))
+    assert.strictEqual(!!toZhai.room.bid.zhai, true, '改斋后 bid.zhai 应为 true')
+    ok('★ 不斋 → 斋：同数量即可（5 个 3 → 5 个 3 斋）')
+
+    /* ④ 斋 → 不斋：数量必须加倍 */
+    OPENID = Z3
+    const noDouble = await room.main({ action: 'bid', id: zid, n: 6, face: 2, zhai: false })
+    assert.strictEqual(noDouble.ok, false, '★ 斋改回不斋时数量没加倍，必须被拒')
+    assert.ok(/加倍/.test(noDouble.msg), '提示要说清加倍：' + noDouble.msg)
+    const doubled = await room.main({ action: 'bid', id: zid, n: 10, face: 2, zhai: false })
+    assert.ok(doubled.ok, '★ 数量加倍（10 个）后应能改回不斋：' + (doubled.msg || ''))
+    ok('★ 斋 → 不斋：数量加倍才行（5 斋 → 至少 10 个）')
+
+    /* ⑤ 计数：斋时 1 不万能 */
+    const zs = require('../cloudfunctions/room/liarCount.js')
+    const fake = [{ dice: [1, 1, 4, 5, 6] }, { dice: [4, 2, 2, 3, 3] }]
+    assert.strictEqual(zs.countActual(fake, 4), 4, '不斋时叫 4：2 个真 4 + 2 个 1 万能')
+    assert.strictEqual(zs.countActual(fake, 4, true), 2, '★ 斋时叫 4：只数真 4，1 不算万能')
+    assert.strictEqual(zs.countActual(fake, 1, true), 2, '叫 1 时不论斋否都只数真 1')
+    ok('★ 斋的计数正确：1 不再当万能')
   }
 
   console.log(`\n${'='.repeat(58)}`)

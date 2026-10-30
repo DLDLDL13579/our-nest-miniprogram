@@ -178,7 +178,7 @@ async function playOne(opts) {
     const { room: r } = await playOne({
       game: 'liar', players: [A, B],
       steps: [
-        { as: A, name: 'A 叫 2 个 3', req: { action: 'bid', n: 2, face: 3 } },
+        { as: A, name: 'A 叫 3 个 3', req: { action: 'bid', n: 3, face: 3 } },
         { as: B, name: 'B 开', req: { action: 'open' } }
       ]
     })
@@ -207,7 +207,7 @@ async function playOne(opts) {
       await enterPlaying(cid)
 
       OPENID = A
-      const b = await room.main({ action: 'bid', id: cid, n: 2, face: 3 })
+      const b = await room.main({ action: 'bid', id: cid, n: 3, face: 3 })
       assert.ok(b.ok, '第 ' + round + ' 局叫骰失败：' + (b.msg || ''))
       OPENID = B
       const o = await room.main({ action: 'open', id: cid })
@@ -359,7 +359,7 @@ async function playOne(opts) {
     OPENID = A
     await room.main({ action: 'start', id: sid })
     await enterPlaying(sid)
-    await room.main({ action: 'bid', id: sid, n: 2, face: 3 })
+    await room.main({ action: 'bid', id: sid, n: 3, face: 3 })
     OPENID = B
     await room.main({ action: 'open', id: sid })
 

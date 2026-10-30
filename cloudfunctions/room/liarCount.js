@@ -17,15 +17,23 @@
 /**
  * @param {Array} players  玩家列表（每人有 dice 数组）
  * @param {number} face    叫的点数（1~6）
+ * @param {boolean} [zhai] **斋**：1 点不再万能，只算 1
  * @returns {number}       全场能满足这个叫法的骰子数
+ *
+ * ★ 斋（2026-10-30 用户实测后补）：广东玩法的核心分支。
+ *   不斋时 1 是万能「百搭」，斋时 1 就只是 1 —— 这直接决定开骰判谁喝。
+ *   之前只实现了不斋（1 恒万能），所以叫「3个4斋」时会把 1 也数进去，
+ *   等于**在帮叫的人作弊**，开骰结果必错。
  */
-function countActual(players, face) {
+function countActual(players, face, zhai) {
   let n = 0
   ;(players || []).forEach(p => {
     ;(p.dice || []).forEach(d => {
       if (d === face) n++
-      /* 1 是万能 —— 但叫的就是 1 时它不算万能，只算自己 */
-      else if (d === 1 && face !== 1) n++
+      /* 1 是万能 —— 但两种情况不算：
+         · 叫的就是 1（1 只代表自己）
+         · **斋**（1 不当任何别的点数） */
+      else if (d === 1 && face !== 1 && !zhai) n++
     })
   })
   return n

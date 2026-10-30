@@ -65,6 +65,83 @@ const poker = require('./poker.js')
 const dicerank = require('./dicerank.js')
 const loser = require('./loser.js')
 const liarCount = require('./liarCount.js')
+
+/*
+ * ★★★ 大话骰的完整叫骰规则（2026-10-30 按调研重写）。
+ *
+ * 用户实测指出：缺斋、缺起叫档、缺斋/不斋混叫规则。
+ * 规则依据见 docs/大话骰规则.md（广东开平主流玩法）。
+ *
+ * 三个概念：
+ *   · **斋**：1 点不再万能，只算 1
+ *   · **起叫档**：开局第一个喊数，要够人数档（2人2/2/3、3人3/4/5、4人4/5/6、5人5/6/8）
+ *   · **破斋**：从斋回到不斋，数量必须**加倍**（这是最反直觉的一条）
+ */
+
+/** 某个叫法最少要喊多少（分：叫1 / 斋 / 不斋 三档） */
+function openNeed(playerCount, zhai, face) {
+  const p = Math.max(2, Number(playerCount) || 2)
+  /* 叫 1 单独一档：几个人就几个 1（俗称「人头一」） */
+  if (face === 1) return p
+  if (p === 2) return zhai ? 2 : 3
+  if (p === 3) return zhai ? 4 : 5
+  if (p === 4) return zhai ? 5 : 6
+  if (p === 5) return zhai ? 6 : 8
+  return zhai ? p + 1 : p + 2
+}
+
+/**
+ * 下家能不能这样叫。
+ * @param {object|null} cur   上家的叫法 {n, face, zhai}；首叫传 null
+ * @param {object} next       这一手 {n, face, zhai}
+ * @param {number} playerCount
+ * @returns {{ok:boolean, why:string}}
+ */
+function canRaise(cur, next, playerCount) {
+  const p = Math.max(2, Number(playerCount) || 2)
+  /* ---------- 首叫：够起叫档 ---------- */
+  if (!cur) {
+    const need = openNeed(p, next.zhai, next.face)
+    if (next.n < need) return { ok: false, why: '起叫至少要 ' + need + ' 个' + (next.zhai ? '（斋）' : '') }
+    return { ok: true, why: '' }
+  }
+
+  const curZhai = !!cur.zhai
+  const nextZhai = !!next.zhai
+
+  /* ---------- 同一形态（都在斋里，或都在不斋里）：正常往上走 ---------- */
+  if (curZhai === nextZhai) {
+    /* 叫 1 有额外约束：至少要够「人头一」 */
+    if (next.face === 1 && cur.face !== 1) {
+      const need = openNeed(p, nextZhai, 1)
+      if (next.n < need) return { ok: false, why: '叫 1 至少要 ' + need + ' 个' }
+      return { ok: true, why: '' }
+    }
+    if (next.n > cur.n) return { ok: true, why: '' }
+    if (next.n === cur.n && next.face > cur.face) return { ok: true, why: '' }
+    return { ok: false, why: '只能往上叫（数量变大，或数量同、点数大）' }
+  }
+
+  /* ---------- 不斋 → 斋：可以同数量同点数，转成斋 ---------- */
+  if (!curZhai && nextZhai) {
+    if (next.n > cur.n) return { ok: true, why: '' }
+    if (next.n === cur.n) {
+      /* 同数量时点数只能更大或相等（相等就是「同一手翻成斋」） */
+      return next.face >= cur.face
+        ? { ok: true, why: '' }
+        : { ok: false, why: '改叫斋时点数不能降低' }
+    }
+    return { ok: false, why: '改叫斋时数量不能减少' }
+  }
+
+  /* ---------- 斋 → 不斋（破斋）：数量必须加倍 ---------- */
+  if (curZhai && !nextZhai) {
+    if (next.n >= cur.n * 2) return { ok: true, why: '' }
+    return { ok: false, why: '从斋改回不斋，数量要加倍（至少 ' + (cur.n * 2) + ' 个）' }
+  }
+
+  return { ok: false, why: '只能往上叫' }
+}
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 
@@ -1639,12 +1716,15 @@ exports.main = async (event) => {
         return { ok: false, msg: '点数不对' }
       }
 
-      /* 必须比上一个大 —— 服务端判定，不信任前端算好的结果 */
+      /*
+       * ★★ 完整叫骰校验（2026-10-30）。
+       * 用户实测指出：缺斋、缺起叫档、缺斋/不斋混叫。
+       * 规则依据 docs/大话骰规则.md。服务端判定，不信任前端算好的结果。
+       */
+      const zhai = event.zhai === true || event.zhai === 1
       const cur = room.bid
-      if (cur) {
-        const okHigher = n > cur.n || (n === cur.n && face > cur.face)
-        if (!okHigher) return { ok: false, msg: '只能往上叫（数量变大，或数量同、点数大）' }
-      }
+      const chk = canRaise(cur, { n: n, face: face, zhai: zhai }, (room.players || []).length)
+      if (!chk.ok) return { ok: false, msg: chk.why }
 
       /*
        * ★ 回合只在**参与本局**的人之间轮转。
@@ -1661,7 +1741,7 @@ exports.main = async (event) => {
         : ring[(myIdx + 1 + ring.length) % ring.length]
       await dbCall('bid.update', () => rooms.doc(room._id).update({
         data: {
-          bid: { n: n, face: face, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
+          bid: { n: n, face: face, zhai: zhai, bySeat: mySeat.seat, byName: mySeat.name, at: ts },
           turn: nextSeat,
           /* 回合开始时间 —— status 里用它判超时（2026-10-28） */
           turnAt: ts,
@@ -1784,7 +1864,8 @@ exports.main = async (event) => {
        */
       /* 统计逻辑抽到 `liarCount.js`（纯函数）—— 原来内联在这里，
          而骰子是随机发的，所以"1 是否算万能"这条规则一直没法单测。 */
-      const actual = liarCount.countActual(room.players, cur.face)
+      /* ★ 斋时 1 不万能（2026-10-30）—— 少了这个参数，叫「3个4斋」会把 1 也数进去 */
+      const actual = liarCount.countActual(room.players, cur.face, cur.zhai)
 
       const bidderWins = actual >= cur.n
       /* 叫的人没吹牛 → 开的人输；吹了 → 叫的人输 */
