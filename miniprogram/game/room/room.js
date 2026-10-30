@@ -621,6 +621,40 @@ Page({
     if (pka.step !== pkb.step || pka.aliveCount !== pkb.aliveCount) return true
     if (JSON.stringify(pka.last) !== JSON.stringify(pkb.last)) return true
     if (JSON.stringify(pka.winner) !== JSON.stringify(pkb.winner)) return true
+    /*
+     * ★★★ 「连续换手牌换不了」的真根因（2026-10-30，用户第二次报，我第一次找错了方向）。
+     *
+     * 服务端**每次换牌都成功**（真实云端探针：drink 0.5 → 1 → 1.5，牌也变了）。
+     * 但前端界面一直停在 0.5 —— 因为 `roomChanged` 只比了 step/aliveCount/last/winner，
+     * **没比 myKnown（我的明牌）和 myDrink（换牌酒量）**。
+     *
+     * 换手牌时：step 不变（还是 play）、回合不推进、aliveCount 不变、last 只在第一次变 —
+     * → 判定"无变化" → **跳过 setData** → 界面不刷新。
+     * 用户看到的是"牌没变、杯数没涨"，自然以为"换不了"。
+     *
+     * 而点「换底牌」之所以"看起来能换"：底牌换了，`publicCard` 变了，
+     * 虽然当时也没比——但下一个 1.5 秒轮回或别的字段变化顺手刷了界面，
+     * 造成"切到换底牌就好了"的错觉。
+     *
+     * ⚠️ 教训：**去重白名单漏字段的后果是"数据变了但界面不动"**，
+     *    而它看起来和"功能坏了"一模一样。任何新增的、会显示出来的字段，
+     *    都必须加进这里。
+     */
+    if (pka.myKnownText !== pkb.myKnownText) return true
+    if (pka.publicText !== pkb.publicText) return true
+    /* ⚠️ 不能写 `Number(a) !== Number(b)`：两边都 undefined 时是 NaN !== NaN = true，
+       会导致**每次都判定"变了"**（去重彻底失效，退化成每次轮询都 setData）。 */
+    if ((Number(pka.myDrink) || 0) !== (Number(pkb.myDrink) || 0)) return true
+    /* 所有人的换牌量（pk-seat 那排会显示"换牌 X 杯"） */
+    if (JSON.stringify(pka.drinks) !== JSON.stringify(pkb.drinks)) return true
+    /*
+     * ★ 界面真正显示的是 **drinkText**（「换牌已经喝了 1.5 杯」），
+     *   而不是 myDrink。原来比的是 myDrink —— 那个字段界面上根本没用，
+     *   而 drinkText 变了却没人比 → 界面不刷新。
+     *   **判据：比对的字段必须是模板里真正渲染的那个。**
+     */
+    if (pka.drinkText !== pkb.drinkText) return true
+    if (pka.folded !== pkb.folded) return true
 
     /* 转盘这一转 */
     const sa = prev.spin, sb = room.spin
@@ -1912,7 +1946,21 @@ Page({
    */
   async pkSwap(e) {
     if (!this.specGuard()) return
-    if (!this.data.room || this.data._pkBusy) return
+    if (!this.data.room) return
+    /*
+     * ★★ 「连续换手牌换不了」（2026-10-30 用户第二次报同一处，说明我第一次没修好）。
+     *
+     * 第一次我只给 pkDoSwap 加了看门狗，**但入口 pkSwap 这里也是静默 return** ——
+     * 只要 _pkBusy 还是 true，点「换手牌」就**什么都不发生**：
+     * 没有确认卡、没有提示、没有请求。用户看到的就是"按钮坏了"。
+     * 而"换底牌"之所以看起来能用，是因为两次点击间隔更久、busy 已经清掉了。
+     *
+     * 现在：被挡时明确说话。
+     */
+    if (this.data._pkBusy) {
+      wx.showToast({ title: '上一次换牌还在处理，等半秒', icon: 'none', duration: 2000 })
+      return
+    }
     const what = e.currentTarget.dataset.what
     if (what !== 'public' && what !== 'mine') return
     /*

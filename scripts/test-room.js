@@ -2984,6 +2984,42 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 房主掉线 → 房主自动转给还在的人')
   }
 
+  /* ============ ㉔ ★ 金花连续换手牌（用户实测："只有切换成换底牌才能再换"） ============ */
+  {
+    const S1 = 'oid_s1_' + Date.now()
+    const S2 = 'oid_s2_' + Date.now()
+    OPENID = S1
+    const sr = await room.main({ action: 'create', name: '换甲', game: 'poker' })
+    assert.ok(sr.ok && sr.room, '准备：建金花房')
+    const sid = sr.room.id
+    OPENID = S2
+    assert.ok((await room.main({ action: 'join', code: sr.room.code, name: '换乙' })).ok, '乙加入')
+    OPENID = S1
+    assert.ok((await room.main({ action: 'start', id: sid })).ok, '开局')
+    store.rooms.filter(x => x._id === sid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: sid })
+
+    /* 第一次换手牌 */
+    const w1 = await room.main({ action: 'pkAct', act: 'swapMine', id: sid })
+    assert.ok(w1.ok, '第 1 次换手牌应成功：' + (w1.msg || ''))
+    const cards1 = JSON.stringify((store.rooms.filter(x => x._id === sid)[0].players || []).filter(p => p.openid === S1)[0].cards)
+    const drink1 = ((store.rooms.filter(x => x._id === sid)[0].pkDrink || {})[S1]) || 0
+    assert.strictEqual(drink1, 0.5, '第 1 次换手牌应喝半杯')
+
+    /* ★ 关键：**回合不推进**，所以还能再换一次（用户就是在这里卡住的） */
+    const rawAfter1 = store.rooms.filter(x => x._id === sid)[0]
+    assert.strictEqual(rawAfter1.turn, 1, '换手牌后回合不应推进（还是我）')
+
+    const w2 = await room.main({ action: 'pkAct', act: 'swapMine', id: sid })
+    assert.ok(w2.ok, '★ 连续第 2 次换手牌必须成功（用户实测会失败）：' + (w2.msg || ''))
+    const cards2 = JSON.stringify((store.rooms.filter(x => x._id === sid)[0].players || []).filter(p => p.openid === S1)[0].cards)
+    const drink2 = ((store.rooms.filter(x => x._id === sid)[0].pkDrink || {})[S1]) || 0
+    assert.strictEqual(drink2, 1, '换两次应累计 1 杯')
+    assert.notStrictEqual(cards1, cards2, '第二次换牌后手牌应该变了')
+
+    ok('★ 金花：连续两次换手牌都成功，喝量累计（1 杯）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
