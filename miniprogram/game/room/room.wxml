@@ -321,10 +321,21 @@
         现在：同样告诉他还差几个人，但**按钮本身可以点**，点了就引导转发。
         文案里带上具体人数，保留"还差多少"的信息。
       -->
-      <view wx:elif="{{room.host && room.shortBy > 0 && !soloTest}}"
-            class="btn main bigbtn" bindtap="copyCode">
-        叫 {{room.shortBy}} 个人来（点这里转发房间号）
-      </view>
+      <!--
+        ★★ 2026-10-30 改：用 `<button open-type="share">` 而不是 bindtap。
+
+        上一版写的是 bindtap="copyCode"，而 copyCode 弹的是
+        「点右上角 · · · → 转发」的说明 —— **点了只是看一段文字，没有转发**。
+        按钮写着"点这里转发"，实际行为对不上，这是最让人失望的一种。
+
+        `open-type="share"` 是微信里**唯一**能"点按钮直接拉起转发面板"的方式
+        （wx.showShareMenu 只是显示右上角菜单项，不能主动调起）。
+        它依赖本页的 onShareAppMessage —— 房间页已经有（带房间号直达）。
+      -->
+      <button wx:elif="{{room.host && room.shortBy > 0 && !soloTest}}"
+              class="btn main bigbtn" open-type="share">
+        叫 {{room.shortBy}} 个人来（点这里转发）
+      </button>
       <view wx:elif="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
         还差 {{room.shortBy}} 个人才能开
       </view>
