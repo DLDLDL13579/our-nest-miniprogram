@@ -310,18 +310,19 @@ async function pickCode() {
    */
   const aliveSince = now() - TTL_MS
   /*
-   * ★ limit 从 CODE_SPACE(1000) 降到 200（2026-10-30 实测）。
+   * ⚠️ limit **必须**是 CODE_SPACE，不能为了快改成 200（2026-10-30 试过，被断言拦下）。
    *
-   * 原来每次建房都拉 1000 条记录（只为拿到"哪些号已被占"）——
-   * 而真实活跃房间通常个位数。automator 实测：点玩法卡 → 房间号出现要 3.2 秒（热）。
-   * 降到 200：正常场景完全够用；真到了 200+ 活跃房间时，
-   * 下面的 while 选号大概率仍能撞出空号，撞不到才提示"房间号用满了"——
-   * 那时候产品本身也已经到了该扩容号码位数的规模。
+   * 原因：`used` 集合用来判断"号是不是发完了"。只拉 200 条时，
+   * 若真有 1000 个未过期房间占满所有号，`used.size` 只有 200 < 1000 →
+   * 判定为"还有空号"→ while 循环里撞不出空号 → **发出重复号码** →
+   * 玩家 join 时取第一个匹配，**进错房间**。这是静默的严重错误。
+   * 对应的断言在 test-room（"1000 个号被未过期房间占满时必须明确拒绝"）。
+   * 真要提速，得改成 count() + 分页，而不是砍 limit。
    */
   const r = await rooms.where({
     active: true,
     updatedAt: _.gt(aliveSince)
-  }).field({ code: true }).limit(200).get()
+  }).field({ code: true }).limit(CODE_SPACE).get()
     .catch(() => ({ data: [] }))
   const used = new Set((r.data || []).map(x => x.code))
 
