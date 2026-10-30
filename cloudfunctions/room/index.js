@@ -204,6 +204,23 @@ function settleUwVote(fplayers, votes, fresh, ts) {
 }
 
 
+
+/**
+ * "当前阶段不能做这个动作" 的**准确**提示。
+ *
+ * ★ 2026-10-30：原来 roll 和 bid 都直接回「这局还没开始」——
+ *   而这个分支实际上是 `phase !== 'playing'`，包含两种完全不同的情况：
+ *     · lobby  → 真的还没开始
+ *     · over   → **已经结束了**（说实话"还没开始"是反的）
+ *   探针跑"结算后再摇"时拿到「这局还没开始」，听起来像产品坏了。
+ *   按真实 phase 分档，用户才知道下一步该做什么。
+ */
+function phaseHint(phase) {
+  if (phase === 'over') return '这一局已经结束了，等房主再开一局'
+  if (phase === 'countdown') return '马上开始，等倒计时走完'
+  return '这局还没开始'
+}
+
 function calcDiceResult(players, prevStreaks) {
   const rk = dicerank.rankPlayers(players)
   const winnerSeats = rk.winnerSeats
@@ -1892,7 +1909,7 @@ exports.main = async (event) => {
       if (!mySeat) return { ok: false, msg: '你不在这个房间里' }
       if (mySeat.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
 
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
       if (room.turn !== mySeat.seat) return { ok: false, msg: '还没轮到你' }
 
       const n = Number(event.n)
@@ -1984,7 +2001,7 @@ exports.main = async (event) => {
       const meP = (room.players || []).filter(p => p.openid === OPENID)[0]
       if (!meP) return { ok: false, msg: '你不在这个房间里' }
       if (meP.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
       const cur = room.bid
       if (!cur) return { ok: false, msg: '还没人叫骰，没得劈' }
       if (room.turn !== meP.seat) return { ok: false, msg: '还没轮到你' }
@@ -2048,7 +2065,7 @@ exports.main = async (event) => {
       if (!mySeat) return { ok: false, msg: '你不在这个房间里' }
       if (mySeat.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
 
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
       const cur = room.bid
       if (!cur) return { ok: false, msg: '还没人叫骰' }
       if (room.turn !== mySeat.seat) return { ok: false, msg: '还没轮到你' }
@@ -2131,7 +2148,7 @@ exports.main = async (event) => {
     if (action === 'spin') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
       if (room.game !== 'wheel') return { ok: false, msg: '这个房间玩的不是转盘' }
       if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能转' }
 
@@ -2232,7 +2249,7 @@ exports.main = async (event) => {
       const meRoll = (room.players || []).filter(p => p.openid === OPENID)[0]
       if (!meRoll) return { ok: false, msg: '你不在这个房间里' }
       if (meRoll.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
       /*
        * ★★ 已经摇过就不能再摇（2026-10-28 补的缺口）。
        *
@@ -2531,7 +2548,7 @@ exports.main = async (event) => {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
       if (room.game !== 'undercover') return { ok: false, msg: '这个房间玩的不是「谁是卧底」' }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
 
       const players = (room.players || []).map(p => Object.assign({}, p))
       const mine = players.filter(p => p.openid === OPENID)[0]
@@ -2629,7 +2646,7 @@ exports.main = async (event) => {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
       if (room.game !== 'poker') return { ok: false, msg: '这个房间玩的不是梦幻金花' }
-      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
 
       const players = (room.players || []).map(p => Object.assign({}, p))
       const mine = players.filter(p => p.openid === OPENID)[0]
