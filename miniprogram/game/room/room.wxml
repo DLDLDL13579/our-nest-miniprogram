@@ -1128,12 +1128,12 @@
         <text class="on-big">{{result.actual}}</text>
         <text class="on-unit">个 {{result.face}}</text>
       </view>
-      <view class="over-need">叫的是 {{result.need}} 个</view>
+      <view class="over-need">叫的是 {{result.need}} 个{{result.zhai ? '（斋 · 1 不算）' : ''}}</view>
 
       <view class="revealbox">
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">
           <text class="rv-name">{{item.name}}</text>
-          <text wx:if="{{item.leopard}}" class="rv-leopard">豹子</text>
+          <text wx:if="{{item.leopard}}" class="rv-leopard">围骰 +1</text>
           <view class="dicebox mini">
             <!--
               命中高亮：这一颗算进了"实际有几个"。
@@ -1143,7 +1143,7 @@
             -->
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
                    src="/game/images/dice/dice-{{d}}.png"
-                   class="die-img {{(d === result.face || (d === 1 && result.face !== 1)) ? 'hit' : ''}}"
+                   class="die-img {{(d === result.face || (d === 1 && result.face !== 1 && !result.zhai)) ? 'hit' : ''}}"
                    mode="aspectFit" />
           </view>
         </view>

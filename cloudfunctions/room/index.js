@@ -1394,7 +1394,17 @@ exports.main = async (event) => {
                 loserSeat: loserSeat, loserName: loserName,
                 bidderName: cur.byName, piBy: '',
                 autoOpened: (idle && idle.name) || '',
-                allDice: (room.players || []).map(p => ({ name: p.name, seat: p.seat, dice: p.dice || [] }))
+                /*
+         * ★ allDice 带围骰标记（2026-10-30）：一盅五颗全同时那个点数算 6 个，
+         *   比高亮的颗数多 1 —— 不标出来玩家会以为"显示 5 颗、结算说 6 个"是 bug。
+         *   判据与 countActual 里完全一致：全同 且（等于叫的点数 或 不斋时全是 1）。
+         */
+        allDice: (room.players || []).map(p => {
+          const d = p.dice || []
+          const same = d.length === 5 && d.every(x => x === d[0])
+          const counts = same && (d[0] === cur.face || (d[0] === 1 && cur.face !== 1 && !cur.zhai))
+          return { name: p.name, seat: p.seat, dice: d, leopard: !!counts }
+        })
               },
               updatedAt: ts
             }
@@ -1813,6 +1823,10 @@ exports.main = async (event) => {
       const mult = Math.max(1, Number(cur.mult) || 1)
       const result = {
         need: cur.n, face: cur.face,
+        /* ★ 是斋还是没斋（2026-10-30）。没有这个字段的话，
+           玩家看到"叫了 5 个 4、实际 3 个"会以为 1 该算进去 ——
+           而斋的规则恰恰是 1 不算。开骰结果必须能解释自己。 */
+        zhai: !!cur.zhai,
         actual: actual, bidderWins: bidderWins,
         /* 被劈了几次 → 输家喝几杯（1 杯 × 倍数） */
         mult: mult,
