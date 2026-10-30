@@ -118,6 +118,40 @@ const rec = (name, ok, extra) => {
             const cleared = ld3.stage === 'lobby' && ld3.room && !(ld3.room.bid && ld3.room.bid.n) && !ld3.room.lastResult
             rec('点「再来一局」→ 回大厅且局内状态清空', cleared,
               'stage=' + ld3.stage + ' bid=' + JSON.stringify(ld3.room && ld3.room.bid) + ' lastResult=' + JSON.stringify(ld3.room && ld3.room.lastResult))
+
+            /*
+             * ★ 第二局要**真的能玩**（2026-10-30）。
+             *   "回到大厅、字段清空"只是必要不充分 —— 真实玩家会连开好几局，
+             *   而"重开一局"最容易出的是**状态残留导致第二局一步都动不了**
+             *   （项目史上两次：stage 手写死、spin 没清）。
+             *   所以这里再走一遍：开局 → 按住偷看 → 叫骰。
+             */
+            const startBtn2 = await page.$('.bigbtn')
+            if (startBtn2) {
+              await startBtn2.tap()
+              await sleep(2000)
+              let d2 = await page.data()
+              for (let i = 0; i < 8 && d2.stage !== 'playing'; i++) { await sleep(1200); d2 = await page.data() }
+              rec('第二局能开局', d2.stage === 'playing', 'stage=' + d2.stage)
+              const cup2 = await page.$('.cs-cup')
+              if (cup2) {
+                await cup2.touchstart(); await sleep(700)
+                const dp2 = await page.data()
+                rec('第二局按住骰盅能看到骰子', dp2.diceShown === true, 'diceShown=' + dp2.diceShown)
+                await cup2.touchend(); await sleep(500)
+              }
+              const opt2 = await page.$('.optbtn')
+              if (opt2) {
+                await opt2.tap(); await sleep(3000)
+                const db2 = await page.data()
+                rec('第二局能叫骰', !!(db2.room && db2.room.bid && db2.room.bid.n),
+                  'bid=' + JSON.stringify(db2.room && db2.room.bid))
+              } else {
+                rec('第二局找到叫骰选项', false)
+              }
+            } else {
+              rec('第二局找到开始按钮', false)
+            }
           }
         } else {
           rec('找到「开」按钮', false)
@@ -290,31 +324,26 @@ const rec = (name, ok, extra) => {
       }
     }
 
-    /* ⑩a 复制房间号（拉人的第一步，坏了整套就启动不了） */
-    console.log('\n── 复制房间号 ──')
+    /* ⑩a 点房间号（2026-10-30 起：不再写剪贴板，改成弹"引导转发"）
+       验证方法本身能执行、不抛异常即可 —— 弹层内容 automator 读不到。 */
+    console.log('\n── 点房间号 ──')
     {
       const cp = await mini.currentPage()
       const cd0 = await cp.data()
       const code = cd0.room && cd0.room.code
-      if (!code) { rec('取到房间号', false) }
-      else {
-        const got = await mini.evaluate(function () {
-          const pages = getCurrentPages(); const p = pages[pages.length - 1]
-          globalThis.__clip = '__PENDING__'
-          const orig = wx.setClipboardData
-          wx.setClipboardData = function (o) {
-            globalThis.__clip = o.data
-            if (o.success) o.success({})
-            wx.setClipboardData = orig
-          }
-          try { p.copyCode() } catch (e) { globalThis.__clip = '__THREW__ ' + e.message }
-          return true
-        })
-        await sleep(600)
-        const clip = await mini.evaluate(function () { return globalThis.__clip })
-        rec('点房间号 → 剪贴板是房间号', String(clip) === String(code),
-          '剪贴板=' + clip + '（期望 ' + code + '）')
-      }
+      const okCall = await mini.evaluate(function () {
+        const pages = getCurrentPages(); const p = pages[pages.length - 1]
+        try {
+          const orig = wx.showModal
+          let called = false
+          wx.showModal = function (o) { called = true; if (o && o.showCancel !== false) {} ; return }
+          try { p.copyCode() } catch (e) { return '__THREW__ ' + e.message }
+          wx.showModal = orig
+          return called
+        } catch (e) { return '__ERR__ ' + e.message }
+      })
+      rec('点房间号 → 弹出转发引导（不再依赖剪贴板）', okCall === true,
+        'code=' + code + ' showModal=' + okCall)
     }
 
     /* ⑩b 离开房间的页面内确认卡（从系统弹窗换成页面内，改的是关键操作） */

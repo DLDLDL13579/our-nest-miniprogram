@@ -561,8 +561,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
    */
   const bidBtn = /<view[^>]*data-i="\{\{index\}\}"[^>]*bindtap="doBid"/.exec(tpl)
   assert.ok(bidBtn, '找不到叫骰按钮')
-  assert.ok(/data-l="\{\{item\}\}"/.test(bidBtn[0]),
-    '★ 叫骰按钮没有 `data-l="{{item}}"` —— 只传下标会让点击依赖派生数组，' +
+  /*
+   * ★ 2026-10-30：选项从字符串数组改成了对象数组（{n, face, zhai, label}，
+   *   因为要支持「斋」），所以模板里是 `item.label`。
+   *   断言要守的是**意图**——"按钮自带它叫的是什么"，而不是某个具体写法。
+   */
+  assert.ok(/data-l="\{\{item(\.label)?\}\}"/.test(bidBtn[0]),
+    '★ 叫骰按钮没有自带 label（data-l）—— 只传下标会让点击依赖派生数组，' +
     '数组被抹掉时"点了没反应"，数组抢先更新时"叫错骰"（都不报错）')
   ok('叫骰按钮自带选项文本（data-l），点击不依赖派生数组')
 

@@ -518,7 +518,7 @@
           -->
           <view wx:for="{{room.options}}" wx:key="index"
                 class="optbtn {{liarReady && room.myTurn ? '' : 'locked'}}"
-                data-i="{{index}}" data-l="{{item}}" bindtap="doBid">{{item}}</view>
+                data-i="{{index}}" data-l="{{item.label}}" bindtap="doBid">{{item.label}}</view>
         </view>
       </scroll-view>
 
