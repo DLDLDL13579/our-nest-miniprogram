@@ -23,6 +23,16 @@ const DICE_PER_PLAYER = 5
  * 分三档：叫 1（人头一）／斋／不斋。
  */
 function openNeed(playerCount, zhai, face) {
+  /*
+   * ★ 2026-10-30 补说明：这里的 `Math.max(2, ...)` 是**有意**的。
+   *
+   * 真实对局最少 2 人；而单人测试模式（config.js 的 soloTest）为了能测通一局，
+   * 会传 playerCount=1。若按 1 人算，起叫只需 2 个，5 颗骰下几乎必中，
+   * 反而测不出"叫高了被开"的路径 —— 所以**单人局按 2 人规则跑**。
+   *
+   * 副作用（不是 bug）：1 人局和 2 人局起叫都是 3 个，看起来像没区分。
+   * 真实多人局不会走到这条，规则本身是对的。
+   */
   const p = Math.max(2, Number(playerCount) || 2)
   if (face === 1) return p               // 「人头一」：几个人就几个 1
   if (p === 2) return zhai ? 2 : 3
