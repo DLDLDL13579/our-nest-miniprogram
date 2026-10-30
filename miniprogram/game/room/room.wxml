@@ -311,6 +311,20 @@
             class="btn main bigbtn disabled">
         这个玩法一个人玩不了（要 {{room.soloMinPlayers}} 人）
       </view>
+      <!--
+        ★ 2026-10-30：把"还差 N 个人"从**负面陈述**改成**可点的动作**。
+
+        原来这里是个灰色禁用按钮，只写着「还差 2 个人才能开」——
+        新用户一个人建房时，看到的是一句"你不能开始"，
+        而拉人的入口（房间号卡片）在上面、已经滚过去了。
+
+        现在：同样告诉他还差几个人，但**按钮本身可以点**，点了就引导转发。
+        文案里带上具体人数，保留"还差多少"的信息。
+      -->
+      <view wx:elif="{{room.host && room.shortBy > 0 && !soloTest}}"
+            class="btn main bigbtn" bindtap="copyCode">
+        叫 {{room.shortBy}} 个人来（点这里转发房间号）
+      </view>
       <view wx:elif="{{room.host && room.shortBy > 0}}" class="btn main bigbtn disabled">
         还差 {{room.shortBy}} 个人才能开
       </view>

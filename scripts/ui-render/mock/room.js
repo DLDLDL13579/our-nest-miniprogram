@@ -287,6 +287,19 @@ module.exports = {
     }),
 
     /*
+     * 上线状态：soloTest 关闭（单人不能开局）→ 少人时应该显示**可点的"叫人来"**，
+     * 而不是灰色的"还差 N 个人"。2026-10-30 改的。
+     */
+    soloOffline: () => ({
+      stage: 'lobby', soloTest: false,
+      room: pkRoom({
+        game: 'liar', phase: 'lobby', host: true, count: 1,
+        shortBy: 2, soloOk: true, minPlayers: 3, soloMinPlayers: 2,
+        players: [{ openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false }]
+      })
+    }),
+
+    /*
      * 人数不够，但这个玩法**支持单人开局**（soloOk=true）→ 应该显示「先自己试试」
      * 2026-10-30 加的：以前 mock 没给 soloOk，这个分支从没被渲染过。
      */
