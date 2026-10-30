@@ -2819,7 +2819,12 @@ exports.main = async (event) => {
            *   真机上标题是空的、每行牌面也是空的 —— 结算页最想看的两样都没了。
            *   mock 与真实响应不一致时，预览会替真实代码"圆谎"。
            */
-          winText: (patch.pkWinner || '没人') + ' 赢',
+          /*
+           * ★ 2026-10-30：原来写 `(pkWinner || '没人') + ' 赢'` ——
+           * 没有人赢时生成 **「没人 赢」**，中间多一个空格，读起来不像人话。
+           * （全场都弃牌时会走到这条；真机探针跑出来才发现。）
+           */
+          winText: patch.pkWinner ? patch.pkWinner + ' 赢' : '这局没人赢',
           publicCard: room.pkPublic || null,
           publicText: room.pkPublic ? poker.cardText(room.pkPublic) : '',
           hands: players.filter(p => p.inRound !== false)
