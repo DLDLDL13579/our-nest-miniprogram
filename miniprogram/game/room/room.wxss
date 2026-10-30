@@ -2069,11 +2069,9 @@
    一张牌背图约 30KB，而 136rpx 的尺寸上看不出差别。 */
 .pk-back {
   opacity: 1;
-  background:
-    repeating-linear-gradient(45deg, rgba(255,255,255,.10) 0 3rpx, transparent 3rpx 12rpx),
-    repeating-linear-gradient(-45deg, rgba(255,255,255,.10) 0 3rpx, transparent 3rpx 12rpx),
-    linear-gradient(150deg, #7B2D3A, #4E1B24);
-  box-shadow: inset 0 0 0 5rpx rgba(255,255,255,.16), 0 6rpx 16rpx rgba(0,0,0,.3);
+  /* 2026-10-30：改用配套牌背图（.pk-back-img），只留取景和投影 */
+  overflow: hidden;
+  box-shadow: 0 6rpx 16rpx rgba(0,0,0,.3);
 }
 /* 牌面：白底大字，默认藏在牌背后 */
 .pk-front {
@@ -2562,4 +2560,13 @@
   height: 100%; border-radius: 999rpx;
   background: linear-gradient(90deg, #C99433, #E8B33C);
   transition: width .35s cubic-bezier(0, 0, .2, 1);
+}
+
+/* ===== 配套牌背图（2026-10-30，CC0 素材，替代 CSS 菱形渐变） ===== */
+/* 原来只有 CSS 重复渐变画菱形格 —— 而正面换成了蚀刻风素材后，
+   两者风格对不上（一个像纸牌、一个像网页背景）。 */
+.pk-back-img {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 100%;
+  border-radius: 10rpx;
 }

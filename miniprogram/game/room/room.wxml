@@ -781,7 +781,10 @@
           <view class="pk-tagline">底牌</view>
           <!-- 底牌永远正面朝上：样式用 .pk-pub 表达，不靠额外的类 -->
           <view class="pk-flip">
-            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-back">
+              <!-- 配套牌背图（CC0，和正面同一套素材），替代原来的 CSS 菱形渐变 -->
+              <image class="pk-back-img" src="/game/images/card/back.png" mode="aspectFill" />
+            </view>
             <view class="pk-side pk-front {{room.poker.publicCard ? '' : 'pk-empty'}}">
               <!--
                 真实牌面（Kenney Board Game Pack，CC0）。
@@ -803,7 +806,10 @@
               bindtouchstart="pkShow" bindtouchend="pkHide" bindtouchcancel="pkHide">
           <view class="pk-tagline">{{showCards ? '你的牌' : '按住看'}}</view>
           <view class="pk-flip {{showCards ? 'flipped' : ''}}">
-            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-back">
+              <!-- 配套牌背图（CC0，和正面同一套素材），替代原来的 CSS 菱形渐变 -->
+              <image class="pk-back-img" src="/game/images/card/back.png" mode="aspectFill" />
+            </view>
             <view class="pk-side pk-front {{room.poker.myKnown ? '' : 'pk-empty'}}">
               <image wx:if="{{room.poker.myKnown}}" class="pk-face"
                      src="/game/images/card/c{{room.poker.myKnown.s}}-{{room.poker.myKnown.r}}.png"
@@ -822,7 +828,10 @@
         <view class="pk-slot pk-dark">
           <view class="pk-tagline">想象最大的</view>
           <view class="pk-flip">
-            <view class="pk-side pk-back"></view>
+            <view class="pk-side pk-back">
+              <!-- 配套牌背图（CC0，和正面同一套素材），替代原来的 CSS 菱形渐变 -->
+              <image class="pk-back-img" src="/game/images/card/back.png" mode="aspectFill" />
+            </view>
             <view class="pk-side pk-front"><text class="pk-q">?</text></view>
           </view>
         </view>

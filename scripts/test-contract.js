@@ -1921,9 +1921,18 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
     assert.deepStrictEqual(miss, [],
       '这些图片文件缺失（真机上会**静默显示空白**，不报错）：\n    ' + miss.join('\n    '))
-    const nCard = fs.readdirSync(path.join(IMG, 'card')).length
+    /*
+     * 牌面必须是 52 张（4 花色 × 13 点数）。
+     *
+     * ⚠️ 2026-10-30：目录里多了 `back.png`（配套牌背图）→ 53 张被误报。
+     *    断言要守的是"52 张正面齐全且不多不少"，
+     *    所以先排除已知的**非正面**文件，而不是放宽成"≥52"（那样缺牌也发现不了）。
+     */
+    const NON_FACE = new Set(['back.png'])
+    const nCard = fs.readdirSync(path.join(IMG, 'card'))
+      .filter(f => !NON_FACE.has(f)).length
     assert.strictEqual(nCard, 52,
-      '牌面目录应正好 52 张（多出来的没人引用，少了的显示空白），实际 ' + nCard)
+      '牌面目录应正好 52 张正面（多出来的没人引用，少了的显示空白），实际 ' + nCard)
     ok('骰子 6 张 / 骰盅 3 张 / 扑克 52 张全部齐全，且没有多余文件')
   }
 
