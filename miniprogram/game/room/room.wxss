@@ -40,13 +40,36 @@
   top: -30rpx;
   width: 12rpx; height: 20rpx;
   border-radius: 2rpx;
-  animation: cfFall 2.4s linear forwards;
+  /*
+   * ★ 撒花要像纸片，不像雪（2026-10-30 改）。
+   *
+   * 原来 `linear` 匀速下落 + 纯竖直 —— 那是"雪"的物理，不是纸片：
+   *   · 真实纸片受重力**加速**下落（末尾明显快于开头）
+   *   · 受气流影响会**横向飘**，而且每片方向不同
+   *   · 旋转方向也有正有负
+   * 三处一起改：加速曲线 + --dx 横移 + --rot 正负旋转。
+   * translate3d 走 GPU 合成，比 translateY 少一次重排。
+   */
+  animation: cfFall 2.4s cubic-bezier(.35, .05, .75, .95) forwards;
+  will-change: transform, opacity;
 }
+/*
+ * ⚠️ 中间帧**不用 calc(var(--dx) * .25)** —— 变量参与 calc 在小程序各基础库上
+ * 兼容性不确定，一旦不支持整条 transform 失效（撒花会原地淡出，静默变差）。
+ * 改成固定值：前 15% 统一飘 14rpx（这个幅度对"被气流推出去"已经够），
+ * 末段再用各自的 --dx 拉开差异。
+ */
 @keyframes cfFall {
-  0%   { transform: translateY(0) rotate(0deg);        opacity: 1 }
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg) scale(1);                         opacity: 1 }
+  15%  { transform: translate3d(14rpx, 12vh, 0) rotate(110deg) scale(1) }
   85%  { opacity: 1 }
-  100% { transform: translateY(110vh) rotate(720deg);  opacity: 0 }
+  100% { transform: translate3d(var(--dx, 0px), 110vh, 0) rotate(var(--rot, 720deg)) scale(.92); opacity: 0 }
 }
+/* 每片有自己的横向漂移和旋转方向（正负交替才像被气流吹散的纸片） */
+.cf:nth-child(odd)  { --dx: 46rpx;  --rot: 660deg }
+.cf:nth-child(even) { --dx: -38rpx; --rot: -700deg }
+.cf:nth-child(3n)   { --dx: 72rpx;  --rot: 900deg }
+.cf:nth-child(5n)   { --dx: -64rpx; --rot: -520deg }
 /* 5 种颜色轮转 */
 .cf-0 { background: #E8B33C }
 .cf-1 { background: #E0714F }

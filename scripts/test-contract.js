@@ -1725,6 +1725,11 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *     (.34, 1.2, .64, 1)     轻回弹：轻微过冲（≤6%）
    *     (.34, 1.4, .64, 1)     中回弹：物体落位
    *     (.34, 1.56, .64, 1)    强回弹：奖励/爆发时刻
+   *     (.35, .05, .75, .95)   **持续加速**：受重力的自由落体（撒花纸片）
+   *
+   *   ⚠️ 第 7 条是 2026-10-30 补的：撒花原来用 linear，那是"雪"的物理 ——
+   *      真实纸片受重力**加速**下落。而前 6 条都是减速/弹入，用它们做下落是错的物理。
+   *      加这一条的判据仍然是"一种语义"，不是"按好看程度挑"。
    *
    *   裸 ease 只在**循环**动画里允许（ease-in-out 对称，呼吸类循环必须对称）。
    */
@@ -1754,8 +1759,8 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       }
     }
     walkCss(path.join(ROOT, 'miniprogram'))
-    assert.ok(bezKinds.size <= 6,
-      '动画曲线又散开了（当前 ' + bezKinds.size + ' 种，上限 6）：\n    ' +
+    assert.ok(bezKinds.size <= 7,
+      '动画曲线又散开了（当前 ' + bezKinds.size + ' 种，上限 7）：\n    ' +
       [...bezKinds.entries()].map(([k, v]) => v + '× ' + k).join('\n    '))
     assert.deepStrictEqual(bareEase, [],
       '一次性动画不许裸用 ease（要用那 6 条之一）：\n    ' + bareEase.join('\n    '))
