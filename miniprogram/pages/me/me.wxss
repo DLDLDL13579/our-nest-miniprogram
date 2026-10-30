@@ -137,7 +137,7 @@
 .diag-mask:active { background: rgba(14, 11, 9, .88) }
 .diag-sheet {
   width: 100%; max-height: 78vh;
-  background: #2A211C;
+  background: #2A211A;
   border-radius: 28rpx;
   border: 2rpx solid rgba(255,255,255,.1);
   padding: 30rpx 28rpx 26rpx;
