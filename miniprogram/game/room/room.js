@@ -2855,6 +2855,27 @@ Page({
       this._cupTimers.push(setTimeout(() => sfx.play(comboKey, { pitch: false }), 880))
     }
 
+    /*
+     * ★★★ 豹子专属反馈（2026-10-30）。
+     *
+     * 豹子 = 五颗骰子全同，概率 **1/1296** —— 整晚可能只出现一次。
+     * 而在此之前它**只有一个视觉徽章**（`豹 子 · 五个 X`），
+     * 声音和震动都和普通胜负一样。
+     *
+     * 酒桌上摇出五个一样的，全场是会炸的 —— 这个瞬间值得一个"全场最重"的反馈。
+     * 这是把"稀有事件"和"普通事件"在感官上区分开，属于体验优化不是新玩法。
+     *
+     * 排期放在 combo 之后（880ms 起、0.9s 长），2.0s 时接上，不重叠。
+     */
+    if (r.result.leopardWin) {
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        /* 用 feedback 的动作而不是裸调 sfx —— luckyHit 这套动作
+           自带「confetti 音 + double 震动」，比手拼更一致。 */
+        feedback.fire('luckyHit')
+      }, 2000))
+    }
+
     this._cupTimers.push(setTimeout(() => {
       /* 双重守卫：页面可能已卸载（_dead），也可能人已经离开房间（room 被清空）。
          只判 _dead 不够 —— 后者页面还活着，但它描述的实体没了。 */
