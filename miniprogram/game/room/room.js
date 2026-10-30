@@ -3058,12 +3058,32 @@ Page({
       })
       return
     }
-    /* 开骰是全场最紧张的一刻 —— 三段式：
-         蓄力（自己手机上）→ 开盅重击（全场都会轮询到）→ 结果音 */
-    sfx.play('chargeUp', { volume: 0.6 })
+    /*
+     * 开骰是全场最紧张的一刻 —— 三段式：
+     *   蓄力（自己手机上）→ 开盅重击（全场都会轮询到）→ 结果音
+     *
+     * ★★ 蓄力音改成**循环**（2026-10-30，用户报「揭盅声音出现时机过慢」）。
+     *
+     * 这条音效只有 1.2 秒，而云函数往返 0.5~2 秒：
+     * 一旦超过 1.2 秒，蓄力音播完、揭盅还没来 → 中间是一段**纯沉默**。
+     * 玩家听到的是"点了一下，响一声，然后没动静了" —— 感知上就是"慢半拍"。
+     * 循环播放把这段空白填满，揭盅（或失败）时立刻停。
+     */
+    sfx.play('chargeUp', { volume: 0.6, loop: true })
+    /*
+     * 循环音必须有护栏：微信 callFunction 默认超时很长（20 秒），
+     * 网络卡住时"蓄力音一直响"比静默更糟 —— 用户以为 App 卡死了。
+     * 6 秒还没回来就停音并说一句。（定时器走 _cupTimers，离开房间能清掉。）
+     */
+    this._cupTimers.push(setTimeout(() => {
+      if (this._dead) return
+      sfx.stop('chargeUp')
+      wx.showToast({ title: '网络有点慢，再等一下', icon: 'none', duration: 2000 })
+    }, 6000))
     this.setData({ suspense: true })
     const r = await call('room', { action: 'open', id: this.data.room.id }, { silent: true })
       .catch((e) => {
+        sfx.stop('chargeUp')          /* 失败也不能让它一直响 */
         /* 同 doBid：吞掉错误 = 点了没反应。把真实原因说出来 */
         wx.showToast({
           title: (e && (e.friendly || e.message)) || '开不了，再试一次',
@@ -3072,6 +3092,8 @@ Page({
         this.resyncAfterFail()
         return null
       })
+    /* 云函数回来了 —— 无论成败都先停蓄力音，再接揭盅那一拍 */
+    sfx.stop('chargeUp')
     this.setData({ suspense: false })
     if (r && r.ok) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
