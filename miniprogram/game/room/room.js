@@ -2209,7 +2209,21 @@ Page({
         this.resyncAfterFail()
         return null
       })
+    /*
+     * ★ 2026-10-30：三条分支都要有交代。
+     *
+     * 原来只有 `if (r && r.ok) this.applyRoom(...)` ——
+     * **成功以外的两种情况（r 为 null / r.ok 为 false）什么都不做**：
+     *   · 云函数返回业务错误 → 用户点了按钮，界面没变，也不知道为什么
+     *   · catch 已经弹过 toast 的分支 → 走 applyRoom 之外，静默
+     *
+     * 这正是"点了没反应"这类反馈的来源。现在：
+     *   成功 → 更新界面
+     *   业务错误 → 把服务端的话显示出来
+     *   null（已在 catch 里弹过）→ 不再重复弹
+     */
     if (r && r.ok) this.applyRoom(r.room)
+    else if (r && r.msg) wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
   },
 
   /*
