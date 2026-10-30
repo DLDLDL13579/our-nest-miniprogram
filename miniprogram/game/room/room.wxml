@@ -251,7 +251,20 @@
       放在 lobby 是刻意的：**等人齐的那几十秒**正好是无事可做的时候，
       新人不用问"这游戏怎么玩"，扫一眼就知道。
     -->
-    <view wx:if="{{room.howList.length}}" class="howto">
+    <!--
+      ★★★ 2026-10-30 真机截图发现：一个人建房时，**「叫 N 个人来」按钮在屏幕外**。
+
+      9 条规则占约 600rpx，把底部那个唯一的行动按钮挤出了首屏 ——
+      而那是新用户唯一的下一步。
+
+      修法：**人不够时不展开规则**，只留一行提示 + 一个可点的「看规则」。
+      （人齐了、或已经开局时，规则本来就不显示，不受影响。）
+    -->
+    <view wx:if="{{room.howList.length && room.shortBy > 0}}" class="howto folded">
+      <view class="ht-lbl">怎么玩 · {{room.gameName}}</view>
+      <view class="ht-fold" bindtap="showHow">人齐了再看？点这里展开 {{room.howList.length}} 条规则 ▸</view>
+    </view>
+    <view wx:elif="{{room.howList.length}}" class="howto">
       <view class="ht-lbl">怎么玩 · {{room.gameName}}</view>
       <view class="ht-list">
         <view wx:for="{{room.howList}}" wx:key="*this" class="ht-item">
