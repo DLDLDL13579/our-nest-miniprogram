@@ -49,7 +49,16 @@ function check(cond, label, detail) {
 
   /* ============ ① 图标：不能再是裸 key ============ */
   console.log('  ① 图标渲染（截图那次的 bug）')
-  check(Array.isArray(d.games) && d.games.length === 3, 'games 有 3 项')
+  /*
+   * ★ 2026-10-30 修：这里原来是硬编码 `=== 3`（那时只有大话骰/比大小/转盘）。
+   * 加「谁是卧底」和「梦幻金花」之后没跟着改 —— 于是这个探针
+   * **一直在报 3 项未通过**，而其实是断言过时了，产品是对的。
+   *
+   * 判据改成：和**注册表**比，不写死数字。
+   */
+  const nGames = (require(path.join(__dirname, '..', 'miniprogram/utils/games.js')).GAMES || []).length
+  check(Array.isArray(d.games) && d.games.length === nGames,
+    'games 项数 = 注册表（' + nGames + ' 项）', '实际 ' + (d.games || []).length)
   const icons = (d.games || []).map(g => g.icon)
   check(icons.every(i => /^[a-zA-Z][\w]*$/.test(String(i))),
     'games[].icon 是图标 key', icons.join(','))
@@ -60,7 +69,7 @@ function check(cond, label, detail) {
 
   /* 真点一下游戏选择，确认交互没坏 */
   const pills = await page.$$('.pill')
-  check(pills.length === 3, '渲染出 3 个游戏按钮')
+  check(pills.length === nGames, '渲染出 ' + nGames + ' 个游戏按钮', '实际 ' + pills.length)
   if (pills.length >= 2) {
     await pills[1].tap()
     await new Promise(r => setTimeout(r, 400))
@@ -214,7 +223,7 @@ function check(cond, label, detail) {
   check(roomProbe.myDiceCount === 0,
     '建房时一律不发骰子（骰子在 start 时才发）',
     '实际 ' + roomProbe.myDiceCount + ' 颗')
-  check(!roomProbe.startOk && /两个人/.test(roomProbe.startMsg),
+  check(!roomProbe.startOk && /[两2]\s*个人/.test(roomProbe.startMsg),
     '单人开局被明确拒绝（所以 start 阶段的发放逻辑要两人局才验得到）',
     roomProbe.startMsg)
   check(!roomProbe.spinUnknown, '云端认得 spin（不是旧版）',
