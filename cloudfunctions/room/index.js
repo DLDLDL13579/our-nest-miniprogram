@@ -70,6 +70,47 @@ const liarCount = require('./liarCount.js')
 /* 规则在 miniprogram/utils/liarRules.js（前后端共享，sync-derive 同步过来）——
    两边各写一份必然不一致：会出现"按钮亮了但服务端说不行"，而且不报错。 */
 const liarRules = require('./liarRules.js')
+
+/**
+ * 比大小的结算（2026-10-30 抽出来）。
+ *
+ * ============ 为什么要抽 ============
+ *
+ * 这段原来是内联在 `roll` 的 updateGuarded 回调里的。现在多了一个调用方：
+ * `status` 要把**掉线不摇的人**踢出本局并结算 —— 否则只要有一个人掉线，
+ * "全员摇完"永远不成立，整局卡死且不报错（已用测试锁住）。
+ *
+ * 两份结算必然不一致（这个项目栽过太多次），所以抽成纯函数。
+ *
+ * @param {Array} players   本局玩家的完整数组（每人有 dice）
+ * @param {object} prevStreaks  上一局的连庄记录
+ * @returns {{result:object, streaks:object}}
+ */
+function calcDiceResult(players, prevStreaks) {
+  const rk = dicerank.rankPlayers(players)
+  const winnerSeats = rk.winnerSeats
+  /* 连庄：连赢本来就该被说出来（"你又赢了？连庄两把了，加倍喝"） */
+  const streaks = {}
+  ;(players || []).forEach(p => {
+    const won = winnerSeats.indexOf(p.seat) >= 0
+    streaks[p.seat] = won ? (((prevStreaks || {})[p.seat] || 0) + 1) : 0
+  })
+  const maxStreak = Math.max(0, ...Object.keys(streaks).map(k => streaks[k]))
+  return {
+    result: {
+      ranked: rk.ranked,
+      winners: rk.winners,
+      leopardWin: rk.leopardWin,
+      leopardFace: rk.leopardFace,
+      top: rk.top,
+      streaks: streaks,
+      maxStreak: maxStreak,
+      winnerSeats: winnerSeats
+    },
+    streaks: streaks
+  }
+}
+
 const canRaise = liarRules.canRaise
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -1366,6 +1407,39 @@ exports.main = async (event) => {
        *   超时 45 秒 ≈ 30 次轮询都不动，基本可以确定人不在。
        *   动作选"开骰"——最接近"我不信"的自然行为，且一定会结算。
        */
+      /*
+       * ★★ 比大小：掉线不摇的人要自动退出本局（2026-10-30）。
+       *
+       * 原来这里只处理大话骰，并注释说"比大小各自摇、不会卡"——
+       * **那个判断是错的**：判据是 `every(p => p.dice.length > 0)`，
+       * 只要有一个人掉线不摇，就永远不成立 → 整局卡死、一句提示都没有。
+       * 已用测试锁住（test-room ㉑：3 人局两人掉线，剩下一人摇完必须结算）。
+       *
+       * 判据：本局参与、还没摇、心跳超过 30 秒 → 视为掉线，踢出本局。
+       */
+      if (room.game === 'dice' && room.phase === 'playing') {
+        const playersD = room.players || []
+        const ghosts = playersD.filter(p =>
+          p.inRound !== false && !(p.dice || []).length &&
+          ts - (p.lastSeen || 0) > 30000)
+        if (ghosts.length) {
+          const marked = playersD.map(p =>
+            ghosts.some(g => g.openid === p.openid) ? Object.assign({}, p, { inRound: false }) : p)
+          const alive = marked.filter(p => p.inRound !== false)
+          const allDone = alive.length > 0 && alive.every(p => (p.dice || []).length > 0)
+          const patch = { players: marked, updatedAt: ts }
+          if (allDone) {
+            const calc = calcDiceResult(marked, room.streaks || {})
+            patch.phase = 'over'
+            patch.lastResult = calc.result
+            patch.streaks = calc.streaks
+          }
+          await dbCall('status.diceGhost', () => rooms.doc(room._id).update({ data: patch }))
+          const rrd = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rrd.data, OPENID) }
+        }
+      }
+
       if (room.game === 'liar' && room.phase === 'playing' && room.bid &&
           room.turnAt && ts - room.turnAt > 45000) {
         const idleSeat = room.turn
@@ -2044,36 +2118,8 @@ exports.main = async (event) => {
 
       let result = null
       if (allRolled) {
-        /* 全员摇完 → 算点数排名。
-           规则（含豹子、并列）全在 dicerank.js 里 —— 那是**纯函数**，
-           可以脱离房间直接单测；内联在这里就只能靠"真摇一把"来验。 */
-        const rk = dicerank.rankPlayers(players)
-        const ranked = rk.ranked
-        const top = rk.top
-        const winnerSeats = rk.winnerSeats
-
-        /* ★ 连庄（streak）：记录每个人连续赢了几局。
-           这是酒桌游戏的真实机制 —— "你又赢了？连庄两把了，加倍喝"。
-           不是为了让音效有用才加的：连赢本来就该被说出来。 */
-        const prevStreaks = fresh.streaks || {}
-        const streaks = {}
-        players.forEach(p => {
-          const won = winnerSeats.indexOf(p.seat) >= 0
-          streaks[p.seat] = won ? ((prevStreaks[p.seat] || 0) + 1) : 0
-        })
-        const maxStreak = Math.max(0, ...Object.keys(streaks).map(k => streaks[k]))
-
-        result = {
-          ranked: ranked,
-          winners: rk.winners,
-          leopardWin: rk.leopardWin,
-          leopardFace: rk.leopardFace,
-          top: top,
-          streaks: streaks,
-          /* 连庄次数（1 = 刚赢一局，2 = 连庄，3+ = 连庄多次） */
-          maxStreak: maxStreak,
-          winnerSeats: winnerSeats
-        }
+        /* 结算逻辑抽到 calcDiceResult（纯函数）—— status 里"踢掉线的人"也要用同一份 */
+        result = calcDiceResult(players, fresh.streaks || {}).result
       }
 
       return {

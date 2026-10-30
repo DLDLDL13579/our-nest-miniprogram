@@ -2869,6 +2869,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 围骰加一：一盅五颗全同 → 该点数算 6 个')
   }
 
+  /* ============ ㉑ ★ 比大小：有人掉线不摇，整局会不会卡死 ============ */
+  /*
+   * 代码注释里写着「只管大话骰，比大小各自摇、不会卡」——
+   * 但"全员摇完"的判据是 `every(p => p.dice.length > 0)`：
+   * 只要有一个人掉线不摇，这个判据**永远不成立**，整局卡住且不报错。
+   */
+  {
+    const D1 = 'oid_d1_' + Date.now()
+    const D2 = 'oid_d2_' + Date.now()
+    const D3 = 'oid_d3_' + Date.now()
+    OPENID = D1
+    const dr = await room.main({ action: 'create', name: '摇甲', game: 'dice' })
+    assert.ok(dr.ok && dr.room, '准备：建比大小房')
+    const did = dr.room.id
+    OPENID = D2
+    assert.ok((await room.main({ action: 'join', code: dr.room.code, name: '摇乙' })).ok, '乙加入')
+    OPENID = D3
+    assert.ok((await room.main({ action: 'join', code: dr.room.code, name: '摇丙' })).ok, '丙加入')
+    OPENID = D1
+    assert.ok((await room.main({ action: 'start', id: did })).ok, '开局')
+    store.rooms.filter(x => x._id === did)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: did })
+
+    /* 只有甲摇了；乙丙不摇 */
+    const r1 = await room.main({ action: 'roll', id: did })
+    assert.ok(r1.ok, '甲摇骰应成功')
+    assert.ok(!r1.result, '还有两人没摇，不该结算')
+
+    /* 乙丙的心跳做成"早已掉线" */
+    const rawD = store.rooms.filter(x => x._id === did)[0]
+    rawD.players.forEach(p => {
+      if (p.openid === D2 || p.openid === D3) p.lastSeen = Date.now() - 60000
+    })
+    /* 等一轮 status —— 应该把掉线的人踢出本局并结算 */
+    const after = await room.main({ action: 'status', id: did })
+    const rawAfter = store.rooms.filter(x => x._id === did)[0]
+    assert.strictEqual(rawAfter.phase, 'over',
+      '★ 有人掉线不摇时，其余人摇完就该结算（否则整局卡死且不报错）')
+    ok('★ 比大小：掉线不摇的人自动退出本局，剩的人能结算')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
