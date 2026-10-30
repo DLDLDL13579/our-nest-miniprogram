@@ -49,6 +49,20 @@ const css = fs.readFileSync(WXSS, 'utf8')
 const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
 
 ;(() => {
+  /* ============ ⑬ 顶栏标题跟随玩法（2026-10-30） ============ */
+  /*
+   * 原来顶栏永远是「房间」—— 分享到群里朋友点进来，顶栏什么信息都没有；
+   * 微信搜索也读页面标题。
+   */
+  {
+    const src = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    assert.ok(/setNavigationBarTitle/.test(src),
+      '★ 房间页应该随玩法更新顶栏标题（否则分享进来只看到"房间"两个字）')
+    assert.ok(/gameOf\(g\)/.test(src) || /gameOf\(raw\.game\)/.test(src),
+      '★ 标题必须取玩法注册表里的名字（不要另写一份映射）')
+    ok('★ 顶栏标题跟随玩法（大话骰 · 627）')
+  }
+
   /* ============ ① phase → stage 只能有一个出口 ============ */
   console.log('\n=== ① 服务端 phase → 页面 stage：只能有一个出口 ===')
 

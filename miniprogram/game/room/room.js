@@ -1286,6 +1286,22 @@ Page({
       }
     }
 
+    /*
+     * 顶栏标题跟着玩法走（2026-10-30）。
+     *
+     * 原来永远是「房间」—— 而用户分享到群里、朋友点进来，
+     * 顶栏写着"房间"什么信息都没有；微信搜索也读这个标题。
+     * 改成「大话骰 · 627」这种：一眼知道在玩什么、哪个房。
+     */
+    {
+      const g = raw.game
+      const want = (gameOf(g) ? gameOf(g).name : '房间') + (raw.code ? ' · ' + raw.code : '')
+      if (this._navTitle !== want) {
+        this._navTitle = want
+        wx.setNavigationBarTitle({ title: want })
+      }
+    }
+
     /* ---------- 结算前的 300ms 定格 ---------- */
     if (raw.phase === 'over') {
       if (this._htUntil && Date.now() < this._htUntil) {
