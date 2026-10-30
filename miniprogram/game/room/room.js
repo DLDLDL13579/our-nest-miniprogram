@@ -1275,6 +1275,33 @@ Page({
     }
 
     /*
+     * ★★ 结算前先揭盅（2026-10-30，用户实测「摇了骰子我都没看到骰子就直接结算了」）。
+     *
+     * 根因不在 doRoll 里 —— 自己摇完是有揭盅动画的（抬盅 → 逐颗落定 → 结算）。
+     * 但**如果是别人摇完了最后一下**，我的界面是通过 1.5 秒轮询拿到 over 的：
+     * applyRoom 直接切 stage='over'，**揭盅和落定一次都没播过**，
+     * 屏幕上只留下一个"你已经输了"的结算页 —— 骰子长什么样全靠猜。
+     *
+     * 修法：over 且是比大小、且盅还扣着时，先播一遍揭盅 + 逐颗落定，
+     * 1.5 秒后再真正切结算。用 _revealBeforeOver 标记避免递归。
+     */
+    if (raw.phase === 'over' && raw.game === 'dice' && !this.data.diceShown && !this._revealBeforeOver) {
+      this._revealBeforeOver = true
+      this.revealCup()
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        this._revealBeforeOver = false
+        if (this._pendingOver) {
+          const p = this._pendingOver
+          this._pendingOver = null
+          this.applyRoom(p)
+        }
+      }, 1500))
+      this._pendingOver = raw
+      return
+    }
+
+    /*
      * 「该你了」—— 轮到我的那一刻响一声。
      *
      * 酒桌上手机经常扣着放、或者人正在夹菜：轮到自己却不知道，
@@ -2565,10 +2592,16 @@ Page({
    *   视觉上靠骰子的逐个落位动画表现，声音靠 diceOnTable。
    */
   revealCup() {
-    feedback.fire('cupLift')
+    /*
+     * 抬盅的声音也要等画面（2026-10-30）：`setData` 是异步的，
+     * 同步播 feedback 会让"抬盅声"早于"盅真的抬起来"几帧 —— 同 ② 的根因。
+     */
     this.setData({
       cupSrc: 'cup-up', cupCls: 'lift',
       diceShown: true, cupHint: '开了！'
+    }, () => {
+      if (this._dead) return
+      feedback.fire('cupLift')
     })
     /*
      * 骰子落在桌上滚两下。
@@ -2949,13 +2982,25 @@ Page({
     this.setData({ suspense: false })
     if (r && r.ok) {
       if (this._dead) return          // 云函数往返期间页面可能已卸载
-      this.setData({ room: this.safeDecorate(r.room), result: r.result, stage: 'over' })
-      /* ⚠️ 这处**刻意不走 feedback.fire**：它和 bump()（整屏震动动画）
-         是同一拍的两件事，顺序被 cupOpen 表里的 110ms 延迟会打乱。
-         例外要有理由，写在代码里而不是记在脑子里。 */
-      sfx.play('revealHit')
-      this.bump()
-      feedback.vibrate('heavy')
+      /*
+       * ★★ 声音/震动放进 setData 的**回调**里（2026-10-30，用户实测
+       *    「揭骰盅时声音不匹配，而且感觉声音出现时机过慢」）。
+       *
+       * 原因：`setData` 是异步的 —— 它把数据丢给视图层后立刻返回，
+       * 真正的重绘还要等下一帧甚至几帧。原来音效紧接着 setData 同步播，
+       * 于是**声音先到、画面后到**：耳朵听到"开！"，眼睛还看着旧画面，
+       * 等画面终于变了，声音早就过去了 —— 用户感知就是"不匹配 + 慢半拍"。
+       *
+       * setData 的第二个参数是"视图更新完成"回调，放这里面才是真正同一拍。
+       * （这处仍刻意不走 feedback.fire —— 它和 bump() 整屏震动是同一件事，
+       *   cupOpen 表里的 110ms 通道补偿会把它推到画面之后。）
+       */
+      this.setData({ room: this.safeDecorate(r.room), result: r.result, stage: 'over' }, () => {
+        if (this._dead) return
+        sfx.play('revealHit')
+        this.bump()
+        feedback.vibrate('heavy')
+      })
       /* 两处都走 _cupTimers：裸 setTimeout 清不掉 ——
          开骰后 340ms / 900ms 内离开房间，它们仍会执行 sfx.play()，
          而此时 onUnload 的 sfx.destroy() 已清空音频池 → 重建出没人销毁的实例。 */
