@@ -158,7 +158,13 @@
       <view class="btn ghostb" style="margin-top:22rpx" bindtap="doJoin">进去</view>
     </view>
 
-    <view wx:if="{{err}}" class="errbox">{{err}}</view>
+    <!--
+      ★ 2026-10-30 删：这里原来还有一处 `{{err}}`，而页面顶部（所有阶段之外）
+      已经有一处了 —— 输错房间号时**同一个错误会显示两遍**，
+      真实截图里一上一下两个橙色框，看着像出了两个错。
+
+      保留顶部那处就够了：它在所有阶段之外，覆盖全场。
+    -->
 
     <view class="entry-tip">
       房间 2 小时后自动过期，不用手动清理。
