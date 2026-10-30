@@ -1638,6 +1638,11 @@ Page({
         p.drinkCups = c
         /* 显示文字：1 杯 / 1.5 杯，0 就不显示 */
         p.drinkText = c === 0 ? '' : (c % 1 === 0 ? c + ' 杯' : Math.floor(c) + '.5 杯')
+        /* ★ 顺便记下"我自己"那一份 —— 模板的「换牌已经喝了 X 杯」读的是
+           room.poker.drinkText，而它**从来没有被赋值**（2026-10-30 发现）。
+           于是那一行永远不显示：玩家换了两手牌、喝了一杯半，
+           界面上却看不到自己欠了多少。 */
+        if (p.isMe) room.poker.drinkText = p.drinkText
       })
     }
 
