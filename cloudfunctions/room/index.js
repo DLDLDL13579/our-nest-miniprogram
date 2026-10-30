@@ -1008,6 +1008,7 @@ exports.main = async (event) => {
           updatedAt: ts
         }
       })
+
       const r = await rooms.doc(added._id).get()
       return { ok: true, room: shape(r.data, OPENID) }
     }
