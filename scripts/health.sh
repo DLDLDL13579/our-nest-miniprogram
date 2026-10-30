@@ -90,6 +90,24 @@ echo "⑥ 共享模块"
 #    是同一个空检查。现在改成只读比对（同一个脚本，两处共用）。
 node scripts/check-sync.js
 
+# ---------- ⑦ 音频（2026-10-30 用户报「声音混乱」后加的） ----------
+echo ""
+echo "⑦ 音频"
+# 两组检查，都是这轮为了定位「声音混乱」才做的：
+#   audio-levels.py        响度层级 / 直流偏置 / 削波
+#   check-audio-overlap.py 音效时长 vs 调度间隔（叠在一起就糊）
+if python3 scripts/audio-levels.py >/tmp/health-audio.log 2>&1; then
+  echo "   ✓ 响度层级 / 直流 / 削波 全部达标"
+else
+  echo "   ✗ 音频指标不达标 —— 看 /tmp/health-audio.log"
+  grep -E "✗|超标" /tmp/health-audio.log | head -5
+fi
+if python3 scripts/check-audio-overlap.py >/tmp/health-ov.log 2>&1; then
+  echo "   ✓ 音效时间线无重叠"
+else
+  echo "   ✗ 音效有重叠（听感会糊）—— 看 /tmp/health-ov.log"
+fi
+
 echo ""
 echo "════════════════════════════════════════════════════════════"
 echo "  提示：CLI 查不到云端版本。改过 cloudfunctions/ 就重新 deploy 一次。"
