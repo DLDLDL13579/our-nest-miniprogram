@@ -1702,6 +1702,62 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ mock 的 poker.last 字段都真实存在（不造假数据）')
   }
 
+  /*
+   * ★★★ ④·路径 scripts 里引用的 miniprogram/... 路径必须真实存在（2026-10-30）。
+   *
+   * 起因：2026-10-28 拆分包时，美术资源从 `miniprogram/images/` 移到了
+   * `miniprogram/game/images/`，但**三个脚本的默认路径没跟着改**：
+   *   · gen-share-cover.py 的 IMG
+   *   · render-cup.py 的 --out 默认值
+   *   · render-dice.py 的 --out 默认值
+   * 后果：重跑脚本会把图写到旧位置，页面从新位置加载 → **空白且不报错**。
+   *
+   * 这类路径不参与编译、不参与运行时，**没有任何检查会发现它过期** ——
+   * 只有真的有人跑那个脚本时才炸，所以藏了 8 天。
+   */
+  {
+    const bad = []
+    /* 不用 glob（项目没装这个依赖），直接 readdir + 后缀过滤 */
+    const files = fs.readdirSync(path.join(ROOT, 'scripts'))
+      .filter(f => /\.(py|js|sh)$/.test(f))
+      .map(f => 'scripts/' + f)
+    files.forEach(f => {
+      if (/test-contract\.js$/.test(f)) return      // 跳过自己（本文件里有示例路径）
+      /*
+       * ⚠️ 必须**剥掉注释**再查 —— test-docs.js 的注释里写着
+       * 「曾经把 miniprogram/utils/feedback.js 写错」，那是历史说明，
+       * 不是真的引用。第一版没剥注释 → 误报。
+       */
+      const src = fs.readFileSync(path.join(ROOT, f), 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/^\s*\*.*$/gm, '')
+        .replace(/^\s*#.*$/gm, '')
+        .replace(/^\s*\/\/.*$/gm, '')
+      /*
+       * 两类都要查：
+       *   ① 具体文件（带扩展名）—— 读不到就空白
+       *   ② **目录**（如 `--out default='miniprogram/images/cup'`）——
+       *      重跑脚本会把产物写到不存在的目录里
+       * 第一版只查 ①，于是 render-cup.py 的目录默认值被漏掉（反向验证 exit=0）。
+       */
+      const paths = new Set()
+      for (const m of src.matchAll(/miniprogram\/[\w/.-]+\.(png|wav|json|js|wxss|wxml)/g)) {
+        paths.add(m[0])
+      }
+      /* 目录：以 miniprogram/game/images/ 或 miniprogram/images/ 开头、不带扩展名的 */
+      for (const m of src.matchAll(/miniprogram\/(?:game\/)?images\/[\w-]+/g)) {
+        paths.add(m[0])
+      }
+      for (const p of paths) {
+        if (p.includes('..')) continue
+        if (!fs.existsSync(path.join(ROOT, p))) bad.push(f + ' → ' + p)
+      }
+    })
+    assert.deepStrictEqual(bad, [],
+      '这些脚本引用了不存在的路径（重跑会写错位置/读不到文件，且不报错）：\n    ' + bad.join('\n    '))
+    ok('★ scripts 里引用的资源路径都真实存在')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
