@@ -3266,7 +3266,14 @@ Page({
       this._cupTimers.push(setTimeout(() => {
         if (this._dead) return
         sfx.play('gulp')
-      }, 1900))                            /* 结算音(0.93s) 播完之后 */
+      }, 2300))                            /*
+                                            * ★ 2260ms（原 1900）：
+                                            * 结算音 win='confetti' 实测 **1.20 秒**，
+                                            * 1080 + 1200 = 2280ms 才播完。
+                                            * 原来按 0.93s（failDrop 的时长）算的 → 差 200ms，
+                                            * 喝酒音会压在撒花音尾巴上。
+                                            * **两个结算音时长不同，排期要按最长的那个算。**
+                                            */
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
     }
