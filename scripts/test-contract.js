@@ -928,10 +928,21 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       sfxSrc.indexOf('}', sfxSrc.indexOf('const FILES = {')))
     const subFiles = subSfxSrc.slice(subSfxSrc.indexOf('const FILES = {'),
       subSfxSrc.indexOf('}', subSfxSrc.indexOf('const FILES = {')))
+    /*
+     * 两种注册形态都要认（2026-10-30）：
+     *   单值：  diceSettle: '/game/audio/x.wav'
+     *   变体：  diceSettle: [\n    '/game/audio/x.wav',
+     * 数组是为了"多采样变体"（同一动作放多份不同录音，play 时随机挑）。
+     * 这里取数组第一项参与"文件是否存在"的检查；play 里会遍历全部。
+     * ⚠️ 只认单值正则的话，改成数组的音效会被误报成"没注册"（假阳性）。
+     */
     const re = /^\s*([\w]+):\s*'\/?((?:game\/)?audio\/[\w-]+\.wav)'/gm
+    const reArr = /^\s*([\w]+):\s*\[\s*\n?\s*'\/?((?:game\/)?audio\/[\w-]+\.wav)'/gm
     let m
     while ((m = re.exec(mainFiles))) soundKeys[m[1]] = m[2]
     while ((m = re.exec(subFiles))) soundKeys[m[1]] = m[2]
+    while ((m = reArr.exec(mainFiles))) if (!soundKeys[m[1]]) soundKeys[m[1]] = m[2]
+    while ((m = reArr.exec(subFiles))) if (!soundKeys[m[1]]) soundKeys[m[1]] = m[2]
   }
 
   /* ① 注册的音效必须有对应文件 */

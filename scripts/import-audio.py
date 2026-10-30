@@ -111,8 +111,13 @@ MAP = [
          note='骰子翻滚（比大小用）'),
     dict(dst='dice-into-cup',    src='dice-throw-1.ogg', seconds=0.45, sr=44100, fifty=-20.0,
          note='骰子入盅（起音 24ms）'),
-    dict(dst='dice-settle',      src='die-throw-1.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+    # ★ 骰子落定的多采样变体（2026-10-30）：一局要响十几次，
+    #   只靠 playbackRate ±4% 变调是"同一个声音变声"，而这是三份不同录音。
+    #   参数与主文件保持一致（同样的裁切长度/响度目标），只换素材。
+    dict(dst='dice-settle-2',    src='die-throw-2.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
          note='逐颗落定（起音 3ms，一局十几下必须克制）'),
+    dict(dst='dice-settle-3',    src='die-throw-3.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+         note='逐颗落定 · 变体 3'),
     dict(dst='dice-on-table',    src='dice-throw-3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
          note='揭盅后骰子在桌上滚两下（起音 12ms）'),
     # ---------- 纸牌 ----------

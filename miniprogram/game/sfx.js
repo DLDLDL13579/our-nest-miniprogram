@@ -17,7 +17,12 @@ const MUTE_KEY = 'gameMute'
 /* 所有音效清单。集中在这里，避免各页面写错文件名。 */
 const FILES = {
   // 骰子
-  diceSettle: '/game/audio/dice-settle.wav',
+  /* 三份不同录音 —— 一局要响十几次，变体比变调自然（见 play 里的说明） */
+  diceSettle: [
+    '/game/audio/dice-settle.wav',
+    '/game/audio/dice-settle-2.wav',
+    '/game/audio/dice-settle-3.wav'
+  ],
   // 转盘
   tick: '/audio/tick.wav',
   /* 环境底噪（4 秒循环）—— 房间不该是绝对安静的 */
@@ -116,27 +121,39 @@ function play(key, opt) {
   init()
   if (muted) return null
 
-  const src = FILES[key]
-  if (!src) {
+  /*
+   * ★ 多采样变体（2026-10-30）。
+   *
+   * 骰子落定这类"一局响十几次"的音效，只靠 playbackRate ±4% 变调是
+   * "同一个声音变声"——听久了能察觉。项目素材里本来就有 die-throw-1/2/3
+   * 三份**不同录音**，把它们都排进 FILES 数组即可：play 时随机挑一个，
+   * 每个变体各占一个池槽（切变体零成本，不用每次改 src 触发跨线程调用）。
+   *
+   * 兼容：FILES 的值是字符串时行为完全不变。
+   */
+  const srcOrList = FILES[key]
+  if (!srcOrList) {
     console.warn('[sfx] 没有这个音效:', key)
     return null
   }
+  const variants = Array.isArray(srcOrList) ? srcOrList : null
   opt = opt || {}
 
   try {
-    const size = POOL_SIZE[key] || 1
+    const size = variants ? variants.length : (POOL_SIZE[key] || 1)
     let a
 
     if (size > 1) {
-      /* 轮转：每次取下一个实例，避免打断正在播的那个 */
-      const i = (poolIdx[key] || 0) % size
-      poolIdx[key] = i + 1
+      /* 有变体时**随机**选一个（轮转会听出"一二三一二三"的规律）；
+         没有变体时保持原来的轮转（那是为了不打断正在播的那一个）。 */
+      const i = variants ? Math.floor(Math.random() * size) : ((poolIdx[key] || 0) % size)
+      if (!variants) poolIdx[key] = i + 1
       const slot = key + '#' + i
       a = pool[slot]
       if (!a) {
         a = wx.createInnerAudioContext()
         watchAudioError(a, key)
-        a.src = src
+        a.src = variants ? variants[i] : srcOrList
         a.obeyMuteSwitch = false
         pool[slot] = a
       }
@@ -145,7 +162,7 @@ function play(key, opt) {
       if (!a) {
         a = wx.createInnerAudioContext()
         watchAudioError(a, key)
-        a.src = src
+        a.src = srcOrList
         /* 音效不参与系统静音开关以外的音频焦点争夺：
            obeyMuteSwitch=false 让 iOS 静音键下仍能出声 —— 酒桌游戏需要这个，
            否则用户开了静音就完全没声音，会以为坏了。 */
@@ -324,8 +341,10 @@ function watchAudioError(a, key) {
 
 function preload() {
   PRELOAD_KEYS.forEach((k) => {
-    const src = FILES[k]
-    if (!src) return
+    /* 变体数组时预加载第一个（主文件）—— 直接把数组赋给 a.src 会失效 */
+    const srcOrList = FILES[k]
+    if (!srcOrList) return
+    const src = Array.isArray(srcOrList) ? srcOrList[0] : srcOrList
     /* 池化的音效（POOL_SIZE > 1）跳过：它们的实例是按 slot 名建的，
        预加载塞进 pool[k] 会和真正的播放逻辑打架 */
     if (POOL_SIZE[k] > 1) return
