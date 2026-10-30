@@ -86,6 +86,124 @@ const liarRules = require('./liarRules.js')
  * @param {object} prevStreaks  上一局的连庄记录
  * @returns {{result:object, streaks:object}}
  */
+/**
+ * 卧底投票的结算（2026-10-30 抽出来）。
+ *
+ * 原来这段内联在 `uwVote` 的 updateGuarded 回调里。现在多了一个调用方：
+ * `status` 要把掉线不投票的人踢出本局并结算 —— 否则"全员投完"永远不成立，
+ * 全桌卡在投票页且不报错（已用测试锁住）。
+ *
+ * 两份结算必然不一致，所以抽成纯函数（同 calcDiceResult 的处理）。
+ *
+ * @returns {object} 要写回房间的 patch
+ */
+function settleUwVote(fplayers, votes, fresh, ts) {
+    /* ---- 结算：票最多的出局 ---- */
+    const tally = {}
+    votes.forEach(v => { tally[v.target] = (tally[v.target] || 0) + 1 })
+    let max = 0
+    Object.keys(tally).forEach(k => { if (tally[k] > max) max = tally[k] })
+    const top = Object.keys(tally).filter(k => tally[k] === max)
+
+    /*
+     * ============ 平票：重投一次，再平票则卧底赢 ============
+     *
+     * 2026-10-28 改（原来是什么：平票时**随机**挑一个人出局）。
+     *
+     * 随机的问题不在实现，在**桌上没法解释**：被随机选中的人会问
+     * "凭什么是我"，而服务端唯一能给的答案就是"随机"。
+     * 调研过的主流口径（腾讯欢乐斗地主系列攻略）是：
+     *   平票 → 平票的人各补一句 → 再投 → 仍平票则卧底胜。
+     * 这个口径的好处是**每一步都有桌上能懂的理由**，
+     * 而且"投不出结果 = 好人失败"本身就符合这个游戏的逻辑。
+     *
+     * 原来注释里"重投会拖很久"的担心是真的，所以只给**一次**重投机会：
+     * 第二次投票无论如何都要出结果（平票则直接判卧底胜）。
+     *
+     * 状态只有两个字段：uwTieBreak（这一轮是否已用过重投）、uwTieNames（平票名单）。
+     * 每轮结算后清零，所以"每轮都有一次重投机会"。
+     */
+    if (top.length > 1) {
+      if (!fresh.uwTieBreak) {
+        const tieNames = top.map(oid => (fplayers.filter(p => p.openid === oid)[0] || {}).name || '').join('、')
+        return {
+          players: fplayers, votes: [], uwTieBreak: true, uwTieNames: tieNames,
+          uwStep: 'talk'
+        }
+      }
+      /* 第二次仍平票：不再淘汰任何人，直接判卧底胜 */
+      return {
+        players: fplayers, votes: [], uwTieBreak: false, uwTieNames: '',
+        phase: 'over', uwStep: 'result',
+        lastResult: {
+          kind: 'undercover', winner: 'spy', tieDeadlock: true,
+          civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+          spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+        },
+        uwReveal: fplayers
+          .filter(p => p.inRound !== false)
+          .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
+      }
+    }
+
+    const picked = top[0]
+    const outP = fplayers.filter(p => p.openid === picked)[0]
+    outP.out = true
+    outP.inRound = true
+
+    const outRow = { openid: outP.openid, name: outP.name, word: outP.uwWord, role: outP.uwRole }
+    const uwOut = (fresh.uwOut || []).concat([outRow])
+
+    /* ---- 胜负判定 ---- */
+    const stillAlive = fplayers.filter(p => p.inRound !== false && !p.out)
+    const spiesLeft = stillAlive.filter(p => p.uwRole === 'spy').length
+    let winner = ''
+    if (spiesLeft === 0) winner = 'civilian'          // 卧底全出局
+    else if (spiesLeft * 2 >= stillAlive.length) winner = 'spy'   // 卧底占一半，好人也赢不了
+    else if (stillAlive.length <= 2) winner = 'spy'    // 只剩两人，卧底拖到底
+
+    const patch = {
+      players: fplayers, votes: [], uwOut: uwOut,
+      uwLastOut: {
+        name: outRow.name, word: outRow.word, role: outRow.role,
+        /* 平票已经走"重投"分支，能走到这里的都是单一最高票 */
+        tie: false, votes: max,
+        /*
+         * ★★ 票型：谁投了谁（2026-10-28）。
+         *
+         * 这是卧底玩法里**最该被看见、却一直没显示**的信息 ——
+         * 结算时大家第一个问题就是"谁投的他"，
+         * 而投票一结束 votes 就被清空了（见上一行 votes: []），
+         * 那条线索当场蒸发，桌上只能靠回忆。
+         *
+         * 它不改变任何规则，只是把"刚刚发生过的事"摆出来 ——
+         * 而这恰恰是这个游戏后半段讨论的燃料。
+         */
+        ballots: votes.map(v => ({ by: v.name, to: (fplayers.filter(p => p.openid === v.target)[0] || {}).name || '' }))
+      },
+      /* 本轮结束，重投机会下轮重新给 */
+      uwTieBreak: false, uwTieNames: '',
+      updatedAt: ts
+    }
+
+    if (winner) {
+      patch.phase = 'over'
+      patch.uwStep = 'result'
+      patch.lastResult = {
+        kind: 'undercover', winner: winner,
+        civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
+        spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
+      }
+      patch.uwReveal = fplayers
+        .filter(p => p.inRound !== false)
+        .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
+    } else {
+      patch.uwStep = 'result'
+    }
+  return patch
+}
+
+
 function calcDiceResult(players, prevStreaks) {
   const rk = dicerank.rankPlayers(players)
   const winnerSeats = rk.winnerSeats
@@ -1440,6 +1558,36 @@ exports.main = async (event) => {
         }
       }
 
+      /*
+       * ★★ 卧底投票：掉线不投的人也要自动退出本局（2026-10-30）。
+       *
+       * 判据是 `alive.every(p => 有票)` —— 有人掉线不投就永远不成立，
+       * 全桌卡在投票页，只有房主能「催一下」（而催也不推进）。
+       * 已用测试锁住（test-room ㉒）。
+       */
+      if (room.game === 'undercover' && room.uwStep === 'vote' && room.phase === 'playing') {
+        const playersU = room.players || []
+        const votesU = room.votes || []
+        const ghostsU = playersU.filter(p =>
+          p.inRound !== false && !p.out &&
+          !votesU.some(v => v.by === p.openid) &&
+          ts - (p.lastSeen || 0) > 30000)
+        if (ghostsU.length) {
+          const markedU = playersU.map(p =>
+            ghostsU.some(g => g.openid === p.openid) ? Object.assign({}, p, { inRound: false }) : p)
+          const aliveU = markedU.filter(p => p.inRound !== false && !p.out)
+          const allDoneU = aliveU.length > 0 &&
+            aliveU.every(p => votesU.some(v => v.by === p.openid))
+          const patchU = Object.assign({}, allDoneU
+            ? settleUwVote(markedU, votesU, room, ts)
+            : { players: markedU, updatedAt: ts })
+          patchU.updatedAt = ts
+          await dbCall('status.uwGhost', () => rooms.doc(room._id).update({ data: patchU }))
+          const rru = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rru.data, OPENID) }
+        }
+      }
+
       if (room.game === 'liar' && room.phase === 'playing' && room.bid &&
           room.turnAt && ts - room.turnAt > 45000) {
         const idleSeat = room.turn
@@ -2426,108 +2574,9 @@ exports.main = async (event) => {
 
       if (!allDone) return { votes: votes }
 
-      /* ---- 结算：票最多的出局 ---- */
-      const tally = {}
-      votes.forEach(v => { tally[v.target] = (tally[v.target] || 0) + 1 })
-      let max = 0
-      Object.keys(tally).forEach(k => { if (tally[k] > max) max = tally[k] })
-      const top = Object.keys(tally).filter(k => tally[k] === max)
+      /* 结算逻辑抽到 settleUwVote（纯函数）—— status 里踢掉线的人也要用同一份 */
+      const patch = settleUwVote(fplayers, votes, fresh, ts)
 
-      /*
-       * ============ 平票：重投一次，再平票则卧底赢 ============
-       *
-       * 2026-10-28 改（原来是什么：平票时**随机**挑一个人出局）。
-       *
-       * 随机的问题不在实现，在**桌上没法解释**：被随机选中的人会问
-       * "凭什么是我"，而服务端唯一能给的答案就是"随机"。
-       * 调研过的主流口径（腾讯欢乐斗地主系列攻略）是：
-       *   平票 → 平票的人各补一句 → 再投 → 仍平票则卧底胜。
-       * 这个口径的好处是**每一步都有桌上能懂的理由**，
-       * 而且"投不出结果 = 好人失败"本身就符合这个游戏的逻辑。
-       *
-       * 原来注释里"重投会拖很久"的担心是真的，所以只给**一次**重投机会：
-       * 第二次投票无论如何都要出结果（平票则直接判卧底胜）。
-       *
-       * 状态只有两个字段：uwTieBreak（这一轮是否已用过重投）、uwTieNames（平票名单）。
-       * 每轮结算后清零，所以"每轮都有一次重投机会"。
-       */
-      if (top.length > 1) {
-        if (!fresh.uwTieBreak) {
-          const tieNames = top.map(oid => (fplayers.filter(p => p.openid === oid)[0] || {}).name || '').join('、')
-          return {
-            players: fplayers, votes: [], uwTieBreak: true, uwTieNames: tieNames,
-            uwStep: 'talk'
-          }
-        }
-        /* 第二次仍平票：不再淘汰任何人，直接判卧底胜 */
-        return {
-          players: fplayers, votes: [], uwTieBreak: false, uwTieNames: '',
-          phase: 'over', uwStep: 'result',
-          lastResult: {
-            kind: 'undercover', winner: 'spy', tieDeadlock: true,
-            civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
-            spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
-          },
-          uwReveal: fplayers
-            .filter(p => p.inRound !== false)
-            .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
-        }
-      }
-
-      const picked = top[0]
-      const outP = fplayers.filter(p => p.openid === picked)[0]
-      outP.out = true
-      outP.inRound = true
-
-      const outRow = { openid: outP.openid, name: outP.name, word: outP.uwWord, role: outP.uwRole }
-      const uwOut = (fresh.uwOut || []).concat([outRow])
-
-      /* ---- 胜负判定 ---- */
-      const stillAlive = fplayers.filter(p => p.inRound !== false && !p.out)
-      const spiesLeft = stillAlive.filter(p => p.uwRole === 'spy').length
-      let winner = ''
-      if (spiesLeft === 0) winner = 'civilian'          // 卧底全出局
-      else if (spiesLeft * 2 >= stillAlive.length) winner = 'spy'   // 卧底占一半，好人也赢不了
-      else if (stillAlive.length <= 2) winner = 'spy'    // 只剩两人，卧底拖到底
-
-      const patch = {
-        players: fplayers, votes: [], uwOut: uwOut,
-        uwLastOut: {
-          name: outRow.name, word: outRow.word, role: outRow.role,
-          /* 平票已经走"重投"分支，能走到这里的都是单一最高票 */
-          tie: false, votes: max,
-          /*
-           * ★★ 票型：谁投了谁（2026-10-28）。
-           *
-           * 这是卧底玩法里**最该被看见、却一直没显示**的信息 ——
-           * 结算时大家第一个问题就是"谁投的他"，
-           * 而投票一结束 votes 就被清空了（见上一行 votes: []），
-           * 那条线索当场蒸发，桌上只能靠回忆。
-           *
-           * 它不改变任何规则，只是把"刚刚发生过的事"摆出来 ——
-           * 而这恰恰是这个游戏后半段讨论的燃料。
-           */
-          ballots: votes.map(v => ({ by: v.name, to: (fplayers.filter(p => p.openid === v.target)[0] || {}).name || '' }))
-        },
-        /* 本轮结束，重投机会下轮重新给 */
-        uwTieBreak: false, uwTieNames: '',
-        updatedAt: ts
-      }
-
-      if (winner) {
-        patch.phase = 'over'
-        patch.uwStep = 'result'
-        patch.lastResult = {
-          kind: 'undercover', winner: winner,
-          civilianWord: (fplayers.filter(p => p.uwRole === 'civilian')[0] || {}).uwWord || '',
-          spyWord: (fplayers.filter(p => p.uwRole === 'spy')[0] || {}).uwWord || ''
-        }
-        patch.uwReveal = fplayers
-          .filter(p => p.inRound !== false)
-          .map(p => ({ name: p.name, word: p.uwWord, role: p.uwRole, out: !!p.out }))
-      } else {
-        patch.uwStep = 'result'
-      }
 
       return patch
       }))

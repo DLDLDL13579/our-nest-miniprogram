@@ -2910,6 +2910,51 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 比大小：掉线不摇的人自动退出本局，剩的人能结算')
   }
 
+  /* ============ ㉒ ★ 卧底投票：有人掉线不投，会不会卡死 ============ */
+  {
+    const U1 = 'oid_u1_' + Date.now()
+    const U2 = 'oid_u2_' + Date.now()
+    const U3 = 'oid_u3_' + Date.now()
+    OPENID = U1
+    const ur = await room.main({ action: 'create', name: '卧甲', game: 'undercover' })
+    assert.ok(ur.ok && ur.room, '准备：建卧底房')
+    const uid = ur.room.id
+    OPENID = U2
+    assert.ok((await room.main({ action: 'join', code: ur.room.code, name: '卧乙' })).ok, '乙加入')
+    OPENID = U3
+    assert.ok((await room.main({ action: 'join', code: ur.room.code, name: '卧丙' })).ok, '丙加入')
+    OPENID = U1
+    assert.ok((await room.main({ action: 'start', id: uid })).ok, '开局')
+    store.rooms.filter(x => x._id === uid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: uid })
+    /* 房主开投票 */
+    assert.ok((await room.main({ action: 'uwSay', id: uid })).ok, '房主开投票')
+
+    /* 甲、乙各投一票；丙掉线不投 */
+    const rawU = store.rooms.filter(x => x._id === uid)[0]
+    const uTargets = rawU.players.filter(p => p.openid !== U3).map(p => p.openid)
+    /* 甲、乙都投**丙**（同一个目标 → 不平票 → 直接出结果） */
+    OPENID = U1
+    const v1 = await room.main({ action: 'uwVote', id: uid, target: U3 })
+    assert.ok(v1.ok, '甲投票应成功：' + (v1.msg || ''))
+    OPENID = U2
+    const v2 = await room.main({ action: 'uwVote', id: uid, target: U3 })
+    assert.ok(v2.ok, '乙投票应成功：' + (v2.msg || ''))
+
+    /* 丙心跳做成掉线 */
+    const rawU2 = store.rooms.filter(x => x._id === uid)[0]
+    rawU2.players.forEach(p => { if (p.openid === U3) p.lastSeen = Date.now() - 60000 })
+
+    /* 一次 status 之后：丙应被踢出本局，剩下的人都投过 → 该结算 */
+    await room.main({ action: 'status', id: uid })
+    const rawU3 = store.rooms.filter(x => x._id === uid)[0]
+    const uStep = rawU3.uwStep
+    const voted = (rawU3.votes || []).length
+    ok(`卧底投票掉线：阶段=${uStep} 票数=${voted}（${uStep === 'result' ? '已结算 ✓' : '仍卡在投票' }）`)
+    assert.strictEqual(uStep, 'result',
+      '★ 有人掉线不投票时，其余人投完就该结算（否则全桌卡在投票页）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
