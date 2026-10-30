@@ -2720,13 +2720,28 @@ Page({
 
   /** 全员摇完的结果演出 */
   showFinalResult(r) {
-    /* 先揭自己的盅，再亮全场 */
-    this.revealCup()
+    /*
+     * ★★ 揭晓前先来一下"悬念"（2026-10-30）。
+     *
+     * 大话骰点「开」时早就有这个（.gamepage.suspense = 整屏 0.1s 高频微抖），
+     * 而比大小全员摇完的那一刻**直接揭盅** —— 少了"要开了"的心理准备。
+     *
+     * 酒桌上这个时刻是最紧张的：所有人放下手机看最后那个人。
+     * 加 380ms 的 suspense 再揭，把"等"和"开"分成两拍。
+     * （380ms 是试出来的：再短感觉不到，再长会急。）
+     */
+    this.setData({ suspense: true })
     this._cupTimers.push(setTimeout(() => {
+      if (this._dead) return
+      this.setData({ suspense: false })
+      this.revealCup()
+    }, 380))
+    this._cupTimers.push(setTimeout(() => {
+      if (this._dead) return
       sfx.play('impactLow', { volume: 0.5 })
       this.bump()
-    }, 60))
-    this._cupTimers.push(setTimeout(() => sfx.play('revealHit'), 260))
+    }, 440))
+    this._cupTimers.push(setTimeout(() => sfx.play('revealHit'), 640))
 
     const mySeat = (r.room.me || {}).seat
     const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
@@ -2742,7 +2757,7 @@ Page({
       if (this._dead) return
       feedback.fire(iWon ? 'win' : 'penalized')
       if (iWon) this.celebrate()
-    }, 620))
+    }, 900))   /* 原 620ms；揭晓整体后移 380ms 后，这里也要跟着后移，否则和揭示音撞车 */
 
     /* ★ 连庄音：连赢的音高逐级升高（combo-1 → combo-4）。
        这是"连庄"这件事的声音表达 —— 连赢两把和赢一把听感不同，
