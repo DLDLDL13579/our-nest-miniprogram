@@ -90,6 +90,21 @@ const PK_OTHER = [{ r: 9, s: 3 }, { r: 9, s: 2 }, { r: 3, s: 1 }]
 const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
 
 /** 补上 derive 会算的派生字段，让模板里的 room.xxx 都有值 */
+
+/*
+ * 把 ["4个4", ...] 转成模板真正用的对象数组 [{n,face,zhai,label}]。
+ *
+ * ★ 2026-10-30：模板在加「斋」功能时改成了 `item.label` / `item.n`，
+ *   而 mock 里还是纯字符串 —— 于是**叫骰按钮全部空白**（渲染图里是 4 个灰块），
+ *   而真机上是有字的。这是"真实代码改了、mock 没跟着改"的又一例。
+ */
+function optLabels(arr) {
+  return arr.map(l => {
+    const m = /^(\d+)个(\d)(斋?)$/.exec(l)
+    return m ? { n: +m[1], face: +m[2], zhai: !!m[3], label: l } : { n: 0, face: 0, zhai: false, label: l }
+  })
+}
+
 function pkRoom(r) {
   return Object.assign({
     /*
@@ -469,7 +484,7 @@ module.exports = {
           { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, diceCount: 5 },
           { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, diceCount: 5 }
         ],
-        options: ['4个4', '4个5', '4个6', '5个2', '5个3', '5个4']
+        options: optLabels(['4个4', '4个5', '4个6', '5个2', '5个3', '5个4'])
       })
     }),
 
@@ -498,7 +513,7 @@ module.exports = {
         ],
         /* ⚠️ 没偷看也要有可叫项：真机 decorate 一律算 options（引导而不是上锁），
            这里留空数组会让「叫一个」下面空一大截 —— mock 自己造出来的假布局。 */
-        options: ['2个2', '2个3', '2个4', '2个5', '3个1', '3个2']
+        options: optLabels(['2个2', '2个3', '2个4', '2个5', '3个1', '3个2'])
       })
     }),
 

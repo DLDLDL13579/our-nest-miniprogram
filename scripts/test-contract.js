@@ -1758,6 +1758,49 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ scripts 里引用的资源路径都真实存在')
   }
 
+  /*
+   * ★★★ ④·形状 mock 字段的**运行时类型**必须和模板用法一致（2026-10-30）。
+   *
+   * 起因：加「斋」功能时把叫骰选项从 string[] 改成 {n,face,zhai,label}[]，
+   * 模板随之用 `item.label` —— 而 mock 还是纯字符串 →
+   * 渲染出来是**4 个空白灰块**，真机上却有字。
+   *
+   * ★ 这条断言前三版都想"看源码猜形状"（正则抓 `field: [` 后面是不是引号），
+   *   每版都被反向验证打回（players 误报、空数组误报、换行断掉）。
+   *   最后换了个完全不同的思路：**真的 require mock，跑每个状态，看运行时类型**。
+   *   不猜写法，直接看结果 —— 一次就对了。
+   */
+  {
+    const tplSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    /* 模板里 `wx:for="{{room.X}}"` 且循环体用 `item.Y` → 这个字段必须是对象数组 */
+    const need = new Set()
+    for (const m of tplSrc.matchAll(/wx:for="\{\{room\.(\w+)\}\}"[\s\S]{0,300}?item\.(\w+)/g)) {
+      need.add(m[1] + '.' + m[2])
+    }
+    const mockPath = path.join(ROOT, 'scripts/ui-render/mock/room.js')
+    delete require.cache[require.resolve(mockPath)]
+    const mockMod = require(mockPath)
+    const states = mockMod.states || {}
+    const bad = []
+    for (const name of Object.keys(states)) {
+      let st
+      try {
+        st = typeof states[name] === 'function' ? states[name]() : states[name]
+      } catch (e) { continue }
+      const room = (st && st.room) || {}
+      for (const nf of need) {
+        const field = nf.split('.')[0]
+        const arr = room[field]
+        if (Array.isArray(arr) && arr.length && typeof arr[0] !== 'object') {
+          bad.push(name + ' → room.' + field + ' 的元素是 ' + typeof arr[0] + '，模板却用 item.xxx')
+        }
+      }
+    }
+    assert.deepStrictEqual(bad, [],
+      '这些 mock 状态的字段形状不对（渲染出来会是空白）：\n    ' + bad.join('\n    '))
+    ok('★ 全部 ' + Object.keys(states).length + ' 个 mock 状态的字段形状与模板一致')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
