@@ -74,6 +74,22 @@ function wxssToCss(file, seen = new Set()) {
 
   // 根选择器
   css = css.replace(/(^|\})\s*page\s*\{/g, '$1 body {')
+  /*
+   * ★★★ 2026-10-30：**选择器也要跟 TAG_MAP 一起改**。
+   *
+   * 渲染器把 wxml 的 `<view>` 输出成 `<div>`、`<text>` 输出成 `<span>`
+   * （见 ui-render/wxml.js 的 TAG_MAP），但 wxss 里的选择器原样保留 ——
+   * 于是 `view { box-sizing: border-box }` 这类规则**永远匹配不到任何元素**。
+   *
+   * 后果：`.sheet { width:100%; box-sizing:border-box }` 的 border-box 失效，
+   * padding 把宽度撑出屏幕 → 所有弹层右侧溢出
+   * （渲染图实测 cardPanelOpen 溢出 25%）。而真机上是对的。
+   *
+   * 这个 bug 让"弹层溢出"这个假象骗了我好几轮（我先怪过 app.wxss 没加载、
+   * 又怪过父级 transform 让 fixed 退化，都不是）。
+   */
+  css = css.replace(/(^|[\s,>+~(])(view|text)(?=[\s,{:>+~.)])/g, (m, pre, tag) =>
+    pre + (tag === 'view' ? 'div' : 'span'))
 
   return css
 }
