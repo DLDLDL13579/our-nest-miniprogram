@@ -471,7 +471,23 @@ const rec = (name, ok, extra) => {
           if (!rb) { rec('找到摇骰按钮', false) }
           else {
             await rb.tap()
-            await sleep(3200)
+            /*
+             * ★ 2026-10-30：原来固定 `sleep(3200)` 然后直接读 stage。
+             * 有一次偶发失败：32 步里最后一步报 `stage=playing result=no`，
+             * 重跑 4 次都过 —— 因为**结算慢了一点**（云函数往返 + 轮询 1.5s + 动画）。
+             *
+             * 固定 sleep 是脆的：它赌"3.2 秒够"，而云函数冷启动/网络抖动一变就不够。
+             * 改成**轮询到出结果为止**（最多 8 秒），这才是"等一个异步结果"的正确写法。
+             */
+            {
+              const t0 = Date.now()
+              while (Date.now() - t0 < 8000) {
+                await sleep(600)
+                const pd = await mini.currentPage()
+                const cur = await pd.data()
+                if (cur.stage === 'over' || (cur.result && cur.result.kind)) break
+              }
+            }
             const d2 = await mini.currentPage()
             const dd2 = await d2.data()
             const mine = dd2.myDice || []
