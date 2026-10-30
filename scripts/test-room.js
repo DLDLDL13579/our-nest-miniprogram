@@ -2955,6 +2955,35 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '★ 有人掉线不投票时，其余人投完就该结算（否则全桌卡在投票页）')
   }
 
+  /* ============ ㉓ ★ 房主掉线 → 顺位转移 ============ */
+  /*
+   * 全项目有 7 处「只有房主能」的操作（卧底推进、转盘、催一下、锁房…）。
+   * 房主掉线时如果没人接手，剩下一屋子人**全都动不了且没有任何提示**。
+   */
+  {
+    const H1 = 'oid_h1_' + Date.now()
+    const H2 = 'oid_h2_' + Date.now()
+    OPENID = H1
+    const hr = await room.main({ action: 'create', name: '房甲', game: 'wheel' })
+    assert.ok(hr.ok && hr.room, '准备：建房')
+    const hid = hr.room.id
+    OPENID = H2
+    assert.ok((await room.main({ action: 'join', code: hr.room.code, name: '房乙' })).ok, '乙加入')
+
+    const rawH = store.rooms.filter(x => x._id === hid)[0]
+    /* 房主心跳做成 90 秒前（掉线），另一个人刚刚活跃 */
+    rawH.players.forEach(p => {
+      p.lastSeen = p.openid === H1 ? Date.now() - 90000 : Date.now()
+    })
+    assert.strictEqual(rawH.hostOpenid, H1, '前置：房主还是甲')
+
+    await room.main({ action: 'status', id: hid })
+    const afterH = store.rooms.filter(x => x._id === hid)[0]
+    assert.strictEqual(afterH.hostOpenid, H2,
+      '★ 房主掉线 90 秒后应把房主转给心跳最新的人，否则"只有房主能"的操作全卡死')
+    ok('★ 房主掉线 → 房主自动转给还在的人')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  多人房间：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

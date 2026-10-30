@@ -1526,6 +1526,35 @@ exports.main = async (event) => {
        *   动作选"开骰"——最接近"我不信"的自然行为，且一定会结算。
        */
       /*
+       * ★★★ 房主掉线 → 顺位转移（2026-10-30）。
+       *
+       * 这是最根本的那个死路：全项目有 **7 处「只有房主能」**的操作
+       * （卧底「开始投票/继续下一轮」、转盘「转」、催一下、锁房……）。
+       * 房主接个电话、锁屏、走出门，只要有这一幕，房间里剩下的所有人
+       * **全都动不了，而且没有任何提示** —— 比单个玩法卡住更糟。
+       *
+       * 判据：房主心跳超过 60 秒 → 把房主转给「心跳最新的其他人」。
+       * 60 秒而不是 20 秒（online 的阈值），是因为房主可能只是在看规则；
+       * 而"半分钟还没动静"在酒桌上已经够久了。
+       */
+      {
+        const playersH = room.players || []
+        const hostP = playersH.filter(p => p.openid === room.hostOpenid)[0]
+        const hostGone = hostP && ts - (hostP.lastSeen || 0) > 60000
+        if (hostGone && playersH.length > 1) {
+          const next = playersH
+            .filter(p => p.openid !== room.hostOpenid)
+            .sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))[0]
+          if (next) {
+            await dbCall('status.hostMove', () =>
+              rooms.doc(room._id).update({ data: { hostOpenid: next.openid, updatedAt: ts } }))
+            const rrh = await rooms.doc(room._id).get()
+            return { ok: true, room: shape(rrh.data, OPENID) }
+          }
+        }
+      }
+
+      /*
        * ★★ 比大小：掉线不摇的人要自动退出本局（2026-10-30）。
        *
        * 原来这里只处理大话骰，并注释说"比大小各自摇、不会卡"——
