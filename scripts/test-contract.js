@@ -2764,6 +2764,71 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ stopAll 会停掉底噪（关声音/切后台时真的安静下来）')
   }
 
+  /* ---------- ③i 界面承诺的动作，代码里必须真有能力 ----------
+   *
+   * 2026-10-30 加这条，起因是**同一个错犯了第四次**：
+   * 剪贴板 API 因为隐私协议限制被移除了（3.10.144），
+   * 但界面上三处文案还在说"点一下复制" —— 用户会照着文案去等一个不会发生的行为。
+   *
+   * 前三次同类：斋做完了规则没提斋、围骰做完了结算说不清 +1、
+   * 暗牌改"取最优"但提示还写"有机会"。
+   * 规律：**改功能时没全仓扫这个功能的"名字"。**
+   *
+   * 这条断言把"名字"和"能力"绑在一起：
+   *   界面出现「复制」→ 代码里必须有 setClipboardData（或复制类 API）
+   *   界面出现「长按」→ 对应元素必须有 user-select 或 longpress 绑定
+   */
+  {
+    const ACTIONS = [
+      { word: '复制', need: /setClipboardData/, why: '剪贴板 API' },
+      { word: '长按可选中', need: /user-select/, why: 'user-select 属性' }
+    ]
+    const broken = []
+    ;['miniprogram/pages', 'miniprogram/game'].forEach(root => {
+      const walk = (dir) => {
+        fs.readdirSync(dir, { withFileTypes: true }).forEach(d => {
+          const p = path.join(dir, d.name)
+          if (d.isDirectory()) return walk(p)
+          if (!d.name.endsWith('.wxml')) return
+          const src = fs.readFileSync(p, 'utf8')
+          /* 去掉注释再判 —— 历史说明里的"复制"不算界面文案 */
+          const visible = src.replace(/<!--[\s\S]*?-->/g, '')
+          ACTIONS.forEach(a => {
+            if (visible.indexOf(a.word) < 0) return
+            /* 检查整个小程序有没有这个能力（能力是全局的，不要求同文件） */
+            const hasAbility = ACTIONS.length && (() => {
+              let found = false
+              const scan = (dd) => fs.readdirSync(dd, { withFileTypes: true }).forEach(x => {
+                const pp = path.join(dd, x.name)
+                if (x.isDirectory()) return scan(pp)
+                /* ⚠️ 必须同时扫 .wxml —— user-select 是**模板属性**不是 JS API。
+                   第一版只扫 .js，于是"长按可选中"被误报（断言自己有 bug）。 */
+                /* ⚠️ 必须**剥掉注释**再匹配 —— 第一版没剥，
+                   于是代码里那条"wx.setClipboardData 报隐私错误"的**说明注释**
+                   让断言以为能力还在（反向验证时 exit=0，假绿）。 */
+                if (x.name.endsWith('.js') || x.name.endsWith('.wxml')) {
+                  const raw = fs.readFileSync(pp, 'utf8')
+                  const code = raw
+                    .replace(/\/\*[\s\S]*?\*\//g, '')
+                    .replace(/^\s*\/\/.*$/gm, '')
+                    .replace(/<!--[\s\S]*?-->/g, '')
+                  if (a.need.test(code)) found = true
+                }
+              })
+              scan('miniprogram')
+              return found
+            })()
+            if (!hasAbility) broken.push(path.relative(ROOT, p) + ' 写了「' + a.word + '」但代码里没有 ' + a.why)
+          })
+        })
+      }
+      if (fs.existsSync(root)) walk(root)
+    })
+    assert.deepStrictEqual(broken, [],
+      '界面承诺的动作在代码里找不到能力（用户会照着文案等一个不会发生的行为）：\n    ' + broken.join('\n    '))
+    ok('界面上的动作词（复制/长按选中）都有对应能力')
+  }
+
   /* ---------- ⑦-3 定时器自重启不能形成无限循环 ---------- */
   console.log(`\n${'='.repeat(56)}\n  字段契约：全部 ${n} 项断言通过\n${'='.repeat(56)}\n`)
 })().catch(e => {
