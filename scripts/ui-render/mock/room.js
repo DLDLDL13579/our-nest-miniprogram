@@ -560,8 +560,20 @@ module.exports = {
           drinks: [
             { name: '邓林', initial: '邓', cups: 0, out: false },
             { name: '倩萍', initial: '倩', cups: 0.5, out: false },
-            { name: '阿杰', initial: '阿', cups: 0, out: false }
-          ], log: [], last: null, winner: null
+            /* 造一个已出局的人 —— 否则"出局"标记这条视觉永远没被验证过 */
+            { name: '阿杰', initial: '阿', cups: 1.5, out: true }
+          ], log: [],
+          /*
+           * 造一条"上一步"的比牌记录 —— 等待界面用 `last` 显示"刚才发生了什么"。
+           * 之前这里是 null，于是渲染图下半屏一片空白，看起来像"等待时什么都不显示"，
+           * 实际是 **mock 缺数据造成的假界面**（AGENTS.md 记过同一类坑）。
+           */
+          last: {
+            kind: 'vs', by: '阿杰', target: '倩萍', winner: '倩萍',
+            byText: ['♠K', '♠J', '♥4'], targetText: ['♠K', '♠Q', '♥4'],
+            noteText: '阿杰 比牌输了 倩萍，出局', at: Date.now() - 4000
+          },
+          winner: null
         }
       })
     }),
