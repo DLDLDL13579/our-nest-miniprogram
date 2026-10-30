@@ -961,8 +961,9 @@ Page({
    */
   autoShake() {
     if (this.data.stage !== 'playing') return
-    feedback.fire('cupShake')
-    this.setData({ cupSrc: 'cup-shake', cupCls: 'shaking', cupHint: '摇盅中…' })
+    /* 场面音：等盅真的开始晃了再响（setData 是异步的，见 doRoll 里的说明） */
+    this.setData({ cupSrc: 'cup-shake', cupCls: 'shaking', cupHint: '摇盅中…' },
+      () => { if (!this._dead) feedback.fire('cupShake') })
     this._cupTimers.push(setTimeout(() => {
       if (this.data.stage !== 'playing') return
       /* 摇完自然扣下 —— 但玩家的骰子还没摇，所以扣的是"空盅" */
@@ -2565,10 +2566,12 @@ Page({
     /* ① 摇盅：持续音 + 盅体晃动。
        现实里摇盅是 1~2 秒的事，太快没有"摇"的感觉，
        太慢会让人等得不耐烦 —— 实测 1.05 秒最像。 */
-    feedback.fire('cupShake')
     this.setData({
       cupSrc: 'cup-shake', cupCls: 'shaking',
       cupHint: '摇盅中…', diceShown: false
+    }, () => {
+      if (this._dead) return
+      feedback.fire('cupShake')
     })
 
     /* 请求和摇动动画并行 —— 网络快时动画还没演完就拿到结果了，
@@ -2589,8 +2592,8 @@ Page({
 
     /* ② 扣盅 —— 整个流程的重音。
        盅砸在桌上，整屏震一下，骰子在盅里被震得跳一下（音效里带了）。 */
-    this.setData({ cupSrc: 'cup-down', cupCls: 'slam', cupHint: '扣盅…' })
-    feedback.fire('cupSlam')
+    this.setData({ cupSrc: 'cup-down', cupCls: 'slam', cupHint: '扣盅…' },
+      () => { if (!this._dead) feedback.fire('cupSlam') })
     this._cupTimers.push(setTimeout(() => this.bump(), 70))
     this._cupTimers.push(setTimeout(() => {
       this.setData({ cupCls: '' })
@@ -2643,6 +2646,9 @@ Page({
     }, () => {
       if (this._dead) return
       feedback.fire('cupLift')
+      /* 表里 cupLift 的 haptic 是 null（抬盅不该有重震），但"手上一下轻震"
+         是这个动作的确认感 —— 原来单独调 vibrate('light')，改回调时别丢掉。 */
+      feedback.vibrate('light')
     })
     /*
      * 骰子落在桌上滚两下。
@@ -2770,8 +2776,6 @@ Page({
       wx.showToast({ title: '骰子还没发下来', icon: 'none', duration: 1400 })
       return
     }
-    feedback.vibrate('light')
-    sfx.play('cupLift', { volume: 0.5 })
     this.setData({
       cupSrc: 'cup-up', cupCls: 'peek',
       diceShown: true, cupHint: '松手扣回去',
@@ -2792,12 +2796,16 @@ Page({
      * （不走 feedback.fire 是因为这里要和 setData 的盅落下动画对齐，
      *   延时补偿会把人手感受到的时机推后。）
      */
-    sfx.play('cupSlam', { volume: 0.55 })
-    feedback.vibrate('medium')
     this.setData({
       cupSrc: 'cup-down', cupCls: '',
       diceShown: false,
       cupHint: this.data.liarReady ? '按住盅可以再看' : ''
+    }, () => {
+      /* 声音和震动放在视图更新之后 —— 与 doRoll 里的处理同一个理由：
+         setData 是异步的，同步播会让"扣盅声"早于"盅真的落下"。 */
+      if (this._dead) return
+      sfx.play('cupSlam', { volume: 0.55 })
+      feedback.vibrate('medium')
     })
   },
 
