@@ -328,7 +328,14 @@
       </view>
       <view wx:elif="{{room.host && room.shortBy > 0 && soloTest && !room.soloOk}}"
             class="btn main bigbtn disabled">
-        这个玩法一个人玩不了（要 {{room.soloMinPlayers}} 人）
+        <!--
+          ★ 2026-10-30 真机发现：这里原来用 `soloMinPlayers`（单人测试的最少人数=2），
+          而云端拒绝时说「这个玩法要 3 个人」——**同一件事两个数字**，用户会困惑。
+
+          正式场景该说 `minPlayers`（3 人）。soloMin 只是"测试期能用几个人跑通"，
+          不该出现在给用户看的文案里。
+        -->
+        这个玩法一个人玩不了（要 {{room.minPlayers}} 人）
       </view>
       <!--
         ★ 2026-10-30：把"还差 N 个人"从**负面陈述**改成**可点的动作**。
