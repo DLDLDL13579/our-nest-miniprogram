@@ -1648,6 +1648,39 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 深层嵌套字段（poker.last.*）模板与云端对得上')
   }
 
+  /*
+   * ★★★ ④·mock 里不许有"真实代码不存在"的字段（2026-10-30，踩过一次）。
+   *
+   * `scripts/ui-render/mock/room.js` 里写了 `byText` / `targetText`，
+   * 而服务端返回的是 `byCards` / `targetCards`。
+   * 后果：**mock 的假字段盖住了一次真 bug** —— 比牌记录那三张牌
+   * 在真机上一直是空的，但渲染截图看起来完全正常。
+   *
+   * 判据：mock 的 poker.last 里每个 key，都必须能在服务端或前端源码里找到来源。
+   * （mock 存在的意义是"复刻真实数据"，不是"造一份方便自己的假数据"。）
+   */
+  {
+    const mockSrc = fs.readFileSync(path.join(ROOT, 'scripts/ui-render/mock/room.js'), 'utf8')
+    const jsSrc2 = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const srvSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    /* 只取 `last: {` 后第一层 key —— 用 [^[][] 排除嵌套的数组/对象字面量，
+       否则 byCards:[{s:0,r:13}] 里的 s/r 会被当成 last 的 key（误报）。 */
+    const m = /last:\s*\{([^{\[]*)/.exec(mockSrc)
+    const fake = []
+    if (m) {
+      const keys = [...new Set([...m[1].matchAll(/\b(\w+)\s*:/g)].map(x => x[1]))]
+      keys.forEach(k => {
+        const hasKey = new RegExp('\\b' + k + '\\s*:').test(srvSrc)
+        const hasAssign = new RegExp('\\.' + k + '\\s*=').test(jsSrc2) ||
+                          new RegExp('\\b' + k + '\\s*:').test(jsSrc2)
+        if (!hasKey && !hasAssign) fake.push(k)
+      })
+    }
+    assert.deepStrictEqual(fake, [],
+      'mock 的 poker.last 里有真实代码不存在的字段（会盖住真 bug）：\n    ' + fake.join('\n    '))
+    ok('★ mock 的 poker.last 字段都真实存在（不造假数据）')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，

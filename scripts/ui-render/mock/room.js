@@ -618,7 +618,11 @@ module.exports = {
            */
           last: {
             kind: 'vs', by: '阿杰', target: '倩萍', winner: '倩萍',
-            byText: ['♠K', '♠J', '♥4'], targetText: ['♠K', '♠Q', '♥4'],
+            /* ★ 2026-10-30：mock 原来写 byText/targetText，而服务端返回的是
+               byCards/targetCards —— **mock 的这个假字段盖住了一次真 bug**
+               （比牌记录那三张牌一直是空的）。mock 必须只用真实字段。 */
+            byCards: [{s:0,r:13},{s:0,r:11},{s:1,r:4}],
+            targetCards: [{s:0,r:13},{s:0,r:12},{s:1,r:4}],
             noteText: '阿杰 比牌输了 倩萍，出局', at: Date.now() - 4000
           },
           winner: null
@@ -702,8 +706,9 @@ module.exports = {
           last: {
             kind: 'vs', by: '倩萍', target: '阿杰',
             byCards: PK_OTHER, targetCards: PK_THIRD,
-            byText: PK_OTHER.map(c => poker.cardText(c)),
-            targetText: PK_THIRD.map(c => poker.cardText(c)),
+            /* 同上：用真实字段（对象数组），不是 cardText 字符串 */
+            byCards: PK_OTHER,
+            targetCards: PK_THIRD,
             winner: '倩萍', tie: false,
             byType: poker.rank(PK_OTHER).name, targetType: poker.rank(PK_THIRD).name
           },
