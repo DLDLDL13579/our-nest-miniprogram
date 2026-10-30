@@ -338,7 +338,25 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
   global.wx.vibrateShort = origShort
 
-  console.log(`\n${'='.repeat(58)}`)
+  /*
+ * ★★ 高频提示音不能是"双音效"（2026-10-30 用户报「声音混乱」）。
+ *
+ * `yourTurn` 每个回合都响一次 —— 一局 3 人大话骰约 6 次。
+ * 它原来是 toggleOn + 150ms 后的 tapSoft 双层，单听像叫人名字，
+ * 但在这一局的密度下，耳朵分不清"哪下是提示、哪下是动作"。
+ *
+ * 判据：玩家每回合都会听到的提示音，只能有一个音层。
+ */
+{
+  const fbSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
+  const m = /yourTurn:\s*\{([\s\S]*?)\n  \}/.exec(fbSrc)
+  assert.ok(m, '找不到 yourTurn 的定义')
+  assert.ok(!/sfx2\s*:/.test(m[1]),
+    '★ yourTurn 是每回合都响的提示音，不能是双音效（会显得声音混乱）')
+  ok('★ 高频提示音（yourTurn）是单音层，不抢动作音效的焦点')
+}
+
+console.log(`\n${'='.repeat(58)}`)
   console.log(`  反馈时间轴：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
 })().catch((e) => {
