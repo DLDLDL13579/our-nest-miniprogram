@@ -20,6 +20,22 @@ App({
     nick: ''
   },
 
+  /*
+   * 应用级默认分享（2026-10-30）。
+   *
+   * 小程序里页面没定义 onShareAppMessage 时，右上角「转发」是**灰的**。
+   * 房间页和大厅各自定义了（各自动态标题），而「我的」页没有 ——
+   * 用户在那一页想推荐给朋友，点不了。
+   * 这里给一个兜底：任何没自己实现的页面都能转发。
+   */
+  onShareAppMessage() {
+    return {
+      title: '酒桌上缺个游戏？这几个都能手机一起玩',
+      path: '/pages/lobby/lobby',
+      imageUrl: '/images/share-cover.png'
+    }
+  },
+
   onLaunch() {
     /*
      * 启动计时的起点（2026-10-28）。
