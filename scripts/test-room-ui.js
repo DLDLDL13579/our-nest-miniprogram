@@ -242,8 +242,13 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
         myDrink: 0, drinks: [{ name: '我', cups: 0 }, { name: '他', cups: 1.5 }]
       }
     })
-    assert.strictEqual(pk.poker.hintText, '至少是对子',
-      '两张同点数必须提示「至少是对子」，实际：' + pk.poker.hintText)
+    /*
+     * ★ 2026-10-30 文案变了：暗牌改成「纯想象、取最优」之后，
+     *   提示从"至少是对子"（旧规则的模糊措辞）变成确定的"最大能到：豹子（差 ♠Q）"。
+     *   守的意图仍是"两张同点数要能让玩家知道自己手里有硬货"。
+     */
+    assert.ok(/最大能到：豹子/.test(pk.poker.hintText),
+      '两张同点数应提示「最大能到：豹子」，实际：' + pk.poker.hintText)
     assert.strictEqual(pk.players[1].drinkText, '1.5 杯',
       '换牌量应翻译成「1.5 杯」，实际：' + pk.players[1].drinkText)
     assert.strictEqual(pk.players[0].drinkText, '', '没换过牌的人不该显示数字')

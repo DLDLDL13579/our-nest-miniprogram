@@ -797,9 +797,14 @@
           </view>
         </view>
 
-        <!-- 暗牌：永远背面 —— 这是"梦幻"两个字的来源 -->
+        <!--
+          暗牌：永远背面 —— 这是"梦幻"两个字的来源。
+          ★ 标签从「靠想象」改成「想象最大的那张」（2026-10-30 用户纠正规则后）：
+            暗牌不是"随机一张你看不见的牌"，而是**你能想象到的最强那张** ——
+            比牌时就按那个算。只说"靠想象"会让人以为在赌运气。
+        -->
         <view class="pk-slot pk-dark">
-          <view class="pk-tagline">靠想象</view>
+          <view class="pk-tagline">想象最大的</view>
           <view class="pk-flip">
             <view class="pk-side pk-back"></view>
             <view class="pk-side pk-front"><text class="pk-q">?</text></view>

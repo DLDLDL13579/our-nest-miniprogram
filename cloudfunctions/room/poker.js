@@ -232,21 +232,21 @@ function bestHand(publicCard, known) {
  */
 function handHint(a, b) {
   if (!a || !b) return ''
-  const sameRank = a.r === b.r
-  const sameSuit = a.s === b.s
-  /* 顺子的可能：两张点数相邻或隔一张（A23 这种特殊相连已在 rank() 里处理，
-     这里只做粗略的"有没有机会"，不需要精确） */
-  const d = Math.abs(a.r - b.r)
-  const nearStraight = d === 1 || d === 2 ||
-    /* A 和 2/3 也能连（A23 是第二大顺子） */
-    (a.r === 13 && (b.r === 1 || b.r === 2)) ||
-    (b.r === 13 && (a.r === 1 || a.r === 2))
-
-  if (sameRank) return '至少是对子'
-  if (sameSuit && nearStraight) return '有机会顺金'
-  if (sameSuit) return '有机会金花'
-  if (nearStraight) return '有机会顺子'
-  return '全靠想象了'
+  /*
+   * ★★ 2026-10-30 重写：暗牌改成「纯想象、取最优」之后，这条提示的性质变了。
+   *
+   * 旧规则：暗牌是服务端随机发的一张，玩家看不到 → 任何确定说法都是错的，
+   *         只能说"有机会顺金"。那时的措辞停在了"可能"。
+   * 新规则：暗牌**就是你能想象到的最强那张**，比牌就按它算 →
+   *         所以玩家能到哪一档是**确定**的，不该再说"有机会"。
+   *
+   * 现在的措辞直接给结论：「最大能到 顺金（♠7）」——
+   * 玩家一眼知道自己手里是什么、差什么，不用在酒桌上心算。
+   */
+  const best = bestHand(a, b)
+  if (!best) return ''
+  const rk = rank(best.cards)
+  return '最大能到：' + rk.name + '（差 ' + cardText(best.hidden) + '）'
 }
 
 /** 给界面用的牌面文字，如 "♠A" */
