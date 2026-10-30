@@ -30,13 +30,20 @@ AUDIO_DIRS = [os.path.join(ROOT, 'miniprogram/game/audio'),
               os.path.join(ROOT, 'miniprogram/audio')]
 
 
+def _candidates(name):
+    """音效 key 与文件名不一定同名：tapSoft → tap-soft.wav / tapSoft.wav 都要试。"""
+    kebab = re.sub(r'(?<!^)(?=[A-Z])', '-', name).lower()
+    return [name, kebab, name.lower(), kebab.replace('-', '')]
+
+
 def dur(name):
     """音效的实测时长（秒）；找不到返回 None。"""
-    for d in AUDIO_DIRS:
-        f = os.path.join(d, name + '.wav')
-        if os.path.exists(f):
-            with wave.open(f) as w:
-                return w.getnframes() / w.getframerate()
+    for cand in _candidates(name):
+        for d in AUDIO_DIRS:
+            f = os.path.join(d, cand + '.wav')
+            if os.path.exists(f):
+                with wave.open(f) as w:
+                    return w.getnframes() / w.getframerate()
     return None
 
 
@@ -57,6 +64,47 @@ TIMELINES = [
         ('tick', 34),           # 连续咔哒，本来就是密排，跳过
     ]),
 ]
+
+
+def extract_from_code():
+    """
+    从 room.js 里自动提取"带延迟的音效调度"。
+
+    ★ 为什么不让时间线硬编码在工具里（2026-10-30）：
+      第一版是手写三条时间线 —— 只要有人新加一个 setTimeout + sfx.play，
+      这个工具就**看不见**，等于又多一处没人查的重叠风险。
+      改成从代码里抽，新加的音效调度自动进入检查范围。
+    """
+    room_js = os.path.join(ROOT, 'miniprogram/game/room/room.js')
+    src = open(room_js, encoding='utf-8').read()
+    out = []
+    for m in re.finditer(r'setTimeout\(\s*\(\)\s*=>\s*', src):
+        i = m.end()
+        if src[i] != '{':
+            j = src.find(',', i)
+            seg = src[i:j]
+            n = re.search(r',\s*(\d+)\s*\)', src[j:j + 30])
+            hit = re.search(r"sfx\.play\('(\w+)'", seg)
+            if n and hit:
+                out.append((int(n.group(1)), hit.group(1)))
+            continue
+        depth, j = 0, i
+        while j < len(src):
+            if src[j] == '{':
+                depth += 1
+            elif src[j] == '}':
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        body = src[i:j + 1]
+        n = re.search(r'\}\s*,\s*(\d+)\s*\)', src[j:j + 20])
+        if not n:
+            continue
+        delay = int(n.group(1))
+        for name in re.findall(r"sfx\.play\('(\w+)'", body):
+            out.append((delay, name))
+    return out
 
 
 def main():
@@ -80,6 +128,31 @@ def main():
                 if nxt_at < end:
                     bad.append(f'{label}: {name} 还没播完({end:.0f}ms) 就起了 {nxt_name}({nxt_at}ms)'
                                f'，重叠 {end - nxt_at:.0f}ms')
+    # ---- 从代码自动提取（新加的调度也会进来） ----
+    print('\n  从 room.js 自动提取的延迟音效:')
+    code_hits = sorted(extract_from_code())
+    for delay, name in code_hits:
+        d = dur(name)
+        tail = f'时长 {d:.2f}s → 到 {delay + d * 1000:.0f}ms' if d else '（找不到音频文件）'
+        print(f'     +{delay:5}ms  {name:12} {tail}')
+    # 相邻两条的间隔 < 前一条时长 → **提示**（不判失败）
+    #
+    # ⚠️ 这里只提示不判红：自动提取**分不清两次调度属于哪个动作**。
+    #    发牌时连发两张（90/180ms）本来就该叠着，那是自然的"刷刷"；
+    #    而开盅那三声叠在一起才是问题。
+    #    所以：**同一条链**的重叠由上面手写的时间线判，跨动作的只提示。
+    hints = []
+    for i in range(len(code_hits) - 1):
+        (d1, n1), (d2, n2) = code_hits[i], code_hits[i + 1]
+        dur1 = dur(n1)
+        if dur1 and d2 < d1 + dur1 * 1000:
+            hints.append(f'{n1}(起 {d1}ms, 长 {dur1:.2f}s) 与 {n2}(起 {d2}ms) 相隔 '
+                         f'{d2 - d1}ms —— 若属同一动作则重叠 {d1 + dur1 * 1000 - d2:.0f}ms')
+    if hints:
+        print('\n  提示（可能重叠，需人工判断是否同一动作）:')
+        for h in hints:
+            print('    · ' + h)
+
     print()
     if bad:
         print('✗ 有重叠（听感会糊成一片）:')
