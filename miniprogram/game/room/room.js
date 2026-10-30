@@ -1498,6 +1498,18 @@ Page({
      * ⚠️ 卧底的赢家是 'civilian' / 'spy' 而不是人名，
      *    所以要拿"我是不是卧底"和"赢的是不是卧底"比对，不能直接比名字。
      */
+    /*
+     * ★★★ 金花豹子专属反馈（2026-10-30）。
+     *
+     * 三张牌全同 = 52/22100 = **0.235%**（约 425 局一次）。
+     * 之前和普通胜负完全一样。而酒桌上翻出三个一样，是要拍桌子的。
+     *
+     * 判据：服务端在比牌记录里给了 `byType` / `targetType`，
+     * 任一方是「豹子」就触发 —— 不是只有赢家才有资格。
+     */
+    const pkLast = raw.poker && raw.poker.last
+    const hasLeopard = !!(pkLast && (pkLast.byType === '豹子' || pkLast.targetType === '豹子'))
+
     if (raw.game === 'poker' && raw.poker && raw.poker.winner) {
       const win = raw.poker.winner
       if (win !== (this._lastPkWin || '')) {
@@ -1506,6 +1518,13 @@ Page({
         /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
         feedback.fire(iWon ? 'win' : 'penalized')
         if (iWon) this.celebrate()
+        /* 豹子：等上面的胜负音播完（confetti/failDrop 约 1.2s）再补一层 */
+        if (hasLeopard) {
+          this._cupTimers.push(setTimeout(() => {
+            if (this._dead) return
+            feedback.fire('luckyHit')
+          }, 1400))
+        }
       }
     } else if (raw.game !== 'poker') {
       this._lastPkWin = ''
