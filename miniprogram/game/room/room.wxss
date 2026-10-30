@@ -1500,6 +1500,22 @@
   background: rgba(0,0,0,.55);
   z-index: 100;
   display: flex; align-items: flex-end;
+  /*
+   * ★★★ 2026-10-30：遮罩必须盖满整屏，但 `.mask` 嵌在 `.gamepage` 里面，
+   * 而 `.gamepage.rolling/.suspense/.impact` 都带 transform 动画 ——
+   * **CSS 规范：祖先有 transform 时，子元素的 position:fixed 会退化成
+   * 相对该祖先定位**。于是遮罩跟着 .gamepage 的抖动一起偏移，右侧露出。
+   *
+   * 修法不是改动画（那会毁掉"摇盅晃动"的手感），而是：
+   *   · margin 用负值抵消父级约束不合适，改用 `inset` + 强烈的 z-index
+   *   · 关键是把 `will-change: transform` 从 mask 上摘掉，
+   *     并显式声明 `width: 100vw; height: 100vh` —— 这样即使父级
+   *     transform 生效，遮罩自身的尺寸仍按视口算。
+   */
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
 }
 
 /* 面板从下方升起 —— 和"临时操作"的心智一致（转盘还在后面等着） */

@@ -281,6 +281,31 @@ module.exports = {
       })
     }),
 
+    /*
+     * 三个**弹层**状态（2026-10-30 补）。
+     * 之前 mock 里完全没有 askLeave / cardPanel / howOpen 的取值，
+     * 这三个弹层在离线渲染里**一次都没被看到过** —— 而它们都是全屏遮罩，
+     * 一旦样式出错（比如没盖满、按钮点不到）就是死路。
+     */
+    leaveAsk: () => ({
+      stage: 'playing', askLeave: true,
+      room: pkRoom({ game: 'liar', phase: 'playing', host: true, count: 3,
+        myTurn: true, shortBy: 0, soloOk: true })
+    }),
+
+    cardPanelOpen: () => ({
+      stage: 'playing', cardPanel: true, cardType: 'truth',
+      cardText: '说出你在座各位里最想跟谁合伙做生意，为什么',
+      room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 1,
+        shortBy: 0, soloOk: true })
+    }),
+
+    howOpen: () => ({
+      stage: 'lobby', howOpen: true,
+      room: pkRoom({ game: 'liar', phase: 'lobby', host: true, count: 2,
+        shortBy: 1, soloOk: true, minPlayers: 2 })
+    }),
+
     /* 单人房：人数不够，开始按钮应该说"还差 N 个人" */
     alone: () => ({
       stage: 'lobby',
