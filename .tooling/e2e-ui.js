@@ -14,9 +14,25 @@ const CLI = '/Applications/wechatwebdevtools.app/Contents/MacOS/cli'
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 const steps = []
+const START = Date.now()
+
 const rec = (name, ok, extra) => {
   steps.push({ name, ok, extra: extra || '' })
   console.log((ok ? '  ✓ ' : '  ✗ ') + name + (extra ? ' — ' + extra : ''))
+  /*
+   * ★ 2026-10-30：失败时**额外打一行**，带上时间戳和这一步的序号。
+   *
+   * 起因：有一次跑出「32 步，失败 2」，但重跑 3 次全过 —— 抓不到是哪两步。
+   * 没有失败详情，就无法判断是产品问题还是 automator 的时序问题，
+   * 只能笼统说"偶发"，等于没查。
+   *
+   * 现在失败行带 `#序号 @秒数`，下次再偶发时至少能知道
+   * 是"第几步"和"跑到第几秒"出的问题（冷启动 vs 页面未就绪，时间点能区分）。
+   */
+  if (!ok) {
+    console.log('     ↑ 失败详情 [#' + steps.length + ' @' +
+      ((Date.now() - START) / 1000).toFixed(1) + 's] ' + (extra || '(无额外信息)'))
+  }
 }
 
 ;(async () => {
