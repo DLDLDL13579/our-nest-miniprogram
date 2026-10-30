@@ -336,6 +336,32 @@ module.exports = {
       })
     }),
 
+    /*
+     * 转盘停在「免罚一次」（最后一个扇区，index=6）。
+     * 专门用来肉眼核对：**指针（12 点）+ 停下的扇区 + 下面的文字**三者是否一致。
+     * 2026-10-30 修了 90° 偏移的 bug，这个状态就是那次的验收画面。
+     */
+    wheelLandedPass: () => ({
+      stage: 'playing',
+      wheelSpinning: false,
+      /* finalDeg = 360*4 - mid，pass 的 mid=349.2 → 1090.8 */
+      wheelDeg: 1090.8,
+      wheelText: '免罚一次',
+      card: null,
+      /* 模板用的是 wheelGradient（整串 conic-gradient），不是 wheelStops */
+      wheelGradient: 'conic-gradient(#9E4029 0.00deg 79.20deg, #3F5A7A 79.20deg 151.20deg, #573E7A 151.20deg 216.00deg, #36654C 216.00deg 266.40deg, #8C6226 266.40deg 309.60deg, #7D3549 309.60deg 338.40deg, #3F6579 338.40deg 360.00deg)',
+      wheelLabels: [
+        { t: '真心话', x: 0, y: 0, r: 39.6 }, { t: '大冒险', x: 0, y: 0, r: 115.2 },
+        { t: '喝一杯', x: 0, y: 0, r: 183.6 }, { t: '你喝', x: 0, y: 0, r: 241.2 },
+        { t: '我喝', x: 0, y: 0, r: 288 }, { t: '一起喝', x: 0, y: 0, r: 324 },
+        { t: '免罚一次', x: 0, y: 0, r: 349.2 }
+      ],
+      room: pkRoom({
+        game: 'wheel', phase: 'playing', host: true, count: 1,
+        players: [{ seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true }]
+      })
+    }),
+
     /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
 
     /* 大话骰：扣盅后轮到我叫骰 */
