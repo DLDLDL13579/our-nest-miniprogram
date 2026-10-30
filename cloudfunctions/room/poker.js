@@ -177,6 +177,47 @@ function fullHand(publicCard, hand) {
 }
 
 /**
+ * ★★ 暗牌是**纯想象**（2026-10-30 用户纠正）。
+ *
+ * 用户原话：「暗牌是纯想象的什么牌都可以，不是固定的，
+ *           比大小的时候想象组合最大的」
+ *
+ * 所以比牌时不能拿"服务端随机发的那张暗牌"去比 —— 那等于玩家在赌一张
+ * 自己看不见的牌。正确做法是：**给定看得见的两张（公共底牌 + 自己的明牌），
+ * 取一张能让牌型最大的牌作为想象**。
+ *
+ * 效果上，比牌变成"你这张明牌配公共底牌，最好能好到哪儿"——
+ * 而这也是酒桌上大家真正在比的东西。
+ *
+ * @returns {{ cards: Array, hidden: Object }|null} 最优三张 + 想象的那张
+ */
+function bestHand(publicCard, known) {
+  if (!publicCard || !known) return null
+  let bestCards = null
+  let bestHidden = null
+  /*
+   * ⚠️ 点数范围是 **2..14**，不是 1..13（2026-10-30 踩过）：
+   *    `RANKS = ['', '', '2', ..., 'K', 'A']` —— 前两位是空占位，
+   *    **A = 14**。第一版写成 1..13，结果**完全漏掉 A**：
+   *    底♠K + 明♠Q 本该想象出 ♠A（顺金 KAQ），却只能想到 ♠J（QKJ）。
+   *    这种"漏了一个值"的 bug 不会报错，只会让牌永远差一档。
+   */
+  for (let s = 0; s < 4; s++) {
+    for (let r = 2; r <= 14; r++) {
+      if (s === publicCard.s && r === publicCard.r) continue
+      if (s === known.s && r === known.r) continue
+      const cand = { s: s, r: r }
+      const cards = [publicCard, known, cand]
+      if (!bestCards || compare(cards, bestCards) > 0) {
+        bestCards = cards
+        bestHidden = cand
+      }
+    }
+  }
+  return { cards: bestCards, hidden: bestHidden }
+}
+
+/**
  * 基于**已知的两张**给一句牌型提示（第三张是暗牌，玩家看不到）。
  *
  * ★ 为什么需要：梦幻金花的暗牌连自己都看不到，玩家看到公共底牌和自己的明牌
@@ -214,6 +255,7 @@ function cardText(c) {
 }
 
 module.exports = {
+  bestHand: bestHand,
   SUITS, RANKS, TYPES, TYPE_NAMES,
   newDeck, shuffle, rank, compare, cardText,
   dealDream, fullHand, handHint

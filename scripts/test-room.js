@@ -2131,7 +2131,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
    *   · 比牌裁决用「公共牌 + 明牌 + 暗牌」三张，且与 poker.compare 一致
    *   · 并列时发起方输（先开为负）
    */
-  const { compare: pCompare, fullHand: pFull, rank: pRank, cardText: pText } =
+  const { compare: pCompare, fullHand: pFull, bestHand: pBest, rank: pRank, cardText: pText } =
     require('../miniprogram/utils/poker.js')
   const P1 = 'oid_p1', P2 = 'oid_p2', P3 = 'oid_p3'
   OPENID = P1
@@ -2190,11 +2190,15 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(!pkSelfVs.ok, '⑬ ★ 不能跟自己比牌')
   ok('不能跟自己比牌')
 
-  /* 比牌：裁决必须与"公共牌 + 明牌 + 暗牌"三张的 poker.compare 一致 */
+  /*
+   * 比牌：裁决必须与「公共牌 + 明牌 + **最优想象暗牌**」的 poker.compare 一致。
+   * ★ 2026-10-30 规则变更：暗牌是纯想象（取最优），不再用服务端随机发的那张。
+   *   所以这里也必须用 bestHand，否则测的是旧规则（假失败）。
+   */
   const pub = pkRoom().pkPublic
   const handOf = (oid) => {
     const pl = pkRoom().players.filter(p => p.openid === oid)[0]
-    return pFull(pub, pl.cards)
+    return pBest(pub, pl.cards[0]).cards
   }
   const pkTarget = [P1, P2, P3].filter(o => o !== pkBySeat.openid)[0]
   const expectWin = pCompare(handOf(pkBySeat.openid), handOf(pkTarget)) > 0

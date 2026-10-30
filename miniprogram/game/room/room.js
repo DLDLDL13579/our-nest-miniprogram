@@ -1877,8 +1877,25 @@ Page({
     /* 纵深防御：入口（pkSwap/pkFold）已判过，这里再判一次 ——
        万一将来从别处调用（或确认卡残留），观战者也不会绕过友好提示 */
     if (!this.specGuard()) return
-    if (!this.data.room || this.data._pkBusy) return
+    if (!this.data.room) return
+    /*
+     * ★★ 「连续换手牌换不了」（2026-10-30 用户实测）。
+     *
+     * 根因：`_pkBusy` 是防重入标记，但原来**只在这一条路径结束时清**。
+     * 云函数请求一旦挂住（弱网、冷启动），标记就永远停在 true，
+     * 之后每一次"换"都静默 return —— 用户看到的就是"按钮没反应/换不了"。
+     *
+     * 两处修：
+     *   ① 加 10 秒看门狗，请求再慢也不会把按钮永久锁死；
+     *   ② 被挡时**说一句**（原来静默），让用户知道是在等上一次的结果，
+     *      而不是以为界面坏了。
+     */
+    if (this.data._pkBusy) {
+      wx.showToast({ title: '上一次换牌还在路上，稍等一下', icon: 'none', duration: 2400 })
+      return
+    }
     this.data._pkBusy = true
+    const dog = setTimeout(() => { this.data._pkBusy = false }, 10000)
     feedback.fire('pkFlip')
     const r = await call('room',
       { action: 'pkAct', act: what === 'public' ? 'swapPublic' : 'swapMine', id: this.data.room.id },
@@ -1888,6 +1905,7 @@ Page({
         this.resyncAfterFail()
         return null
       })
+    clearTimeout(dog)
     this.data._pkBusy = false
     if (r && r.ok) this.applyRoom(r.room)
   },

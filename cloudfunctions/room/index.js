@@ -2575,8 +2575,15 @@ exports.main = async (event) => {
          */
         const pub = room.pkPublic
         if (!pub) return { ok: false, msg: '公共牌不见了，让房主重开一局' }
-        const handA = poker.fullHand(pub, mine.cards)
-        const handB = poker.fullHand(pub, tP.cards)
+        /*
+         * ★★ 暗牌是**纯想象**（2026-10-30 用户纠正）。
+         *   「暗牌是纯想象的什么牌都可以，不是固定的，比大小的时候想象组合最大的」
+         *   所以比的是"公共底牌 + 自己的明牌 + 最优想象牌"，
+         *   而不是服务端随机发的那张暗牌（那等于让玩家赌一张看不见的牌）。
+         *   cards[0] 是明牌，cards[1] 那张随机暗牌不再参与比牌。
+         */
+        const handA = poker.bestHand(pub, mine.cards[0]).cards
+        const handB = poker.bestHand(pub, tP.cards[0]).cards
         const cmp = poker.compare(handA, handB)
         /*
          * ★ 并列时**发起比牌的人输**（"先开为负"）。
