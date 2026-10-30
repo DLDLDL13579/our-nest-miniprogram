@@ -158,6 +158,26 @@ const rec = (name, ok, extra) => {
         }
       }
 
+      /* 斋开关验证（2026-10-30）：必须在大话骰房里测 */
+      if (bidOk) {
+        const tgl = await page.$('.ztoggle')
+        if (tgl) {
+          const zd0 = await page.data()
+          const before = (zd0.room.options || []).slice(0, 2).map((o) => (o && o.label) || o)
+          await tgl.tap()
+          await sleep(900)
+          const zd2 = await page.data()
+          const after = (zd2.room.options || []).slice(0, 2).map((o) => (o && o.label) || o)
+          const okZ = after.length > 0 && after.every((l) => String(l).indexOf('斋') > 0)
+          rec('点斋开关 → 选项变成斋形态', okZ && zd2.zhaiMode === true,
+            '前:' + before.join('/') + ' 后:' + after.join('/') + ' zhaiMode=' + zd2.zhaiMode)
+          /* 切回去，后面的用例仍按不斋走 */
+          await tgl.tap(); await sleep(600)
+        } else {
+          rec('找到斋开关', false)
+        }
+      }
+
       const errs = (d.room && d.room.id) ? '' : ''
       if (!bidOk) {
         const log = await mini.evaluate(async () => {
