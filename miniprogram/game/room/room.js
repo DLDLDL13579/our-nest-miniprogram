@@ -2455,6 +2455,8 @@ Page({
      */
 
     if (!this.specGuard()) return
+    /* 点「开始」的即时反馈，不等云函数（同 doJoin） */
+    sfx.play('tapSoft')
     const r = await call('room', {
       action: 'start', id: this.data.room.id,
       /* 测试期允许单人开局；服务端认这个参数，正式版把它变成 false 即可 */
@@ -2963,6 +2965,18 @@ Page({
     }
     const n = Number(m[1])
     const face = Number(m[2])
+
+    /*
+     * ★★ 正常叫骰也要有"嗒"一声（2026-10-30 用户报「没有游戏体验」时挖到的）。
+     *
+     * 原来 `sfx.play('tapSoft')` **只写在拼不出叫法的兜底分支里** ——
+     * 也就是说：正常叫骰一次声音都没有，而那条提示音只在"出bug"时才响。
+     *
+     * 偏偏断言 ⑮（每个 bindtap 必须播声音）**照样通过** —— 它只查
+     * "方法里有没有 sfx.play"，不查"正常路径上有没有"。
+     * 而叫骰是一局里点得最多的操作（十几次），全静音 = 每次点击都像没点上。
+     */
+    sfx.play('tapSoft')
 
     /*
      * 点不动的时候，**必须说清"为什么"和"接下来做什么"**。
