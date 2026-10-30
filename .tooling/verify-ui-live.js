@@ -37,7 +37,7 @@ function check(cond, label, detail) {
   console.log('✓ 已连上模拟器\n')
 
   /* 一次 launch 只进一个页面（AGENTS.md 记过的限制） */
-  await mini.navigateTo('/pages/game/room/room')
+  await mini.navigateTo('/game/room/room')
   await new Promise(r => setTimeout(r, 3000))
 
   const page = await mini.currentPage()

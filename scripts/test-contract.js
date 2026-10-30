@@ -1870,6 +1870,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ ' + toolFiles.length + ' 个探针脚本用的类名都真实存在')
   }
 
+  /*
+   * ★★★ ④·e 探针里的页面路径必须真实存在（2026-10-30，三个脚本一起失效）。
+   *
+   * 2026-10-28 拆分包时，房间页从 `pages/game/room/room` 移到了 `game/room/room`。
+   * 但 `.tooling/` 下**三个脚本还写着旧路径**：
+   *     probe-room.js / verify-fix.js / verify-ui-live.js
+   * 而 `mini.navigateTo()` 失败**不抛异常** —— 于是它们从那天起
+   * 一直在 navigateTo 一个不存在的页面，然后对着上一页做断言。
+   *
+   * 这和已经记过的「拆包后 Python 脚本的默认输出路径没改」是同一类，
+   * 只是这次在 .tooling 里。
+   *
+   * 判据：脚本里 `navigateTo('/xxx')` / `switchTab('/xxx')` 的路径，
+   * 必须是 app.json 的 pages 或 subpackages 里真实注册的。
+   */
+  {
+    const appJson = JSON.parse(fs.readFileSync(path.join(ROOT, 'miniprogram/app.json'), 'utf8'))
+    const valid = new Set(appJson.pages || [])
+    ;(appJson.subpackages || []).forEach(sp => {
+      ;(sp.pages || []).forEach(p => valid.add((sp.root + '/' + p).replace(/\/\//g, '/')))
+    })
+    const badPage = []
+    fs.readdirSync(path.join(ROOT, '.tooling')).filter(f => f.endsWith('.js')).forEach(f => {
+      const src = fs.readFileSync(path.join(ROOT, '.tooling', f), 'utf8')
+      for (const m of src.matchAll(/(?:navigateTo|switchTab|reLaunch)\('\/?([\w/]+)'/g)) {
+        const p = m[1]
+        if (!valid.has(p)) badPage.push(f + ' → ' + p)
+      }
+    })
+    assert.deepStrictEqual(badPage, [],
+      '这些探针导航到了不存在的页面（navigateTo 失败不抛异常，会对着上一页断言）：\n    ' + badPage.join('\n    '))
+    ok('★ 探针导航的页面路径都已注册（' + valid.size + ' 个页面）')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，

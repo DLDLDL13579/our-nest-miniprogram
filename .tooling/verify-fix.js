@@ -36,7 +36,7 @@ const path = require('path')
      直接在首页 evaluate 会报 "Cloud API isn't enabled"。
      所有调用放进**一次** evaluate —— 多次跨进程往返容易
      触发 "timeout waiting for automator response"。 */
-  await mini.navigateTo('/pages/game/room/room')
+  await mini.navigateTo('/game/room/room')
   await new Promise(r => setTimeout(r, 2500))
 
   const out = await mini.evaluate(async () => {

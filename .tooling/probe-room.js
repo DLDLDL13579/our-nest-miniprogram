@@ -31,7 +31,7 @@ const path = require('path')
 
   /* ★ 必须先 navigateTo 到房间页：app.onLaunch 里的 wx.cloud.init 才会跑。
      直接在首页 evaluate 会报 "Cloud API isn't enabled"。 */
-  await mini.navigateTo('/pages/game/room/room')
+  await mini.navigateTo('/game/room/room')
   await new Promise(r => setTimeout(r, 3000))
   console.log('✓ 已进入房间页\n')
 
