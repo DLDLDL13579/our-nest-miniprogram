@@ -309,10 +309,19 @@ async function pickCode() {
    * ⚠️ 兼容老数据：createdAt 缺失时用 updatedAt 兜底，两者都没有则视为"很旧"。
    */
   const aliveSince = now() - TTL_MS
+  /*
+   * ★ limit 从 CODE_SPACE(1000) 降到 200（2026-10-30 实测）。
+   *
+   * 原来每次建房都拉 1000 条记录（只为拿到"哪些号已被占"）——
+   * 而真实活跃房间通常个位数。automator 实测：点玩法卡 → 房间号出现要 3.2 秒（热）。
+   * 降到 200：正常场景完全够用；真到了 200+ 活跃房间时，
+   * 下面的 while 选号大概率仍能撞出空号，撞不到才提示"房间号用满了"——
+   * 那时候产品本身也已经到了该扩容号码位数的规模。
+   */
   const r = await rooms.where({
     active: true,
     updatedAt: _.gt(aliveSince)
-  }).field({ code: true }).limit(CODE_SPACE).get()
+  }).field({ code: true }).limit(200).get()
     .catch(() => ({ data: [] }))
   const used = new Set((r.data || []).map(x => x.code))
 
@@ -917,9 +926,23 @@ exports.main = async (event) => {
        * 只删 24 小时前的：给"房间过期后人又回来接着玩"留足余量。
        * 尽力而为：清理失败不影响建房（catch 吞掉，下次 create 再试）。
        */
-      try {
-        await rooms.where({ updatedAt: _.lt(ts - 24 * 3600 * 1000) }).remove()
-      } catch (e) { /* 清理失败不影响任何功能 */ }
+      /*
+       * ★ 清理改成**概率触发**（2026-10-30）。
+       *
+       * 原来每次 create 都跑一次 `where({updatedAt: _.lt(...)}).remove()` ——
+       * 这是全表条件删除，房间一多就是几百毫秒到几秒，而它挡在**建房路径**上。
+       * 实测（automator 模拟器）：点玩法卡 → 房间号出现要 **5.86 秒**，
+       * 而首屏只要 0.53 秒 —— 慢的这一段用户能明显感到"点了没反应"。
+       *
+       * 15% 概率触发：平均每 7 次建房清理一次，过期房最多多留几十分钟
+       * （它们本来就有 2 小时 TTL，多留一会儿不影响正确性），
+       * 但 85% 的建房省掉了这次全表删除。
+       */
+      if (Math.random() < 0.15) {
+        try {
+          await rooms.where({ updatedAt: _.lt(ts - 24 * 3600 * 1000) }).remove()
+        } catch (e) { /* 清理失败不影响任何功能 */ }
+      }
 
       const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
       const game = gameOf(event.game) ? event.game : 'dice'

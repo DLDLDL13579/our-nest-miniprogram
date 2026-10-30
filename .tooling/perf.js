@@ -1,45 +1,44 @@
-/** 量首页真实耗时：老的 4 次串行 vs 新的 1 次聚合 */
+/* 首屏与进房耗时实测（automator 模拟器，非真机，但能看相对值） */
 const automator = require('miniprogram-automator')
-const path = require('path')
+const ROOT = '/Users/meihaoshidai/Downloads/邓林work/个人项目/小程序'
+const CLI = '/Applications/wechatwebdevtools.app/Contents/MacOS/cli'
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 ;(async () => {
-  const mini = await automator.launch({
-    cliPath: '/Applications/wechatwebdevtools.app/Contents/MacOS/cli',
-    projectPath: path.join(__dirname, '..'), timeout: 90000
-  })
-  console.log('✓ 已连上模拟器\n')
+  const mini = await automator.launch({ cliPath: CLI, projectPath: ROOT, timeout: 120000 })
+  try {
+    await sleep(10000)
+    const boot = await mini.evaluate(function () {
+      try { return wx.getStorageSync('lastBootMs') || 0 } catch (e) { return -1 }
+    })
+    console.log('首屏（app.onLaunch → 大厅 onReady）: ' + (boot > 0 ? (boot / 1000).toFixed(2) + ' 秒' : '未记录(' + boot + ')'))
 
-  const r = await mini.evaluate(async () => {
-    const t = (fn) => { const s = Date.now(); return fn().then(v => ({ ms: Date.now() - s, v })) }
-    const call = (name, data) => wx.cloud.callFunction({ name, data }).then(r => r.result)
-    const today = new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)
-
-    const out = {}
-
-    // 老方式：串行 4 次
-    let s = Date.now()
-    await call('pair', { action: 'status' })
-    await call('moments', { action: 'list', size: 2 })
-    await call('moments', { action: 'stats' })
-    await call('chronicle', { action: 'list', size: 1 })
-    out.串行4次 = Date.now() - s
-
-    // 新方式：1 次聚合
-    s = Date.now()
-    const home = await call('home', { date: today })
-    out.聚合1次 = Date.now() - s
-    out.homeOk = home.ok
-    out.字段 = Object.keys(home).join(',')
-
-    // 再跑一次（热启动对比）
-    s = Date.now()
-    await call('home', { date: today })
-    out.聚合1次_热 = Date.now() - s
-
-    return out
-  })
-  console.log(JSON.stringify(r, null, 2))
-  if (r.串行4次 && r.聚合1次) {
-    console.log(`\n  提速：${r.串行4次}ms → ${r.聚合1次}ms（省 ${r.串行4次 - r.聚合1次}ms，${Math.round((1 - r.聚合1次 / r.串行4次) * 100)}%）`)
-  }
-  await mini.disconnect()
-})().catch(e => { console.error('✗', e.message); process.exit(1) })
+    /* 进房间耗时：点卡片 → 拿到房间号。测两次：
+       第一次含云函数冷启动，第二次是热的 —— 分开看才知道慢在哪。 */
+    async function oneRound(tag) {
+      const page = await mini.currentPage()
+      const d = await page.data()
+      const cards = await page.$$('.gcard')
+      const idx = ((d && d.list) || []).findIndex(g => g.id === 'liar')
+      if (idx < 0 || !cards[idx]) { console.log('  ' + tag + ': 找不到卡片'); return 0 }
+      const t0 = Date.now()
+      await cards[idx].tap()
+      for (let i = 0; i < 60; i++) {
+        await sleep(120)
+        const p = await mini.currentPage()
+        const dd = await p.data()
+        if (dd.stage === 'lobby' && dd.room && dd.room.code) {
+          const ms = Date.now() - t0
+          console.log('  ' + tag + ': ' + (ms / 1000).toFixed(2) + ' 秒')
+          return ms
+        }
+      }
+      console.log('  ' + tag + ': 超时(>7s)')
+      return 0
+    }
+    await oneRound('第一次建房（含冷启动）')
+    /* 回大厅再建一间 */
+    await mini.switchTab('/pages/lobby/lobby').catch(() => {})
+    await sleep(2500)
+    await oneRound('第二次建房（热）')
+  } finally { await mini.close().catch(() => {}) }
+})().catch(e => { console.error('失败:', e.message); process.exit(1) })
