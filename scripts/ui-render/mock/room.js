@@ -92,6 +92,13 @@ const PK_THIRD = [{ r: 7, s: 0 }, { r: 5, s: 1 }, { r: 2, s: 2 }]
 /** 补上 derive 会算的派生字段，让模板里的 room.xxx 都有值 */
 function pkRoom(r) {
   return Object.assign({
+    /*
+     * ★ 派生字段的默认值（2026-10-30 补）。
+     * `soloOk` 控制"人数不够时"显示「先自己试试」还是「这个玩法至少要 N 人」——
+     * mock 里没给，于是**所有截图都走 `!soloOk` 分支**，等于从没验证过另一半。
+     */
+    soloOk: true,
+    shortBy: 0,
     /* 今晚战况（decorate 派生；mock 里给默认值，否则截图会缺这一行） */
     nightDrinks: {}, nightDrinkList: [],
     id: 'r3', code: '627', count: 3,
@@ -242,6 +249,35 @@ module.exports = {
           myKnown: null, myKnownText: '', folded: true, aliveCount: 3, myDrink: 0,
           last: null, winner: null
         }
+      })
+    }),
+
+    /*
+     * 人数不够，但这个玩法**支持单人开局**（soloOk=true）→ 应该显示「先自己试试」
+     * 2026-10-30 加的：以前 mock 没给 soloOk，这个分支从没被渲染过。
+     */
+    soloCanStart: () => ({
+      stage: 'lobby',
+      /* 页面级开关（不在 room 里）：决定"人数不够"时是否有"先自己试试"这个入口 */
+      soloTest: true,
+      room: pkRoom({
+        game: 'liar', phase: 'lobby', host: true, count: 1,
+        shortBy: 2, soloOk: true, minPlayers: 3, soloMinPlayers: 2,
+        players: [{ openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false }]
+      })
+    }),
+
+    /*
+     * 人数不够，且这个玩法**单人玩不转**（soloOk=false）→ 应该显示「至少要 N 人」
+     */
+    soloCantStart: () => ({
+      stage: 'lobby',
+      /* 页面级开关（不在 room 里）：决定"人数不够"时是否有"先自己试试"这个入口 */
+      soloTest: true,
+      room: pkRoom({
+        game: 'undercover', phase: 'lobby', host: true, count: 1,
+        shortBy: 2, soloOk: false, minPlayers: 3, soloMinPlayers: 3,
+        players: [{ openid: 'a', name: '邓林', initial: '邓', seat: 1, isMe: true, isHost: true, online: true, inRound: true, score: 0, diceCount: 0, out: false }]
       })
     }),
 
