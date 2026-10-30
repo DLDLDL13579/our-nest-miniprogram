@@ -141,10 +141,23 @@ function extractBuildSectors(src) {
   const wrong = []
   sectors.forEach(s => {
     ;[4, 5, 6].forEach(turns => {
-      /* 不加 jitter 时，扇区中心必须正好停在指针下。
-         finalDeg + 90 是把"指针在 -90°"补偿回 0° 基准。 */
-      const finalDeg = 360 * turns - s.mid - 90
-      const hit = judgeAt(finalDeg + 90)
+      /*
+       * ★★★ 2026-10-30 修：这条断言原来是**废的**。
+       *
+       * 旧写法：
+       *     const finalDeg = 360 * turns - s.mid - 90
+       *     const hit = judgeAt(finalDeg + 90)     ← 又加回 +90
+       * 它把 -90 补偿回去了，所以**公式错不错都能通过** ——
+       * 断言和被测代码犯了同一个错，互相验证了彼此的 bug。
+       *
+       * 而真实的 playWheel 是 `360*turns - targetMid - 90`，
+       * conic-gradient 的 0° 在正上方，于是整体偏 90°，指针永远指隔壁。
+       * 用户报「指针指的和结果不符」，根因就在这里，而断言一直是绿的。
+       *
+       * 现在：**用与 playWheel 完全相同的公式**，不做任何补偿。
+       */
+      const finalDeg = 360 * turns - s.mid
+      const hit = judgeAt(finalDeg)
       if (hit.k !== s.k) {
         wrong.push(s.t + '(转到 ' + finalDeg.toFixed(1) + '° 却命中 ' + hit.t + ')')
       }

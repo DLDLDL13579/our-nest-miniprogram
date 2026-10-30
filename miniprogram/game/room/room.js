@@ -2834,7 +2834,12 @@ Page({
       if (this._dead) return
       feedback.fire(iWon ? 'win' : 'penalized')
       if (iWon) this.celebrate()
-    }, 900))   /* 原 620ms；揭晓整体后移 380ms 后，这里也要跟着后移，否则和揭示音撞车 */
+    }, 1750))  /*
+                * ★ 1750ms（不是 900）：revealHit 在 640ms 起、**长 1.05 秒**，
+                * 要到 1690ms 才播完。900ms 起结算音 = 两个声音重叠 790ms，
+                * 听感就是"糊成一片、没卡在点上"（用户 2026-10-30 的原话）。
+                * 原则：**一个音效播完再起下一个**，用实测时长排，不拍脑袋。
+                */
 
     /* ★ 连庄音：连赢的音高逐级升高（combo-1 → combo-4）。
        这是"连庄"这件事的声音表达 —— 连赢两把和赢一把听感不同，
@@ -3234,17 +3239,34 @@ Page({
       /* 两处都走 _cupTimers：裸 setTimeout 清不掉 ——
          开骰后 340ms / 900ms 内离开房间，它们仍会执行 sfx.play()，
          而此时 onUnload 的 sfx.destroy() 已清空音频池 → 重建出没人销毁的实例。 */
+      /*
+       * ★★★ 声音不再叠在一起（2026-10-30 用户报「声音混乱，没卡在点上」）。
+       *
+       * 原来这条时间线是这样：
+       *     0ms    revealHit   —— **1.05 秒长**
+       *   340ms    win / lose  —— 叠在 revealHit 还没播完的地方
+       *   900ms    gulp       —— 再叠第三个（0.7 秒）
+       * 三个声音同时响 → 听感糊成一片，谁也听不清"哪一下是哪一下"。
+       *
+       * 现在的原则：**一个音效播完再起下一个**（用实测时长排，不拍脑袋）：
+       *     revealHit 1.05s → 结算音在 1080ms → 喝酒音在 1900ms
+       * 并且把结算音的震动留在原地（触觉比听觉快，不用等声音）。
+       */
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        feedback.vibrate('long')          /* 手上先有反馈，不等声音 */
+      }, 120))
       this._cupTimers.push(setTimeout(() => {
         if (this._dead) return
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
         feedback.fire(iLost ? 'lose' : 'win')
         if (!iLost) this.celebrate()
-      }, 340))
+      }, 1080))                            /* revealHit(1.05s) 播完之后 */
       this._cupTimers.push(setTimeout(() => {
         if (this._dead) return
         sfx.play('gulp')
-      }, 900))
+      }, 1900))                            /* 结算音(0.93s) 播完之后 */
     } else if (r && !r.ok) {
       wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
     }
@@ -3319,8 +3341,21 @@ Page({
        否则指针会指到隔壁扇区，又变成"指的和判的不一样"。 */
     const safeJitter = Math.max(-sec.span / 2 + 2, Math.min(sec.span / 2 - 2, spin.jitter || 0))
     const targetMid = sec.mid + safeJitter
-    /* 指针在顶部：扇区中心转到 -90° 位置 */
-    const finalDeg = 360 * (spin.turns || 4) - targetMid - 90
+    /*
+     * ★★★ 指针在顶部 = conic-gradient 的 **0°**（12 点方向，顺时针增加）。
+     *
+     * 原来这里写的是 `- targetMid - 90` —— 那个 -90 是按数学坐标系
+     * （0° 在 3 点方向）推的，但 CSS `conic-gradient` 的 0° 在**正上方**。
+     * 于是扇区中心被转到 270°（9 点方向）而不是 0°（12 点）——
+     * **整整偏了 90°**，指针永远指在隔壁扇区。
+     *
+     * 用户报「转盘指针指的和最终结果不符合」，根因就是这一行。
+     * 这类 bug 最伤信任：玩家不会觉得是 bug，会觉得游戏在骗人。
+     *
+     * 验证：扇形 [from,to)、中心 mid，转 finalDeg 后位置 = (mid + finalDeg) % 360
+     *   = (mid + 360*turns - targetMid) % 360 = 0° ✓ 正上方 = 指针处
+     */
+    const finalDeg = 360 * (spin.turns || 4) - targetMid
 
     this.setData({
       wheelSpinning: true,
