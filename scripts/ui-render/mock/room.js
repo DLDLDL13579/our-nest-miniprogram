@@ -283,6 +283,37 @@ module.exports = {
       })
     }),
 
+    /*
+     * 斋开 + 围骰的结算（2026-10-30）。
+     * 专门用一个状态覆盖三处新改动：①「叫的是 N 个（斋 · 1 不算）」
+     * ② 斋里 1 不高亮 ③ 围骰那盅标「围骰 +1」。
+     */
+    liarZhaiOver: () => ({
+      stage: 'over',
+      nightRound: 4,
+      pkDrinks: 0,
+      result: {
+        need: 6, face: 4, zhai: true, actual: 6, bidderWins: true,
+        loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
+        allDice: [
+          { name: '邓林', initial: '邓', seat: 1, dice: [4, 1, 4, 2, 6], leopard: false },
+          /* 五颗全同 → 围骰 +1（这一盅贡献 6 而不是 5） */
+          { name: '倩萍', initial: '倩', seat: 2, dice: [4, 4, 4, 4, 4], leopard: true },
+          { name: '阿杰', initial: '阿', seat: 3, dice: [4, 1, 5, 3, 2], leopard: false }
+        ]
+      },
+      room: pkRoom({
+        game: 'liar', phase: 'over', host: true, count: 3,
+        nightDrinks: { '倩萍': 3, '邓林': 1 },
+        nightDrinkList: [{ name: '倩萍', cups: 3 }, { name: '邓林', cups: 1 }],
+        players: [
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 }
+        ]
+      })
+    }),
+
     /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
 
     /* 大话骰：扣盅后轮到我叫骰 */
