@@ -14,6 +14,9 @@ from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMG = os.path.join(ROOT, 'miniprogram', 'images')
+# ★ 2026-10-30：骰子和牌面在**分包**里（2026-10-28 拆包时移过去的），
+#   而这个脚本还按主包的 images/ 找 —— 跑起来直接 FileNotFoundError。
+GAME_IMG = os.path.join(ROOT, 'miniprogram', 'game', 'images')
 OUT = os.path.join(IMG, 'share-cover.png')
 
 W, H = 500, 400
@@ -52,7 +55,7 @@ def radial_glow(w, h, color, cx, cy, radius, alpha=110):
 
 
 def load_die(n, size):
-    p = os.path.join(IMG, 'dice', f'dice-{n}.png')
+    p = os.path.join(GAME_IMG, 'dice', f'dice-{n}.png')
     im = Image.open(p).convert('RGBA')
     w, h = im.size
     k = size / max(w, h)
@@ -117,6 +120,24 @@ def main():
         shadow = shadow.filter(ImageFilter.GaussianBlur(9))
         base.paste(Image.new('RGB', shadow.size, (0, 0, 0)), (x + 8, y + 14), shadow)
         base.paste(die, (x, y), die.split()[3])
+
+    # ★ 2026-10-30：加两张扑克牌，让封面能代表"5 个玩法"而不只是骰子。
+    #   用新换的 CC0 蚀刻风牌面（c{s}-{r}.png），斜放在骰子右侧，
+    #   和骰子形成"牌 + 骰"的组合 —— 这正是酒桌的两种核心道具。
+    card_spec = [('c0-14', 108, -14, 336, 118), ('c1-12', 96, 12, 386, 178)]
+    for name, w, angle, x, y in card_spec:
+        cp = os.path.join(GAME_IMG, 'card', name + '.png')
+        if not os.path.exists(cp):
+            continue                      # 素材不在就跳过，不崩
+        card = Image.open(cp).convert('RGBA')
+        k = w / card.size[0]
+        card = card.resize((w, int(card.size[1] * k)), Image.LANCZOS)
+        card = card.rotate(angle, resample=Image.BICUBIC, expand=True)
+        sh = Image.new('RGBA', card.size, (0, 0, 0, 0))
+        sh.paste((0, 0, 0, 110), (0, 0), card.split()[3])
+        sh = sh.filter(ImageFilter.GaussianBlur(8))
+        base.paste(Image.new('RGB', sh.size, (0, 0, 0)), (x + 6, y + 12), sh)
+        base.paste(card, (x, y), card.split()[3])
 
     d = ImageDraw.Draw(base)
 

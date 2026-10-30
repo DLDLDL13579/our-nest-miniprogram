@@ -101,6 +101,19 @@ function loadMock(pageKey, stateName) {
   const m = require(f)
   const states = m.states || {}
   const base = typeof m.data === 'function' ? m.data() : (m.data || {})
+  /*
+   * ★★★ 2026-10-30：状态名不存在时**必须报错**，不能静默回退。
+   *
+   * 之前写 `states[stateName] || {}` —— 传错名字（比如 pkAsk / pkDrinks）
+   * 会静默渲染成 base 大厅，看起来"渲染成功"，实际是**完全另一个界面**。
+   * 我就这样白看了好几张"金花状态"的截图，它们其实是大厅。
+   */
+  if (stateName && !states[stateName]) {
+    const known = Object.keys(states).sort().join(' ')
+    console.error('✗ 没有这个状态: ' + stateName)
+    console.error('  可用状态: ' + known)
+    process.exit(1)
+  }
   const extra = typeof states[stateName] === 'function' ? states[stateName]() : (states[stateName] || {})
   // 深合并一层够用
   const merged = Object.assign({}, base)
