@@ -2856,6 +2856,17 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.strictEqual(zs.countActual(fake, 4, true), 2, '★ 斋时叫 4：只数真 4，1 不算万能')
     assert.strictEqual(zs.countActual(fake, 1, true), 2, '叫 1 时不论斋否都只数真 1')
     ok('★ 斋的计数正确：1 不再当万能')
+
+    /* ⑥ 围骰加一：一盅五颗完全相同 → 该点数算 6 个 */
+    const five4 = [{ dice: [4, 4, 4, 4, 4] }]
+    assert.strictEqual(zs.countActual(five4, 4), 6, '★ 五颗 4 叫 4：5 + 围骰 1 = 6')
+    assert.strictEqual(zs.countActual(five4, 4, true), 6, '斋里围骰同样加一')
+    const five1 = [{ dice: [1, 1, 1, 1, 1] }]
+    assert.strictEqual(zs.countActual(five1, 4), 6, '★ 五颗 1 不斋：1 万能 + 围骰 = 6')
+    assert.strictEqual(zs.countActual(five1, 4, true), 0, '★ 斋里五颗 1 不能当 4（也不加一）')
+    const mixed = [{ dice: [4, 4, 4, 4, 3] }]
+    assert.strictEqual(zs.countActual(mixed, 4), 4, '不是五颗全同，没有围骰加分')
+    ok('★ 围骰加一：一盅五颗全同 → 该点数算 6 个')
   }
 
   console.log(`\n${'='.repeat(58)}`)

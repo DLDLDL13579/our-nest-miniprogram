@@ -28,13 +28,30 @@
 function countActual(players, face, zhai) {
   let n = 0
   ;(players || []).forEach(p => {
-    ;(p.dice || []).forEach(d => {
-      if (d === face) n++
+    const dice = p.dice || []
+    let cnt = 0
+    dice.forEach(d => {
+      if (d === face) cnt++
       /* 1 是万能 —— 但两种情况不算：
          · 叫的就是 1（1 只代表自己）
          · **斋**（1 不当任何别的点数） */
-      else if (d === 1 && face !== 1 && !zhai) n++
+      else if (d === 1 && face !== 1 && !zhai) cnt++
     })
+    /*
+     * ★ 围骰加一（2026-10-30）：一盅 5 颗**完全相同**时，那个点数算 6 个。
+     *
+     * 调研里这条被归在"常用规则"，酒桌上很认 —— 摇出五个一样的概率是
+     * 1/1296，值得给这份运气一点回报。
+     *
+     * 两种成立情形：
+     *   · 5 颗全等于叫的点数（如叫 4、盅里 5 个 4）
+     *   · 5 颗全是 1，且**不斋**（1 万能，等于什么点数都成立）
+     */
+    if (dice.length === 5 && dice.every(d => d === dice[0])) {
+      const v = dice[0]
+      if (v === face || (v === 1 && face !== 1 && !zhai)) cnt++
+    }
+    n += cnt
   })
   return n
 }
