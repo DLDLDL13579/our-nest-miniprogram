@@ -1904,6 +1904,36 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 探针导航的页面路径都已注册（' + valid.size + ' 个页面）')
   }
 
+  /*
+   * ★★★ ④·f 模板绑定的方法必须在页面 js 里存在（2026-10-30，反向的一次）。
+   *
+   * 已有的 ③b 查的是「js 里定义了方法，但模板没绑」（死代码）；
+   * 这一条查的是**反向**：「模板绑了方法，但 js 没定义」——
+   * 点了**静默无反应**，不报错。
+   *
+   * 真实案例：修「叫人来按钮被规则挤出屏幕」时，我先写了
+   * `bindtap="openHow"`，而真实方法是 `showHow`（openHow 不存在）。
+   * 如果没当场发现，上线后就是"点了没反应"。
+   */
+  {
+    const PAIRS = [
+      ['miniprogram/game/room/room', 'room'],
+      ['miniprogram/pages/lobby/lobby', 'lobby'],
+      ['miniprogram/pages/me/me', 'me']
+    ]
+    const ghostFn = []
+    PAIRS.forEach(([base, name]) => {
+      const t = fs.readFileSync(path.join(ROOT, base + '.wxml'), 'utf8')
+      const j = fs.readFileSync(path.join(ROOT, base + '.js'), 'utf8')
+      const bound = new Set([...t.matchAll(/(?:bind|catch)\w*="(\w+)"/g)].map(m => m[1]))
+      const defined = new Set([...j.matchAll(/^\s{2}(?:async\s+)?(\w+)\s*\(/gm)].map(m => m[1]))
+      bound.forEach(fn => { if (!defined.has(fn)) ghostFn.push(name + ': ' + fn) })
+    })
+    assert.deepStrictEqual(ghostFn, [],
+      '这些方法在模板里绑了、但 js 里没有定义（点了静默无反应）：\n    ' + ghostFn.join('\n    '))
+    ok('★ 三个页面的 bindtap 目标都有对应方法')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
