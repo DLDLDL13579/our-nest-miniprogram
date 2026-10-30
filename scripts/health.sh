@@ -70,9 +70,24 @@ for d in cloudfunctions/*/; do
   if [ "$dirty" -gt 0 ]; then
     echo "   ⚠️ $name：本地有未提交改动 —— 部署前记得确认"
   else
-    echo "   · $name：本地干净（是否已部署要你自己确认，CLI 查不到）"
+    echo "   · $name：本地干净"
   fi
 done
+# ★ 云端是否真的更新了，是可以查的（2026-10-30 补）。
+#   项目里早有 `.tooling/probe-room-cloud.js` —— 拉云端源码算指纹和本地比。
+#   但它要 IDE（automator），不能在体检里无条件跑：
+#   先看自动化端口通不通，通了才验，省得每次等一分钟然后失败。
+if lsof -nP -iTCP:9420 -sTCP:LISTEN >/dev/null 2>&1 ||
+   lsof -nP -iTCP:48980 -sTCP:LISTEN >/dev/null 2>&1; then
+  echo "   · IDE 在线，核对云端 room 源码…"
+  if node .tooling/probe-room-cloud.js >/tmp/health-cloud.log 2>&1; then
+    grep -E "云端 room 与本地一致|不一致" /tmp/health-cloud.log | tail -1 || echo "   · 核对完成（见 /tmp/health-cloud.log）"
+  else
+    echo "   ⚠️ 核对失败 —— 看 /tmp/health-cloud.log（也可能只是 IDE 登录态过期）"
+  fi
+else
+  echo "   · IDE 未开，跳过云端核对（重要改动后建议开 IDE 跑一次 probe-room-cloud.js）"
+fi
 
 # ---------- ⑤ 测试开关 ----------
 echo ""
