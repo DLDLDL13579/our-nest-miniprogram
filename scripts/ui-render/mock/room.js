@@ -240,7 +240,7 @@ module.exports = {
         poker: {
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: null, myKnownText: '', folded: true, aliveCount: 3, myDrink: 0,
-          log: [], last: null, winner: null
+          last: null, winner: null
         }
       })
     }),
@@ -487,7 +487,7 @@ module.exports = {
             step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
             myKnown: PK_MINE[0], myKnownText: poker.cardText(PK_MINE[0]),
             myKnownRed: /[♥♦]/.test(poker.cardText(PK_MINE[0])),
-            folded: false, aliveCount: 1, myDrink: 0, log: [], last: null, winner: '邓林'
+            folded: false, aliveCount: 1, myDrink: 0, last: null, winner: '邓林'
           }
         })
       }
@@ -567,7 +567,7 @@ module.exports = {
         room: uwRoom({
           id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
           count: 12, players: players, gameName: '谁是卧底',
-          uw: { step: 'vote', word: '豆浆', myDone: true, myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
+          uw: { step: 'vote', word: '豆浆', myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
         })
       }
     },
@@ -610,7 +610,7 @@ module.exports = {
             { name: '倩萍', initial: '倩', cups: 0.5, out: false },
             /* 造一个已出局的人 —— 否则"出局"标记这条视觉永远没被验证过 */
             { name: '阿杰', initial: '阿', cups: 1.5, out: true }
-          ], log: [],
+          ],
           /*
            * 造一条"上一步"的比牌记录 —— 等待界面用 `last` 显示"刚才发生了什么"。
            * 之前这里是 null，于是渲染图下半屏一片空白，看起来像"等待时什么都不显示"，
@@ -647,7 +647,7 @@ module.exports = {
             { name: '邓林', initial: '邓', cups: 0, out: false },
             { name: '倩萍', initial: '倩', cups: 1.5, out: false },
             { name: '阿杰', initial: '阿', cups: 0, out: false }
-          ], log: [], last: null, winner: null
+          ], last: null, winner: null
         }
       })
     }),
@@ -674,7 +674,7 @@ module.exports = {
             { name: '邓林', initial: '邓', cups: 0, out: false },
             { name: '倩萍', initial: '倩', cups: 1.5, out: false },
             { name: '阿杰', initial: '阿', cups: 0, out: false }
-          ], log: [],
+          ],
           last: null, winner: null
         }
       })
@@ -757,7 +757,7 @@ module.exports = {
         poker: {
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
-          folded: false, aliveCount: 1, myDrink: 0, log: [], last: null, winner: '邓林'
+          folded: false, aliveCount: 1, myDrink: 0, last: null, winner: '邓林'
         }
       })
     }),

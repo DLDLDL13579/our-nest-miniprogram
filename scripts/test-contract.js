@@ -1665,17 +1665,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const srvSrc = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
     /* 只取 `last: {` 后第一层 key —— 用 [^[][] 排除嵌套的数组/对象字面量，
        否则 byCards:[{s:0,r:13}] 里的 s/r 会被当成 last 的 key（误报）。 */
-    const m = /last:\s*\{([^{\[]*)/.exec(mockSrc)
+    /*
+     * 覆盖 mock 里所有嵌套块（不只 poker.last）——
+     * 2026-10-30 扩大范围时又揪出两个：`uw.myDone`、`poker.log`，
+     * 模板和服务端都没有它们（是历史遗留的噪音）。
+     */
+    const BLOCKS = ['last', 'bid', 'uw', 'spin', 'poker']
     const fake = []
-    if (m) {
+    BLOCKS.forEach(name => {
+      /*
+       * ⚠️ 必须要求 `{` 后面紧跟换行 —— 否则正则跨过 `poker: {` 会一路吃到
+       *   下一个 mock 状态名（`alone: () => ({`），把 `alone` 当字段误报。
+       */
+      /*
+       * 段内容 = 从 `{` 到**第一个 } 或 [ 或换行**为止 ——
+       * 这样既不会跨进嵌套对象，也不会跨到下一个 mock 状态。
+       * （前两版分别跨进了 byCards 的 {s,r} 和下一个状态名 alone。）
+       */
+      /*
+       * 允许 `{` 后面先换行再开始（真实写法就是 `poker: {\n   step: ...`），
+       * 但段内**不许再出现换行** —— 否则会跨到下一个 mock 状态。
+       * 所以：`{` → 可选空白（含换行）→ 取到第一个换行/}/[ 为止。
+       */
+      const m = new RegExp('\\b' + name + ':\\s*\\{[ \\t\\n]*([^}\\[\\n]*)').exec(mockSrc)
+      if (!m) return
       const keys = [...new Set([...m[1].matchAll(/\b(\w+)\s*:/g)].map(x => x[1]))]
       keys.forEach(k => {
         const hasKey = new RegExp('\\b' + k + '\\s*:').test(srvSrc)
         const hasAssign = new RegExp('\\.' + k + '\\s*=').test(jsSrc2) ||
                           new RegExp('\\b' + k + '\\s*:').test(jsSrc2)
-        if (!hasKey && !hasAssign) fake.push(k)
+        if (!hasKey && !hasAssign) fake.push(name + '.' + k)
       })
-    }
+    })
     assert.deepStrictEqual(fake, [],
       'mock 的 poker.last 里有真实代码不存在的字段（会盖住真 bug）：\n    ' + fake.join('\n    '))
     ok('★ mock 的 poker.last 字段都真实存在（不造假数据）')
