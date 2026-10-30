@@ -447,7 +447,11 @@ const rec = (name, ok, extra) => {
             if (dd.stage === 'playing') break
           }
           rec('比大小开局 → playing', dd.stage === 'playing', 'stage=' + dd.stage)
-          const rb = await dp.$('.rollbtn')
+          /* ★ 2026-10-30 修：原来写的是 `.rollbtn`，而模板里**没有这个类**
+             （真实摇骰按钮是 `.btn.main.bigbtn` + bindtap=doRoll）。
+             这个脚本因此一直找不到按钮，等于**从没真正跑过摇骰那一步**。 */
+          const rb = (await dp.$$('.bigbtn')).find(async (b) => (await b.text()).includes('摇')) ||
+                     await dp.$('.bigbtn')
           if (!rb) { rec('找到摇骰按钮', false) }
           else {
             await rb.tap()

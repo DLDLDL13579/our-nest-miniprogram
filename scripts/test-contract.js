@@ -1835,6 +1835,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ ' + pairs.length + ' 个两层字段都有赋值来源（含前端派生）')
   }
 
+  /*
+   * ★★★ ④·d 探针脚本用的选择器必须在模板里真实存在（2026-10-30，真实踩到）。
+   *
+   * `.tooling/e2e-ui.js` 里写 `dp.$('.rollbtn')` —— 而模板里**没有 rollbtn 这个类**
+   * （真实摇骰按钮是 `.btn.main.bigbtn`）。于是那个 e2e 脚本**一直找不到按钮**，
+   * 摇骰那一步从来没真正执行过，却看起来"跑完了"。
+   *
+   * 而我后来临时写的探针用了 `.chipbar .chip`（也不存在），
+   * 于是报出"叫骰按钮数为 0"的假 bug，白查一轮。
+   *
+   * 判据：.tooling/ 里 `$('...')` / `$$('...')` 的**第一个类名**必须能在 wxml 的 class 里找到。
+   */
+  {
+    const tplD = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8') +
+                 fs.readFileSync(path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxml'), 'utf8')
+    const realCls = new Set()
+    for (const m of tplD.matchAll(/class="([^"]*)"/g)) {
+      m[1].replace(/\{\{[\s\S]*?\}\}/g, '').split(/\s+/).forEach(c => { if (c) realCls.add(c) })
+    }
+    const badSel = []
+    const toolFiles = fs.readdirSync(path.join(ROOT, '.tooling')).filter(f => f.endsWith('.js'))
+    toolFiles.forEach(f => {
+      const src = fs.readFileSync(path.join(ROOT, '.tooling', f), 'utf8')
+      for (const m of src.matchAll(/\$\$?\(\s*'([^']+)'/g)) {
+        const first = m[1].trim().split(/\s+/)[0]
+        if (!first.startsWith('.')) continue          /* 标签选择器/属性选择器不管 */
+        const cls = first.slice(1).split('.')[0]
+        if (cls && !realCls.has(cls)) badSel.push(f + ' → ' + m[1])
+      }
+    })
+    assert.deepStrictEqual(badSel, [],
+      '这些探针用的类名在模板里不存在（脚本会静默找不到元素，验证等于没做）：\n    ' + badSel.join('\n    '))
+    ok('★ ' + toolFiles.length + ' 个探针脚本用的类名都真实存在')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
