@@ -651,7 +651,12 @@
                  src="/game/images/cup/{{item.diceCount > 0 ? 'cup-down' : 'cup-shake'}}.png"
                  mode="aspectFit" />
           <view class="oc-name">{{item.name}}</view>
-          <view class="oc-stat {{item.diceCount > 0 ? 'done' : ''}}">{{item.diceCount > 0 ? '已摇' : '还没摇'}}</view>
+          <!--
+            ★ 2026-11-02 渲染审核发现：自己正在摇的时候（按钮是「摇盅中…」），
+            自己的卡片还写着「还没摇」—— 同一屏两处自相矛盾。
+            摇的动作期间骰子还没生成（diceCount 仍是 0），所以走了"还没摇"分支。
+          -->
+          <view class="oc-stat {{item.diceCount > 0 ? 'done' : ''}}">{{item.isMe && rolling ? '摇盅中' : (item.diceCount > 0 ? '已摇' : '还没摇')}}</view>
         </view>
       </view>
 
