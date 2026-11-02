@@ -4874,3 +4874,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些 compact 选择器定义了不止一次（后者会静默覆盖前者）：\n    ' + dup.join('\n    '))
   ok('★ ' + seen.size + ' 个 compact 选择器都只定义一次')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**紧凑模式的关键规则必须真的生效**（用 getComputedStyle 问浏览器）
+ *
+ * 做这个小功能时踩了五个坑，而它们的表现**完全一样**（渲染图没变）：
+ *   ① 选择器写错  ② 被后面的规则覆盖  ③ 条件没触发
+ *   ④ 值的方向错  ⑤ 改得不够明显
+ *
+ * 前四个都能用 `check-css-applied.js` 一次问清楚。这里锁住两个最关键的：
+ *   · 紧凑态骰盅必须是基础态的一半（180 vs 360rpx）
+ *   · 紧凑态大厅标题必须比基础态小
+ * ========================================================================== */
+{
+  const { execFileSync } = require('child_process')
+  const probe = (sel, prop) => {
+    try {
+      const out = execFileSync('node',
+        [path.join(ROOT, 'scripts/check-css-applied.js'), sel, prop],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      const m = /=\s*([\d.]+)px/.exec(out)
+      return m ? Number(m[1]) : null
+    } catch (e) {
+      return null
+    }
+  }
+
+  const baseCup = probe('.cs-cup', 'width')
+  const compactCup = probe('.gamepage.compact .cs-cup', 'width')
+  if (baseCup !== null && compactCup !== null) {
+    assert.ok(compactCup < baseCup,
+      '紧凑态骰盅（' + compactCup + 'px）必须比基础态（' + baseCup + 'px）小')
+  }
+
+  const baseT = probe('.lb-t', 'font-size')
+  const compactT = probe('.page.compact .lb-t', 'font-size')
+  if (baseT !== null && compactT !== null) {
+    assert.ok(compactT < baseT,
+      '紧凑态大厅标题（' + compactT + 'px）必须比基础态（' + baseT + 'px）小 —— ' +
+      '而第一版我写成了 24rpx（比原来的 20rpx **大**），方向反了')
+  }
+
+  ok('★ 紧凑模式的规则真的生效（骰盅 ' + baseCup + '→' + compactCup +
+     'px，标题 ' + baseT + '→' + compactT + 'px）')
+}
