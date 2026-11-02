@@ -1616,6 +1616,20 @@ Page({
     /* 叫骰选项：随人数和上家叫法变化，前端算（服务端只判合法性）。
        真点下去服务端还会再校验一次，所以前端算错也骗不过去。 */
     room.options = this.buildOptions(room)
+    /*
+     * ★★★ 2026-11-02 真机审核发现：**文案说「从 1 个起叫」，但按钮是 3个1 起**。
+     *
+     * 起叫下限不是 1，是 `openNeed(人数, 斋, 2)`：
+     *   2 人不斋 → 3 个    2 人斋 → 2 个    3 人不斋 → 5 个
+     * 而模板里那句是**硬编码的「从 1 个起叫」** —— 用户会以为能叫 1 个，
+     * 但界面上根本没有「1个X」这个按钮，只有从 3 个开始的。
+     *
+     * 现在把它算出来放进 room，模板直接显示真实数字（切斋/人数变化也会跟着变）。
+     */
+    try {
+      const R = require('../../utils/liarRules.js')
+      room.openNeedN = R.openNeed(room.count || 2, this.data.zhaiMode === 'zhai', 2)
+    } catch (e) { room.openNeedN = 1 }
 
     /* 轮次提示：服务端已给 turn（座位号）和 me.seat，比一下就有 */
     const mySeat = (room.me && room.me.seat) || 0

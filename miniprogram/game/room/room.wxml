@@ -438,7 +438,7 @@
         </block>
         <block wx:else>
           <view class="bid-lbl">还没人叫</view>
-          <view class="bid-val hint">从 1 个起叫，随便叫</view>
+          <view class="bid-val hint">从 {{room.openNeedN}} 个起叫，随便叫</view>
         </block>
       </view>
 
