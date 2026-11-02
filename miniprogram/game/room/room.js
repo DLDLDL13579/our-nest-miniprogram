@@ -1939,9 +1939,14 @@ Page({
    *   这和骰盅"按住偷看"是同一个设计理由。
    */
   uwShowWord() {
-    /* 和"翻开自己的牌"是同一个动作语义，复用同一条时间轴 */
-    feedback.fire('pkFlip')
+    /*
+     * ★ 2026-11-02 声音时机：`setData` 是**异步**的（跨线程拷贝给视图层），
+     *   `feedback.fire` 内部的 sfxDelay 从调用那一刻开始计时。
+     *   先 fire 再 setData = 计时起点早于画面更新 —— 声音会抢在词出现之前。
+     *   调成 setData 在前，计时起点就和画面同一时刻。
+     */
     this.setData({ showWord: true })
+    feedback.fire('pkFlip')
   },
   uwHideWord() {
     if (this.data.showWord) this.setData({ showWord: false })
@@ -1995,8 +2000,9 @@ Page({
 
   /* 按住才显示三张牌 —— 理由同卧底看词：同桌的人就坐在旁边 */
   pkShow() {
-    feedback.fire('pkFlip')
+    /* 同上：setData 在前，声音计时起点才和画面一致 */
     this.setData({ showCards: true })
+    feedback.fire('pkFlip')
   },
   pkHide() {
     if (this.data.showCards) this.setData({ showCards: false })
@@ -2626,17 +2632,25 @@ Page({
         return null
       })
     if (this.okOrSay(r)) {
-      /* ★ 走 feedback 而不是裸 sfx.play（2026-10-28）：
-         裸播没有音量档位、没有震动分级，也进不了时间轴 ——
-         表里定义的 `shaker` 因此一直是个**从没被触发的死动作**。 */
-      feedback.fire('shaker')
       /* 记一局，并留下"今晚第几局"给结算页 */
       this.setData({ nightRound: this.bumpNightCount() })
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
       if (this._dead) return          // 云函数往返期间页面可能已卸载
+      /*
+       * ★ 2026-11-02 声音时机：**摇盅声原来响在界面切换之前**。
+       *
+       * 原顺序是 fire('shaker') → setData({stage:'countdown'})，
+       * 于是摇盅那一秒的声音从"还停在 lobby 界面"时就开始放，
+       * 等画面切过去时已经响了一半 —— 听感就是"声音比画面早"。
+       *
+       * 调成 setData 在前：`setData` 立刻把数据交给视图层（异步渲染），
+       * 声音再从这一刻开始计时，两者起点一致。
+       */
       this.setData({ room: this.safeDecorate(r.room), stage: stageOf(r.room.phase) })
+      /* ★ 走 feedback 而不是裸 sfx.play：裸播没有音量档位、没有震动分级 */
+      feedback.fire('shaker')
       /* 房主自己也要走倒计时读秒 —— 否则只有非房主听到读秒声 */
       if (r.room.phase === 'countdown') this.startCountdown(r.room.countdownMs)
     } else if (r && !r.ok) {
