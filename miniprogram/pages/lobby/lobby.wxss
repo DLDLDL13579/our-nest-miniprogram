@@ -313,3 +313,6 @@
 
 /* 理性饮酒提示：首屏可见（合规要求），但比内容量那行更淡 */
 .lb-sober { margin-top: 10rpx; font-size: 21rpx; color: rgba(255,255,255,.52); letter-spacing: .5rpx }
+
+/* 「进房」按钮的按下反馈（2026-11-02，断言扫出来的） */
+.join-in:active { transform: scale(.98); filter: brightness(.94) }

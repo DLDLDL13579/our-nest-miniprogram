@@ -3450,3 +3450,77 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 用户反馈的两个数值锁住：倒计时 ≤2000ms / 关键音效音量 ≥1.0')
 }
+
+/* ============================================================================
+ * 2026-11-02 追加：**可点的元素必须有按下反馈**
+ *
+ * 起因：房间页 20 个按钮类里 9 个没有 `:active` ——
+ * 包括最重要的 `.bigbtn`（开始 / 摇盅 / 再来一局）。
+ *
+ * 没有反馈的按钮点下去**像没反应**，而用户对"点了没反应"的容忍度是零：
+ * 他会再点一次，然后开始怀疑网络。
+ *
+ * 这条断言的判据是**行为**（有没有绑定事件），不是类名长相：
+ * 按类名扫会漏掉 `.bigbtn` 这种自定义名字的，也会把 `.pill-icon` 算进来。
+ * ========================================================================== */
+{
+  /* ⚠️ `walkPages` 定义在另一个块作用域里，这里不可见 —— 自带一份遍历 */
+  const walkJs = (dirs) => {
+    const out = []
+    const walk = (d) => {
+      if (!fs.existsSync(d)) return
+      fs.readdirSync(d).forEach(f => {
+        const p = path.join(d, f)
+        if (fs.statSync(p).isDirectory()) walk(p)
+        else if (f.endsWith('.js')) out.push(p)
+      })
+    }
+    ;(Array.isArray(dirs) ? dirs : [dirs]).forEach(walk)
+    return out
+  }
+  const bad = []
+  walkJs(PAGE_ROOTS).forEach(jsFile => {
+    const wxmlFile = jsFile.replace(/\.js$/, '.wxml')
+    if (!fs.existsSync(wxmlFile)) return
+    const tpl = fs.readFileSync(wxmlFile, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+    const cssFile = wxmlFile.replace(/\.wxml$/, '.wxss')
+    const css = fs.existsSync(cssFile)
+      ? fs.readFileSync(cssFile, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      : ''
+    /* 找所有带事件绑定的标签，取它的 class 里第一个静态类名 */
+    const re = /<[a-z-]+[^>]*?(?:bind|catch)\w+="[^"]+"[^>]*?>/g
+    let m
+    const seen = new Set()
+    while ((m = re.exec(tpl))) {
+      const tag = m[0]
+      const cm = /class="([^"]*)"/.exec(tag)
+      if (!cm) continue
+      /*
+       * ★ 关键：取**所有**静态类名，不是只取第一个。
+       *
+       *   模板里是 `class="btn main bigbtn"` —— 而真正的按钮类是 **bigbtn**
+       *   （`btn` 只是个基础壳）。第一版只检查第一个类名（`btn`），
+       *   把 `.bigbtn:active` 整条删掉**照样通过**（反向验证抓到的）。
+       */
+      const classes = cm[1].split(/\s+/).filter(c => c && !c.includes('{'))
+      if (!classes.length) continue
+      const key = classes.join(' ')
+      if (seen.has(key)) continue
+      seen.add(key)
+      /* 任意一个类名有 :active 就算有反馈（组合选择器也算） */
+      const hasActive = classes.some(cls =>
+        new RegExp('\\.' + cls + '[^{]*:active').test(css))
+      if (!hasActive) {
+        bad.push(path.relative(ROOT, wxmlFile) + ' → .' + classes.join('.'))
+      }
+    }
+  })
+  /* 已知的例外：这些是靠别的方式给反馈（动画/跳转），不是按压型按钮 */
+  /* 不需要按压反馈的：输入框（有聚焦态）、遮罩（点空白关闭）、
+     弹层本体（catchtap 只是为了阻止冒泡，本身不可点） */
+  const ALLOW = ['gcard', 'textbtn', 'aw-opt', 'tin', 'mask', 'diag-sheet', 'sheet', 'cardta']
+  const real = bad.filter(x => !ALLOW.some(a => x.endsWith('.' + a)))
+  assert.deepStrictEqual(real, [],
+    '这些可点元素没有 :active 按下反馈（点下去像没反应）：\n    ' + real.join('\n    '))
+  ok('★ 所有可点元素都有按下反馈（' + (bad.length - real.length) + ' 个白名单例外）')
+}

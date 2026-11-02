@@ -156,3 +156,10 @@
   color: rgba(255,255,255,.78);
   white-space: pre-wrap; word-break: break-all;
 }
+
+/* 可点行的按下反馈（2026-11-02，断言扫出来的） */
+.ab-line:active { opacity: .72 }
+.mein:active { opacity: .8 }
+
+/* 按钮的按下反馈（2026-11-02，断言扫出来的） */
+.btn:active { transform: scale(.98); filter: brightness(.94) }

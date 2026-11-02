@@ -2869,3 +2869,15 @@
   filter: none;
   box-shadow: none;
 }
+
+/* 可点元素的按下反馈·续（2026-11-02）—— 断言扫出来的 */
+.gbar-code:active { opacity: .72 }
+.ht-fold:active { opacity: .72 }
+.uw-card:active { transform: scale(.98); filter: brightness(.94) }
+.pk-slot:active { transform: scale(.97) }
+
+/*
+ * 骰盅是「按住才看」——它的反馈不是按一下，而是**盅抬起来**。
+ * 这里只给一个极轻的压下感，让手指知道"按住了"（抬起由 js 控制）。
+ */
+.cs-cup:active { transform: scale(.995) }
