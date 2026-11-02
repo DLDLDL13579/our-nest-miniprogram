@@ -2345,7 +2345,8 @@ Page({
      *      而不是以为界面坏了。
      */
     if (this.data._pkBusy) {
-      wx.showToast({ title: '上一次换牌还在路上，稍等一下', icon: 'none', duration: 2400 })
+      /* ★ 2026-11-03：和另一处（换底牌）统一措辞 —— 同一个情况两种说法会让人以为是两回事 */
+      wx.showToast({ title: '上一次换牌还在处理，等半秒', icon: 'none', duration: 2400 })
       return
     }
     this.data._pkBusy = true
