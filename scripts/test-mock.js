@@ -88,3 +88,60 @@ if (bad.length) {
 }
 
 console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状态：人数/投票/进度/分数/结算 seat）')
+
+/* ============================================================================
+ * 2026-11-02 追加：**mock 里的内容必须来自真实库**
+ *
+ * 起因：`wheelLongCard` 状态手写了一条 60 字的假题卡
+ * 「用一句话形容在场每个人今天的状态不能重复形容词说完之后…」，
+ * 一整段没有标点。我差点去改题卡的折行样式。
+ *
+ * 而真实题库 200 条里**最长只有 28 字**，全是带标点的正常中文。
+ * 也就是说：那条"极端值"造的极限，产品里根本不存在。
+ *
+ * 判据：**造边界数据时，边界要来自真实数据的分布，不能凭空造。**
+ * ========================================================================== */
+{
+  const { DECKS } = require('../miniprogram/utils/decks.js')
+  const W = require('../miniprogram/utils/words.js')
+
+  const allCards = new Set()
+  DECKS.forEach(d => {
+    ;(d.truth || []).forEach(t => allCards.add(t))
+    ;(d.dare || []).forEach(t => allCards.add(t))
+  })
+  const allWords = new Set()
+  W.DECKS.forEach(d => (d.pairs || []).forEach(p => p.forEach(w => allWords.add(w))))
+
+  assert.ok(allCards.size > 100, '题卡库只有 ' + allCards.size + ' 条，抽取可能失效')
+  assert.ok(allWords.size > 100, '词库只有 ' + allWords.size + ' 个，抽取可能失效')
+
+  const fakeCards = []
+  const fakeWords = []
+  const seen = new Set()
+  for (const k of Object.keys(states)) {
+    if (seen.has(k)) continue
+    seen.add(k)
+    const s = states[k]()
+    if (!s) continue
+    /* 题卡：顶层 card.text 和 cardText 两种写法都要查 */
+    const texts = []
+    if (s.card && s.card.text) texts.push(s.card.text)
+    if (typeof s.cardText === 'string' && s.cardText) texts.push(s.cardText)
+    texts.forEach(t => {
+      if (!allCards.has(t)) fakeCards.push(k + ' → ' + t.slice(0, 24))
+    })
+    /* 卧底的词 */
+    const uw = s.room && s.room.uw
+    if (uw && uw.word && !allWords.has(uw.word)) {
+      fakeWords.push(k + ' → ' + uw.word)
+    }
+  }
+  assert.deepStrictEqual(fakeCards, [],
+    'mock 里出现了题库里没有的题卡（渲染图会显示产品里不存在的内容）：\n    ' +
+    fakeCards.join('\n    '))
+  assert.deepStrictEqual(fakeWords, [],
+    'mock 里出现了词库里的词：\n    ' + fakeWords.join('\n    '))
+  console.log('  ✓ mock 的题卡与卧底词都来自真实库（题卡 %d 条 / 词 %d 个）',
+    allCards.size, allWords.size)
+}

@@ -389,7 +389,9 @@ module.exports = {
 
     cardPanelOpen: () => ({
       stage: 'playing', cardPanel: true, cardType: 'truth',
-      cardText: '说出你在座各位里最想跟谁合伙做生意，为什么',
+      /* 来自真实题库（decks.DECKS 里 friends 的第 1 条真心话）——
+     2026-11-02 之前这里是手写的假题，和题库完全对不上 */
+      cardText: decks.DECKS.filter(d => d.k === 'friends')[0].truth[0],
       room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 3,
         shortBy: 0, soloOk: true })
     }),
@@ -1005,7 +1007,8 @@ module.exports = {
         wheelDur: 2700,
         wheelSpinning: false,
         wheelText: '真心话',
-        card: { type: 'truth', deck: 'friends', deckName: '朋友聚会', text: '说出你在座各位里最想跟谁合伙做生意，为什么' },
+        card: { type: 'truth', deck: 'friends', deckName: '朋友聚会',
+          text: decks.DECKS.filter(d => d.k === 'friends')[0].truth[0] },
         decks: decks.DECKS,
         room: pkRoom({
           game: 'wheel', phase: 'playing', host: true, count: 3, deck: 'friends',
