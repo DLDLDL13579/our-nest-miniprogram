@@ -69,7 +69,7 @@
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .16s backwards;
 }
 .lb-t {
-  font-size: 52rpx; font-weight: 700; color: var(--cream);
+  font-size: 54rpx; font-weight: 700; color: var(--cream);
   margin-top: 6rpx; letter-spacing: 3rpx; line-height: 1.15;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .24s backwards;
 }
