@@ -1693,8 +1693,16 @@ Page({
      * 现在把它算出来放进 room，模板直接显示真实数字（切斋/人数变化也会跟着变）。
      */
     try {
-      const R = require('../../utils/liarRules.js')
-      room.openNeedN = R.openNeed(room.count || 2, this.data.zhaiMode === 'zhai', 2)
+      /*
+       * ★ 2026-11-02：这里原来是 `const R = require('../../utils/liarRules.js')` ——
+       *   文件顶部**已经导入过** `liarRules`（第 30 行），这是重复导入 + 局部遮蔽。
+       *
+       *   它还有个副作用：`decorate` 会被测试用 `new Function` 抽出来跑，
+       *   而 `new Function` 里**没有 `require`** → 抛 ReferenceError
+       *   → 被这里的 try/catch 兜成 `openNeedN = 1`（起叫下限变成 1 个，规则失效）。
+       *   也就是说这条兜底掩盖了一个真问题：**测试从来没真正跑到这段**。
+       */
+      room.openNeedN = liarRules.openNeed(room.count || 2, this.data.zhaiMode === 'zhai', 2)
     /*
      * ★ 2026-11-02：比大小能不能「单骰重摇」。
      *

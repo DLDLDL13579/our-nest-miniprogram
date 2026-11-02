@@ -84,6 +84,35 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
   ok('stageOf 对 lobby/countdown/playing/over 及未知值都有确定结果')
 
   /*
+   * ★★ 2026-11-02 补：**调用点**也要断言。
+   *
+   * 上面那几条只检查"函数存在且映射正确"，但不检查"有没有人用它" ——
+   * 用 verify-assert 把 doCreate 里的 `const newStage = stageOf(r.room.phase)`
+   * 改成 `const newStage = 'lobby'`，**测试照样通过**。
+   *
+   * 而 AGENTS.md 记过真实事故：`doStart` 把 stage 写死成 'playing'，
+   * 服务端返回 countdown 时转盘就转不了 —— 症状是"某台手机能点另一台不能"。
+   *
+   * 判据：`doCreate` / `applyRoom` 这两个"从服务端拿数据"的入口，
+   * 阶段必须来自 stageOf，不能是字面量。
+   */
+  {
+    const fnBody = (name) => {
+      const i = code.indexOf('  ' + name + '(')
+      if (i < 0) return ''
+      /* 取到下一个同级方法开头（两空格缩进的 async/普通方法） */
+      const rest = code.slice(i + 4)
+      const j = rest.search(/\n  (?:async )?\w+\s*\(/)
+      return j < 0 ? rest : rest.slice(0, j)
+    }
+    const doCreate = fnBody('async doCreate')
+    assert.ok(doCreate.length > 100, 'doCreate 函数体没抽出来')
+    assert.ok(/stageOf\s*\(/.test(doCreate),
+      '★ doCreate 里必须用 stageOf() 推导阶段 —— 写死字面量会让某个 phase 落到错的界面')
+    ok('★ doCreate：阶段来自 stageOf()，不是写死')
+  }
+
+  /*
    * ★ 核心：除了 entry/over 这两个**本地**状态，
    *   "来自服务端的阶段"不准再手写字符串。
    *   entry 是"还没进房间"、over 是"结算"，都不由 phase 推导，可以写死；
@@ -236,13 +265,22 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
      * ⚠️ decorate 依赖的外部变量要**全部注入** —— 少一个就是 "xxx is not defined"。
      * 2026-10-29 把 settleFoot 抽成独立模块后，这里就崩过一次。
      */
-    const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
+    const liarRules = require('../miniprogram/utils/liarRules.js')
+const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
     const bidMod = require(path.join(ROOT, 'miniprogram/game/bidOptions.js'))
     /* 每抽一个模块出来，这里就多一个参数 —— 一天内栽了两次（settleFoot、bidOptions）。
        再抽就该改成"注入一个依赖对象"，而不是继续往参数列表上加。 */
-    const decorate = new Function('poker', 'gameOf', 'settleFoot', 'bidOptions',
-      'return function decorate(room){' + body + '}')(poker, games.gameOf, settleMod, bidMod)
-    const stub = { buildOptions: () => ['1个1'] }
+    const decorate = new Function('poker', 'gameOf', 'settleFoot', 'bidOptions', 'liarRules',
+      'return function decorate(room){' + body + '}')(poker, games.gameOf, settleMod, bidMod, liarRules)
+    /*
+     * ★ 2026-11-02：stub 原来只有 buildOptions，**没有 data** ——
+     *   而 decorate 里有  这样的读取，于是抛
+     *   「Cannot read properties of undefined (reading 'zhaiMode')」，
+     *   被 decorate 自己的 try/catch 兜成默认值。
+     *   后果：**所有依赖 this.data 的派生字段，测试测的都是兜底值**，
+     *   等于没测。补上 data 之后才是真的跑。
+     */
+    const stub = { data: {}, buildOptions: () => ['1个1'] }
 
     /* ① 金花牌型提示 + 换牌量 */
     const pk = decorate.call(stub, {
@@ -276,6 +314,16 @@ const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g,
         { openid: 'c', name: '阿杰', seat: 3, isMe: false, inRound: true, diceCount: 5 }
       ]
     })
+    /*
+     * ★ 2026-11-02 补：`openNeedN`（大话骰起叫下限）漏了没测。
+     *   它不赋值时模板会渲染成「从 个起叫」——中间空着，不报错。
+     *   （这个 bug 在 mock 缺字段时真出现过一次。）
+     */
+    assert.ok(typeof t2.openNeedN === 'number' && t2.openNeedN > 0,
+      '★ openNeedN 必须是正整数，实际：' + JSON.stringify(t2.openNeedN))
+    /* 期望值按人数算，不写死 —— 写死 3 会让"3 人局"这个 mock 变得费解 */
+    assert.strictEqual(t2.openNeedN, Math.ceil(t2.count * 1.5),
+      t2.count + ' 人局不斋起叫应该是 ' + Math.ceil(t2.count * 1.5) + ' 个')
     assert.strictEqual(t2.turnName, '倩萍', '★ 轮到座位 2 就该说「倩萍」，实际：' + t2.turnName)
     assert.strictEqual(t2.myTurn, false, '座位 2 轮到时，我不该显示"轮到你"')
 
