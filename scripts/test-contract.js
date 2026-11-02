@@ -4509,3 +4509,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '\n    （注意：var(--x, 默认值) 的写法也算引用）')
   ok('★ ' + defs.size + ' 个 CSS 变量都有引用（没有半套变量）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**音效调用应该走 feedback 表，而不是裸的 sfx.play**
+ *
+ * `wheelStart` 原来是裸调用 —— 于是它：
+ *   · 没有震动（而摇盅有 light）
+ *   · 不受"减少动效"开关管（feedback 里会乘 `h.isReduceMotion()`）
+ *
+ * 走表之后两者用同一套规则。判据不禁止所有 `sfx.play`（有些音效确实不需要
+ * 时间线，比如"点击反馈"），而是**指名道姓地要求这几个关键动作在表里**。
+ * ========================================================================== */
+{
+  const fbSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
+  const keys = new Set([...fbSrc.matchAll(/^\s{2}(\w+):\s*\{/gm)].map(m => m[1]))
+
+  /* 这些是"有节奏"的动作（持续时长 > 200ms），必须能表达"什么时候震" */
+  const mustBeInTable = ['wheelStart', 'wheelStop', 'shaker', 'cupSlam', 'cupOpen',
+    'diceTable', 'diceSettle', 'pkFlip', 'pkSpread', 'uwVote', 'uwReveal']
+  const missing = mustBeInTable.filter(k => !keys.has(k))
+  assert.deepStrictEqual(missing, [],
+    '这些有节奏的动作必须在 feedback 表里（否则不震、也不受"减少动效"管）：' + missing.join(' '))
+
+  /* 连续动作不该有震动（一局多次，会让人关掉震动开关） */
+  const cont = /wheelStart:\s*\{[\s\S]*?haptic:\s*''/.test(fbSrc) ||
+               /wheelStart:\s*\{[\s\S]*?\/\*[^*]*连续动作不震/.test(fbSrc)
+  assert.ok(cont, 'wheelStart 是连续动作，不该配震动')
+
+  ok('★ 有节奏的动作都在 feedback 表里（' + keys.size + ' 个），连续动作不震')
+}

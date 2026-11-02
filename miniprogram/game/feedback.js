@@ -123,6 +123,23 @@ const FEEDBACK = {
   },
 
   /* ---------- 转盘停稳 ---------- */
+  /*
+   * ★ 2026-11-03：`wheelStart` 原来**不在表里** —— 它走的是裸的
+   *   `sfx.play('wheelStart')`，于是它没有任何震动、也不受"减少动效"开关管。
+   *
+   *   把它纳入表里之后，「转盘开始转」和「摇盅」用同一套规则：
+   *   **连续动作（转动 2.4 秒）全程不震**，只出声。
+   *
+   *   ⚠️ 连续音不震是刻意的：一局要转好几次，每次都震会让人关掉震动。
+   */
+  wheelStart: {
+    animMs: 2400,
+    impactAt: 0,
+    sfx: 'wheelStart',
+    haptic: '',           /* 连续动作不震 */
+    vol: VOL_DECOR
+  },
+
   wheelStop: {
     animMs: 280,
     impactAt: 50,

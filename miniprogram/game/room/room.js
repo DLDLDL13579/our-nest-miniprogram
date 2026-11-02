@@ -4022,7 +4022,8 @@ Page({
        * 同一个坑项目里记过（抬盅声、揭盅声），这处漏了。
        */
       if (this._dead) return
-      sfx.play('wheelStart')
+      /* ★ 2026-11-03：改走 feedback 表（和摇盅同一套规则：连续动作不震） */
+      feedback.fire('wheelStart')
       /* 持续咔哒：用 tick 按递减频率排期，模拟"越转越慢" */
       /*
        * ★ 2026-11-02：原来是 2600，而转盘动画 `wheelDur` 是 2700 ——
