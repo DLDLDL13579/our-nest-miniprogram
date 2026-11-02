@@ -2028,13 +2028,27 @@ Page({
      */
     if (room.game === 'dice' && room.lastResult && Array.isArray(room.lastResult.ranked)) {
       const lr = room.lastResult
-      const hero = lr.ranked.filter(x => x.total === lr.top)[0]
+      /*
+       * ★ 2026-11-03：改成直接取 `ranked[0]`（**行为等价，但少一层隐含约定**）。
+       *
+       *   原来写 `ranked.filter(x => x.total === lr.top)[0]` —— 我一开始以为
+       *   这会在"两人点数相同、牌型不同"时取错（比如五条 15 点 vs 散牌 15 点）。
+       *
+       *   **实测下来它是对的**：`lr.top` 是**赢家的点数**（不是"最高点数"），
+       *   而 `ranked` 已按牌型排好序，同点数的人里赢家必然排第一 ——
+       *   所以 `filter(...)[0]` 恰好等于 `ranked[0]`。
+       *
+       *   但那个"恰好"依赖两个不住在代码里的前提（top 是赢家点数 + ranked 已排序）。
+       *   既然结论一样，就用不需要推理的那一种写法。
+       */
+      const hero = lr.ranked[0]
       lr.topDice = (hero && hero.dice) ? hero.dice : []
       /*
        * 列表里**去掉赢家**：他已经在大图里了，再列一遍既是重复、又白占一行 ——
        * 8 人局那一行正好把底部的「再来一局」挤下屏。
        */
-      lr.restRanked = lr.ranked.filter(x => x.total !== lr.top)
+      /* 去掉的是**赢家本人**（按 seat），不是"点数等于 top 的人" */
+      lr.restRanked = lr.ranked.filter(x => !hero || x.seat !== hero.seat)
     }
 
     /*
