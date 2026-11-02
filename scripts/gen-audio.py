@@ -770,11 +770,34 @@ def wheel_spin_loop():
 # 重新写这里并把文件加进 ALL_V3 与 sfx.js 的 FILES 清单。
 
 def wheel_stop():
-    """停稳：一声清亮的"叮"。"""
+    """
+    停稳：一声清亮的"叮"。
+
+    ★★★ 2026-11-02「线下面对面」重写。
+    原来只有 880 + 1320Hz 两根**纯正弦** —— 两个频率都落在人声频段
+    (200~2000Hz)，实测 2~5kHz 比人声段低 **37.5 dB**。
+
+    也就是说：这个"转盘停稳"最关键的一下，**在酒桌上被一聊天就没了**。
+    （电脑/耳机上听得好好的，所以一直没发现。）
+
+    真实的铃/钟有**非整数倍**泛音（2.76x / 5.40x / 8.93x 是钟形体的经典比例），
+    补上它们有两个好处：
+      · 音色从"电子音"变成"金属铃"
+      · 2.76x 和 5.40x 正好落在 2~5kHz 的穿透段
+    """
     n = int(SR * 0.5)
-    a, b = sine(n, 880), sine(n, 1320)
-    e = env_ad(n, int(SR * 0.003), SR * 0.13)
-    return [(a[i] * 0.7 + b[i] * 0.3) * e[i] for i in range(n)]
+    # 基频 880 + 泛音：倍数, 相对音量
+    PARTS = [(1.00, 0.62), (1.50, 0.22), (2.76, 0.30), (5.40, 0.13)]
+    buf = [0.0] * n
+    for mult, amp in PARTS:
+        # 高次泛音衰减更快（真实敲击里高频先消失）
+        tau = SR * (0.13 if mult <= 1.5 else 0.075)
+        env = env_ad(n, int(SR * 0.003), tau)
+        tone = sine(n, 880 * mult)
+        for i in range(n):
+            buf[i] += tone[i] * env[i] * amp
+    pk = max(1e-9, max(abs(x) for x in buf))
+    return [x / pk * 0.92 for x in buf]
 
 
 # ============================================================
@@ -1017,7 +1040,7 @@ ALL = [
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
     # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
     # 这一串咔哒的本体是中频撞击，降采样率听感无损、体积减半（原 68.9 KB → 约 34 KB）
-    ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_MID),
+    ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_HI),   # 2026-11-02：2~5kHz 泛音要 22050 才存得下
     # 情绪
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
     ('whoosh',       whoosh,                  SR_MID), # 风声，中高频
@@ -1185,11 +1208,31 @@ def reveal_hit():
     ring2 = sine(n, 3140)
     e2 = env_decay(n, SR * 0.130)
     metal = [(ring[i] * 0.18 + ring2[i] * 0.1) * e2[i] for i in range(n)]
+    # ★★★ 2026-11-02「线下面对面」：加一层 2~4kHz 的穿透音。
+    #
+    #   酒桌上手机是外放的，环境噪音 60~70 dB 主要在 **200~2000Hz**（人声）。
+    #   而这一声原来只有 2.1% 的能量在 2~5kHz —— 也就是说
+    #   **一桌人在聊天时，"开始/揭盅"会被直接盖住**。
+    #
+    #   广播和地铁报站都用同一个办法：在 2~4kHz 加穿透层
+    #   （人声泛音之上，掩蔽最小）。这里加的是"当"的金属光泽，
+    #   音量很轻（不改变音色），但在嘈杂环境里能被听见。
+    #   ⚠️ bandpass(sig, lo, hi) 的签名是 lowpass(highpass(sig, hi), lo) ——
+    #      第一个参数是**低通**系数、第二个是**高通**系数，容易写反。
+    #      alpha ≈ 2πf/sr：2000Hz → 0.57，3500Hz → 1.0
+    pierce = bandpass(noise(n, 733), 1.0, 0.57)
+    pe = env_ad(n, max(1, int(SR * 0.001)), SR * 0.055)
+    ppk = max(1e-9, max(abs(x) for x in pierce))
+    pierce = [x / ppk for x in pierce]
+
     # ★ 2026-11-02：同 cup-slam —— 过 soft_limit 才有"能量体"。
     #   实测这一声原本 92.6% 能量在 300Hz 以下（手机听不到），
     #   且整体 RMS -28.3 太薄、半峰样本只有 2（峰值是一根针）。
     #   已把 bright 提到 0.62/0.40、low 降到 0.72/0.46 做手机频段补偿。
-    return soft_limit(mix(bright, place(imp, 0, n), metal, low))
+    out = mix(bright, place(imp, 0, n), metal, low)
+    # 穿透层只在起音后 80ms 内——再长就变成"嘶"了
+    out = [out[i] + pierce[i] * pe[i] * 1.35 for i in range(n)]
+    return soft_limit(out)
 
 
 def countdown_urgent():
