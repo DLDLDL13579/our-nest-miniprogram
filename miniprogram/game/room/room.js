@@ -3545,7 +3545,13 @@ Page({
       if (this._dead) return
       sfx.play('wheelStart')
       /* 持续咔哒：用 tick 按递减频率排期，模拟"越转越慢" */
-      this.scheduleTicks(2600)
+      /*
+       * ★ 2026-11-02：原来是 2600，而转盘动画 `wheelDur` 是 2700 ——
+       *   咔哒声提前 100ms 就没了。更要紧的是 gap 按 1.075 递增，
+       *   最后一声实际落在 ~2400ms，之后**300ms 完全静默**，
+       *   而画面正在最慢的那一段（视觉上最需要"咔哒"来标记进度）。
+       */
+      this.scheduleTicks(this.data.wheelDur || 2700)
     })
 
     this._wheelTimer = setTimeout(() => {
@@ -3579,6 +3585,13 @@ Page({
       if (i > 60) return          // 上限保护：别排太多定时器
       this._cupTimers.push(setTimeout(() => sfx.play('tick', { pitch: false }), at))
     })
+    /*
+     * ★ 2026-11-02：gap 按 1.075 递增，循环会因为 `t + gap > durationMs`
+     *   提前结束 —— 实测最后一声落在 ~2400ms，离转盘停稳（2700ms）
+     *   还有 300ms 空档，而画面正在最慢的那一段。
+     *   真实的转盘是一路"咔哒"到停的，最后那一声就是指针落定的声音。
+     */
+    this._cupTimers.push(setTimeout(() => sfx.play('tick', { pitch: false }), Math.max(0, durationMs - 40)))
   },
 
   /* ================= 离开 ================= */
