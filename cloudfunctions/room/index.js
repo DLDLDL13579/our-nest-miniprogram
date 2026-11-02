@@ -306,7 +306,7 @@ function cleanData(v) {
  * → 整次写入失败 → 前端只看到「操作失败了，再试一次」。
  * **每一局、每一个房间、第一次叫骰/摇骰/转盘都必然失败**，与网络、配额无关。
  *
- * 真机实测（.tooling/repro-bid.js + probeWrite）：
+ * 真机实测（.tooling/repro-bid.js + probeWrite —— 后者已删，见下方说明）：
  *   turn / turnAt / updatedAt / players 回写 → ok
  *   bid / lastResult / streaks（对象）      → FAIL -502001
  *   bid = null / lastResult = null          → ok（null 不走深度合并）
@@ -1055,7 +1055,7 @@ exports.main = async (event) => {
       return { ok: true, probe: steps, ts: ts }
     }
 
-    /* ================= 字段级写入探测（probeWrite） ================= */
+    /* ================= 字段级写入探测（probeWrite）—— 已于 2026-11-03 删除 ================= */
     /*
      * ★★ 2026-10-29 晚。真实复现（.tooling/repro-bid.js）给出了决定性矛盾：
      *     · selftest 的 add/get/update/remove 全 ok
@@ -1070,57 +1070,20 @@ exports.main = async (event) => {
      * ⚠️ 安全约束：用例是**服务端硬编码**的（不接受前端任意 data），
      *   只能写入上列字段，且只会写进你指定的那个探针房间。
      */
-    if (action === 'probeWrite') {
-      const rid = String(event.probeRoomId || '')
-      if (!rid) return { ok: false, msg: '缺少探针房间' }
-      const cases = [
-        { k: 'zzNum新字段', d: { zzNum: 1 } },
-        { k: 'zzObj新字段', d: { zzObj: { a: 1 } } },
-        /* ★ 对照实验，用来区分三种假设（2026-10-29）：
-           A) 「已存在的字段」写不进去   B) 「值为对象」写不进去   C) 特定字段名有问题 */
-        { k: 'zzObj二次(已存在)', d: { zzObj: { b: 2 } } },
-        { k: 'phase(已存在字符串)', d: { phase: 'playing' } },
-        { k: 'turn', d: { turn: 1 } },
-        { k: 'turnAt', d: { turnAt: ts } },
-        { k: 'bid（对象）', d: { bid: { n: 1, face: 1 } } },
-        { k: 'bid=null', d: { bid: null } },
-        { k: 'lastResult（对象）', d: { lastResult: { winner: 'x' } } },
-        { k: 'lastResult=null', d: { lastResult: null } },
-        { k: 'streaks（空对象）', d: { streaks: {} } },
-        { k: 'streaks=null', d: { streaks: null } },
-        { k: 'zzObjDeep（深一层）', d: { zzObj2: { a: { b: 1 } } } },
-        { k: 'updatedAt', d: { updatedAt: ts } }
-      ]
-      const pick = e => {
-        const raw = String((e && (e.errMsg || e.message)) || '')
-        const opM = raw.match(/FailedOperation\.(\w+)/)
-        return {
-          code: (raw.match(/-\d{2,6}/) || [])[0] || '',
-          op: opM ? opM[1] : '',
-          hint: raw.slice(0, 460)
-        }
-      }
-      const writes = []
-      for (let i = 0; i < cases.length; i++) {
-        const c = cases[i]
-        try {
-          await rooms.doc(rid).update({ data: c.d })
-          writes.push({ k: c.k, ok: true })
-        } catch (e) {
-          writes.push(Object.assign({ k: c.k, ok: false }, pick(e)))
-        }
-      }
-      /* 最后单独测「把真实 players 数组原样写回」（大数组 + 嵌套对象） */
-      try {
-        const rr = await rooms.doc(rid).get()
-        const pl = (rr.data && rr.data.players) || []
-        await rooms.doc(rid).update({ data: { players: pl } })
-        writes.push({ k: 'players回写(' + pl.length + '人)', ok: true })
-      } catch (e) {
-        writes.push(Object.assign({ k: 'players回写', ok: false }, pick(e)))
-      }
-      return { ok: true, writes: writes, ts: ts }
-    }
+    /*
+     * ★★ 2026-11-03 删掉 `probeWrite`（字段级写入探测）。
+     *
+     *   它是 2026-10-29 定位「update 写对象到 null 字段」那个 bug 时的**诊断工具**，
+     *   而它的行为是：**把任意字段写进任意房间**（phase / turn / bid / lastResult…），
+     *   **只检查 `probeRoomId` 非空，没有任何属主校验**。
+     *
+     *   也就是说：任何人只要知道房间的 `_id`（不是 3 位房间号，但也不是秘密），
+     *   就能把一个正在进行中的房间改成任意状态。
+     *
+     *   诊断价值已经用完了（根因写进了 AGENTS.md），**留着是纯风险**。
+     *   历史脚本 `.tooling/repro-bid.js` 保留（它记录了当时的实验设计），
+     *   但已经调不通了 —— 这一点在脚本头部注明。
+     */
 
     /* ================= 建房间 ================= */
     if (action === 'create') {
