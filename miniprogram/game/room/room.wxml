@@ -64,7 +64,21 @@
     喇叭图标一直挂着，像一张贴在舞台上的标签。那 3 秒里没人需要看房间号。
   -->
   <view class="gbar" wx:if="{{stage !== 'countdown'}}">
-    <view class="gbar-l" bindtap="goBack">
+    <!--
+      ★★★ 2026-11-02 真机审核发现：**这里和导航栏的返回箭头重复了**。
+
+      截图里左上角同时有：导航栏的 `<` 和这里的 `‹ 大厅` ——
+      两个返回并排，用户会愣一下"点哪个"。
+
+      但这一块不能直接删：**从分享卡片直达时页面栈只有这一页**，
+      导航栏的返回箭头会消失（或点了没反应），那时这是唯一的出口。
+
+      所以改成"**只在没有上一页时才显示**"：
+        · 从大厅进来（栈里有上一页）→ 导航栏那个就够，这里不显示
+        · 从分享/扫码进来（栈里只有自己）→ 这里显示，作为唯一出口
+      判据在 onLoad 里算好放进 data（noBackStack）。
+    -->
+    <view class="gbar-l" wx:if="{{noBackStack}}" bindtap="goBack">
       <text class="gbar-back">‹</text>
       <text class="gbar-t">大厅</text>
     </view>

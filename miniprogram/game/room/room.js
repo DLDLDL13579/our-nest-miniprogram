@@ -230,6 +230,14 @@ Page({
     rolling: false,      // 摇盅中
     suspense: false,     // 开骰蓄力
     impact: false,       // 屏幕震动
+    /*
+     * ★ 2026-11-02 真机审核：页面栈里有没有上一页。
+     *   false（栈里只有自己，比如从分享卡片直达）→ 显示页面内的「‹ 大厅」，
+     *     因为那时刻导航栏的返回箭头点了没反应。
+     *   true（从大厅 navigateTo 进来）→ **不显示页面内返回**，
+     *     否则会和导航栏的 `<` 并排 —— 截图里就是两个返回键。
+     */
+    noBackStack: false,
     cdText: '',          // 倒计时显示
     /*
      * 每次数字变化 +1 —— 只为了让模板能**交替两个 class**。
@@ -332,6 +340,12 @@ Page({
     /* ★ 必须先初始化定时器数组：摇盅流程里有十几处 _cupTimers.push，
        不初始化的话第一次 push 就是 undefined.push → 页面直接崩。
        这类错误 check.sh 的语法检查发现不了（语法是对的）。 */
+    /* 页面栈深度：只有自己 = 没有可返回的上一页（分享/扫码直达） */
+    try {
+      const stack = getCurrentPages ? getCurrentPages() : []
+      if (stack.length <= 1) this.setData({ noBackStack: true })
+    } catch (e) { /* 拿不到就按"有上一页"处理，少显示一个按钮比多一个好 */ }
+
     this._cupTimers = []
     const w = buildSectors()
 
@@ -1057,6 +1071,16 @@ Page({
      */
     this._cdLeft = total
     this._cdT0 = Date.now()
+    /*
+     * ★ 2026-11-02 真机采样发现：进 countdown 的头 300ms 里 `cdText` 是空的 ——
+     *   画面只有「准备开始」，**大字位置是空的**，看起来像"卡了一下才出数字"。
+     *
+     * 原因：首拍 tick() 里 setData 是异步的，视图要下一帧才拿到 cdText。
+     * 而这段时间正是玩家注意力最集中的时候（刚点了开始）。
+     *
+     * 修：进倒计时**同步设第一个数字**，不等 tick。
+     */
+    this.setData({ cdText: String(Math.max(1, Math.ceil(total / 1000))) })
 
     const tick = () => {
       if (!this.data.room || this.data.room.phase !== 'countdown') return
