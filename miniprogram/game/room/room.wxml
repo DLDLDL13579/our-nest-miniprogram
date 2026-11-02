@@ -549,7 +549,7 @@
         <text class="ln-s">看完了松手盖回去 · 等 {{room.turnName || '别人'}} 叫完就轮到你</text>
       </view>
       <view wx:elif="{{!room.myTurn}}" class="liarnudge wait">
-        <text class="ln-t">等 {{room.turnName || '别人'}} 叫完，就轮到你了</text>
+        <text class="ln-t waitpulse">等 {{room.turnName || '别人'}} 叫完，就轮到你了</text>
         <text class="ln-s">你可以先按住盅，看看自己这局的骰子</text>
       </view>
 
@@ -805,7 +805,7 @@
             信息和动作分离了半屏。"在等谁"和"催谁"本就是一件事。
         -->
         <view wx:if="{{room.uw.waitingCount > 0}}" class="uw-waiting">
-          <text class="uw-waiting-t">还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}</text>
+          <text class="uw-waiting-t waitpulse">还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}</text>
           <!--
             催一下（2026-10-28）：知道在等谁之后，房主还得有个"拍桌子"的手段。
             服务端限流（一轮最多两次、间隔 15 秒）—— 没有它房主会一直点。
@@ -1073,7 +1073,7 @@
           所以补第二行，把"轮到我时的三个选项"先摆在眼前。
         -->
         <view class="pk-wait">
-          <text class="pw-t">等 {{room.turnName}} 决定</text>
+          <text class="pw-t waitpulse">等 {{room.turnName}} 决定</text>
           <text class="pw-s">轮到你时可以：挑一个人比牌 · 换牌 · 弃牌</text>
         </view>
       </block>
