@@ -2857,16 +2857,26 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.strictEqual(zs.countActual(fake, 1, true), 2, '叫 1 时不论斋否都只数真 1')
     ok('★ 斋的计数正确：1 不再当万能')
 
-    /* ⑥ 围骰加一：一盅五颗完全相同 → 该点数算 6 个 */
+    /*
+     * ⑥ 围骰 / 全围（2026-11-02 按调研分级）
+     *
+     * 「围骰」骰盅内含 1 全为一个数 → 加一
+     * 「全围」骰盅全都为一个数       → 加二
+     *
+     * 区别是"这五个相同是靠 1 凑的，还是本来就全是那个数"。
+     */
     const five4 = [{ dice: [4, 4, 4, 4, 4] }]
-    assert.strictEqual(zs.countActual(five4, 4), 6, '★ 五颗 4 叫 4：5 + 围骰 1 = 6')
-    assert.strictEqual(zs.countActual(five4, 4, true), 6, '斋里围骰同样加一')
-    const five1 = [{ dice: [1, 1, 1, 1, 1] }]
-    assert.strictEqual(zs.countActual(five1, 4), 6, '★ 五颗 1 不斋：1 万能 + 围骰 = 6')
-    assert.strictEqual(zs.countActual(five1, 4, true), 0, '★ 斋里五颗 1 不能当 4（也不加一）')
+    assert.strictEqual(zs.countActual(five4, 4), 7, '★ 五颗 4 叫 4：5 + 全围 2 = 7')
+    assert.strictEqual(zs.countActual(five4, 4, true), 7, '★ 斋里全围同样加二')
+
+    const allOnes = [{ dice: [1, 1, 1, 1, 1] }]
+    assert.strictEqual(zs.countActual(allOnes, 4), 6, '★ 五颗 1 叫 4：5 + 围骰 1 = 6')
+    assert.strictEqual(zs.countActual(allOnes, 1), 5, '★ 五颗 1 叫 1：不算围骰，1 只代表自己')
+    assert.strictEqual(zs.countActual(allOnes, 4, true), 0, '★ 斋里五颗 1 不能当 4（也不加一）')
+
     const mixed = [{ dice: [4, 4, 4, 4, 3] }]
-    assert.strictEqual(zs.countActual(mixed, 4), 4, '不是五颗全同，没有围骰加分')
-    ok('★ 围骰加一：一盅五颗全同 → 该点数算 6 个')
+    assert.strictEqual(zs.countActual(mixed, 4), 4, '不是五颗全同，没有加分')
+    ok('★ 围骰 +1 / 全围 +2：五颗全同的两档')
   }
 
   /* ============ ㉑ ★ 比大小：有人掉线不摇，整局会不会卡死 ============ */
