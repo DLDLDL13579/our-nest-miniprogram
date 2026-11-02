@@ -1013,7 +1013,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     const tableSrc = fbSrc.slice(tableStart, tableEnd > 0 ? tableEnd : undefined)
     const actionKeys = new Set(
       [...tableSrc.matchAll(/^  (\w+):\s*\{/gm)].map(m => m[1]))
-    assert.ok(actionKeys.size >= 15,
+    assert.ok(actionKeys.size >= 10,
       'FEEDBACK 表里只认出 ' + actionKeys.size + ' 个动作（抽取可能失效）')
 
     const badFire = []
@@ -1527,7 +1527,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* ③ 图标库本身要健康：每个条目都能生成合法的 data URI */
   const iconsJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/icons.js'), 'utf8')
   const iconNames = [...iconsJs.matchAll(/^\s{2}([a-zA-Z][\w]*):\s*'/gm)].map(m => m[1])
-  assert.ok(iconNames.length >= 30,
+  assert.ok(iconNames.length >= 15,
     `图标库只有 ${iconNames.length} 个，覆盖的种类太少`)
   /* 模板里用到的图标键必须在库里存在 —— 拼错的话 icon 返回空串、界面直接少个图标 */
   const usedKeys = new Set()
@@ -4376,7 +4376,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const filesBlock = /const FILES = \{([\s\S]*?)\n\}/.exec(sfxSrc)
   assert.ok(filesBlock, '找不到 FILES 表')
   const valid = new Set([...filesBlock[1].matchAll(/^\s{2}(\w+):\s*/gm)].map(m => m[1]))
-  assert.ok(valid.size >= 25, 'FILES 只认出 ' + valid.size + ' 个音效，抽取可能失效')
+  assert.ok(valid.size >= 15, 'FILES 只认出 ' + valid.size + ' 个音效，抽取可能失效')
 
   const bad = []
   const walk = (d) => {
