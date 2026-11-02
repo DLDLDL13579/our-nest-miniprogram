@@ -2700,3 +2700,19 @@
    不加 translateZ —— `.gamepage` 是所有弹层的祖先，
    给它建图层会把整棵子树都拖进去，反而更慢。 */
 .gamepage.impact { will-change: transform }
+
+/*
+ * 「比大小」的牌型名（2026-11-02）
+ * 规则从"总点数+豹子"改成 8 种牌型之后，必须把牌型说出来 ——
+ * 否则玩家看到五颗骰子还是只知道一个总点数。
+ */
+.oh-hand {
+  margin-top: 10rpx;
+  font-size: 32rpx; font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 4rpx;
+}
+.rv-hand {
+  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  margin-left: 10rpx; flex: none;
+}

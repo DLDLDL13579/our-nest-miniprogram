@@ -1275,7 +1275,14 @@
         <view class="oh-crown">赢 家</view>
         <view class="oh-name">{{result.winners}}</view>
         <!-- 豹子：比总点数更硬的赢法，必须单独喊出来 -->
+        <!--
+          ★ 2026-11-02 调研后重写了牌型规则（从"总点数+豹子"改成 8 种牌型）。
+            既然有牌型了，界面就必须说出来 —— 否则玩家看到五颗骰子
+            还是只知道一个总点数，等于规则白改。
+        -->
+        <view wx:if="{{result.topHand}}" class="oh-hand">{{result.topHand}}</view>
         <view wx:if="{{result.leopardWin}}" class="oh-badge">豹 子 · 五个 {{result.leopardFace}}</view>
+        <view wx:elif="{{result.handicapWin}}" class="oh-badge">四 条</view>
         <view class="oh-dice">
           <image wx:for="{{result.topDice}}" wx:for-item="d" wx:key="index"
                  src="/game/images/dice/dice-{{d}}.png" class="oh-die" mode="aspectFit"
@@ -1294,6 +1301,7 @@
               class="rv-row {{item.total === result.top ? 'win' : ''}}"
               style="--i:{{ri}}">
           <text class="rv-name">{{item.name}}</text>
+          <text class="rv-hand">{{item.handName}}</text>
           <view class="dicebox mini">
             <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
                    src="/game/images/dice/dice-{{d}}.png" class="die-img" mode="aspectFit" />

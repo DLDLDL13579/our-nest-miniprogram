@@ -658,11 +658,16 @@ module.exports = {
               name: n, seat: i + 1,
               /* 第一个是豹子（五个 6），其余是普通牌 */
               total: i === 0 ? 30 : 26 - i * 7,
+              /* ★ 2026-11-02：牌型系统上线后必须有这两个字段，
+                 否则界面上的「五条 / 两对 / 一对」永远不显示 */
+              hand: i === 0 ? 8 : (i === 1 ? 3 : 2),
+              handName: i === 0 ? '五条' : (i === 1 ? '两对' : '一对'),
               leopard: i === 0,
               dice: i === 0 ? [6, 6, 6, 6, 6]
                 : [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1]
             })),
-            winners: ['邓林'], top: 30, leopardWin: true, leopardFace: 6
+            winners: ['邓林'], top: 30, topHand: '五条', handicapWin: true, handicapFace: 6,
+            leopardWin: true, leopardFace: 6
           }
         }
       })()
