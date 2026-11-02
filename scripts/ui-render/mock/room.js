@@ -464,6 +464,23 @@ module.exports = {
      *
      *   而它是「输的那个人」最常看到的界面（一桌只有一个房主）。
      */
+    /*
+     * ★★ 2026-11-03：**我自己输了**的结算页。
+     *
+     *   所有结算 mock 都是 loser=倩萍 / me=邓林 —— 也就是说
+     *   「别人输」的界面被验了很多次，而**「我输」一次都没有**。
+     *
+     *   而这两者的文案不同：别人输是「倩萍 喝 1 杯」，我输是「你 喝 1 杯」
+     *   （或类似），而"我输了"是最需要"说清楚"的那一刻。
+     */
+    iLostOver: () => {
+      const base = module.exports.states.liarBlowup()
+      const me = (base.room && base.room.players || []).filter(function (p) { return p.isMe })[0]
+      const myName = (me && me.name) || '我'
+      if (base.room && base.room.lastResult) base.room.lastResult.loserName = myName
+      if (base.result) base.result.loserName = myName
+      return base
+    },
     overGuest: () => {
       const base = module.exports.states.liarBlowup()
       if (base.room) {
