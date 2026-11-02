@@ -3723,8 +3723,36 @@ Page({
        */
       this.setData({ wheelText: spin.t, card: spin.card || null })
       /* 抽到"免罚一次"给惊喜反馈，其他给普通确认 */
-      if (spin.k === 'pass') {
-        this._cupTimers.push(setTimeout(() => feedback.fire('luckyHit'), 160))
+      /*
+       * ★★★ 2026-11-02：结果卡片的音效按"这一格有多重"分级。
+       *
+       * 原来只有「免罚一次」有 `luckyHit` —— 而其他六格（真心话/大冒险/
+       * 喝一杯/你喝/我喝/一起喝）**全部静音**。
+       * 也就是说：转盘停下来那声「叮」之后，卡片弹出来是**没有声音的**，
+       * 而那一刻恰恰是全场盯着屏幕的时候。
+       *
+       * 分级依据是"这一格对桌上意味着什么"：
+       *   · 免罚一次 → 惊喜（luckyHit，最高兴的）
+       *   · 一起喝   → 全场参与，最热闹 → 用 `combo1`（上行，像"来"）
+       *   · 你喝/我喝 → 有人要喝 → `diceSettleLast`（落定感，不夸张）
+       *   · 真心话/大冒险/喝一杯 → 中性揭示 → `cardFlip`（纸的轻响，不打断）
+       */
+      /* ⚠️ 这里是 feedback 的**动作名**（不是音效名）——
+         动作名只有这 21 个：diceSettle diceSettleLast cupOpen wheelStop luckyHit
+         penalized countdownTick countdownGo shaker diceIn cupShake cupSlam cupLift
+         diceTable yourTurn becomeHost win uwVote uwReveal pkFlip pkSpread */
+      const WHEEL_SFX = {
+        pass: 'luckyHit',      /* 免罚：最值得高兴的一格 */
+        both: 'cupOpen',       /* 一起喝：全场参与，用最重的一下 */
+        you: 'penalized',      /* 你喝 / 我喝 / 喝一杯：有人要被罚 */
+        me: 'penalized',
+        drink: 'penalized',
+        truth: 'pkFlip',       /* 真心话 / 大冒险：翻牌般的揭示感 */
+        dare: 'pkFlip'
+      }
+      const k = WHEEL_SFX[spin.k]
+      if (k) {
+        this._cupTimers.push(setTimeout(() => feedback.fire(k), 160))
       }
     }, 2700)
   },
