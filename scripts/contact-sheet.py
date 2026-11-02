@@ -1,96 +1,78 @@
 #!/usr/bin/env python3
 """
-把 outputs/ui/ 里某个页面的全部状态拼成一张联系表（contact sheet）。
+contact-sheet.py —— 把所有渲染状态拼成一张联络图，一眼扫异常
 
-为什么需要：逐张打开看太慢，而"整体扫一眼"恰恰能发现
-**单个界面对比不出来**的问题（某个状态的某块内容缺失、某个按钮只在某状态出现）。
-2026-10-28 就是靠它发现 loading 幕的遮罩只铺到 3/4 处。
+================ 为什么要有这个工具 ================
 
-用法：
-    python3 scripts/contact-sheet.py room
-    python3 scripts/contact-sheet.py lobby --cols 3
+单个状态看久了会麻木，而**一屏摆 50 个**的时候，"哪个界面不对劲"会自己跳出来。
+
+================ ⚠️ 曾经踩过的坑（2026-11-02） ================
+
+第一版直接 `glob('outputs/ui/room-*.png')` —— 于是把**旧状态名的残留图片**
+也拼了进去（pk8 / pkAsk / pkDrinks 这些状态早就改名或删了），
+联络图上出现三格"金花状态却是大厅界面"。
+
+我差一点去改渲染器。
+
+**教训：联络图的图源必须和"当前有哪些状态"对齐，而不是"目录里有什么"。**
+现在两种做法都做了：
+  · 只取当前 mock 里存在的状态
+  · 顺手报出目录里多余的图片（提示可以清理）
 """
-import os
-import sys
-import time
 import glob
-from PIL import Image, ImageDraw, ImageFont
+import json
+import os
+import subprocess
+import sys
+
+from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UI = os.path.join(ROOT, 'outputs', 'ui')
+OUT = os.path.join(ROOT, 'outputs', 'ui')
+COLS = 9
+TH_W = 200
 
 
-def pick_font(size):
-    """探测能渲染中文的字体；找不到就抛错（不许静默退化成方块）。"""
-    for path, idxs in [
-        ('/System/Library/Fonts/Hiragino Sans GB.ttc', [0, 1]),
-        ('/System/Library/Fonts/STHeiti Medium.ttc', [0]),
-        ('/Library/Fonts/Arial Unicode.ttf', [0]),
-    ]:
-        if not os.path.exists(path):
-            continue
-        for idx in idxs:
-            try:
-                f = ImageFont.truetype(path, size, index=idx)
-            except Exception:
-                continue
-            if f.getmask('房间').getbbox():
-                return f
-    raise RuntimeError('找不到能渲染中文的字体')
+def current_states():
+    js = 'const m = require("./scripts/ui-render/mock/room.js");' \
+         'console.log(JSON.stringify(Object.keys(m.states)));'
+    r = subprocess.run(['node', '-e', js], cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit('取不到状态列表：' + r.stderr[:200])
+    return json.loads(r.stdout)
 
 
 def main():
-    page = sys.argv[1] if len(sys.argv) > 1 else 'room'
-    cols = 6
-    if '--cols' in sys.argv:
-        cols = int(sys.argv[sys.argv.index('--cols') + 1])
+    states = current_states()
+    have = {os.path.basename(f)[5:-4] for f in glob.glob(os.path.join(OUT, 'room-*.png'))}
+    missing = [s for s in states if s not in have]
+    stale = sorted(have - set(states))
 
-    files = sorted(glob.glob(os.path.join(UI, f'{page}-*.png')))
-    plain = os.path.join(UI, f'{page}.png')
-    if os.path.exists(plain):
-        files.append(plain)
-    if not files:
-        print(f'outputs/ui/ 里没有 {page} 的截图，先跑 render-ui.js')
-        return 1
+    if missing:
+        print('⚠️ 这些状态还没渲染：' + ' '.join(missing))
+        print('  先跑：node scripts/render-ui.js room --state <名字>')
+    if stale:
+        print('ℹ️ 目录里有 %d 张过期图片（旧状态名残留）：%s' % (len(stale), ' '.join(stale)))
 
-    TW = 190
-    PAD, LBL = 8, 18
-    thumbs = []
-    for f in files:
-        im = Image.open(f).convert('RGB')
-        # 只取顶部一段：页面通常很长，缩略图不需要全部
-        im = im.crop((0, 0, im.width, min(im.height, int(im.width * 1.9))))
-        k = TW / im.width
-        im = im.resize((TW, max(1, int(im.height * k))), Image.LANCZOS)
-        name = os.path.basename(f).replace(f'{page}-', '').replace('.png', '') or 'default'
-        # ⚠️ 这个目录里可能躺着**历史遗留的旧截图**（比如某次改版前的状态），
-        # glob 会把它们一起拼进来 —— 2026-10-28 我差点把一张过期的空白图
-        # 当成"大厅 dice 状态的 bug"。
-        # 超过 1 小时的文件在标签上标记出来，避免看过期图下结论。
-        age_h = (time.time() - os.path.getmtime(f)) / 3600
-        if age_h > 1:
-            name = '⏰' + name
-        thumbs.append((name, im))
+    use = [s for s in states if s in have]
+    if not use:
+        raise SystemExit('没有可用的图片')
 
-    rows = (len(thumbs) + cols - 1) // cols
-    th = max(t[1].height for t in thumbs)
-    W = cols * (TW + PAD) + PAD
-    H = rows * (th + LBL + PAD) + PAD
-    sheet = Image.new('RGB', (W, H), (18, 14, 12))
-    d = ImageDraw.Draw(sheet)
-    font = pick_font(13)
+    imgs = []
+    for s in use:
+        im = Image.open(os.path.join(OUT, 'room-%s.png' % s)).convert('RGB')
+        ratio = TH_W / im.width
+        imgs.append((s, im.resize((TH_W, int(im.height * ratio)))))
 
-    for i, (name, im) in enumerate(thumbs):
-        c, r = i % cols, i // cols
-        x = PAD + c * (TW + PAD)
-        y = PAD + r * (th + LBL + PAD)
-        d.text((x, y), name[:16], font=font, fill=(230, 200, 150))
-        sheet.paste(im, (x, y + LBL))
-
-    out = os.path.join(UI, f'sheet-{page}.png')
-    sheet.save(out, 'PNG', optimize=True)
-    print(f'✓ {out}  {W}x{H}  {len(thumbs)} 个状态')
-    return 0
+    th_h = imgs[0][1].height
+    rows = (len(imgs) + COLS - 1) // COLS
+    sheet = Image.new('RGB', (COLS * TH_W, rows * th_h), (20, 20, 20))
+    for i, (_, im) in enumerate(imgs):
+        sheet.paste(im, ((i % COLS) * TH_W, (i // COLS) * th_h))
+    dst = os.path.join(OUT, 'contact-sheet.png')
+    sheet.save(dst, quality=88)
+    print('%d 个状态 → %s  %dx%d' % (len(imgs), dst, sheet.width, sheet.height))
+    print('顺序：' + ' '.join(s for s, _ in imgs))
 
 
 if __name__ == '__main__':
