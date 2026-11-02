@@ -62,7 +62,18 @@ function rule(selector) {
    *   断言直接崩在"读不到 rpx 值"，看起来像"改坏了布局"，
    *   实际上只是解析器不认注释。值是对的，尺子是坏的。
    */
-  const css = fs.readFileSync(WXSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  let css = fs.readFileSync(WXSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+  /*
+   * ★★ 2026-11-02：**先剥掉 @media 块**再看规则。
+   *
+   *   加了小屏适配之后，`.cs-cup` 在 `@media (max-height: 1200rpx)` 里
+   *   又出现了一次（只改 width/height）。而 `rule()` 取"最后一个匹配"——
+   *   于是拿到的是媒体查询里那份，`bottom` 读不到，报「盅 bottom 读不到 rpx 值」。
+   *
+   *   而这套几何验的是**默认尺寸下**的偷看边界，媒体查询是另一套约束
+   *   （小屏时盅按比例缩小，边界要另算）。所以这里只取基础规则。
+   */
+  css = css.replace(/@media[^{]*\{(?:[^{}]|\{[^}]*\})*\}/g, '')
   /* 取最后一个匹配 —— 后面的规则会覆盖前面的 */
   const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\}', 'g')
   let m, last = null
