@@ -2881,3 +2881,6 @@
  * 这里只给一个极轻的压下感，让手指知道"按住了"（抬起由 js 控制）。
  */
 .cs-cup:active { transform: scale(.995) }
+
+/* 转盘中心的「转」可点（2026-11-02）—— 它看起来就是按钮，不能是死的 */
+.ws-hub:active { transform: scale(.94); filter: brightness(1.06) }

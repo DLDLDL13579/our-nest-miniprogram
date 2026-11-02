@@ -1119,7 +1119,16 @@
                 class="ws-lbl {{item.small ? 'small' : ''}}"
                 style="left:{{item.lx}}%; top:{{item.ly}}%;">{{item.t}}</view>
         </view>
-        <view class="ws-hub">转</view>
+        <!--
+          ★ 2026-11-02：这个「转」原来是**纯装饰**（没有 bindtap），
+            而它长在转盘正中心——用户的本能就是点它。
+            点了完全没反应，然后会去问"转盘怎么转不动"。
+
+            真正的按钮在下面（大按钮「转」），但**看得见的那个不能是死的**。
+            这里直接绑同一个动作：点中心和点大按钮效果一样。
+            `.ws-hub` 直径约 100rpx（50px），够得上触控最小尺寸。
+        -->
+        <view class="ws-hub" bindtap="doSpin">转</view>
       </view>
 
       <view class="ws-result">{{wheelText}}</view>
