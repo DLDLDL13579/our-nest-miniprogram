@@ -4815,3 +4815,35 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 大厅小屏紧凑模式完整（判据/类/样式/mock 四处都在）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**页面必须能滚动**（小屏上按钮可能在首屏外）
+ *
+ * 小屏（iPhone SE 504pt）上，大话骰 playing 阶段的「开 / 劈」可能在首屏外 ——
+ * 而 `min-height: 100vh` + 没有 `overflow: hidden` 时，**玩家能往上滑看到它**。
+ *
+ * 一旦有人在 `.gamepage` 上加 `overflow: hidden`（很常见的"防止横向滚动"写法），
+ * 页面就再也不能滚 —— 而那**不会报错**，只是按钮永远点不到。
+ * ========================================================================== */
+{
+  const wxss = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+  const m = /\.gamepage\s*\{([\s\S]*?)\}/.exec(wxss)
+  assert.ok(m, '找不到 .gamepage 的定义')
+  const body = m[1]
+
+  assert.ok(/min-height:\s*100vh/.test(body),
+    '.gamepage 要 min-height: 100vh（内容多时能撑开、页面能滚）')
+  assert.ok(!/overflow\s*:\s*hidden/.test(body),
+    '★ .gamepage 不许 overflow: hidden —— 那会让小屏上首屏外的按钮永远点不到')
+
+  /* 顺带：小屏紧凑规则必须存在且比正常态小 */
+  assert.ok(/\.gamepage\.compact\s+\.cupscene\s*\{\s*height:\s*(\d+)rpx/.test(wxss),
+    '要有 .gamepage.compact .cupscene 的紧凑高度')
+  const compactH = Number(/\.gamepage\.compact\s+\.cupscene\s*\{\s*height:\s*(\d+)rpx/.exec(wxss)[1])
+  assert.ok(compactH <= 300,
+    '紧凑态骰盅高度应 ≤300rpx（实际 ' + compactH + 'rpx）——' +
+    '再大就会把「开 / 劈」挤出首屏')
+
+  ok('★ 页面可滚动（min-height:100vh / 无 overflow:hidden），紧凑骰盅 ' + compactH + 'rpx')
+}

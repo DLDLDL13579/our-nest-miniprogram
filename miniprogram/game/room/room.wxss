@@ -3083,8 +3083,27 @@
    现在的做法：`onLoad` 里读 `windowHeight`，≤600 时给 `.gamepage.compact`。
    渲染器读 mock 的 data 就能验（mock 里给 `compact: true`）。
    ============================================================ */
-.gamepage.compact .cupscene { height: 430rpx; margin-bottom: 16rpx }
-.gamepage.compact .cs-cup { width: 277rpx; height: 430rpx }
+/*
+ * ★★ 2026-11-03：430rpx 还是太大 —— 在 504pt 的屏上占 43%，
+ *   「叫一个」的选项和「开 / 劈」按钮**依然被挤到屏幕外**。
+ *
+ *   而叫骰是每局十几次的动作，**按钮看不到 = 这个玩法在小屏上不能玩**。
+ *
+ *   缩到 340rpx（34%）。骰盅会小一点，但"偷看自己的骰子"仍然看得清
+ *   （骰子是 5 颗 44rpx 的图，只是场景高度变了，骰子本身没缩）。
+ */
+.gamepage.compact .cupscene { height: 280rpx; margin-bottom: 10rpx }
+.gamepage.compact .cs-cup { width: 180rpx; height: 280rpx }
+.gamepage.compact .cs-die-scene { width: 44rpx; height: 44rpx }
+/*
+ * ★★ 2026-11-03：小屏上把这两行收掉，给「开 / 劈」腾位置。
+ *
+ *   「已扣盅，等其他人摇完」—— **骰盅的状态自明**（它就在那儿）；
+ *   而「开 / 劈」是每局要点的按钮，**看不到就等于玩法不能玩**。
+ *
+ *   优先级很清楚：**能操作 > 有说明**。
+ */
+.gamepage.compact .cs-hint { display: none }
 .gamepage.compact .cs-die-scene { width: 52rpx; height: 52rpx }
 
 /* 金花操作页：小屏上「换底牌/换手牌/弃牌」会被挤出屏幕，牌区收 13% */
