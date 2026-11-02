@@ -366,7 +366,8 @@
   /* 数字用 Bebas（失败自动回退系统字体） */
   font-family: 'BebasNum', -apple-system, sans-serif; font-size: 44rpx; font-weight: 700; color: #F6E7C3; margin-top: 6rpx; letter-spacing: 2rpx }
 .bid-val.hint { font-size: 27rpx; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
-.bid-by { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
+/* 「倩萍 叫的 · 被阿杰劈了」—— 这条是桌上对话的锚点，不能小 */
+.bid-by { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
 
 
 /* ---------- 骰子（结算页用，游戏中的骰子见 .cs-die）---------- */
@@ -660,10 +661,16 @@
 .oc-cup { width: 84rpx; height: 130rpx; opacity: .55; transition: opacity .3s ease }
 .oc-cup.done { opacity: 1 }
 .oc-name {
-  font-size: 21rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
+  /*
+   * ★ 2026-11-02「线下面对面」：这一排是「谁摇了、还差谁」——
+   *   桌上会互相问"你摇了没"，靠的就是这几个名字。
+   *   21rpx（10.5px）隔着一张桌子读不出来，提到 24rpx（12px）。
+   */
+  font-size: 24rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
   max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
-.oc-stat { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
+/* 同理：这一行是"已摇 / 还没摇"，是牌桌上最常被念出来的状态 */
+.oc-stat { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
 /* 已摇的人用金色标出来 —— 一眼扫过去就知道还差谁 */
 .oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
 
