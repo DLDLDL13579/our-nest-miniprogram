@@ -442,6 +442,20 @@ module.exports = {
     }),
 
     /* 大话骰开盅结算：命中高亮的预览 */
+    /* ★ 2026-11-03：12 字名字（上限）+ 44rpx 大字的「喝 1 杯」——
+       17 个字 × 44rpx = 748rpx，超过 686rpx 内容区，会换行。
+       这个状态用来确认换行后不会把底部按钮挤出屏幕。 */
+    longNameOver: () => {
+      const base = module.exports.states.liarBlowup()
+      const longName = '一二三四五六七八九十甲乙'
+      const lr = base.room && base.room.lastResult
+      if (lr) lr.loserName = longName
+      if (base.result) base.result.loserName = longName
+      if (base.room && base.room.players) {
+        base.room.players[0].name = longName
+      }
+      return base
+    },
     liarOver: () => ({
       stage: 'over',
       nightRound: 3,

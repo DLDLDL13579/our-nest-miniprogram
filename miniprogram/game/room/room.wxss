@@ -1152,9 +1152,25 @@
   100% { transform: translateY(0) scale(1); opacity: 1 }
 }
 .loserbox.flash { animation: penaltyIn .36s cubic-bezier(.34, 1.2, .64, 1) both }
+/*
+ * 「喝 1 杯」永远作为一个整体，不参与断行。
+ * 而名字自己**可以断**（12 字上限 + 44rpx 时一定会超一行）。
+ */
+.lb-what { white-space: nowrap }
+.lb-name { min-width: 0; word-break: break-word }
 
 .loserbox {
   margin: 30rpx 0 26rpx;
+  /*
+   * ★ 2026-11-03：名字和「喝 1 杯」分别成段，名字太长时整体换行。
+   *   加 `flex-wrap` 后：短名字一行显示（"倩萍 喝 1 杯"），
+   *   长名字则「名字」一行、「喝 1 杯」一行 —— 而不是把「杯」拆出去。
+   */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0 10rpx;
   /*
    * ★★★ 2026-11-02 用户提醒「参与人员都在线下面对面」。
    *   那结算页最重要的信息是「谁喝一杯」——**全桌都要看见**。

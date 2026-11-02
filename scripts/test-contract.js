@@ -4678,3 +4678,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '\n    （这三个前缀都只有一个来源，可以直接查）')
   ok('★ 模板里 ' + totalFields + ' 个 result./poker./uw. 字段都有人产出')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**「喝 1 杯」不能被拆开**
+ *
+ * 12 字名字（上限）+ 「喝 1 杯」在 44rpx 下有 748rpx，超过 686rpx 内容区。
+ * 原来它们在一个文本节点里，于是断成「…喝 1」+「杯」——「杯」单独一行很难看。
+ *
+ * 改成两个 `<text>` + `flex-wrap`：短名字一行，长名字则「名字」一行、「动作」一行。
+ * 而「喝 1 杯」自己必须 `white-space: nowrap`（它内部也不许断）。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const wxss = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+
+  /* 模板里名字和动作必须分成两个节点 */
+  assert.ok(/<text class="lb-name">\{\{result\.loserName\}\}<\/text>/.test(wxml),
+    '「谁喝」的名字应该单独一个 <text>（否则长名字会把「喝 1 杯」拆开）')
+  assert.ok(/<text class="lb-what">喝 1 杯<\/text>/.test(wxml),
+    '「喝 1 杯」应该单独一个 <text>')
+
+  /* 动作不许断，容器要能整体换行 */
+  assert.ok(/\.lb-what\s*\{\s*white-space:\s*nowrap/.test(wxss),
+    '.lb-what 必须 white-space: nowrap（「喝 1 杯」内部不许断）')
+  assert.ok(/\.loserbox\s*\{[\s\S]{0,300}?flex-wrap:\s*wrap/.test(wxss),
+    '.loserbox 必须 flex-wrap: wrap（长名字时让两段整体换行）')
+
+  ok('★ 长名字时「喝 1 杯」整体换行，不会被拆成「杯」单独一行')
+}
