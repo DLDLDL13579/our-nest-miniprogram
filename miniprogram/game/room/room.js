@@ -3596,6 +3596,12 @@ Page({
   toggleMute() {
     const m = sfx.setMuted(!this.data.muted)
     this.setData({ muted: m })
+    /*
+     * ★ 2026-11-02：取消静音时给一声，让用户当场听到"确实有声音了"。
+     *   和 me 页的 toggleMute 保持一致 —— 两处行为不同会让人以为其中一个坏了。
+     *   （切到静音那边不可能响，就静着。）
+     */
+    if (!m) sfx.play('tick')
   },
 
   goBack() {

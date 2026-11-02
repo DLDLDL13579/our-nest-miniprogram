@@ -309,12 +309,21 @@ Page({
   toggleMotion() {
     const v = haptic.setReduceMotion(!this.data.reduceMotion)
     this.setData({ reduceMotion: v })
+    /*
+     * ★ 2026-11-02 真机审核：**这个开关原来点了完全没反馈** ——
+     *   既没声音也没震动（减少动效本来就不该震）。
+     *   用户点完不知道"到底切过去了没有"，只能靠开关自己动了一下。
+     *   声音反馈在这里不影响它要表达的东西（动效开关不控制声音）。
+     */
+    sfx.play(v ? 'toggleOn' : 'toggleOff')
   },
 
   toggleHaptic() {
     const h = haptic.setHapticOn(!this.data.hapticOn)
     this.setData({ hapticOn: h })
     if (h) haptic.vibrate('light')
+    /* 关掉震动时**必须**有声音，否则用户听不到也觉不到，像是没点上 */
+    sfx.play(h ? 'toggleOn' : 'toggleOff')
   },
 
   /* ⚠️ 这里原来有个 `goLobby()`（switchTab 到大厅）—— tabBar 已经有入口，

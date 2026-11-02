@@ -245,6 +245,15 @@ Page({
   toggleHaptic() {
     const h = haptic.setHapticOn(!this.data.hapticOn)
     this.setData({ hapticOn: h })
+    /*
+     * ★ 2026-11-02：三处 toggleHaptic 原来行为各不相同 ——
+     *   大厅：什么都不做（点了完全没反应）
+     *   我的：只震（打开时）
+     *   现在统一成"震动 + 声音"，和「我的」页一致。
+     *   同一个开关在不同页面上手感不同，用户会以为其中一个坏了。
+     */
+    if (h) haptic.vibrate('light')
+    sfx.play(h ? 'toggleOn' : 'toggleOff')
   },
 
   /* ---------- 进房 ---------- */
