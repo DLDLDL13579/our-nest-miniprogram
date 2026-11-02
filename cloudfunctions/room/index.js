@@ -2196,14 +2196,35 @@ exports.main = async (event) => {
            *   于是"是不是自定义题"这个标记会随机错。
            *   这类 bug 不报错、只是偶尔标错，极难发现。
            */
-          const pick = Math.floor(Math.random() * pool.length)
+          /*
+           * ★★ 2026-11-03：**优先抽没抽过的题**。
+           *
+           *   原来纯随机 —— 而「真心话」占转盘的 22%，一局转十次左右，
+           *   一个场合只有 25 条真心话：**抽 10 次，重复的概率约 87%**
+           *   （生日悖论）。酒桌上"诶这个刚才不是说过了"是很扫兴的一句。
+           *
+           *   做法：房间数据里记 `usedCards`（最多 40 条），抽的时候先排除它们。
+           *   全抽过了就**清空重来** —— 题库就那么大，转 40 次以上必然循环，
+           *   那时候"再抽到一次"玩家是能理解的。
+           *
+           *   ⚠️ 只记**文本**不记下标：自定义题会插进 pool，下标会错位。
+           */
+          const used = Array.isArray(room.usedCards) ? room.usedCards : []
+          const fresh = pool.filter(t => used.indexOf(t) < 0)
+          const src = fresh.length ? fresh : pool
+          const pick = Math.floor(Math.random() * src.length)
           card = {
             deck: deck.k,
             deckName: deck.name,
             type: sec.k,
-            text: pool[pick],
-            /* 标记来源：自定义题在界面上有个小标记，让加的人有反馈 */
-            custom: pick >= builtin.length
+            text: src[pick],
+            /*
+             * ★ 2026-11-03：这里原来是 `pick >= builtin.length` —— 而 `pick`
+             *   改成 `src` 的下标之后，**那个比较就错了**（src 可能是过滤后的数组，
+             *   下标和包内位置不再对应）。改成直接问"这条文本是不是自定义题"，
+             *   不再依赖下标。
+             */
+            custom: custom.indexOf(src[pick]) >= 0
           }
         }
       }
@@ -2218,8 +2239,19 @@ exports.main = async (event) => {
         at: ts
       }
 
+      /*
+       * 记录「这一局已经抽过的题」（2026-11-03）。
+       * 上限 40 条：一个场合 25 条真心话 + 25 条大冒险，40 条足以覆盖
+       * 一整局的所有抽题；超过就清空重来（题库就那么大，玩家能理解）。
+       */
+      let usedCards = Array.isArray(room.usedCards) ? room.usedCards.slice() : []
+      if (card && card.text && usedCards.indexOf(card.text) < 0) {
+        usedCards.push(card.text)
+        if (usedCards.length > 40) usedCards = usedCards.slice(-40)
+      }
+
       await dbCall('spin.update', () => rooms.doc(room._id).update({
-        data: { spin: spin, lastResult: null, updatedAt: ts }
+        data: { spin: spin, lastResult: null, usedCards: usedCards, updatedAt: ts }
       }))
       const rr = await dbCall('spin.reload', () => rooms.doc(room._id).get())
       return { ok: true, room: shape(rr.data, OPENID), spin: spin }

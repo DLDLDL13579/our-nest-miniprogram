@@ -13,6 +13,8 @@
  *
  * 所以把这次核对固化成脚本：以后改规则，跑这个就知道有没有违背文档。
  */
+const fs = require('fs')
+const path = require('path')
 const assert = require('assert')
 
 const liar = require('../miniprogram/utils/liarRules.js')
@@ -170,3 +172,30 @@ console.log('\n【规则文案】')
 }
 
 console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
+
+/* ============================================================================
+ * 2026-11-03 追加：**转盘抽题必须优先抽没抽过的**
+ *
+ * 「真心话」占转盘 22%，一个场合只有 25 条真心话 ——
+ * 一局转十次左右，纯随机抽 10 次：**重复的概率约 87%**（生日悖论）。
+ * 而"诶这个刚才不是说过了"是酒桌上很扫兴的一句。
+ *
+ * 判据：从云端源码里确认 `usedCards` 的读写都在，且抽题时用了"新鲜优先"。
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(
+    path.join(__dirname, '..', 'cloudfunctions/room/index.js'), 'utf8')
+
+  assert.ok(/const used = Array\.isArray\(room\.usedCards\)/.test(cloud),
+    '抽题时必须先读 room.usedCards')
+  assert.ok(/const fresh = pool\.filter\(t => used\.indexOf\(t\) < 0\)/.test(cloud),
+    '抽题时必须先排除抽过的')
+  assert.ok(/const src = fresh\.length \? fresh : pool/.test(cloud),
+    '全抽过了必须回退到完整题池（否则 pool[fresh] 会 empty 崩）')
+  assert.ok(/usedCards\.push\(card\.text\)/.test(cloud),
+    '抽中之后必须记进 usedCards')
+  assert.ok(/usedCards\.length > 40/.test(cloud),
+    'usedCards 必须有上限（否则房间文档会无限长）')
+
+  console.log('  ✓ 转盘抽题优先新鲜（usedCards 读写 + 上限都在）')
+}
