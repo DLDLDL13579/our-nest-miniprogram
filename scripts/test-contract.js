@@ -5024,3 +5024,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   ok('★ 转盘转动全有声音（启动音 + 递减咔哒，覆盖 ' +
      'wheelDur 全程）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**撒花的片数**
+ *
+ * 20 片 12rpx 宽的纸片散在 750rpx 的屏上，视觉上只是稀疏的几点 ——
+ * 而这是"赢了"的庆祝。提到 36 片。
+ *
+ * ⚠️ 这个数**没法用截图验证**：`cfFall` 动画从 `top: -30rpx` 开始，
+ *   静态渲染截到的是起始帧（纸片还在屏幕外）。
+ *   所以只能锁"数量"，效果靠真机看。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const m = /for \(let i = 0; i < (\d+); i\+\+\) list\.push\(i\)/.exec(src)
+  assert.ok(m, '找不到 celebrate() 里生成撒花的循环')
+  const n = Number(m[1])
+  assert.ok(n >= 30, '撒花只有 ' + n + ' 片，太稀疏（20 片在 750rpx 屏上只是几点）')
+  assert.ok(n <= 45, '撒花 ' + n + ' 片偏多 —— 低端机上 50 个 translate3d+rotate 开始掉帧')
+
+  /* 配色变体数（cf-0..cf-4）也要够，否则 36 片只有 5 种颜色会很单调 */
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  assert.ok(/cf cf-\{\{item % 5\}\}/.test(wxml), '撒花的颜色变体应该按 % 5 循环')
+
+  ok('★ 撒花 ' + n + ' 片 × 5 种颜色（数量在 30~45 之间）')
+}

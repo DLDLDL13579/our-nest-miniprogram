@@ -737,7 +737,7 @@ module.exports = {
       const base = (function () {
         const names = ['邓林', '倩萍', '老王']
         return {
-          confetti: Array.from({ length: 20 }, (_, i) => i),
+          confetti: Array.from({ length: 36 }, (_, i) => i),
           result: {
             /*
              * ★★ 2026-11-03：排名也改成用真实的 `rankPlayers` 算。

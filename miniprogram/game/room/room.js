@@ -1357,7 +1357,16 @@ Page({
   celebrate() {
     if (this._dead) return
     const list = []
-    for (let i = 0; i < 20; i++) list.push(i)
+    /*
+     * ★ 2026-11-03：**20 → 36 片**。
+     *
+     *   20 片 12rpx 宽的纸片散在 750rpx 的屏上，视觉上是很稀疏的几点 ——
+     *   而这是"赢了"的庆祝，该有分量。
+     *
+     *   36 片是权衡后的数：再多人眼也来不及分辨，而 CSS 动画的节点数会线性增加
+     *   （低端机上 36 个 translate3d + rotate 是安全的，50 个开始有风险）。
+     */
+    for (let i = 0; i < 36; i++) list.push(i)
     this.setData({ confetti: list })
     clearTimeout(this._cfTimer)
     this._cfTimer = setTimeout(() => {
