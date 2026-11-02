@@ -4749,6 +4749,9 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
   const names = [...games.matchAll(/^\s{4}name: '([^']+)'/gm)].map(m => m[1])
   assert.ok(names.length >= 5, '只认出 ' + names.length + ' 个玩法名')
+  /* ★ 2026-11-03：描述也算"注册表的事实"，同样不许别处硬编码 */
+  const descs = [...games.matchAll(/^\s{4}desc: '([^']+)'/gm)].map(m => m[1])
+  assert.ok(descs.length >= 5, '只认出 ' + descs.length + ' 个描述')
 
   const bad = []
   const walk = (d) => {
@@ -4764,7 +4767,13 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         .replace(/<!--[\s\S]*?-->/g, '')
       names.forEach(n => {
         if (src.includes("'" + n + "'") || src.includes('"' + n + '"')) {
-          bad.push(path.relative(ROOT, p) + '：硬编码了「' + n + '」')
+          bad.push(path.relative(ROOT, p) + '：硬编码了玩法名「' + n + '」')
+        }
+      })
+      /* 描述（>6 字才算，太短的可能是巧合） */
+      descs.forEach(d => {
+        if (d.length > 6 && src.includes(d)) {
+          bad.push(path.relative(ROOT, p) + '：硬编码了描述「' + d.slice(0, 12) + '…」')
         }
       })
     })
@@ -4773,7 +4782,7 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   assert.deepStrictEqual(bad, [],
     '玩法名硬编码在别处（改注册表时不会跟着变）：\n    ' + bad.join('\n    '))
-  ok('★ ' + names.length + ' 个玩法名都只来自注册表（没有硬编码）')
+  ok('★ ' + names.length + ' 个玩法名 / ' + descs.length + ' 条描述都只来自注册表')
 }
 
 /* ============================================================================
