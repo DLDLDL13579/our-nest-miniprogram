@@ -387,3 +387,46 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   assert.deepStrictEqual(bad, [], 'mock 的派生字段和来源对不上：\n    ' + bad.join('\n    '))
   console.log('  ✓ 派生字段一致（count=players / shortBy=min-count / diceCount=dice）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**金花的 aliveCount / out / winner 必须自洽**
+ *
+ * 查出来四处矛盾：`aliveCount: 1` 说只剩一个人，而 `players` 里三个人全活着；
+ * `result.hands[].out` 是对的，`players[].out` 却是全 false —— **同一页面两套数据**。
+ *
+ * 表现：结算页说「邓林 赢」，而列表里三个人都是"活着"的样子。
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s.room || {}
+    const ps = r.players || []
+    const pk = r.poker || {}
+    if (!ps.length) return
+
+    /* aliveCount 必须等于未出局人数 */
+    if (pk.aliveCount != null) {
+      const want = ps.filter(p => !p.out).length
+      if (pk.aliveCount !== want) {
+        bad.push(k + '：aliveCount=' + pk.aliveCount + ' 但未出局 ' + want + ' 人')
+      }
+    }
+    /* winner 不能是已出局的人 */
+    if (pk.winner) {
+      const w = ps.filter(p => p.name === pk.winner)[0]
+      if (w && w.out) bad.push(k + '：winner=' + pk.winner + ' 但该玩家 out=true')
+    }
+    /* result.hands 的 out 必须和 players 一致 */
+    const hands = (r.lastResult && r.lastResult.kind === 'poker' && r.lastResult.hands) || []
+    hands.forEach(h => {
+      const p = ps.filter(x => x.name === h.name)[0]
+      if (p && h.out != null && p.out != null && h.out !== p.out) {
+        bad.push(k + '/' + h.name + '：hands.out=' + h.out + ' 但 players.out=' + p.out)
+      }
+    })
+  })
+  assert.deepStrictEqual(bad, [], '金花状态自相矛盾：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 金花的 aliveCount / winner / out 三处一致')
+}

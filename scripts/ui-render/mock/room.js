@@ -965,11 +965,20 @@ module.exports = {
       stage: 'playing',
       showCards: false,
       room: pkRoom({
+          players: [
+            { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, out: false },
+            { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, out: false },
+            { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, out: true }
+          ],
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
         poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
+          /*
+           * ★ 2026-11-03：`aliveCount` 说 2 人活着，而 `players` 用的是默认值
+           *   （三个人全 out:false）—— 补一个出局的，两处才对得上。
+           */
           folded: false, aliveCount: 2, myDrink: 1, log: [],
           last: {
             kind: 'vs', by: '倩萍', target: '阿杰',
@@ -1022,6 +1031,17 @@ module.exports = {
               cardsText: ['♣Q', '♠7', '♥5'] }
           ]
         },
+        /*
+         * ★★ 2026-11-03：**显式给 players 的 out 标记**。
+         *   原来 `pkOver` 没写 `players`，用的是默认值（三个人全 out:false）——
+         *   而有 `result.hands[].out` 是对的（倩萍、阿杰已出局），
+         *   于是同一页里两套 out 不一致：`aliveCount: 1` 说只剩邓林，列表里三个人都活着。
+         */
+        players: [
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, out: false },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, out: true },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, out: true }
+        ],
         poker: { drinks: [], 
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
