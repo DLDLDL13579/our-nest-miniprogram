@@ -701,7 +701,7 @@
       <view wx:if="{{room.canReroll}}" class="btn ghostb rerollbtn" bindtap="doReroll">
         {{rerolling ? '重摇中…' : '这是单骰，重摇一次'}}
       </view>
-      <view wx:if="{{room.canReroll}}" class="rerollhint">五颗都不一样，换一副再比</view>
+      <view wx:if="{{room.canReroll}}" class="rerollhint">5 颗都不一样，换一副再比</view>
       <!--
         等别人的时候，明确说是**谁**还没摇 —— 不然就是干等。
         房主可以「催一下」（2026-10-30）：原来只有卧底投票能催，
@@ -1224,7 +1224,7 @@
     <view wx:if="{{room.game === 'undercover' && room.uw.reveal}}" class="uw-reveal">
       <view class="uw-rt">{{result.winner === 'spy' ? '卧底赢了' : '好人赢了'}}</view>
       <!-- 两轮都平票：没人被投出去，卧底拖着就赢了（规则说清楚，不然像是 bug） -->
-      <view wx:if="{{result.tieDeadlock}}" class="uw-dead">两轮投票都平票，一个人都没投出去 —— 卧底拖赢了</view>
+      <view wx:if="{{result.tieDeadlock}}" class="uw-dead">2 轮投票都平票，一个人都没投出去 —— 卧底拖赢了</view>
       <view class="uw-rw">
         <text>好人词「{{result.civilianWord}}」</text>
         <text class="uw-rvs">卧底词「{{result.spyWord}}」</text>
