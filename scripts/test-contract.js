@@ -3895,3 +3895,35 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些方法定义了但没有任何地方调用：\n    ' + dead.join('\n    '))
   ok('★ 房间页 ' + (methods.length - LIFECYCLE.size) + ' 个方法都有调用点（无死代码）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**用户可见的文案里不能有 Markdown 语法**
+ *
+ * wxml 不渲染 Markdown —— 文案里写 `**加粗**` 会原样显示成两个星号。
+ * 这个问题在**注释里**完全正常（我在注释里大量用 `**` 强调），
+ * 所以判据必须**先剥注释**再看字符串字面量。
+ * ========================================================================== */
+{
+  const bad = []
+  const walk3 = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk3(p)
+      if (!/\.(js|wxml)$/.test(f)) return
+      let src = fs.readFileSync(p, 'utf8')
+      src = src.replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '')
+      ;[...src.matchAll(/'([^']*)'/g)].forEach(m => {
+        if (/\*\*|__[^_]/.test(m[1])) {
+          bad.push(path.relative(ROOT, p) + '：' + m[1].slice(0, 40))
+        }
+      })
+    })
+  }
+  walk3(path.join(ROOT, 'miniprogram'))
+  assert.deepStrictEqual(bad, [],
+    '用户文案里出现了 Markdown 语法（小程序不渲染）：\n    ' + bad.join('\n    '))
+  ok('★ 用户文案里没有 Markdown 语法（注释里的不算）')
+}

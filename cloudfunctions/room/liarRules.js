@@ -100,15 +100,29 @@ function canRaise(cur, next, playerCount) {
     return { ok: false, why: '只能往上叫（数量变大，或数量同、点数大）' }
   }
 
-  /* ---------- 不斋 → 斋：可以同数量 ---------- */
+  /* ---------- 不斋 → 斋：**数量可以减半** ---------- */
   if (!curZhai && nextZhai) {
+    /*
+     * ★★ 2026-11-03：补上"减半"这一半。
+     *
+     *   斋的 1 不再万能，所以同样叫法的达成难度**变高了** ——
+     *   于是酒桌上的通行做法是：不斋 6个4 → 斋 **3个4**（数量减半）。
+     *
+     *   原实现只允许"同数量或更多"，等于把这条最常见的选择堵死了；
+     *   而反方向的"斋 → 不斋要加倍"是实现了的 —— **只有一半**。
+     *
+     *   规则文案里写的也是「斋要改回不斋，数量得加倍」，
+     *   反过来的减半是它的自然推论。
+     */
+    const half = Math.ceil(cur.n / 2)
     if (next.n > cur.n) return { ok: true, why: '' }
     if (next.n === cur.n) {
       return next.face >= cur.face
         ? { ok: true, why: '' }
         : { ok: false, why: '改叫斋时点数不能降低' }
     }
-    return { ok: false, why: '改叫斋时数量不能减少' }
+    if (next.n >= half) return { ok: true, why: '' }
+    return { ok: false, why: '改叫斋时最少要 ' + half + ' 个（原叫法的一半）' }
   }
 
   /* ---------- 斋 → 不斋（破斋）：数量加倍 ---------- */
