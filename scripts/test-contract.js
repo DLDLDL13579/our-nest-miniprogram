@@ -4360,3 +4360,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些 fire() 动作名在 FEEDBACK 表里不存在（会静默失败）：\n    ' + bad.join('\n    '))
   ok('★ 所有 feedback.fire() 的动作名都在表里（' + valid.size + ' 个可用）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**`sfx.play()` 的音效名必须在 FILES 表里**
+ *
+ * 和上一轮 `feedback.fire('lose')` 是同一类：**拼错就静默**。
+ * `play()` 里 `const src = FILES[key]` 取不到就提前返回（连 warn 都没有），
+ * 表现是"这个按钮没声音"，而代码看起来完全正常。
+ *
+ * 覆盖面：`sfx.play('x')`、`sfx: 'x'`、`sfx2: 'x'`（feedback 表里的两种写法）。
+ * ========================================================================== */
+{
+  const sfxSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+  const filesBlock = /const FILES = \{([\s\S]*?)\n\}/.exec(sfxSrc)
+  assert.ok(filesBlock, '找不到 FILES 表')
+  const valid = new Set([...filesBlock[1].matchAll(/^\s{2}(\w+):\s*/gm)].map(m => m[1]))
+  assert.ok(valid.size >= 25, 'FILES 只认出 ' + valid.size + ' 个音效，抽取可能失效')
+
+  const bad = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!f.endsWith('.js')) return
+      let src = fs.readFileSync(p, 'utf8')
+      src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      const pats = [
+        /sfx\.play\('(\w+)'\)/g,
+        /\bsfx:\s*'(\w+)'/g,
+        /\bsfx2:\s*'(\w+)'/g
+      ]
+      pats.forEach(re => {
+        ;[...src.matchAll(re)].forEach(m => {
+          if (!valid.has(m[1])) {
+            bad.push(path.relative(ROOT, p) + '：sfx 名 \'' + m[1] + '\' 不在 FILES 表里')
+          }
+        })
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual(bad, [],
+    '这些音效名拼错了（play() 会静默返回，表现是"没声音"）：\n    ' + bad.join('\n    '))
+  ok('★ 所有 sfx 音效名都在 FILES 表里（' + valid.size + ' 个可用）')
+}
