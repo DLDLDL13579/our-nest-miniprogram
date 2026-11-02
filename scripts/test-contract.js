@@ -4067,3 +4067,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些地方按码元截断用户输入（emoji 会被切成半个）：\n    ' + bad.join('\n    '))
   ok('★ 用户输入的截断全部按码点（nick 12 / 题卡 60）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**切到后台必须停掉资源**
+ *
+ * `onHide` 如果不做事：轮询继续每 1.5 秒打云函数（用户切走了还在烧）、
+ * 音效继续响（切出去听得到）、定时器继续跑（回来时状态已经错位）。
+ *
+ * 这三样在"忘记停"的时候**都不报错**，只表现为"后台耗电"或"回来时界面怪怪的"。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const hide = /onHide\(\)\s*\{([\s\S]*?)\n  \}/.exec(src)
+  assert.ok(hide, '找不到 onHide')
+  const body = hide[1]
+
+  ;['stopPoll', 'sfx.stopAll', 'feedback.clear', 'clearCupTimers', 'clearCountdown']
+    .forEach(fn => {
+      assert.ok(new RegExp(fn.replace('.', '\\.') + '\\(').test(body),
+        'onHide 里必须调用 ' + fn + '（切后台要停掉资源）')
+    })
+
+  /* onShow 要立即拉一次 + 重启轮询 */
+  const show = /onShow\(\)\s*\{([\s\S]*?)\n  \}/.exec(src)
+  assert.ok(show, '找不到 onShow')
+  assert.ok(/pollTick\(\)/.test(show[1]), 'onShow 必须立即拉一次（不要等 1.5 秒）')
+  assert.ok(/startPoll\(\)/.test(show[1]), 'onShow 必须重启轮询')
+
+  ok('★ 切后台停掉轮询/音效/定时器，切回来立即拉一次')
+}
