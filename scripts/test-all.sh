@@ -19,6 +19,7 @@ fi
 echo "═══ 1/9 牌型算法（穷举 22100 手，对组合数学）═══"
 node scripts/test-poker.js
 node scripts/test-dicerank.js
+node scripts/test-rules-doc.js
 
 echo "═══ 2/9 游戏逻辑（转盘前后端一致 / 摇盅五步流程）═══"
 node scripts/test-game.js
