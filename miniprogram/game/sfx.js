@@ -312,24 +312,40 @@ function setMuted(v) {
  * 34 个在小程序里可能触发内存警告（我们已经在监听 onMemoryWarning）。
  * 12 个覆盖了"每局开头必响"的那些，长尾的（喝彩、惩罚音）首次略慢可以接受。
  */
+/*
+ * ★★★ 2026-11-02 性能分层：预加载分两批。
+ *
+ * 背景：`preload()` 一次创建 20+ 个 `wx.createInnerAudioContext()`，
+ * 实测把房间页的首屏渲染堵了 **3.9 秒**（点玩法卡 → 页面出现）。
+ *
+ * 但不能简单地把整个预载延后 —— 那样首屏那几下点击会没声音，
+ * 而"点了没声音"正是用户反复报的一类问题。
+ *
+ * 折中：**分两批**
+ *   · 第一批（下面这个）：首屏 3 秒内可能听到的，立即载
+ *   · 第二批（PRELOAD_LATER）：进游戏后才会用到的，延后 1.2 秒再载
+ *
+ * 判据是"用户在这条路径上最早多久会听到它"：
+ *   点按钮 / 读秒 / 扣盅 / 摇盅 → 第一批
+ *   牌、转盘、撒花、连击     → 第二批
+ */
 const PRELOAD_KEYS = [
-  /* 骰盅流程 */
-  'shakerMetal', 'cupSlam', 'revealHit', 'diceOnTable',
-  /* 比大小 */
-  'diceSettle',
-  /* 金花 */
+  /* ── 第一批：首屏 3 秒内就会用到 ── */
+  'tap', 'tapSoft',      /* 点击反馈（tapSoft 37 处、tap 7 处，最贴手） */
+  'countdownGo',         /* 倒计时收尾 */
+  'shakerMetal',         /* 摇盅 */
+  'cupSlam',             /* 扣盅：全场最重的一下 */
+  'toggleOn'
+]
+
+/*
+ * 第二批：进游戏后才用得到。延后 1.2 秒载 —— 那时首屏早就画完了，
+ * 而玩家还在等人齐 / 看规则，远没到用这些音效的时候。
+ */
+const PRELOAD_LATER = [
+  'revealHit', 'diceOnTable', 'diceSettle',
   'cardDeal', 'cardFlip', 'cardSpread',
-  /* 转盘 */
-  'wheelStop',
-  /* 通用 */
-  'tapSoft', 'toggleOn', 'confetti', 'countdownGo',
-  /*
-   * ★ 2026-11-02 补：这两个原来没预加载，但它们**最贴手** ——
-   *   tap（7 处，所有按钮的点击反馈）
-   *   tick（转盘咔哒，一局要响几十次）
-   * 点击反馈如果晚到，用户会觉得"点了没反应"（哪怕只是晚 60ms）。
-   */
-  'tap', 'tick'
+  'wheelStop', 'confetti', 'tick'
 ]
 
 /**
@@ -363,8 +379,8 @@ function watchAudioError(a, key) {
   return a
 }
 
-function preload() {
-  PRELOAD_KEYS.forEach((k) => {
+function preload(keys) {
+  (keys || PRELOAD_KEYS).forEach((k) => {
     /* 变体数组时预加载第一个（主文件）—— 直接把数组赋给 a.src 会失效 */
     const srcOrList = FILES[k]
     if (!srcOrList) return
@@ -452,5 +468,16 @@ function stopAmbient() {
   _ambient = null
 }
 
-module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, preload,
+/*
+ * 第二批预载 —— 由房间页在首屏渲染后调（见 room.js 的 onLoad）。
+ * 单独一个函数而不是"preload(keys)"，是为了让调用方一眼看出这是延后批。
+ */
+let _laterTimer = null
+function preloadLater(delayMs) {
+  if (_laterTimer) return
+  _laterTimer = setTimeout(() => { _laterTimer = null; preload(PRELOAD_LATER) },
+    typeof delayMs === 'number' ? delayMs : 1200)
+}
+
+module.exports = { play, stop, stopAll, destroy, isMuted, setMuted, preload, preloadLater,
   playAmbient, stopAmbient, FILES }
