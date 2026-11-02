@@ -159,22 +159,22 @@
 .gbar-code {
   /* 数字用 Bebas（失败自动回退系统字体） */
   font-family: 'BebasNum', -apple-system, sans-serif;
-  font-size: 32rpx; font-weight: 700; color: var(--cream);
+  font-size: 34rpx; font-weight: 700; color: var(--cream);
   letter-spacing: 4rpx;
 }
-.gbar-codelbl { font-size: 18rpx; color: rgba(255,255,255,.52) }
+.gbar-codelbl { font-size: 20rpx; color: rgba(255,255,255,.52) }
 .gbar-mid:active { background: rgba(232,179,60,.18) }
 
 .gbar-l { display: flex; align-items: center; gap: 10rpx; padding: 10rpx 6rpx }
 .gbar-back { font-size: 44rpx; color: rgba(255,255,255,.7); line-height: 1 }
-.gbar-t { font-size: 32rpx; color: rgba(255,255,255,.85); font-weight: 600 }
+.gbar-t { font-size: 34rpx; color: rgba(255,255,255,.85); font-weight: 600 }
 .gbar-r { padding: 10rpx 14rpx }
 .gbar-mute { width: 34rpx; height: 34rpx }   /* 图标要尺寸，font-size 无效 */
 
 .nettip {
   margin-top: 12rpx; padding: 16rpx 22rpx; border-radius: 16rpx;
   background: rgba(232,179,60,.16); color: var(--gold);
-  font-size: 21rpx; text-align: center;
+  font-size: 20rpx; text-align: center;
   animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
 }
 @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
@@ -197,9 +197,9 @@
   50%      { opacity: 1;  transform: scale(1.12) }
 }
 .eh-in { position: relative; padding: 36rpx 34rpx 32rpx }
-.eh-lbl { font-size: 21rpx; color: rgba(255,255,255,.5); letter-spacing: 3rpx }
+.eh-lbl { font-size: 20rpx; color: rgba(255,255,255,.5); letter-spacing: 3rpx }
 .eh-t { font-size: 44rpx; font-weight: 700; color: #D6E4F5; margin-top: 8rpx; letter-spacing: 2rpx }
-.eh-s { font-size: 24rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.7 }
+.eh-s { font-size: 26rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.7 }
 
 /* ---------- 深色页里的卡片（覆盖 app.wxss 的浅色卡）---------- */
 .gamepage .card {
@@ -245,12 +245,12 @@
 
 .tin {
   width: 100%; height: 88rpx; border-radius: 20rpx;
-  padding: 0 24rpx; font-size: 27rpx;
+  padding: 0 24rpx; font-size: 26rpx;
   border: 2rpx solid var(--line);
 }
 .tin.code {
   text-align: center; letter-spacing: 12rpx;
-  font-size: 36rpx; font-weight: 700;
+  font-size: 34rpx; font-weight: 700;
 }
 /*
  * ★ 占位文字必须**单独给字号与字距**。
@@ -263,11 +263,11 @@
 .errbox {
   margin-top: 20rpx; padding: 20rpx 24rpx; border-radius: 20rpx;
   background: rgba(224,113,79,.2); color: #F0A38C;
-  font-size: 24rpx; text-align: center;
+  font-size: 26rpx; text-align: center;
 }
 
 .entry-tip {
-  margin-top: 26rpx; font-size: 21rpx;
+  margin-top: 26rpx; font-size: 20rpx;
   color: rgba(255, 255, 255, 0.52); line-height: 1.9; text-align: center;
 }
 
@@ -279,7 +279,7 @@
   border: 3rpx solid rgba(232,179,60,.4);
 }
 .codecard:active { opacity: .85 }
-.cc-lbl { font-size: 21rpx; color: rgba(246,231,195,.6); letter-spacing: 2rpx }
+.cc-lbl { font-size: 20rpx; color: rgba(246,231,195,.6); letter-spacing: 2rpx }
 .cc-code {
   font-size: 76rpx; font-weight: 700; color: var(--cream);
   letter-spacing: 14rpx; margin: 14rpx 0 10rpx;
@@ -290,7 +290,7 @@
   0%   { opacity: 0; transform: scale(.7) }
   100% { opacity: 1; transform: scale(1) }
 }
-.cc-hint { font-size: 21rpx; color: rgba(246,231,195,.5) }
+.cc-hint { font-size: 20rpx; color: rgba(246,231,195,.5) }
 
 /* ---------- 玩家列表 ---------- */
 .plist { margin-bottom: 26rpx }
@@ -319,7 +319,7 @@
   flex: none;
   width: 44rpx; height: 44rpx; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 24rpx; font-weight: 700; color: #241A16;
+  font-size: 26rpx; font-weight: 700; color: #241A16;
   margin-right: 10rpx;
 }
 /*
@@ -349,35 +349,35 @@
   /* 可见尺寸不大，但**点按面积要够** —— 用 padding 撑到 88rpx 高（视觉上仍是个小标签） */
   padding: 4rpx 12rpx; border-radius: 12rpx;
   min-height: 88rpx; display: flex; align-items: center;
-  font-size: 18rpx; color: rgba(255,255,255,.62);
+  font-size: 20rpx; color: rgba(255,255,255,.62);
   background: rgba(255,255,255,.07);
 }
 .lockbtn:active { transform: scale(.94); opacity: .8 }
 .lockbtn.on { color: #F0C860; background: rgba(232,179,60,.22) }
-.locks { font-size: 18rpx; color: #F0C860 }
+.locks { font-size: 20rpx; color: #F0C860 }
 
 .pseat {
   width: 52rpx; height: 52rpx; border-radius: 50%; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,.12);
-  font-size: 24rpx; font-weight: 700; color: rgba(255,255,255,.75);
+  font-size: 26rpx; font-weight: 700; color: rgba(255,255,255,.75);
 }
 .pitem.me .pseat { background: rgba(232,179,60,.35); color: var(--cream) }
-.pname { flex: 1; min-width: 0; font-size: 27rpx; color: rgba(255,255,255,.88); display: flex; align-items: center; gap: 12rpx }
+.pname { flex: 1; min-width: 0; font-size: 26rpx; color: rgba(255,255,255,.88); display: flex; align-items: center; gap: 12rpx }
 /* 名字超长时省略号 —— 标签（我/房主/掉线）永远不被挤掉 */
 .pn { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 /* 掉线标记：比灰点明确得多 —— 桌上最容易发生的是"他去接电话了" */
 .poff {
   flex: none; white-space: nowrap;
   margin-left: 8rpx; padding: 1rpx 8rpx; border-radius: 8rpx;
-  font-size: 18rpx; color: #E8A08C;
+  font-size: 20rpx; color: #E8A08C;
   background: rgba(224, 113, 79, .18);
 }
 
 .ptag {
   /* 名字再长也不能把标签压成竖排（渲染长名字时实测：「房主」被挤成两行） */
   flex: none; white-space: nowrap;
-  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 999rpx;
+  font-size: 20rpx; padding: 2rpx 10rpx; border-radius: 999rpx;
   background: rgba(255,255,255,.14); color: rgba(255,255,255,.6);
 }
 .ptag.host { background: rgba(232,179,60,.3); color: var(--cream) }
@@ -389,7 +389,7 @@
 
 .waiting {
   text-align: center; padding: 30rpx;
-  font-size: 24rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 26rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* ---------- 大话骰 ---------- */
@@ -399,13 +399,13 @@
      而它只是"现在叫到几"的一行信息。真机一屏塞不下事件流 + 骰盅 + 出牌区。 */
   padding: 22rpx 0 16rpx;
 }
-.bid-lbl { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 3rpx }
+.bid-lbl { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 3rpx }
 .bid-val {
   /* 数字用 Bebas（失败自动回退系统字体） */
   font-family: 'BebasNum', -apple-system, sans-serif; font-size: 44rpx; font-weight: 700; color: var(--cream); margin-top: 6rpx; letter-spacing: 2rpx }
-.bid-val.hint { font-size: 27rpx; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
+.bid-val.hint { font-size: 26rpx; color: rgba(255, 255, 255, 0.52); font-weight: 400 }
 /* 「倩萍 叫的 · 被阿杰劈了」—— 这条是桌上对话的锚点，不能小 */
-.bid-by { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
+.bid-by { font-size: 26rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx }
 
 
 /* ---------- 骰子（结算页用，游戏中的骰子见 .cs-die）---------- */
@@ -674,7 +674,7 @@
  */
 .cs-hint {
   text-align: center;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(246,231,195,.55);
   height: 34rpx;
   line-height: 34rpx;
@@ -704,11 +704,11 @@
    *   桌上会互相问"你摇了没"，靠的就是这几个名字。
    *   21rpx（10.5px）隔着一张桌子读不出来，提到 24rpx（12px）。
    */
-  font-size: 24rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
+  font-size: 26rpx; color: rgba(255,255,255,.8); margin-top: 8rpx;
   max-width: 140rpx; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 /* 同理：这一行是"已摇 / 还没摇"，是牌桌上最常被念出来的状态 */
-.oc-stat { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
+.oc-stat { font-size: 26rpx; color: rgba(255, 255, 255, 0.52); margin-top: 4rpx }
 /* 已摇的人用金色标出来 —— 一眼扫过去就知道还差谁 */
 .oc-stat.done { color: rgba(232,179,60,.85); font-weight: 600 }
 
@@ -719,7 +719,7 @@
  */
 .waitline {
   text-align: center;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(255, 255, 255, 0.52);
   margin-top: 16rpx;
   line-height: 1.6;
@@ -789,7 +789,7 @@
 .ws-lbl {
   position: absolute;
   transform: translate(-50%, -50%);
-  font-size: 21rpx; color: #fff; font-weight: 600;
+  font-size: 20rpx; color: #fff; font-weight: 600;
   /* 窄扇区用小一号字（见 buildSectors 里半径分级的说明） */
   white-space: nowrap;
   text-shadow: 0 2rpx 6rpx rgba(0,0,0,.7);
@@ -801,14 +801,14 @@
  * 补三样才有"实体按钮"的手感：外圈深色描边（厚度）、内圈顶部高光（受光）、
  * 底部内阴影（凹陷感）。
  */
-.ws-lbl.small { font-size: 18rpx; letter-spacing: 0 }
+.ws-lbl.small { font-size: 20rpx; letter-spacing: 0 }
 
 .ws-hub {
   position: absolute; left: 50%; top: 50%;
   width: 96rpx; height: 96rpx; margin: -48rpx 0 0 -48rpx;
   border-radius: 50%;
   background: linear-gradient(160deg, #FFF3D6 0%, #F0D79A 42%, #C9A65A 100%);
-  color: #4A3630; font-size: 32rpx; font-weight: 700;
+  color: #4A3630; font-size: 34rpx; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   letter-spacing: 2rpx;
   box-shadow:
@@ -877,7 +877,7 @@
    */
   padding: 27rpx 16rpx; border-radius: 16rpx;
   background: rgba(255,255,255,.1); color: rgba(255,255,255,.85);
-  font-size: 24rpx; font-weight: 600; min-width: 90rpx; text-align: center;
+  font-size: 26rpx; font-weight: 600; min-width: 90rpx; text-align: center;
   animation: fadeIn .25s cubic-bezier(0, 0, .2, 1);
 }
 .optbtn:active { background: rgba(232,179,60,.3); transform: scale(.94) }
@@ -900,8 +900,8 @@
 }
 .ln-line { display: flex; align-items: center; gap: 10rpx }
 .ln-ic { width: 32rpx; height: 32rpx; flex: none }
-.ln-t { font-size: 27rpx; color: var(--cream); font-weight: 600 }
-.ln-s { font-size: 21rpx; color: rgba(255,255,255,.5); line-height: 1.5 }
+.ln-t { font-size: 26rpx; color: var(--cream); font-weight: 600 }
+.ln-s { font-size: 20rpx; color: rgba(255,255,255,.5); line-height: 1.5 }
 
 /* "等别人"用中性色 —— 和"该你操作了"的金色区分开，扫一眼就知道要不要动手 */
 .liarnudge.wait {
@@ -917,7 +917,7 @@
  */
 .turnbar {
   text-align: center;
-  font-size: 24rpx;
+  font-size: 26rpx;
   padding: 14rpx 0;
   margin-bottom: 16rpx;
   border-radius: 999rpx;
@@ -953,14 +953,14 @@
   margin-top: 0;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--gold), #C08A18);
-  color: #2C1A08; font-size: 28rpx; font-weight: 700;
+  color: #2C1A08; font-size: 26rpx; font-weight: 700;
   border-radius: 24rpx;
   box-shadow: 0 8rpx 22rpx rgba(192, 138, 24, .38);
 }
 /* 倍数徽章：被劈过就要一眼看到"这局赌注是几倍" */
 .bid-mult {
   margin-left: 10rpx; padding: 2rpx 12rpx; border-radius: 999rpx;
-  font-size: 21rpx; font-weight: 700;
+  font-size: 20rpx; font-weight: 700;
   background: rgba(232,179,60,.26); color: #F0C860;
 }
 .bid-pi { color: #F0A38C }
@@ -968,7 +968,7 @@
 .openbtn {
   height: 96rpx; margin-top: 10rpx;
   background: linear-gradient(135deg, #E88060, #CE5738);
-  color: #fff; font-size: 32rpx; font-weight: 700;
+  color: #fff; font-size: 34rpx; font-weight: 700;
   box-shadow: 0 8rpx 24rpx rgba(206,87,56,.4);
 }
 
@@ -1005,7 +1005,7 @@
 }
 .oh-crown {
   position: relative;
-  font-size: 18rpx; letter-spacing: 8rpx;
+  font-size: 20rpx; letter-spacing: 8rpx;
   color: rgba(232,179,60,.9);
 }
 .oh-name {
@@ -1034,7 +1034,7 @@
   margin-top: 10rpx;
   padding: 4rpx 20rpx;
   border-radius: 999rpx;
-  font-size: 21rpx; font-weight: 700; letter-spacing: 2rpx;
+  font-size: 20rpx; font-weight: 700; letter-spacing: 2rpx;
   color: #2C1A08;
   background: linear-gradient(135deg, #FFE9A8, var(--gold));
   box-shadow: 0 0 18rpx rgba(232, 179, 60, .55);
@@ -1051,7 +1051,7 @@
   position: relative;
   margin-top: 12rpx;
   /* 32 → 36：线下面对面时，旁边的人也要能读出点数 */
-  font-size: 36rpx; font-weight: 700; color: var(--cream);
+  font-size: 34rpx; font-weight: 700; color: var(--cream);
   /*
    * ★ 2026-11-02 调研落地（GameAnalytics：任何重要元素都要有动画）。
    *   大话骰结算的「实际 N 个」有 numPop，而比大小结算的「18 点」是死的 ——
@@ -1064,7 +1064,7 @@
 /* 结算页的小牌面：比游戏中的牌小一号，但用同一套真图 —— 一眼是同一副牌 */
 /* 牌型名：小一号的金色标签，紧跟名字 */
 .pkr-type {
-  margin-left: 10rpx; font-size: 18rpx;
+  margin-left: 10rpx; font-size: 20rpx;
   color: #F0C860; opacity: .9;
 }
 
@@ -1080,7 +1080,7 @@
 .center-box { display: flex; flex-direction: column; align-items: center; padding: 40rpx 10rpx }
 
 .over-tag {
-  font-size: 32rpx; padding: 10rpx 30rpx; border-radius: 999rpx; letter-spacing: 2rpx;   /* 27→32：面对面时也要看得清「吹牛被抓」 */
+  font-size: 34rpx; padding: 10rpx 30rpx; border-radius: 999rpx; letter-spacing: 2rpx;   /* 27→32：面对面时也要看得清「吹牛被抓」 */
   animation: codeIn .42s cubic-bezier(.34, 1.56, .64, 1) backwards;
 }
 .over-tag.ok { background: rgba(109,158,106,.25); color: #9BC798 }
@@ -1090,8 +1090,8 @@
   font-size: 104rpx; font-weight: 700; color: var(--cream); line-height: 1;
   animation: codeIn .5s cubic-bezier(.34, 1.56, .64, 1) .06s backwards;
 }
-.on-unit { font-size: 27rpx; color: rgba(255,255,255,.6) }
-.over-need { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 12rpx }
+.on-unit { font-size: 26rpx; color: rgba(255,255,255,.6) }
+.over-need { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-top: 12rpx }
 
 .revealbox {
   width: 100%; margin-top: 30rpx;
@@ -1122,18 +1122,18 @@
   100% { opacity: 1; transform: translateY(0) }
 }
 .rv-row:last-child { border-bottom: none }
-.rv-name { font-size: 24rpx; color: rgba(255,255,255,.6); min-width: 110rpx }
-.rv-total { font-size: 27rpx; font-weight: 700; color: var(--cream); margin-left: auto }
+.rv-name { font-size: 26rpx; color: rgba(255,255,255,.6); min-width: 110rpx }
+.rv-total { font-size: 26rpx; font-weight: 700; color: var(--cream); margin-left: auto }
 /* 列表里标一下谁摸到豹子（它是这局真正的稀有点，值得被看见） */
 .rv-leopard {
-  font-size: 18rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 8rpx;
+  font-size: 20rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 8rpx;
   background: rgba(232,179,60,.22); color: #F0C860; flex: none;
 }
 
 /* 超时自动开的说明：灰字，不抢结算的注意力 */
 .auto-tip {
   text-align: center; margin-top: 10rpx;
-  font-size: 21rpx; color: rgba(255,255,255,.52);
+  font-size: 20rpx; color: rgba(255,255,255,.52);
 }
 
 .loserbox {
@@ -1165,7 +1165,7 @@
 }
 
 .bigbtn {
-  width: 100%; height: 100rpx; font-size: 32rpx; letter-spacing: 4rpx;
+  width: 100%; height: 100rpx; font-size: 34rpx; letter-spacing: 4rpx;
   background: linear-gradient(135deg, #E88060, #CE5738);
   box-shadow: 0 8rpx 24rpx rgba(206,87,56,.4);
 }
@@ -1215,7 +1215,7 @@
 .actrow {
   display: flex; gap: 18rpx;
 }
-.actrow .btn { flex: 1; height: 76rpx; font-size: 27rpx; border-radius: 20rpx }
+.actrow .btn { flex: 1; height: 76rpx; font-size: 26rpx; border-radius: 20rpx }
 
 /* 破坏性操作：只留文字。不做点击高亮，反而更退后 */
 /* 底部一行两个小字按钮（看规则 / 离开房间） */
@@ -1233,12 +1233,12 @@
   min-height: 88rpx;
   height: 88rpx;
   display: flex; align-items: center; justify-content: center;
-  font-size: 24rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 26rpx; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 1rpx;
 }
 .textbtn:active { color: rgba(255,255,255,.6) }
 /* 在 actrow 里和次级按钮并排时，撑满半宽、与按钮等高，但**没有边框和底色** */
-.actrow .textbtn { flex: 1; height: 76rpx; font-size: 27rpx }
+.actrow .textbtn { flex: 1; height: 76rpx; font-size: 26rpx }
 
 /* ============================================================
    v3 动效升级：摇骰 / 开骰悬念 / 结果震动
@@ -1403,7 +1403,7 @@
   50%      { opacity: 1;  transform: scale(1.1) }
 }
 .cd-in { position: relative }
-.cd-lbl { font-size: 21rpx; color: rgba(255,255,255,.5); letter-spacing: 4rpx }
+.cd-lbl { font-size: 20rpx; color: rgba(255,255,255,.5); letter-spacing: 4rpx }
 .cd-num {
   /* 数字用 Bebas（失败自动回退系统字体） */
   font-family: 'BebasNum', -apple-system, sans-serif;
@@ -1449,7 +1449,7 @@
   55%  { transform: scale(1.1); opacity: 1 }
   100% { transform: scale(1);   opacity: 1 }
 }
-.cd-sub { font-size: 24rpx; color: rgba(255, 255, 255, 0.52); margin-top: 18rpx }
+.cd-sub { font-size: 26rpx; color: rgba(255, 255, 255, 0.52); margin-top: 18rpx }
 
 /* ================================================================
  * 题卡（真心话 / 大冒险）
@@ -1485,17 +1485,17 @@
 
 .cb-tag { display: flex; align-items: center; gap: 14rpx; margin-bottom: 16rpx }
 .cb-type {
-  font-size: 21rpx; font-weight: 700; letter-spacing: 2rpx;
+  font-size: 20rpx; font-weight: 700; letter-spacing: 2rpx;
   color: #F0A98C;
   background: rgba(196,87,58,.20);
   border-radius: 999rpx;
   padding: 6rpx 18rpx;
 }
 .cardbox.dare .cb-type { color: #9FC0DD; background: rgba(94,127,166,.22) }
-.cb-deck { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
+.cb-deck { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
 /* 题目正文：这块要让人一眼读完，所以给大字号 + 宽松行高 */
 .cb-text {
-  font-size: 32rpx;
+  font-size: 34rpx;
   line-height: 1.62;
   color: var(--cream);
   font-weight: 600;
@@ -1504,7 +1504,7 @@
 /* 非题卡扇区（喝酒类）的一句说明，别让屏幕空着 */
 .ws-note {
   display: flex; align-items: center; justify-content: center; gap: 12rpx;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(255,255,255,.5);
   margin: 6rpx 0 4rpx;
 }
@@ -1534,9 +1534,9 @@
   background: rgba(232,179,60,.16);
   border-color: rgba(232,179,60,.5);
 }
-.dc-name { font-size: 27rpx; font-weight: 600; color: rgba(255,255,255,.88) }
+.dc-name { font-size: 26rpx; font-weight: 600; color: rgba(255,255,255,.88) }
 .deckcard.on .dc-name { color: var(--cream) }
-.dc-desc { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 6rpx; line-height: 1.4 }
+.dc-desc { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-top: 6rpx; line-height: 1.4 }
 
 /* 游戏中：一行小胶囊，房主点了即换（不打断当前这局，服务端会拦） */
 .deckrow {
@@ -1546,7 +1546,7 @@
   margin: 18rpx 0 8rpx;
 }
 .deckpill {
-  font-size: 21rpx;
+  font-size: 20rpx;
   padding: 10rpx 22rpx;
   border-radius: 999rpx;
   background: rgba(255,255,255,.06);
@@ -1574,8 +1574,8 @@
   border: 2rpx dashed rgba(255,255,255,.16);
   display: flex; flex-direction: column; gap: 6rpx;
 }
-.ce-t { font-size: 27rpx; color: rgba(246,231,195,.85); font-weight: 600 }
-.ce-s { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
+.ce-t { font-size: 26rpx; color: rgba(246,231,195,.85); font-weight: 600 }
+.ce-s { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
 
 /* 遮罩 */
 .mask {
@@ -1617,9 +1617,9 @@
   0%   { transform: translateY(60rpx); opacity: .4 }
   100% { transform: translateY(0); opacity: 1 }
 }
-.sheet-t { font-size: 32rpx; font-weight: 700; color: var(--cream) }
+.sheet-t { font-size: 34rpx; font-weight: 700; color: var(--cream) }
 .sheet-s {
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx; line-height: 1.5;
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-top: 8rpx; line-height: 1.5;
   /* ★ 2026-11-02：防溢出 —— 弹层里的说明文字要能换行，不能顶出右边 */
   word-break: break-word; overflow-wrap: anywhere;
   padding: 0 4rpx;
@@ -1632,7 +1632,7 @@
   text-align: center;
   padding: 20rpx 0;
   border-radius: var(--r-2);
-  font-size: 27rpx;
+  font-size: 26rpx;
   color: rgba(255,255,255,.6);
   background: rgba(255,255,255,.05);
   border: 2rpx solid rgba(255,255,255,.10);
@@ -1648,11 +1648,11 @@
   background: rgba(255,255,255,.06);
   border: 2rpx solid rgba(255,255,255,.12);
   color: var(--cream);
-  font-size: 27rpx;
+  font-size: 26rpx;
   line-height: 1.5;
 }
 
-.mine-t { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin: 30rpx 0 14rpx }
+.mine-t { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin: 30rpx 0 14rpx }
 .minelist { display: flex; flex-direction: column; gap: 12rpx }
 .mineitem {
   padding: 18rpx 22rpx;
@@ -1662,8 +1662,8 @@
   display: flex; gap: 14rpx; align-items: baseline;
 }
 .mineitem.dare { background: rgba(94,127,166,.16); border-left-color: #5E7FA6 }
-.mi-type { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); flex: none }
-.mi-text { font-size: 24rpx; color: rgba(255,255,255,.82); line-height: 1.45 }
+.mi-type { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); flex: none }
+.mi-text { font-size: 26rpx; color: rgba(255,255,255,.82); line-height: 1.45 }
 
 /* ================================================================
  * 大厅：换个玩法
@@ -1678,7 +1678,7 @@
   background: rgba(255,255,255,.04);
   border: 2rpx solid rgba(255,255,255,.10);
 }
-.gs-lbl { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-bottom: 16rpx }
+.gs-lbl { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-bottom: 16rpx }
 .gs-row { display: flex; gap: 14rpx }
 .gspill {
   flex: 1;
@@ -1687,7 +1687,7 @@
   border-radius: var(--r-2);
   background: rgba(255,255,255,.05);
   border: 2rpx solid rgba(255,255,255,.10);
-  font-size: 21rpx;
+  font-size: 20rpx;
   color: rgba(255,255,255,.6);
   transition: background .18s ease, border-color .18s ease;
 }
@@ -1737,24 +1737,24 @@
 /* 投票阶段：词卡收窄，把空间让给投票按钮（主任务变了，占比就该跟着变） */
 .uw-card.compact { margin-bottom: 16rpx }
 .uw-card.compact .uw-card-in { padding: 22rpx 30rpx }
-.uw-card.compact .uw-lock { font-size: 27rpx; letter-spacing: 2rpx }
+.uw-card.compact .uw-lock { font-size: 26rpx; letter-spacing: 2rpx }
 .uw-card.compact .uw-wtip { display: none }
-.uw-card.compact .uw-wlbl { font-size: 18rpx }
+.uw-card.compact .uw-wlbl { font-size: 20rpx }
 .uw-card.compact .uw-wtxt { font-size: 64rpx }
 .uw-card.compact .uw-wsub { display: none }
 
 .uw-lock {
-  font-size: 36rpx; font-weight: 700; color: rgba(255,255,255,.85);
+  font-size: 34rpx; font-weight: 700; color: rgba(255,255,255,.85);
   letter-spacing: 3rpx;
 }
-.uw-wlbl { font-size: 21rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx }
+.uw-wlbl { font-size: 20rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx }
 .uw-wtxt {
   font-size: 92rpx; font-weight: 700; color: #fff;
   margin: 16rpx 0 10rpx; line-height: 1.15; letter-spacing: 6rpx;
   text-shadow: 0 4rpx 18rpx rgba(180, 140, 240, .45);
 }
-.uw-wsub { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
-.uw-wtip { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 14rpx }
+.uw-wsub { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
+.uw-wtip { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-top: 14rpx }
 
 /* ---------- 在场玩家（只展示，不用点）---------- */
 .uw-seats {
@@ -1770,10 +1770,10 @@
 .uw-seat-n {
   width: 26rpx; height: 26rpx; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 18rpx; font-weight: 700;
+  font-size: 20rpx; font-weight: 700;
   background: rgba(255,255,255,.16); color: rgba(255,255,255,.7);
 }
-.uw-seat-t { font-size: 21rpx; color: rgba(255,255,255,.7) }
+.uw-seat-t { font-size: 20rpx; color: rgba(255,255,255,.7) }
 .uw-seat.me { border-color: rgba(232,179,60,.45) }
 .uw-seat.me .uw-seat-t { color: var(--cream) }
 .uw-seat.out { opacity: .34 }
@@ -1783,7 +1783,7 @@
 .pitem.canedit:active { background: rgba(255,255,255,.1) }
 .pedit {
   position: relative;
-  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 8rpx;
+  font-size: 20rpx; padding: 2rpx 10rpx; border-radius: 8rpx;
   background: rgba(232,179,60,.2); color: var(--gold);
   /*
    * ★★★ 2026-11-02 可用性：这个小标签的**实际高度只有约 11rpx（5.5px）** ——
@@ -1820,9 +1820,9 @@
   transition: transform .12s, background .12s;
 }
 .pk-swap:active { transform: scale(.96); background: rgba(232, 179, 60, .22) }
-.ps-t { font-size: 27rpx; font-weight: 700; color: var(--cream) }
+.ps-t { font-size: 26rpx; font-weight: 700; color: var(--cream) }
 /* 代价直接写在按钮上：按之前就知道要喝多少，而不是按完才被告知 */
-.ps-c { font-size: 21rpx; color: rgba(232, 179, 60, .9) }
+.ps-c { font-size: 20rpx; color: rgba(232, 179, 60, .9) }
 
 /* ---------- 金花：桌上的人（换牌量是公开的读牌线索） ---------- */
 .pk-seats {
@@ -1844,8 +1844,8 @@
 }
 .pk-seat.me { border-color: rgba(232,179,60,.42) }
 .pk-seat.out { opacity: .42 }
-.pk-seat-n { font-size: 21rpx; color: rgba(255,255,255,.82); font-weight: 600 }
-.pk-seat-s { font-size: 18rpx; color: rgba(255, 255, 255, 0.52) }
+.pk-seat-n { font-size: 20rpx; color: rgba(255,255,255,.82); font-weight: 600 }
+.pk-seat-s { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
 /* 换过牌的标成金色：这是"他手里可能不好"的信号，值得一眼看到 */
 .pk-seat-s.drank { color: var(--gold) }
 .pk-seat-s.out { color: #F0A38C }
@@ -1869,13 +1869,13 @@
   100% { opacity: 1; transform: scale(1) }
 }
 .uw-tie-t {
-  font-size: 36rpx; font-weight: 700; color: #FFE9B8; letter-spacing: 2rpx;
+  font-size: 34rpx; font-weight: 700; color: #FFE9B8; letter-spacing: 2rpx;
 }
 .uw-tie-s {
-  margin-top: 10rpx; font-size: 24rpx; color: rgba(255,255,255,.82); line-height: 1.6;
+  margin-top: 10rpx; font-size: 26rpx; color: rgba(255,255,255,.82); line-height: 1.6;
 }
 .uw-tie-x {
-  margin-top: 8rpx; font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  margin-top: 8rpx; font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* 决胜投票的提示要比普通提示更硬 —— 它承载"这次必须有结果" */
@@ -1883,12 +1883,12 @@
 
 .uw-dead {
   margin-top: 12rpx;
-  font-size: 21rpx; color: rgba(255,255,255,.55); line-height: 1.7;
+  font-size: 20rpx; color: rgba(255,255,255,.55); line-height: 1.7;
 }
 
 /* ---------- 说明 ---------- */
 .uw-note {
-  font-size: 24rpx; color: rgba(255,255,255,.5);
+  font-size: 26rpx; color: rgba(255,255,255,.5);
   text-align: center; line-height: 1.7; margin-bottom: var(--gap-2);
 }
 
@@ -1896,7 +1896,7 @@
 .uw-btn {
   height: 100rpx; margin-top: 22rpx;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 24rpx; font-size: 32rpx; font-weight: 700;
+  border-radius: 24rpx; font-size: 34rpx; font-weight: 700;
   background: linear-gradient(135deg, #E88060, #C24E2F);
   color: #fff;
   box-shadow: 0 8rpx 20rpx rgba(196, 87, 58, .3);
@@ -1911,7 +1911,7 @@
   gap: 16rpx; margin-top: 8rpx;
 }
 .uw-waiting-t {
-  font-size: 21rpx; color: rgba(255,255,255,.52);
+  font-size: 20rpx; color: rgba(255,255,255,.52);
 }
 
 /* 催一下：一个小小的文字按钮，只在还差人时出现 */
@@ -1919,7 +1919,7 @@
   display: inline-block;
   /* 可点面积也要够 44pt —— 视觉上是小药丸，点按范围比看上去大 */
   padding: 22rpx 30rpx; border-radius: 999rpx;
-  font-size: 21rpx; color: #F0C860;
+  font-size: 20rpx; color: #F0C860;
   background: rgba(232,179,60,.16);
   transition: transform .1s, background .1s;
 }
@@ -1929,13 +1929,13 @@
 /* 上一轮出局提示（投票阶段的记忆辅助）：一行小字，不抢投票列表的视觉 */
 .uw-lastout {
   margin-top: 18rpx; text-align: center;
-  font-size: 21rpx; color: rgba(255,255,255,.52);
+  font-size: 20rpx; color: rgba(255,255,255,.52);
 }
 .uw-lastout-n { color: rgba(255,255,255,.8); font-weight: 600 }
 
 .uw-wait {
   margin-top: 22rpx; text-align: center;
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.7;
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.7;
 }
 
 /* ============================================================
@@ -1992,7 +1992,7 @@
   width: 6rpx; height: 6rpx; border-radius: 50%; flex: none;
   background: rgba(232,179,60,.85);
 }
-.ev-t { font-size: 21rpx; color: rgba(255,255,255,.72); line-height: 1.4 }
+.ev-t { font-size: 20rpx; color: rgba(255,255,255,.72); line-height: 1.4 }
 
 /* ---------- 投票列表 ---------- */
 /*
@@ -2029,11 +2029,11 @@
 .uw-p:active { background: rgba(255,255,255,.12) }
 .uw-pn {
   flex: 1; min-width: 0;            /* min-width:0 才能让 flex 子项真正收缩 */
-  font-size: 27rpx; font-weight: 600; color: #fff;
+  font-size: 26rpx; font-weight: 600; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .uw-tag {
-  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  font-size: 20rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.25); color: var(--cream);
 }
 .uw-tag.off { background: rgba(255,255,255,.1); color: rgba(255, 255, 255, 0.52) }
@@ -2046,7 +2046,7 @@
 /* 自己那一行压暗 —— 不能投自己，直接让它看起来就"点不动" */
 .uw-p.self { opacity: .42 }
 .uw-tick {
-  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  font-size: 20rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: rgba(160,130,210,.5); color: #fff;
 }
 
@@ -2058,15 +2058,15 @@
   text-align: center;
   margin-bottom: var(--gap-2);
 }
-.uw-ot { font-size: 36rpx; font-weight: 700; color: #fff }
-.uw-ow { font-size: 24rpx; color: rgba(255,255,255,.62); margin-top: 14rpx; line-height: 1.6 }
+.uw-ot { font-size: 34rpx; font-weight: 700; color: #fff }
+.uw-ow { font-size: 26rpx; color: rgba(255,255,255,.62); margin-top: 14rpx; line-height: 1.6 }
 .uw-spy { color: #FFB4A0; font-weight: 700 }
 .uw-good { color: #9AD3A8; font-weight: 700 }
-.uw-otie { font-size: 21rpx; color: rgba(255, 255, 255, 0.52); margin-top: 10rpx }
+.uw-otie { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-top: 10rpx }
 
 .uw-alive {
   text-align: center; margin-top: 16rpx;
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 1rpx;
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52); letter-spacing: 1rpx;
 }
 
 /* ---------- 票型（谁投了谁） ---------- */
@@ -2078,13 +2078,13 @@
 }
 .uw-ballot {
   display: flex; align-items: center; gap: 6rpx;
-  font-size: 21rpx;
+  font-size: 20rpx;
   /* 票型也逐条落 —— 谁投了谁，按发生顺序读最自然 */
   animation: rvIn .3s cubic-bezier(0, 0, .2, 1) backwards;
   animation-delay: calc(var(--i, 0) * 40ms);
 }
 .ub-by { color: rgba(255,255,255,.55) }
-.ub-arrow { color: rgba(232,179,60,.7); font-size: 18rpx }
+.ub-arrow { color: rgba(232,179,60,.7); font-size: 20rpx }
 .ub-to { color: rgba(255,255,255,.82); font-weight: 600 }
 
 /* ---------- 全场摊牌 ---------- */
@@ -2100,7 +2100,7 @@
 }
 .uw-rw {
   display: flex; flex-direction: column; align-items: center; gap: 6rpx;
-  margin-top: 14rpx; font-size: 24rpx; color: rgba(255,255,255,.6);
+  margin-top: 14rpx; font-size: 26rpx; color: rgba(255,255,255,.6);
 }
 .uw-rvs { color: #FFB4A0 }
 .uw-rlist { margin-top: 24rpx }
@@ -2109,10 +2109,10 @@
   padding: 18rpx 0; border-bottom: 2rpx solid rgba(255,255,255,.07);
 }
 .uw-rrow:last-child { border-bottom: none }
-.uw-rn { flex: 1; font-size: 27rpx; color: rgba(255,255,255,.85) }
-.uw-rwd { font-size: 27rpx; font-weight: 600; color: #fff }
+.uw-rn { flex: 1; font-size: 26rpx; color: rgba(255,255,255,.85) }
+.uw-rwd { font-size: 26rpx; font-weight: 600; color: #fff }
 .uw-rr {
-  width: 92rpx; text-align: center; font-size: 18rpx;
+  width: 92rpx; text-align: center; font-size: 20rpx;
   padding: 4rpx 0; border-radius: 999rpx;
   background: rgba(154,211,168,.18); color: #9AD3A8;
 }
@@ -2153,7 +2153,7 @@
 .pk-slot:nth-child(3) { transition-delay: 140ms }
 
 .pk-tagline {
-  font-size: 18rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
   letter-spacing: 2rpx; height: 26rpx;
 }
 .pk-slot.pk-mine .pk-tagline { color: rgba(232,179,60,.7) }
@@ -2222,10 +2222,10 @@
 
 /* ---------- 换牌欠账 ---------- */
 .pk-owe {
-  text-align: center; font-size: 21rpx; color: rgba(255,255,255,.5);
+  text-align: center; font-size: 20rpx; color: rgba(255,255,255,.5);
   margin-bottom: var(--gap-2);
 }
-.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 24rpx }
+.pk-owe-n { color: #FFB4A0; font-weight: 700; font-size: 26rpx }
 
 /* ---------- 比牌记录 ---------- */
 .pk-last {
@@ -2235,23 +2235,23 @@
   margin-bottom: var(--gap-2);
 }
 .pkl-row { display: flex; align-items: center; justify-content: center; gap: 12rpx; flex-wrap: wrap }
-.pkl-who { font-size: 24rpx; font-weight: 600; color: rgba(255,255,255,.7) }
+.pkl-who { font-size: 26rpx; font-weight: 600; color: rgba(255,255,255,.7) }
 .pkl-who.win { color: #9AD3A8 }
 .pkl-who.lose { color: rgba(255, 255, 255, 0.52); text-decoration: line-through }
 .pkl-cards { display: flex; gap: 6rpx }
 .pkl-c {
-  font-size: 24rpx; font-weight: 700; color: var(--ink);
+  font-size: 26rpx; font-weight: 700; color: var(--ink);
   background: var(--card); border-radius: 8rpx; padding: 4rpx 10rpx;
 }
-.pkl-vs { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
-.pkl-note { text-align: center; font-size: 21rpx; color: rgba(255,255,255,.5); margin-top: 12rpx }
+.pkl-vs { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
+.pkl-note { text-align: center; font-size: 20rpx; color: rgba(255,255,255,.5); margin-top: 12rpx }
 
 /* ---------- 轮到我 ---------- */
 .pk-now {
-  text-align: center; font-size: 32rpx; font-weight: 700; color: var(--cream);
+  text-align: center; font-size: 34rpx; font-weight: 700; color: var(--cream);
 }
 .pk-note {
-  text-align: center; font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  text-align: center; font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
   margin-top: 10rpx; margin-bottom: var(--gap-2); line-height: 1.7;
 }
 .pk-list { display: flex; flex-direction: column; gap: 14rpx }
@@ -2264,26 +2264,26 @@
 }
 .pk-p:active { background: rgba(255,255,255,.14) }
 .pk-p.cur { border-color: rgba(232,179,60,.5) }
-.pk-pn { font-size: 32rpx; font-weight: 600; color: #fff }
-.pk-pgo { font-size: 24rpx; color: var(--gold); font-weight: 600 }
+.pk-pn { font-size: 34rpx; font-weight: 600; color: #fff }
+.pk-pgo { font-size: 26rpx; color: var(--gold); font-weight: 600 }
 
 /* 弃牌：做成"低一档"的按钮 —— 它不是主操作，但必须好点 */
 .pk-fold {
   margin-top: 24rpx; padding: 26rpx 0;
   text-align: center; border-radius: 20rpx;
-  font-size: 27rpx; color: rgba(255,255,255,.55);
+  font-size: 26rpx; color: rgba(255,255,255,.55);
   border: 2rpx solid rgba(255,255,255,.12);
 }
 .pk-fold:active { background: rgba(255,255,255,.06) }
 
 .pk-wait {
   text-align: center; padding: 44rpx 0;
-  font-size: 24rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.8;
+  font-size: 26rpx; color: rgba(255, 255, 255, 0.52); line-height: 1.8;
 }
 .pk-wait .pw-t { display: block; color: rgba(255,255,255,.68) }
 .pk-wait .pw-s {
   display: block; margin-top: 10rpx;
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* ---------- 结算摊牌 ---------- */
@@ -2303,7 +2303,7 @@
 }
 .pkr-row:last-child { border-bottom: none }
 .pkr-row.out { opacity: .5 }
-.pkr-n { flex: 1; font-size: 24rpx; color: rgba(255,255,255,.85) }
+.pkr-n { flex: 1; font-size: 26rpx; color: rgba(255,255,255,.85) }
 /*
  * 结算页的牌 —— 原来只有一个 22rpx 的浅色小块加几个字，
  * 六个人摊牌时糊成一团，**"摊牌"的意义（让人看清谁有什么牌）就没了**。
@@ -2313,7 +2313,7 @@
   display: flex; align-items: center; justify-content: center;
   width: 60rpx; height: 84rpx;
   flex: none;
-  font-size: 24rpx; font-weight: 700; color: var(--ink);
+  font-size: 26rpx; font-weight: 700; color: var(--ink);
   background: var(--card); border-radius: 8rpx;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, .22);
   letter-spacing: -1rpx;
@@ -2354,7 +2354,7 @@
   margin: 28rpx 0 24rpx;
   padding: 26rpx 24rpx;
   text-align: center;
-  font-size: 27rpx; font-weight: 600;
+  font-size: 26rpx; font-weight: 600;
   color: var(--cream);
   background: rgba(232,179,60,.10);
   border: 2rpx solid rgba(232,179,60,.28);
@@ -2374,7 +2374,7 @@
   border-radius: var(--r-2);
 }
 .ht-lbl {
-  font-size: 21rpx; color: rgba(232,179,60,.8);
+  font-size: 20rpx; color: rgba(232,179,60,.8);
   letter-spacing: 2rpx; margin-bottom: 16rpx;
 }
 /* 规则列表的纵向容器 ——
@@ -2390,11 +2390,11 @@
   display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
   background: rgba(232,179,60,.18);
-  color: var(--gold); font-size: 18rpx; font-weight: 700;
+  color: var(--gold); font-size: 20rpx; font-weight: 700;
   margin-top: 3rpx;
 }
 .ht-t {
-  flex: 1; font-size: 24rpx; line-height: 1.6;
+  flex: 1; font-size: 26rpx; line-height: 1.6;
   color: rgba(255,255,255,.72);
 }
 
@@ -2434,9 +2434,9 @@
 .rl-f2 { left: 37rpx; top: 37rpx }
 .rl-f3 { right: 20rpx; bottom: 20rpx }
 .rl-t {
-  font-size: 27rpx; font-weight: 600; color: var(--cream); letter-spacing: 2rpx;
+  font-size: 26rpx; font-weight: 600; color: var(--cream); letter-spacing: 2rpx;
 }
-.rl-s { font-size: 21rpx; color: rgba(255, 255, 255, 0.52) }
+.rl-s { font-size: 20rpx; color: rgba(255, 255, 255, 0.52) }
 
 /* ---------- 网络提示：两档 ----------
    抖动（黄）→ 断了（红 + 重试按钮）。区别不只是颜色：
@@ -2456,7 +2456,7 @@
   border-radius: 999rpx;
   background: rgba(255,255,255,.14);
   color: #fff;
-  font-size: 21rpx;
+  font-size: 20rpx;
   font-weight: 600;
 }
 .nettip-retry:active { opacity: .7 }
@@ -2476,7 +2476,7 @@
 }
 .cc-share::after { border: none }
 .cc-share-t {
-  font-size: 27rpx; font-weight: 600;
+  font-size: 26rpx; font-weight: 600;
   color: rgba(255,255,255,.85);
 }
 .cc-share-on { background: rgba(255,255,255,.16) }
@@ -2492,7 +2492,7 @@
   border-radius: var(--r-1);
 }
 .specbar-i { width: 30rpx; height: 30rpx; flex: none; opacity: .85 }
-.specbar-t { font-size: 21rpx; color: rgba(180, 205, 230, .95) }
+.specbar-t { font-size: 20rpx; color: rgba(180, 205, 230, .95) }
 
 /* ---------- 连庄条 ----------
    酒桌上"他连赢三把了"是最能带动气氛的一句话，值得比"谁喝一杯"更高调：
@@ -2507,7 +2507,7 @@
   animation: slamIn .42s cubic-bezier(.34, 1.2, .64, 1) both;
 }
 .streak-t {
-  font-size: 27rpx; font-weight: 700;
+  font-size: 26rpx; font-weight: 700;
   color: #FFD98A;
   letter-spacing: 1rpx;
 }
@@ -2519,7 +2519,7 @@
   margin: 20rpx 0 0;
   padding: 20rpx 24rpx;
   text-align: center;
-  font-size: 24rpx; font-weight: 600;
+  font-size: 26rpx; font-weight: 600;
   color: rgba(200, 215, 235, .9);
   background: rgba(94, 127, 166, .13);
   border: 2rpx solid rgba(94, 127, 166, .3);
@@ -2535,7 +2535,7 @@
   padding: 14rpx 18rpx;
   border: 2rpx dashed rgba(160, 130, 210, .45);
   border-radius: 12rpx;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(200, 180, 235, .95);
 }
 
@@ -2544,7 +2544,7 @@
    不要做成结论 —— 用次要色 + 小字号，别抢牌桌的视觉重量。 */
 .pk-hint {
   text-align: center;
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: rgba(232, 179, 60, .85);
   letter-spacing: 1rpx;
   margin: -10rpx 0 var(--gap-2);
@@ -2553,7 +2553,7 @@
 /* 比牌列表里的「换牌 1.5 杯」—— 决策线索，不是主角。
    和主角色的"比 ▸"拉开，用灰蓝小字。 */
 .pk-pcups {
-  font-size: 18rpx;
+  font-size: 20rpx;
   color: rgba(150, 170, 190, .8);
   margin-right: 8rpx;
 }
@@ -2590,7 +2590,7 @@
 .rv-row.win .rv-total { color: #FFD98A }
 
 /* 结算页底部：今晚第几局 */
-.night-round { text-align: center; margin-top: 6rpx; font-size: 21rpx; color: rgba(255,255,255,.52) }
+.night-round { text-align: center; margin-top: 6rpx; font-size: 20rpx; color: rgba(255,255,255,.52) }
 
 /* ============================================================
    金花确认卡（2026-10-29）
@@ -2603,7 +2603,7 @@
 .pkask-btn {
   flex: 1; text-align: center;
   padding: 26rpx 0; border-radius: 20rpx;
-  font-size: 27rpx; font-weight: 600;
+  font-size: 26rpx; font-weight: 600;
   transition: transform .1s, opacity .1s;
 }
 .pkask-btn:active { transform: scale(.97); opacity: .9 }
@@ -2616,9 +2616,9 @@
   display: flex; flex-direction: column; align-items: center; gap: 14rpx;
   z-index: 20;
 }
-.cd-stuck-t { font-size: 24rpx; color: rgba(255,255,255,.52) }
+.cd-stuck-t { font-size: 26rpx; color: rgba(255,255,255,.52) }
 .cd-stuck-b {
-  font-size: 27rpx; font-weight: 600; color: #F0C860;
+  font-size: 26rpx; font-weight: 600; color: #F0C860;
   padding: 20rpx 44rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.16);
   transition: transform .1s;
@@ -2628,7 +2628,7 @@
 /* 进入房间遮罩的兜底出口（5 秒后才出现，正常流程看不到） */
 .rl-esc {
   margin-top: 36rpx;
-  font-size: 27rpx; font-weight: 600; color: #F0C860;
+  font-size: 26rpx; font-weight: 600; color: #F0C860;
   padding: 20rpx 48rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.16);
   transition: transform .1s;
@@ -2642,7 +2642,7 @@
   padding: 8rpx 18rpx; border-radius: 999rpx;
   border: 2rpx solid rgba(255,255,255,.14);
   background: rgba(255,255,255,.04);
-  font-size: 21rpx; color: rgba(255,255,255,.55);
+  font-size: 20rpx; color: rgba(255,255,255,.55);
   transition: background .15s, border-color .15s, color .15s;
 }
 .ztoggle.on {
@@ -2653,13 +2653,13 @@
 .ztoggle:active { transform: scale(.96) }
 .zt-dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: rgba(255,255,255,.35); flex: none }
 .ztoggle.on .zt-dot { background: var(--gold) }
-.zt-t { font-size: 21rpx; line-height: 1.2; white-space: nowrap }
+.zt-t { font-size: 20rpx; line-height: 1.2; white-space: nowrap }
 
 /* 等待行里的「催一下」（比大小，2026-10-30） */
 .waitline { display: flex; align-items: center; justify-content: center; gap: 16rpx }
-.wl-t { font-size: 24rpx; color: rgba(255,255,255,.52) }
+.wl-t { font-size: 26rpx; color: rgba(255,255,255,.52) }
 .nudgeb {
-  font-size: 21rpx; font-weight: 600; color: var(--gold);
+  font-size: 20rpx; font-weight: 600; color: var(--gold);
   padding: 8rpx 20rpx; border-radius: 999rpx;
   background: rgba(232,179,60,.14);
   border: 2rpx solid rgba(232,179,60,.32);
@@ -2670,8 +2670,8 @@
 /* ===== 揭晓进度（比大小等别人摇完，2026-10-30） ===== */
 .revealprog { margin-top: 22rpx }
 .rp-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10rpx }
-.rp-t { font-size: 21rpx; color: rgba(255,255,255,.52) }
-.rp-n { font-size: 24rpx; font-weight: 700; color: var(--gold) }
+.rp-t { font-size: 20rpx; color: rgba(255,255,255,.52) }
+.rp-n { font-size: 26rpx; font-weight: 700; color: var(--gold) }
 .rp-bar {
   height: 10rpx; border-radius: 999rpx;
   background: rgba(255,255,255,.10);
@@ -2704,14 +2704,14 @@
 /* 比牌记录：牌面 + 牌型名（2026-10-30） */
 .pkl-side { display: flex; flex-direction: column; align-items: center; }
 .pkl-type {
-  font-size: 21rpx; color: rgba(255,255,255,.72);
+  font-size: 20rpx; color: rgba(255,255,255,.72);
   margin-top: 4rpx; white-space: nowrap;
 }
 
 /* 人不够时规则折叠成一行（2026-10-30）：把首屏空间让给「叫人来」按钮 */
 .howto.folded { padding-bottom: 24rpx; }
 .ht-fold {
-  font-size: 21rpx; color: rgba(232,179,60,.85);
+  font-size: 20rpx; color: rgba(232,179,60,.85);
   margin-top: 12rpx; line-height: 1.5;
 }
 
@@ -2722,7 +2722,7 @@
  */
 .gap-line {
   margin-top: 16rpx;
-  font-size: 28rpx; font-weight: 600;
+  font-size: 26rpx; font-weight: 600;
   color: rgba(255, 255, 255, 0.78);
   letter-spacing: .5rpx;
   /*
@@ -2776,20 +2776,20 @@
  */
 .oh-hand {
   margin-top: 10rpx;
-  font-size: 32rpx; font-weight: 700;
+  font-size: 34rpx; font-weight: 700;
   color: var(--gold);
   letter-spacing: 4rpx;
 }
 .rv-hand {
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
   margin-left: 10rpx; flex: none;
 }
 
 /* 单骰重摇（2026-11-02）：比主按钮轻一档 —— 它是"补救"，不是主要动作 */
-.rerollbtn { margin-top: 18rpx; font-size: 28rpx }
+.rerollbtn { margin-top: 18rpx; font-size: 26rpx }
 .rerollhint {
   margin-top: 10rpx; text-align: center;
-  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+  font-size: 20rpx; color: rgba(255, 255, 255, 0.52);
 }
 
 /* ============================================================

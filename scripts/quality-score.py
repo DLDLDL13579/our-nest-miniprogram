@@ -71,7 +71,11 @@ def add(dim, item, full, got, evidence=''):
 css = wxss_all()
 css_nc = re.sub(r'/\*[\s\S]*?\*/', '', css)
 sizes = set(int(x) for x in re.findall(r'font-size:\s*(\d+)rpx', css_nc))
-add('视觉一致性', '字号收敛（≤16 档）', 4, 4 if len(sizes) <= 16 else 2,
+# ★ 2026-11-03：判据从 ≤16 档收紧到 ≤12 档。
+#   16 档时这个判据刚好卡在边界（实际就是 16 档）——
+#   「刚好不报警」等于没有这条判据。
+#   而 12 档是"小/正文/副标题/标题/大标题 + 几个特例"的实际下限。
+add('视觉一致性', '字号收敛（≤12 档）', 4, 4 if len(sizes) <= 12 else 2,
     '%d 档' % len(sizes))
 
 hexes = re.findall(r'#([0-9a-fA-F]{3,8})\b', css_nc)

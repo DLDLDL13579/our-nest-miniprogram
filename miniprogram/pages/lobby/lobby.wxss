@@ -65,7 +65,7 @@
 .lb-in { position: relative; padding: 34rpx 34rpx 30rpx }
 .lb-top { display: flex; align-items: center; justify-content: space-between }
 .lb-lbl {
-  font-size: 21rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx;
+  font-size: 20rpx; color: rgba(255,255,255,.55); letter-spacing: 4rpx;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .16s backwards;
 }
 .lb-t {
@@ -74,7 +74,7 @@
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .24s backwards;
 }
 .lb-s {
-  font-size: 21rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.6;
+  font-size: 20rpx; color: rgba(255,255,255,.5); margin-top: 12rpx; line-height: 1.6;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .32s backwards;
 }
 @keyframes lineRise {
@@ -105,13 +105,13 @@
 }
 .join-in {
   flex: 1; min-width: 0; height: 68rpx;
-  font-size: 32rpx; color: var(--ink); letter-spacing: 4rpx;
+  font-size: 34rpx; color: var(--ink); letter-spacing: 4rpx;
 }
 .ph { color: var(--ink3); letter-spacing: 1rpx }
 .join-btn {
   flex: none; height: 68rpx; padding: 0 38rpx;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 20rpx; font-size: 27rpx; font-weight: 600;
+  border-radius: 20rpx; font-size: 26rpx; font-weight: 600;
   /* 未输满 3 位时是"待命"态：浅底浅字，而不是灰掉看不见 */
   background: rgba(255,255,255,.1); color: var(--ink3);
   transition: background .16s, color .16s;
@@ -122,7 +122,7 @@
 .errbox {
   margin: 0 0 var(--gap-2); padding: 18rpx 22rpx;
   background: rgba(224,113,79,.14); border-left: 6rpx solid var(--brand2);
-  border-radius: 16rpx; font-size: 24rpx; color: var(--brand2); line-height: 1.6;
+  border-radius: 16rpx; font-size: 26rpx; color: var(--brand2); line-height: 1.6;
 }
 
 /* ============================================================
@@ -150,7 +150,7 @@
 .first-hint {
   width: 100%;
   margin: 0 0 12rpx 4rpx;
-  font-size: 21rpx; color: var(--gold);
+  font-size: 20rpx; color: var(--gold);
   animation: hintIn .5s ease-out both;
 }
 @keyframes hintIn { from { opacity: 0; transform: translateY(-6rpx) } to { opacity: 1; transform: none } }
@@ -229,12 +229,12 @@
 
 .gc-name {
   position: relative;
-  font-size: 28rpx; font-weight: 700; color: var(--ink);
+  font-size: 26rpx; font-weight: 700; color: var(--ink);
   margin-top: 12rpx; letter-spacing: .5rpx;
 }
 .gc-desc {
   position: relative;
-  font-size: 21rpx; color: var(--ink2); margin-top: 6rpx; line-height: 1.32;
+  font-size: 20rpx; color: var(--ink2); margin-top: 6rpx; line-height: 1.32;
   /* 两行封顶：两列宽度只有 166px，一句话必须能一眼读完 */
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   overflow: hidden;
@@ -245,12 +245,12 @@
   display: flex; align-items: center; justify-content: space-between;
 }
 .gc-people {
-  font-size: 18rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
+  font-size: 20rpx; padding: 3rpx 12rpx; border-radius: 999rpx;
   background: var(--brandsoft); color: var(--brand2); flex: none;
 }
 /* "开桌"两个字：整个卡片就是按钮，它只负责说清"点了会怎样" */
 .gc-cta-t {
-  font-size: 21rpx; font-weight: 600;
+  font-size: 20rpx; font-weight: 600;
   color: var(--accent, var(--brand2)); opacity: .92; flex: none;
 }
 
@@ -272,7 +272,7 @@
  */
 .lb-stats {
   margin-top: 14rpx;
-  font-size: 21rpx;
+  font-size: 20rpx;
   color: rgba(232, 179, 60, .86);
   letter-spacing: 2rpx;
 }
@@ -280,7 +280,7 @@
 .lb-tip {
   margin-top: 8rpx; padding: 24rpx 26rpx;
   background: rgba(255,255,255,.045); border-radius: var(--r-2);
-  font-size: 21rpx; color: var(--ink3); line-height: 1.9;
+  font-size: 20rpx; color: var(--ink3); line-height: 1.9;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .78s backwards;
 }
 .tip-line { display: block }
@@ -290,7 +290,7 @@
 /* "上次"：金色小标签，比置顶更进一步 ——
    玩家会想"为什么它在第一个"，标签直接回答这个问题。 */
 .gc-recent {
-  font-size: 18rpx; padding: 2rpx 10rpx;
+  font-size: 20rpx; padding: 2rpx 10rpx;
   border-radius: 8rpx;
   background: var(--goldsoft);
   color: #8A6A22;
@@ -312,7 +312,7 @@
 .sober { margin-top: 10rpx; opacity: .78 }
 
 /* 理性饮酒提示：首屏可见（合规要求），但比内容量那行更淡 */
-.lb-sober { margin-top: 10rpx; font-size: 21rpx; color: rgba(255,255,255,.52); letter-spacing: .5rpx }
+.lb-sober { margin-top: 10rpx; font-size: 20rpx; color: rgba(255,255,255,.52); letter-spacing: .5rpx }
 
 /* 「进房」按钮的按下反馈（2026-11-02，断言扫出来的） */
 .join-in:active { transform: scale(.98); filter: brightness(.94) }
