@@ -578,6 +578,14 @@
           横着滑就像"往上加码"，比在一堆方格里翻找更顺。
           所以是"保留全部选项、让它可滑"，不是"砍掉选项"。
       -->
+      <!--
+        ★ 2026-11-02：外面包一层 `.optwrap`，用来放"右边还有内容"的渐隐提示。
+
+        为什么需要它：真机上一排只显示 5.8 个叫法，而总共有 24 个 ——
+        但 **scroll-x 没有任何视觉提示**，用户不知道可以横向滑
+        （AGENTS.md 记过这条，当时只解决了"一排显示几个"，没解决"知道不知道能滑"）。
+      -->
+      <view class="optwrap">
       <scroll-view class="optscroll" scroll-x enable-flex show-scrollbar="{{false}}">
         <view class="optrow">
           <!--
@@ -600,6 +608,8 @@
                 data-i="{{index}}" data-l="{{item.label}}" bindtap="doBid">{{item.label}}</view>
         </view>
       </scroll-view>
+      <view class="optfade"></view>
+      </view>
 
       <view wx:if="{{room.bid && room.myTurn}}" class="liar-acts">
         <view class="btn openbtn" bindtap="doOpen">

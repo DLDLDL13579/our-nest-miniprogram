@@ -2826,3 +2826,13 @@
   55%  { left: 115% }
   100% { left: 115% }
 }
+
+/* 叫骰按钮的横向滚动：右侧渐隐，提示"还有内容"（2026-11-02） */
+.optwrap { position: relative }
+.optfade {
+  position: absolute;
+  top: 0; right: 0; bottom: 20rpx;
+  width: 64rpx;
+  background: linear-gradient(90deg, rgba(36,26,22,0) 0%, rgba(36,26,22,.92) 72%);
+  pointer-events: none;
+}
