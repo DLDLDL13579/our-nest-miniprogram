@@ -1652,6 +1652,25 @@ Page({
      *
      *   ⚠️ 只在**阶段真的变了**时重启 —— 每次刷新都重启会让定时器永远不触发。
      */
+    /*
+     * ★★★ 2026-11-03：**"开过 N 次"以前只有房主会加** —— 因为 `bumpNightCount`
+     *   只在一个地方被调用（`doStart` 成功后），而那是房主才点的按钮。
+     *
+     *   于是：房主玩了 7 局 → 显示"开过 7 次"；其他人 → **永远是 0**。
+     *   而「我的」页那一行是"我玩过什么"，不是"我开过什么"。
+     *
+     *   现在改成**所有玩家在进入 playing 时都记一局**。
+     *   ⚠️ 用 `_countedRound` 防重复 —— 阶段可能因为轮询被反复判定。
+     */
+    const prevPhaseForCount = (this.data.room && this.data.room.phase) || ''
+    if (prevPhaseForCount !== 'playing' && raw.phase === 'playing') {
+      const rk = String(raw.round || '') + '|' + String(raw.game || '')
+      if (this._countedRound !== rk) {
+        this._countedRound = rk
+        this.setData({ nightRound: this.bumpNightCount(raw.game) })
+      }
+    }
+
     const prevPhase = (this.data.room && this.data.room.phase) || ''
     const patch = Object.assign({}, extra || {}, {
       room: this.decorate(raw),
@@ -3003,8 +3022,13 @@ Page({
         return null
       })
     if (this.okOrSay(r)) {
-      /* 记一局，并留下"今晚第几局"给结算页 */
-      this.setData({ nightRound: this.bumpNightCount(r.room && r.room.game) })
+      /*
+       * ⚠️ 2026-11-03：**这里不再记一局** —— 改到 `applyRoom` 里
+       *   "所有玩家进入 playing" 时统一记（否则只有房主的「开过 N 次」会涨）。
+       *
+       *   留这条注释是因为：如果有人在别处又加一次 `bumpNightCount`，
+       *   房主就会**重复计数**（开一局 +2）。
+       */
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */

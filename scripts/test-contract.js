@@ -5060,3 +5060,34 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 撒花 ' + n + ' 片 × 5 种颜色（数量在 30~45 之间）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**「开过 N 次」必须所有玩家都记，不只是房主**
+ *
+ * `bumpNightCount` 原来只在 `doStart` 成功后调用 —— 而那是**房主才点的按钮**。
+ * 于是：房主玩 7 局显示"开过 7 次"，其他人**永远是 0**。
+ *
+ * 而「我的」页那一行是"**我**玩过什么"，不是"**我**开过什么"。
+ *
+ * 现在改成在 `applyRoom` 里"进入 playing 阶段"时记（所有玩家都会经过），
+ * 并用 `_countedRound` 防重复。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+
+  /* 只允许一处调用（多一处就会重复计数） */
+  const calls = [...src.matchAll(/this\.bumpNightCount\(/g)]
+  assert.strictEqual(calls.length, 1,
+    'bumpNightCount 应该只有一处调用（多一处会让房主重复计数），实际 ' + calls.length + ' 处')
+
+  /* 那一处必须在 applyRoom 的"进入 playing"分支里，不是 doStart */
+  assert.ok(/_countedRound/.test(src),
+    '★ 记一局要有防重复标记（_countedRound）—— 阶段可能因轮询被反复判定')
+  assert.ok(/raw\.phase === 'playing'[\s\S]{0,200}bumpNightCount/.test(src),
+    '★ 记一局必须在"进入 playing"时做（所有玩家都经过），不能在 doStart 里（只有房主）')
+
+  ok('★ 「开过 N 次」所有玩家都记（单一调用点 + 防重复）')
+}
