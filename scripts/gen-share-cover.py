@@ -148,7 +148,7 @@ def main():
 
     d.text((44, 74), '酒桌', font=f_big, fill=CREAM)
     d.text((46, 152), '手机一起玩', font=f_sm, fill=(226, 202, 168))
-    d.text((46, 186), '一个人开房，其他人输号进来', font=f_xs, fill=(176, 158, 136))
+    d.text((46, 186), '一个人开桌，其他人输号进来', font=f_xs, fill=(176, 158, 136))
 
     # 左上角一道金色细线（装饰，给画面一个"起笔"）
     d.line([(46, 52), (46, 106)], fill=GOLD, width=4)

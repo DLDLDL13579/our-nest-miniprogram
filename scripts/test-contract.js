@@ -4162,3 +4162,37 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 进行中只给自己的骰子（别人的只有数量），结算才揭晓全部')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**分享标题必须真的能用"完整版"**
+ *
+ * 原来 full 是「来玩大话骰，已经 3 个人在等（房间号 627）」= 24 字，
+ * 而判据是 `length <= 20` —— **只要有人等就永远走 tight 分支**，
+ * 把最有吸引力的那句"3 个人在等"截成"3 人等"。
+ *
+ * （更讽刺的是：full 只在"1 人"时用得上，而那一刻恰恰没人等。）
+ *
+ * 判据：拿**最长的玩法名 + 最多人数 + 3 位房间号**算一遍，
+ * 完整版也必须 ≤ 20 字。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const games = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+
+  /* 最长玩法名 */
+  const names = [...games.matchAll(/name:\s*'([^']+)'/g)].map(m => m[1])
+  const longest = names.sort((a, b) => b.length - a.length)[0]
+
+  /* 复刻 full 的拼法 */
+  const full = '来玩' + longest + '，' + '12' + ' 人在等（' + '888' + '）'
+  assert.ok(full.length <= 20,
+    '★ 分享标题的完整版在最长玩法名下超了 20 字（' + full.length + '）：' + full)
+
+  /* 确认代码里的 full 拼法和我这里一致（防止断言和实现脱节） */
+  assert.ok(/'来玩' \+ gname \+ '，' \+ \(n > 1 \? n \+ ' 人在等' : '就等你'\) \+ '（' \+ r\.code \+ '）'/.test(src),
+    '分享标题的完整版拼法变了 —— 这条断言也要跟着改')
+
+  ok('★ 分享标题在最坏情况（' + longest + ' + 12 人 + 888）也只有 ' + full.length + ' 字')
+}
