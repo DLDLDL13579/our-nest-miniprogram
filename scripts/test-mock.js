@@ -145,3 +145,46 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   console.log('  ✓ mock 的题卡与卧底词都来自真实库（题卡 %d 条 / 词 %d 个）',
     allCards.size, allWords.size)
 }
+
+/* ============================================================================
+ * 2026-11-02 追加：倒计时的数字必须和配置对得上
+ *
+ * mock 的 `cd` 状态原来写的是 `cdText: '3'` + `countdownMs: 2200`——
+ * 而产品里 `COUNTDOWN_MS` 是 **2000**，按 `Math.ceil(2000/1000)` 应该显示 **2**。
+ *
+ * 也就是说：那张渲染图展示的是**产品里不会出现的倒计时画面**（显示"3"）。
+ * 这是 mock 造假的第四个变体（前三个：缺字段、数据矛盾、假题卡）。
+ * ========================================================================== */
+{
+  const fs = require('fs')
+  const path = require('path')
+  const ROOT = path.join(__dirname, '..')
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+  const m = /COUNTDOWN_MS\s*=\s*(\d+)/.exec(cloud)
+  assert.ok(m, '找不到 COUNTDOWN_MS')
+  const realMs = Number(m[1])
+  const expectFirst = String(Math.ceil(realMs / 1000))
+
+  const bad = []
+  for (const k of Object.keys(states)) {
+    const s = states[k]()
+    if (!s || !s.room || s.room.phase !== 'countdown') continue
+    const txt = s.cdText
+    if (txt === undefined || txt === null || txt === '') continue
+    /* 允许两种：读秒数字（= ceil(ms/1000) 或更小，因为会倒数）或"开始" */
+    if (txt === '开始') continue
+    if (!/^\d+$/.test(String(txt))) {
+      bad.push(k + '：cdText 既不是数字也不是「开始」→ ' + JSON.stringify(txt))
+      continue
+    }
+    const n = Number(txt)
+    if (n > Math.ceil(realMs / 1000)) {
+      bad.push(k + '：倒计时只有 ' + realMs + 'ms，却显示 ' + n +
+        '（最多只能显示 ' + expectFirst + '）')
+    }
+  }
+  assert.deepStrictEqual(bad, [],
+    '这些 mock 倒计时状态产品里不可能出现：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 倒计时数字与 COUNTDOWN_MS(' + realMs + 'ms) 对得上')
+}

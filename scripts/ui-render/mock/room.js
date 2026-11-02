@@ -312,7 +312,7 @@ module.exports = {
     }),
 
     /* 开局倒计时（普通读秒 / 最后一拍） */
-    cd: () => ({ nightRound: 1, stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
+    cd: () => ({ nightRound: 1, stage: 'countdown', cdText: '2', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2000, host: true }) }),
     /* 第 3 局开局：验「今晚第 N 局」的文案拼接 */
     cdRound3: () => ({ nightRound: 3, stage: 'countdown', cdText: '2', cdTick: 1, room: pkRoom({ game: 'dice', phase: 'countdown', countdownMs: 2000, host: true }) }),
     cdGo: () => ({ stage: 'countdown', cdText: '开始', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
