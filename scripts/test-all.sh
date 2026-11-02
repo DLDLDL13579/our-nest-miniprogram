@@ -21,6 +21,7 @@ node scripts/test-poker.js
 node scripts/test-dicerank.js
 node scripts/test-rules-doc.js
 node scripts/test-reroll.js
+node scripts/test-mock.js
 
 echo "═══ 2/9 游戏逻辑（转盘前后端一致 / 摇盅五步流程）═══"
 node scripts/test-game.js

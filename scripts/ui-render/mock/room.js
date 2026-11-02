@@ -375,13 +375,13 @@ module.exports = {
     cardPanelOpen: () => ({
       stage: 'playing', cardPanel: true, cardType: 'truth',
       cardText: '说出你在座各位里最想跟谁合伙做生意，为什么',
-      room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 1,
+      room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 3,
         shortBy: 0, soloOk: true })
     }),
 
     howOpen: () => ({
       stage: 'lobby', howOpen: true,
-      room: pkRoom({ game: 'liar', phase: 'lobby', host: true, count: 2,
+      room: pkRoom({ game: 'liar', phase: 'lobby', host: true, count: 3,
         shortBy: 1, soloOk: true, minPlayers: 2 })
     }),
 
@@ -756,7 +756,7 @@ module.exports = {
         room: uwRoom({
           id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
           count: 12, players: players, gameName: '谁是卧底',
-          uw: { step: 'vote', word: '豆浆', aliveCount: 12, myVote: '', voteCount: 5, voterCount: 12, iVoted: true, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
+          uw: { step: 'vote', word: '豆浆', aliveCount: 12, myVote: '', voteCount: 10, voterCount: 12, iVoted: true, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
         })
       }
     },
