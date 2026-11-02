@@ -53,6 +53,20 @@ const POLL_MS = 1500
  * 加玩法**不需要动这个文件**。
  */
 const { GAMES: GAME_LIST, gameOf } = require('../../utils/games.js')
+/*
+ * ⚠️ 注意：**这个 `GAMES` 和 utils/games.js 里的 `GAMES` 不是同一个东西。**
+ *
+ * utils/games.js 的字段是 `id`（那是唯一事实源，云端也用它）。
+ * 这里的 map 把 `id` 改成了 `k` —— 因为模板里写的是 `item.k`
+ * （`wx:for="{{games}}"` + `data-k`），历史原因沿用短名。
+ *
+ * 2026-11-02 我审到这里时差点判定成 bug（"GAMES 只有 id 没有 k，
+ * 所以 x.k === room.game 永远 undefined"），实际是**被这个局部变量遮蔽了**。
+ * 真机验证：games[0].k = 'liar'，玩法选择正常。
+ *
+ * 所以：在本文件里说"GAMES 有 k"，在别处说"GAMES 有 id"，**两边都对**。
+ * 写断言/审代码时不要跨文件套字段名。
+ */
 const GAMES = GAME_LIST.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g.desc }))
 
 /* 转盘扇区。权重决定扇区角度 —— 概率和视觉必须一致，
