@@ -115,6 +115,16 @@ function pkRoom(r) {
     soloOk: true,
     shortBy: 0,
     /*
+     * ★★ 2026-11-03：**规则弹层的内容**。
+     *
+     *   模板读 `room.howList`（由 decorate 从 `games.js` 的 `how` 生成），
+     *   而 mock 从来没给过它 —— 于是所有"看规则"的截图里
+     *   **弹层只有标题和「知道了」按钮，规则列表是空的**。
+     *
+     *   这类"mock 缺字段"会让截图变成假界面（AGENTS.md 记过多次），
+     *   而这次我等了两轮才在渲染图上注意到。
+     */
+    /*
      * ★ 2026-11-02：这三个 room 级字段 mock 缺，导致 8 个状态渲染报错 ——
      *   真机安全（模板对 undefined.length 静默为假），但**那几块区域从没被渲染验证过**：
      *   · myCards      —— "已加 N 条 · 抽得到" + 自定义题列表（服务端 shape:802）
@@ -155,7 +165,15 @@ function pkRoom(r) {
      *   渲染器只打一条警告，那块内容在预览里凭空消失。
      *   凡是 "decorate 会补" 的字段，工厂函数都要给个默认值。
      */
-    howList: [], gameName: '', spectating: false, settleFoot: '', streakText: '',
+    /*
+     * ⚠️ 2026-11-03：`howList` 原来写死 `[]` —— 于是所有「看规则」的截图里
+     *   弹层只有标题和按钮，**规则列表是空的**。而它是 decorate 从
+     *   `games.js` 的 `how` 生成的，mock 应该用真实注册表。
+     */
+    howList: (require('../../../miniprogram/utils/games.js').GAMES.filter(function (x) {
+      return x.id === (r.game || 'liar')
+    })[0] || { how: [] }).how,
+    gameName: '', spectating: false, settleFoot: '', streakText: '',
     shortBy: 0, minPlayers: 2, maxPlayers: 8
   }, r)
 }
@@ -165,6 +183,11 @@ function uwRoom(r) {
     me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     turn: 0, round: 1, bid: null, lastResult: null, spin: null, deck: 'food',
     myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [],
+    /* ★ 2026-11-03：规则列表也要给（和 pkRoom 同理）——
+       卧底状态原来没有，于是「看规则」的截图全是空的。 */
+    howList: require('../../../miniprogram/utils/games.js').GAMES.filter(function (x) {
+      return x.id === 'undercover'
+    })[0].how,
     nightDrinkList: [], myCards: [], confetti: []
   }, r)
 }

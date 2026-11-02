@@ -4257,3 +4257,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 同一个情况的提示只有一种说法（' + (uniq[0] || '—') + '）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**规则弹层必须有内容**
+ *
+ * `howList` 在 mock 里写死成 `[]` —— 于是所有"看规则"的截图里
+ * 弹层只有标题和按钮，**规则列表是空的**，而我看图会以为"弹层没做好"。
+ *
+ * 判据：每个玩法都要能在 `howOpen` 这类状态下拿到非空规则列表。
+ * ========================================================================== */
+{
+  const mock = require('./ui-render/mock/room.js')
+  const games = require('../miniprogram/utils/games.js')
+  const bad = []
+
+  Object.keys(mock.states).forEach(k => {
+    let s
+    try { s = mock.states[k]() } catch (e) { return }
+    const r = s.room || {}
+    if (!r.game) return
+    const meta = games.GAMES.filter(x => x.id === r.game)[0]
+    if (!meta) return
+    const want = (meta.how || []).length
+    if (!want) return
+    const got = (r.howList || []).length
+    if (got !== want) bad.push(k + '（' + r.game + '）：howList ' + got + ' 条，注册表有 ' + want + ' 条')
+  })
+  assert.deepStrictEqual(bad, [],
+    '这些状态的规则列表和注册表对不上（弹层会是空的或残缺的）：\n    ' + bad.join('\n    '))
+  ok('★ 所有状态的规则列表都和注册表一致（弹层不会空）')
+}
