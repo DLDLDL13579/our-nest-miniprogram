@@ -685,18 +685,20 @@ module.exports = {
         return {
           confetti: Array.from({ length: 20 }, (_, i) => i),
           result: {
-            ranked: names.map((n, i) => ({
-              name: n, seat: i + 1,
-              /* 第一个是豹子（五个 6），其余是普通牌 */
-              total: i === 0 ? 30 : 26 - i * 7,
-              /* ★ 2026-11-02：牌型系统上线后必须有这两个字段，
-                 否则界面上的「五条 / 两对 / 一对」永远不显示 */
-              hand: i === 0 ? 8 : (i === 1 ? 3 : 2),
-              handName: i === 0 ? '五条' : (i === 1 ? '两对' : '一对'),
-              leopard: i === 0,
-              dice: i === 0 ? [6, 6, 6, 6, 6]
-                : [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1]
-            })),
+            /*
+             * ★★ 2026-11-03：排名也改成用真实的 `rankPlayers` 算。
+             *   原来 `total` / `hand` / `handName` 三个字段是**手写编的**
+             *   （`26 - i * 7`），而 `dice` 是另一套公式 —— **两边对不上**
+             *   （倩萍的 total 写 19、实际 24；老王写 12、实际 15）。
+             *
+             *   `rankPlayers` 会一次算全：total / hand / handName / rankKey。
+             */
+            /* 邓林：五条（五个 6）· 老王：两对 · 倩萍：一对 —— 都必须是 5 颗 */
+            ranked: require('../../../miniprogram/utils/dicerank.js').rankPlayers([
+              { name: names[0], seat: 1, dice: [6, 6, 6, 6, 6] },
+              { name: names[1], seat: 2, dice: [3, 5, 3, 5, 2] },
+              { name: names[2], seat: 3, dice: [2, 3, 2, 5, 4] }
+            ]).ranked,
             winners: ['邓林'], top: 30, topHand: '五条', handicapWin: true, handicapFace: 6,
             leopardWin: true, leopardFace: 6
           }

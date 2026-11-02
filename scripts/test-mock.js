@@ -188,3 +188,46 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     '这些 mock 倒计时状态产品里不可能出现：\n    ' + bad.join('\n    '))
   console.log('  ✓ 倒计时数字与 COUNTDOWN_MS(' + realMs + 'ms) 对得上')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**结算 mock 的数值必须和它的骰子对得上**
+ *
+ * `diceWin` / `dice8` 原来是手写编的：`total: 26 - i * 7`，
+ * 而 `dice` 用另一套公式 —— 两边对不上（倩萍 total 写 19、实际 24）。
+ * 更糟的是**没有 `handName`**，于是比大小结算页那一列牌型名永远是空的
+ * —— 而看图会以为是模板写错。
+ *
+ * 判据：凡是带 `ranked` 的状态，逐个人重算 total 并与 dice 求和比对，
+ * 并验证 handName 和真实 rankPlayers 的结论一致。
+ * ========================================================================== */
+{
+  const dicerank = require('../miniprogram/utils/dicerank.js')
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const ranked = (s && s.result && s.result.ranked) ||
+      (s && s.room && s.room.lastResult && s.room.lastResult.ranked) || []
+    if (!ranked.length) return
+    ranked.forEach(p => {
+      if (!Array.isArray(p.dice) || p.dice.length !== 5) {
+        bad.push(k + ' / ' + p.name + '：骰子不是 5 颗')
+        return
+      }
+      const real = p.dice.reduce((a, b) => a + b, 0)
+      if (p.total !== real) {
+        bad.push(k + ' / ' + p.name + '：total 写 ' + p.total + '，dice 求和是 ' + real)
+      }
+      if (!p.handName) bad.push(k + ' / ' + p.name + '：缺 handName')
+    })
+    /* 排名顺序必须和 rankPlayers 的结论一致 */
+    const rk = dicerank.rankPlayers(
+      ranked.map(p => ({ name: p.name, seat: p.seat, dice: p.dice.slice() })))
+    const want = rk.ranked.map(p => p.name).join(',')
+    const got = ranked.map(p => p.name).join(',')
+    if (want !== got) bad.push(k + '：排名顺序和 rankPlayers 不一致（应为 ' + want + '）')
+  })
+  assert.deepStrictEqual(bad, [],
+    '结算 mock 的数值对不上：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 结算 mock 的 total / handName / 排名顺序都与真实 rankPlayers 一致')
+}
