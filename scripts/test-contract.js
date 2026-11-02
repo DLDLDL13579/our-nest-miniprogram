@@ -987,6 +987,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些音效调用没有注册（不会报错，只是没声音）：\n    ' + unregistered.join('\n    '))
   ok('全部音效调用都已注册')
 
+  /*
+   * ★★★ 2026-11-02：`feedback.fire('xxx')` 的动作名也要校验。
+   *
+   * 上面那条只扫 `sfx.play('xxx')`（音效键），而 `feedback.fire` 用的是
+   * **另一套命名空间**（全仓 21 个动作：diceSettle / cupOpen / luckyHit /
+   * penalized / pkFlip …）。
+   *
+   * 而 `fire()` 对未知动作是**静默的** —— 音效不响、震不动、也不报错。
+   * 这轮改转盘结果音效时我就写错过：把音效键 `combo1` 当成动作名传进去，
+   * **测试全绿**，是我 grep 出可用动作列表才发现。
+   */
+  {
+    const fbSrc = fs.readFileSync(
+      path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
+    /* 只取 FEEDBACK 表里的键：形如「  xxx: {」，且在 const FEEDBACK = { 之后 */
+    const tableStart = fbSrc.indexOf('const FEEDBACK')
+    assert.ok(tableStart > 0, '找不到 FEEDBACK 表')
+    const tableEnd = fbSrc.indexOf('\n}', tableStart)
+    const tableSrc = fbSrc.slice(tableStart, tableEnd > 0 ? tableEnd : undefined)
+    const actionKeys = new Set(
+      [...tableSrc.matchAll(/^  (\w+):\s*\{/gm)].map(m => m[1]))
+    assert.ok(actionKeys.size >= 15,
+      'FEEDBACK 表里只认出 ' + actionKeys.size + ' 个动作（抽取可能失效）')
+
+    const badFire = []
+    walkPages(PAGE_ROOTS).forEach(jsFile => {
+      fs.readFileSync(jsFile, 'utf8').split('\n').forEach((line, i) => {
+        /* 跳过注释行 —— 注释里举例写到的动作名不该算错 */
+        if (/^\s*(\*|\/\/)/.test(line)) return
+        const re = /feedback\.fire\(\s*'([\w]+)'/g
+        let m
+        while ((m = re.exec(line))) {
+          if (!actionKeys.has(m[1])) {
+            badFire.push(path.relative(ROOT, jsFile) + ':' + (i + 1) + '  → ' + m[1])
+          }
+        }
+      })
+    })
+    assert.deepStrictEqual(badFire, [],
+      '这些 feedback.fire 的动作名不存在（fire() 对未知动作是静默的，音效不会响）：\n    ' +
+      badFire.join('\n    ') + '\n    可用动作：' + [...actionKeys].sort().join(' '))
+    ok('★ 全部 feedback.fire 的动作名都存在（' + actionKeys.size + ' 个可用）')
+  }
+
   /* ③ 池化列表（POOL_SIZE）不能有幽灵条目 ——
      删音效时很容易忘了它还在池化表里，虽然不报错，
      但那份配置就成了误导（下一个人会以为这个音效还在用）。 */

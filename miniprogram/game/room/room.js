@@ -3737,23 +3737,30 @@ Page({
        *   · 你喝/我喝 → 有人要喝 → `diceSettleLast`（落定感，不夸张）
        *   · 真心话/大冒险/喝一杯 → 中性揭示 → `cardFlip`（纸的轻响，不打断）
        */
-      /* ⚠️ 这里是 feedback 的**动作名**（不是音效名）——
-         动作名只有这 21 个：diceSettle diceSettleLast cupOpen wheelStop luckyHit
-         penalized countdownTick countdownGo shaker diceIn cupShake cupSlam cupLift
-         diceTable yourTurn becomeHost win uwVote uwReveal pkFlip pkSpread */
-      const WHEEL_SFX = {
-        pass: 'luckyHit',      /* 免罚：最值得高兴的一格 */
-        both: 'cupOpen',       /* 一起喝：全场参与，用最重的一下 */
-        you: 'penalized',      /* 你喝 / 我喝 / 喝一杯：有人要被罚 */
-        me: 'penalized',
-        drink: 'penalized',
-        truth: 'pkFlip',       /* 真心话 / 大冒险：翻牌般的揭示感 */
-        dare: 'pkFlip'
+      /*
+       * ★ 2026-11-02：这里**故意写成 switch 而不是映射表**。
+       *
+       *   一开始我用的是 `{pass:'luckyHit', ...}` + `feedback.fire(WHEEL_SFX[k])` ——
+       *   更简洁，但 `test-contract.js` 那条「动作名必须存在」的断言
+       *   **扫不到映射表里的字符串**（它只认 `feedback.fire('字面量')`）。
+       *   也就是说：写成映射表，就等于给自己留了一个"改错了不会报"的口子。
+       *
+       *   展开成 switch 之后，每一行都是 `feedback.fire('字面量')`，
+       *   断言能逐行校验。多写几行，换"写错会红"。
+       */
+      const fireWheelSfx = () => {
+        switch (spin.k) {
+          case 'pass':  feedback.fire('luckyHit'); break     /* 免罚：最值得高兴的一格 */
+          case 'both':  feedback.fire('cupOpen'); break      /* 一起喝：全场参与，用最重的一下 */
+          case 'you':   feedback.fire('penalized'); break    /* 你喝 / 我喝 / 喝一杯：有人要被罚 */
+          case 'me':    feedback.fire('penalized'); break
+          case 'drink': feedback.fire('penalized'); break
+          case 'truth': feedback.fire('pkFlip'); break       /* 真心话 / 大冒险：翻牌般的揭示感 */
+          case 'dare':  feedback.fire('pkFlip'); break
+          default: break
+        }
       }
-      const k = WHEEL_SFX[spin.k]
-      if (k) {
-        this._cupTimers.push(setTimeout(() => feedback.fire(k), 160))
-      }
+      this._cupTimers.push(setTimeout(fireWheelSfx, 160))
     }, 2700)
   },
 
