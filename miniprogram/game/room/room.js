@@ -654,7 +654,26 @@ Page({
 
   startPoll() {
     this.stopPoll()
-    this._poll = setInterval(() => this.pollTick(), POLL_MS)
+    this._poll = setInterval(() => this.pollTick(), this.pollInterval())
+  },
+
+  /**
+   * ★★ 2026-11-03：轮询间隔**按阶段自适应**。
+   *
+   *   `POLL_MS`（1.5 秒）是为"局内"定的 —— 叫骰、摇骰、开盅都要求即时感。
+   *   而 `lobby`（等人）可能持续好几分钟，那时完全不需要 1.5 秒的节奏：
+   *   大家在看手机、聊天、倒酒，没人在盯屏幕。
+   *
+   *   1.5 → 3 秒，等人期间**请求量减半**（云函数调用是真金白银，
+   *   而且每次失败还会占一条错误日志）。
+   *
+   *   ⚠️ **开局那一刻不能慢**：房主点「开始」后，其他人要在 1.5 秒内看到倒计时。
+   *      所以 lobby 只在"没有倒计时"时用 3 秒 —— 而 phase 一变（countdown / playing）
+   *      `applyRoom` 会重新 `startPoll()`，自然切回 1.5 秒。
+   */
+  pollInterval() {
+    const ph = (this.data.room || {}).phase
+    return ph === 'lobby' ? 3000 : POLL_MS
   },
 
   /**
@@ -1590,11 +1609,27 @@ Page({
       }
     }
     const prevStep = (this.data.room && this.data.room.uw && this.data.room.uw.step) || ''
+    /*
+     * ★★ 2026-11-03：**阶段变化时重挂轮询**（自适应间隔）。
+     *
+     *   `setInterval` 的间隔是**启动那一刻定死的** —— 光有 `pollInterval()`
+     *   不会让已经跑着的定时器改变节奏。所以 lobby → countdown 这一下必须重启，
+     *   否则"开局了还在用 3 秒的慢节奏"，别人最多要等 3 秒才看到倒计时。
+     *
+     *   ⚠️ 只在**阶段真的变了**时重启 —— 每次刷新都重启会让定时器永远不触发。
+     */
+    const prevPhase = (this.data.room && this.data.room.phase) || ''
     const patch = Object.assign({}, extra || {}, {
       room: this.decorate(raw),
       stage: stageOf(raw.phase)
     })
     this.setData(patch)
+    if (prevPhase !== raw.phase) {
+      const wasLobby = prevPhase === 'lobby'
+      const isLobby = raw.phase === 'lobby'
+      /* 只在"进出 lobby"时重启 —— 其他阶段之间间隔都是 POLL_MS，不用动 */
+      if (wasLobby !== isLobby) this.startPoll()
+    }
     /* 环节变了就把词收起来：投票时屏幕上还亮着"你的词"会被旁边人看到。
        ⚠️ 只在**环节变化**时收，不能每次刷新都收 ——
           1.5 秒轮询会把正在按住看词的人打断。 */

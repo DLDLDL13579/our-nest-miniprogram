@@ -3656,3 +3656,28 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些循环动画在「减少动效」下还在转：\n    ' + missing.join('\n    '))
   ok('★ 「减少动效」覆盖了 ' + loops.size + ' 个装饰循环动画')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**轮询间隔必须按阶段自适应，且阶段变化时要重挂**
+ *
+ * `setInterval` 的间隔是启动那刻定死的 —— 光有 `pollInterval()` 不够，
+ * 阶段一变必须 `stopPoll + startPoll`，否则"开局了还在用等人的慢节奏"。
+ *
+ * 而且只要有一个入口漏了（applyRoom / onShow / 建房后），
+ * 那个入口进来的玩家就会一直用错的间隔 —— **不报错、只是慢**。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  assert.ok(/pollInterval\(\)\s*\{[\s\S]{0,400}?ph === 'lobby' \? 3000 : POLL_MS/.test(src),
+    '必须有 pollInterval()：lobby 用 3 秒、其他阶段用 POLL_MS')
+  assert.ok(/setInterval\([\s\S]{0,60}?this\.pollInterval\(\)/.test(src),
+    'startPoll 必须用 pollInterval() 而不是直接用 POLL_MS')
+  assert.ok(/if \(wasLobby !== isLobby\) this\.startPoll\(\)/.test(src),
+    'applyRoom 里必须在「进出 lobby」时重挂轮询')
+  assert.ok(/prevPhase !== raw\.phase/.test(src),
+    '重挂必须只在阶段真的变化时做（每次都重挂会让定时器永不触发）')
+
+  ok('★ 轮询按阶段自适应（lobby 3 秒 / 局内 1.5 秒），且阶段变化时重挂')
+}
