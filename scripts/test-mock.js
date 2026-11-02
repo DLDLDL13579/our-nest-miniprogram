@@ -347,3 +347,43 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   assert.deepStrictEqual(bad, [], 'mock 的回合数据自相矛盾：\n    ' + bad.join('\n    '))
   console.log('  ✓ 大话骰状态：叫完骰之后不会又轮到自己')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**派生字段必须和它的来源对得上**
+ *
+ * `shortBy = max(0, minPlayers - count)` —— 而 mock 里两处对不上：
+ *   · `howOpen`        count=3, min=2, shortBy=**1**  ← 人已经够了
+ *   · `wheelLandedPass` count=1, min=2（默认值）, shortBy=0 ← 转盘 1 人就能玩
+ *
+ * 界面上"人够了"和"还差 N 人"是**两个互斥的按钮** —— 写错会让截图自相矛盾，
+ * 而我可能对着一个不存在的矛盾去改代码。
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s.room || {}
+    const ps = r.players || []
+    /* count 必须等于 players 长度 */
+    if (r.count != null && ps.length && r.count !== ps.length) {
+      bad.push(k + '：count=' + r.count + ' 但 players 有 ' + ps.length + ' 个')
+    }
+    /* shortBy 必须等于 max(0, minPlayers - count) */
+    if (r.shortBy != null && r.minPlayers != null && r.count != null) {
+      const want = Math.max(0, r.minPlayers - r.count)
+      if (Number(r.shortBy) !== want) {
+        bad.push(k + '：shortBy=' + r.shortBy + '，但 min-count=' + want)
+      }
+    }
+    /* diceCount 必须等于 dice 长度（两者都有时） */
+    ps.forEach(p => {
+      if (p.diceCount != null && Array.isArray(p.dice) && p.dice.length &&
+          p.diceCount !== p.dice.length) {
+        bad.push(k + '/' + p.name + '：diceCount=' + p.diceCount + ' 但 dice 有 ' + p.dice.length + ' 颗')
+      }
+    })
+  })
+  assert.deepStrictEqual(bad, [], 'mock 的派生字段和来源对不上：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 派生字段一致（count=players / shortBy=min-count / diceCount=dice）')
+}

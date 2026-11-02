@@ -398,8 +398,13 @@ module.exports = {
 
     howOpen: () => ({
       stage: 'lobby', howOpen: true,
+      /*
+       * ★ 2026-11-03：`shortBy` 原来是 1 —— 而 `shortBy = max(0, minPlayers - count)`，
+       *   3 人局 vs 最少 2 人应该是 **0**（人已经够了）。
+       *   而界面上"人够了"和"还差 1 人"是**两个互斥的按钮**，写错会让截图自相矛盾。
+       */
       room: pkRoom({ game: 'liar', phase: 'lobby', host: true, count: 3,
-        shortBy: 1, soloOk: true, minPlayers: 2 })
+        shortBy: 0, soloOk: true, minPlayers: 2 })
     }),
 
     /* 单人房：人数不够，开始按钮应该说"还差 N 个人" */
@@ -527,7 +532,9 @@ module.exports = {
         { t: '免罚一次', x: 0, y: 0, r: 349.2 }
       ],
       room: pkRoom({
-        game: 'wheel', phase: 'playing', host: true, count: 1,
+        /* ★ 2026-11-03：转盘 1 人就能玩，`minPlayers` 必须显式设 1 ——
+           否则会落进 `pkRoom` 的默认值 2，于是 shortBy(0) 和 min-count(1) 自相矛盾。 */
+        game: 'wheel', phase: 'playing', host: true, count: 1, minPlayers: 1, shortBy: 0,
         players: [{ seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true }]
       })
     }),
