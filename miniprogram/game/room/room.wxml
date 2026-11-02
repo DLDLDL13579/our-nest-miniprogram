@@ -696,10 +696,10 @@
       <view wx:if="{{myRolled && !result && room.waitingCount > 0}}" class="revealprog">
         <view class="rp-row">
           <text class="rp-t">揭晓进度</text>
-          <text class="rp-n">{{room.count - room.waitingCount}} / {{room.count}}</text>
+          <text class="rp-n">{{room.rolledCount}} / {{room.count}}</text>
         </view>
         <view class="rp-bar">
-          <view class="rp-fill" style="width:{{(room.count - room.waitingCount) * 100 / room.count}}%"></view>
+          <view class="rp-fill" style="width:{{room.rolledCount * 100 / room.count}}%"></view>
         </view>
         <view class="waitline">
           <text class="wl-t">{{room.waitingText}}</text>

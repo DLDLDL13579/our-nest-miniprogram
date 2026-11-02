@@ -1745,6 +1745,16 @@ Page({
      */
     const waiting = (room.players || []).filter(p => !p.isMe && !(p.diceCount > 0))
     room.waitingCount = waiting.length
+    /*
+     * ★ 2026-11-02：进度条要的是「**已摇几人**」，而它原来是用
+     *   `room.count - room.waitingCount` **算出来的** —— 而 waitingCount
+     *   排除了自己，所以只在"我已经摇过"时这个减法才成立。
+     *
+     *   目前那段模板确实有 `wx:if="{{myRolled && ...}}"` 守着（所以没错），
+     *   但注释里也写着"一旦别处复用它就会暴露"。与其依赖调用方记得守卫，
+     *   不如直接给一个口径明确的字段。
+     */
+    room.rolledCount = (room.players || []).filter(p => p.diceCount > 0).length
     room.waitingNames = waiting.map(p => p.name).join('、')
     /*
      * 等待文案按人数换句式。
