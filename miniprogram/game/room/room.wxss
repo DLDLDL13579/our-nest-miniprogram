@@ -2741,3 +2741,34 @@
   0%, 100% { opacity: .72 }
   50%      { opacity: 1 }
 }
+
+/* ============================================================
+   几处「突然出现」的块补上入场（2026-11-02）
+   ------------------------------------------------------------
+   全仓有 54 处"wx:if 控制显隐、但出现时没有任何动画"的元素，
+   但绝大多数是**小徽章**（「我」「离线」「房主」）—— 它们跟着父元素一起出现，
+   再给每个加动画反而是噪音。
+
+   只补三个**独立出现、且用户需要注意到**的块：
+     .errbox    报错条（出现时用户可能正在看别处）
+     .specbar   观战提示（告诉用户"你只能看"，很关键）
+     .gameswitch 换玩法区（房主才看到，突然冒出来会让人愣一下）
+
+   曲线统一用 cubic-bezier(0,0,.2,1)（减速入场，全仓最多的一档）。
+   ============================================================ */
+.errbox    { animation: blockIn .26s cubic-bezier(0, 0, .2, 1) backwards }
+.specbar   { animation: blockIn .3s cubic-bezier(0, 0, .2, 1) backwards }
+.gameswitch { animation: blockIn .3s cubic-bezier(0, 0, .2, 1) backwards }
+
+@keyframes blockIn {
+  0%   { opacity: 0; transform: translateY(-8rpx) }
+  100% { opacity: 1; transform: translateY(0) }
+}
+
+/* 倍数徽章（1× → 2× → 4×）是战斗中唯一会跳的数字，值得弹一下 */
+.bid-mult { animation: multPop .34s cubic-bezier(.34, 1.56, .64, 1) backwards }
+@keyframes multPop {
+  0%   { opacity: 0; transform: scale(.7) }
+  60%  { opacity: 1; transform: scale(1.12) }
+  100% { opacity: 1; transform: scale(1) }
+}
