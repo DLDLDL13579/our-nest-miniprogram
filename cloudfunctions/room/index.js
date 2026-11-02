@@ -1670,7 +1670,21 @@ exports.main = async (event) => {
                 need: cur.n, face: cur.face, actual: actual,
                 bidderWins: bidderWins, mult: 1, cups: 1,
                 loserSeat: loserSeat, loserName: loserName,
-                bidderName: cur.byName, piBy: '',
+                bidderName: cur.byName,
+        /*
+         * ★★★ 2026-11-02 调研落地：Jackbox 的核心原则之一是
+         *   「赢是次要的，真正的目标是让这一群人笑出来」。
+         *
+         *   酒桌上最值得笑的一刻就是「开出来差得离谱」——
+         *   而原来只显示「吹牛被抓 / 叫的是 8 个 / 实际 3 个」，
+         *   这是一张成绩单，不是一句吐槽。
+         *
+         * 按差距分级给一句话（gap = 实际 - 叫的）：
+         *   差 ≥3 个   → 吹得离谱
+         *   差 1~2 个  → 小翻车
+         *   多 ≥3 个   → 叫得太保守
+         */
+        gap: actual - cur.n, piBy: '',
                 autoOpened: (idle && idle.name) || '',
                 /*
          * ★ allDice 带围骰标记（2026-10-30）：一盅五颗全同时那个点数算 6 个，

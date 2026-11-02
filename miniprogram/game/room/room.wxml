@@ -1203,6 +1203,19 @@
         <text class="on-unit">个 {{result.face}}</text>
       </view>
       <view class="over-need">叫的是 {{result.need}} 个{{result.zhai ? '（斋 · 1 不算）' : ''}}</view>
+      <!--
+        ★ 2026-11-02 调研落地（Jackbox 的「让这群人笑出来」）：
+          原来只有「吹牛被抓 / 实际 3 个 / 叫的是 8 个」——那是一张成绩单。
+          补一句按差距分级的吐槽，这才是酒桌上会被念出来的那句话。
+
+          差距口径：gap = 实际 - 叫的
+            差 3 个以上  → 吹得离谱
+            差 1~2 个    → 小翻车
+            多 3 个以上  → 叫得太保守
+        -->
+      <view wx:if="{{result.gap <= -3}}" class="gap-line bad">差了 {{0 - result.gap}} 个，这牛吹得有点大</view>
+      <view wx:elif="{{result.gap < 0}}" class="gap-line">就差 {{0 - result.gap}} 个，可惜</view>
+      <view wx:elif="{{result.gap >= 3}}" class="gap-line good">叫得太保守了，其实有 {{result.actual}} 个</view>
 
       <view class="revealbox">
         <view wx:for="{{result.allDice}}" wx:key="seat" class="rv-row">

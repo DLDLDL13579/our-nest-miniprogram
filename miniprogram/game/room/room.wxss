@@ -2627,3 +2627,17 @@
   font-size: 21rpx; color: rgba(232,179,60,.85);
   margin-top: 12rpx; line-height: 1.5;
 }
+
+/*
+ * 开牌后的「吐槽行」（2026-11-02，调研驱动）。
+ * Jackbox 的原则是"让这群人笑出来" —— 而酒桌上最值得笑的是"差得离谱"。
+ * 这句要能被人念出来，所以字号比说明文字大一档、留白也要够。
+ */
+.gap-line {
+  margin-top: 16rpx;
+  font-size: 28rpx; font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: .5rpx;
+}
+.gap-line.bad  { color: #E8B33C }        /* 吹炸了：金色，像"好戏" */
+.gap-line.good { color: #7FD8A8 }        /* 叫保守了：绿色，像"你亏了" */

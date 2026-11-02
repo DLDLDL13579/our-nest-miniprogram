@@ -400,7 +400,7 @@ module.exports = {
       nightRound: 3,
       pkDrinks: 0,
       result: {
-        need: 5, face: 3, actual: 5, bidderWins: true,
+        need: 5, face: 3, actual: 5, bidderWins: true, gap: 0,
         loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
         allDice: [
           { name: '邓林', initial: '邓', seat: 1, dice: [3, 5, 1, 2, 6] },
@@ -426,12 +426,25 @@ module.exports = {
      * 专门用一个状态覆盖三处新改动：①「叫的是 N 个（斋 · 1 不算）」
      * ② 斋里 1 不高亮 ③ 围骰那盅标「围骰 +1」。
      */
+    /* 吹炸了：叫 8 个实际 3 个 —— 专门验"吐槽行"（2026-11-02 调研落地） */
+    liarBlowup: () => ({
+      stage: 'over', room: pkRoom({ game: 'liar', phase: 'over', host: true }),
+      result: {
+        need: 8, face: 6, actual: 3, bidderWins: false, gap: -5,
+        loserName: '倩萍', bidderName: '倩萍', mult: 1, cups: 1,
+        allDice: [
+          { name: '邓林', seat: 1, dice: [6, 2, 6, 1, 4] },
+          { name: '倩萍', seat: 2, dice: [3, 5, 6, 1, 2] },
+          { name: '阿杰', seat: 3, dice: [2, 4, 1, 6, 5] }
+        ]
+      }
+    }),
     liarZhaiOver: () => ({
       stage: 'over',
       nightRound: 4,
       pkDrinks: 0,
       result: {
-        need: 6, face: 4, zhai: true, actual: 6, bidderWins: true,
+        need: 6, face: 4, zhai: true, actual: 6, bidderWins: true, gap: 0,
         loserSeat: 2, loserName: '倩萍', bidderName: '阿杰',
         allDice: [
           { name: '邓林', initial: '邓', seat: 1, dice: [4, 1, 4, 2, 6], leopard: false },
