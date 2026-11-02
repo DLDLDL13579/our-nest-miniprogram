@@ -746,6 +746,23 @@ module.exports = {
 
     /* 卧底满员 12 人：座位条与投票列表会不会挤爆 */
     /* 我自己还没投：应显示「轮到你投了」，而不是「还差 N 人」 */
+    /* 12 人房间（卧底的最大人数）：验玩家列表 + 规则 + 按钮会不会挤爆 */
+    lobby12: () => {
+      const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘',
+                     '阿强', '胖虎', '晓雯', '老陈', '阿凯', '小鱼']
+      const players = names.map((n, i) => ({
+        seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: i !== 3,
+        diceCount: 0, inRound: true, out: false
+      }))
+      return {
+        stage: 'lobby',
+        room: pkRoom({
+          id: 'r12', code: '512', game: 'undercover', phase: 'lobby', host: true,
+          count: 12, players: players, gameName: '谁是卧底',
+          minPlayers: 3, shortBy: 0, openNeedN: 12
+        })
+      }
+    },
     uwNotVoted: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘']
       const players = names.map((n, i) => ({

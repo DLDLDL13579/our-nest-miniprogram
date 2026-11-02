@@ -235,7 +235,11 @@
         用 wx.showModal({editable}) 而不是自绘弹窗：这是系统原生输入框，
         键盘、确定/取消都是现成的，代码和出错面都小得多。
     -->
-    <view class="plist">
+    <!--
+      ★ 2026-11-02：`<view style="overflow-y:auto">` 在部分小程序基础库上
+        **只裁剪、不滚动**（内容被切掉却滑不动）。列表滚动必须用 `scroll-view`。
+    -->
+    <scroll-view class="plist" scroll-y enable-flex>
       <view wx:for="{{room.players}}" wx:key="openid"
             class="pitem {{item.isMe ? 'me' : ''}} {{item.isMe ? 'canedit' : ''}}"
             data-me="{{item.isMe}}" bindtap="renameMe">
@@ -261,7 +265,7 @@
         </view>
         <view class="pdot {{item.online ? 'on' : ''}}"></view>
       </view>
-    </view>
+    </scroll-view>
 
     <!--
       ★ 等房主的提示放在**规则块之前**（2026-10-30）。
