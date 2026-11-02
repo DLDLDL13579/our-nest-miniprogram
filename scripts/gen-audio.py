@@ -616,7 +616,11 @@ def write_wav(name, sig, out_sr=None):
 def dice_hit(strength=1.0, seed=1):
     """单次碰撞：塑料骰子撞木桌。"""
     n = int(SR * 0.055)
-    base = lowpass(highpass(noise(n, seed), 0.55), 0.85)
+    # ★ 2026-11-02「线下面对面」：噪声层从 1930~2988Hz 推到 2526~3335Hz。
+    #   原来的频段有一半压在 2000Hz 以下 —— 那是人声区，会被一桌人聊天掩蔽。
+    #   实测 dice-on-table 的人声段比穿透段高 15.6 dB（判据上限 12）。
+    #   骰子的"塑料撞木桌"本来就有大量 3kHz 附近的成分，往上推不会变得不自然。
+    base = lowpass(highpass(noise(n, seed), 0.72), 0.95)
     e = env_ad(n, int(SR * 0.0012), SR * 0.010)
     sig = [base[i] * e[i] * strength for i in range(n)]
     thump = sine(n, 180, phase=0.3)
@@ -1172,12 +1176,26 @@ def charge_up():
     """蓄力：揭晓前的紧张感 —— 音高渐升 + 音量渐强 + 颤音。
     比 suspense 更有"要出事了"的压迫感。"""
     n = int(SR * 1.2)
+    # ★★★ 2026-11-02「线下面对面」：原来的基频 130~260Hz、五度 195~390Hz ——
+    #   **全部在 400Hz 以下**，实测穿透段比人声段低 **73.4 dB**。
+    #   也就是说"开盅前的蓄力"在酒桌上根本听不见，只剩一个"什么都没发生"的等待。
+    #
+    #   修法不是把基频抬高（那会变成尖啸），而是：
+    #     · 基频保持（那是"紧张"的物理来源，低频才压人）
+    #     · **每个音都配一层八度+十二度的泛音**，让它在 2~5kHz 也有东西
+    #   真实的弦乐/管乐紧张感就是这么来的 —— 基频定调，泛音定"存在感"。
     base = sine_sweep(n, 130, 260)
     fifth = sine_sweep(n, 195, 390)
+    # 泛音层：跟随基频等比升高（音高渐升的感觉一致）
+    oct2 = sine_sweep(n, 520, 1040)      # 两个八度
+    oct3 = sine_sweep(n, 1040, 2080)     # 三个八度（进人声上沿）
+    oct4 = sine_sweep(n, 2080, 3800)     # 四个八度（穿透段）
     rise = [(i / n) ** 1.8 for i in range(n)]
     # 颤音：频率 8Hz 的振幅调制，模拟紧张
     tremolo = [0.75 + 0.25 * math.sin(2 * math.pi * 8 * i / SR) for i in range(n)]
-    return [(base[i] * 0.55 + fifth[i] * 0.35) * rise[i] * tremolo[i] for i in range(n)]
+    return [(base[i] * 0.55 + fifth[i] * 0.35
+             + oct2[i] * 0.12 + oct3[i] * 0.08 + oct4[i] * 0.05)
+            * rise[i] * tremolo[i] for i in range(n)]
 
 
 def reveal_hit():
@@ -1898,7 +1916,7 @@ ALL_V3 = [
     ('combo-3',           lambda: combo_up(2), SR_MID),
     ('combo-4',           lambda: combo_up(3), SR_MID),
     ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_HI),
-    ('charge-up',         charge_up,         SR_LO),
+    ('charge-up',         charge_up,         SR_MID),   # 2026-11-02：泛音要到 3.8kHz，8000Hz 存不下
     ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21, final_sharpen=False), SR_HI),
     ('countdown-urgent',  countdown_urgent,  SR_MID),
     ('chip-bet',          _sp(chip_bet, tail_ms=160, seed=33), SR_HI),

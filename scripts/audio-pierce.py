@@ -35,10 +35,13 @@ AUDIO_DIRS = [
     os.path.normpath(os.path.join(HERE, '..', 'miniprogram', 'audio')),
 ]
 
-# 关键档（VOL_CRITICAL）—— 缺了它玩不下去的那些
+# 关键档（VOL_CRITICAL）—— 缺了它玩不下去的那些。
+# 只测这些是因为：装饰音（逐颗落定、翻牌）在嘈杂环境里本来就该是"若有若无"，
+# 要求它们穿透是错的 —— 那会让一局响十几次的东西变成噪音。
 CRITICAL = [
     'cup-slam', 'reveal-hit', 'countdown-go', 'countdown',
-    'toggle-on', 'wheel-stop', 'confetti',
+    'toggle-on', 'wheel-stop', 'confetti', 'tap', 'tap-soft',
+    'dice-on-table', 'card-deal', 'chip-bet',
 ]
 
 # 12 dB 而不是 10：等响曲线显示人耳对 2~5kHz 最敏感，
@@ -92,6 +95,34 @@ def main():
         print('  %s %-14s 人声 %6.1f  穿透 %6.1f  差 %5.1f dB%s'
               % ('✓' if not bad else '✗', name, voice, pierce, gap,
                  '' if not bad else '   ← 会被一桌人的聊天盖住'))
+
+    # ---- 附表：全部音效的穿透差值（只打印，不判定）----
+    # 装饰音不该按关键档的标准要求 —— 一局响十几次的东西如果都要"穿透"，
+    # 整局就成了噪音。这张表是给以后加音效时做参考的。
+    print('\n附：全部音效的穿透差值（仅供参考，装饰音不必穿透）')
+    allw = []
+    for d_ in AUDIO_DIRS:
+        if not os.path.isdir(d_):
+            continue
+        for fn in sorted(os.listdir(d_)):
+            if fn.endswith('.wav'):
+                allw.append(fn[:-4])
+    for name in sorted(set(allw)):
+        if name in CRITICAL:
+            continue
+        path = find(name)
+        if not path:
+            continue
+        with wave.open(path, 'rb') as w:
+            sr = w.getframerate()
+            raw = w.readframes(w.getnframes())
+        d = np.frombuffer(raw, dtype='<i2').astype(float) / 32768.0
+        if not len(d):
+            continue
+        spec = np.abs(np.fft.rfft(d))
+        freqs = np.fft.rfftfreq(len(d), 1.0 / sr)
+        gap = band_db(spec, freqs, 200, 2000) - band_db(spec, freqs, 2000, 5000)
+        print('    %-16s 差 %5.1f dB' % (name, gap))
 
     print('=' * 78)
     if not checked:
