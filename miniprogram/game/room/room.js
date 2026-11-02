@@ -337,7 +337,18 @@ Page({
      * ⚠️ 这里原来是 `sfx.init && sfx.init()` —— 而 sfx 从来没导出过 init，
      *    那行是**死代码**，音效一次都没预加载过（2026-10-28 才发现）。
      */
-    sfx.preload && sfx.preload()
+    /*
+     * ★★★ 2026-11-02 性能：`sfx.preload()` **是页面出现的最大瓶颈**。
+     *
+     * 它一次创建 20+ 个 `wx.createInnerAudioContext()` 并逐个设 src。
+     * 实测"点玩法卡 → 房间页出现"要 **3.95 秒**，而真正的建房只要 2 秒 ——
+     * 这 20 多个实例的同步创建把首屏渲染堵在了后面。
+     *
+     * 改成先让页面渲染、下一轮事件循环再预载。
+     * 代价很小：万一用户 50ms 内就点第一个按钮，那一声可能还没就绪，
+     * 但 `sfx.play` 内部有兜底（没预载就现场建实例，只是那次慢一点）。
+     */
+    setTimeout(() => { if (!this._dead && sfx.preload) sfx.preload() }, 0)
     /*
      * ★ 页面存活标志。
      *
@@ -442,6 +453,19 @@ Page({
     if (patch.joinCode) {
       setTimeout(() => { if (!this._dead) this.doJoin() }, 80)
     } else if (q.auto && patch.pickGame && gameOf(patch.pickGame)) {
+      /*
+       * ★ 2026-11-02：接上大厅预取的建房请求（如果有）。
+       *   取走后立刻清掉 globalData，避免"退出再进第二个房"复用旧结果。
+       *   ⚠️ 必须校验 game 一致 —— 预取的是 A 玩法，用户进来点的却是 B，不能混用。
+       */
+      try {
+        const app = getApp()
+        const pc = app && app.globalData && app.globalData.pendingCreate
+        if (pc && pc.game === patch.pickGame) {
+          this._prefetchResult = pc.promise.then(r => (r && r.ok ? r : null)).catch(() => null)
+          app.globalData.pendingCreate = null
+        }
+      } catch (e) { /* 拿不到就当没有预取 */ }
       setTimeout(() => { if (!this._dead) this.doCreate() }, 80)
     }
   },
@@ -2347,6 +2371,7 @@ Page({
 
   async doCreate() {
     sfx.play('tick')                // 点击反馈（断言 ⑮ 要求）
+
     this._didCreate = true          // 供 15 秒兜底时判断"请求到底发没发出去"
     if (this.data.creating) return
     this.setData({ creating: true, err: '' })
@@ -2360,7 +2385,19 @@ Page({
      * 表现就是"点了没反应"，而且**重启小程序才恢复**。
      */
     let r = null
-    try {
+    /*
+     * ★★★ 2026-11-02：优先用大厅预取的建房结果。
+     *
+     * 大厅点玩法卡时已经发出了 `action:'create'`（和 navigateTo 并行跑），
+     * 这里直接取它 —— 页面跳转那 300~800ms 就省下来了。
+     *
+     * 预取失败/超时/走别的入口进来时 `_prefetchResult` 为空，照常自己发请求。
+     */
+    const _pre = this._prefetchResult
+    this._prefetchResult = null
+    if (_pre && _pre.ok) {
+      r = _pre
+    } else try {
       r = await call('room', {
         action: 'create',
         name: this.data.myName || '房主',

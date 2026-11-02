@@ -286,6 +286,29 @@ Page({
       st[id] = (Number(st[id]) || 0) + 1
       wx.setStorageSync('gameStats', st)
     } catch (err) {}
+    /*
+     * ★★★ 2026-11-02 实测：从点卡到看见房间要 **3.4~4.5 秒**。
+     *
+     * 拆开看是串行的：
+     *   点卡 → navigateTo(约 300ms) → 房间页 onLoad → 80ms 延迟
+     *        → 云函数往返(1~2s) → setData → 画面
+     *
+     * 而"建房"这件事**和页面跳转完全无关** —— 它只依赖玩法 id。
+     * 所以在这里就先把请求发出去，跳转和建房并行跑。
+     * 房间页 onLoad 时若发现已经有在建的请求，直接等它即可。
+     */
+    try {
+      const cloud = require('../../utils/cloud.js')
+      const app = getApp()
+      const pending = cloud.call('room', {
+        action: 'create',
+        name: (wx.getStorageSync('nick') || '') || '房主',
+        game: id,
+        deck: (wx.getStorageSync('lastDeck') || 'friends')
+      }, { silent: true }).catch(() => null)
+      if (app && app.globalData) app.globalData.pendingCreate = { game: id, promise: pending }
+    } catch (e) { /* 预取失败不影响正常流程：房间页还会自己发一次 */ }
+
     wx.navigateTo({
       url: '/game/room/room?game=' + encodeURIComponent(id) + '&auto=1',
       /*
