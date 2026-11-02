@@ -456,6 +456,26 @@ module.exports = {
       }
       return base
     },
+    /*
+     * ★★ 2026-11-03：**非房主的结算页**。
+     *
+     *   模板里那一行是 host 为真显示「再来一局」、否则显示「等房主开下一局」——
+     *   而**所有残留的结算状态都是 host:true**，于是那个分支从没被渲染验证过。
+     *
+     *   而它是「输的那个人」最常看到的界面（一桌只有一个房主）。
+     */
+    overGuest: () => {
+      const base = module.exports.states.liarBlowup()
+      if (base.room) {
+        base.room.host = false
+        /* ★ hostName 来自 players 里 isHost 的那个人 —— mock 也要给，否则模板回退成"房主" */
+        const ps = base.room.players || []
+        ps.forEach(function (p, i) { p.isHost = (i === 0) })
+        const hostP = ps.filter(function (p) { return p.isHost })[0]
+        base.room.hostName = (hostP && hostP.name) || '房主'
+      }
+      return base
+    },
     liarOver: () => ({
       stage: 'over',
       nightRound: 3,

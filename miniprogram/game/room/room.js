@@ -1967,6 +1967,14 @@ Page({
     room.gameName = gmeta ? gmeta.name : ''
     room.howList = gmeta && Array.isArray(gmeta.how) ? gmeta.how.slice() : []
     /*
+     * ★ 2026-11-03：**房主名字**（非房主的结算页要显示"等 邓林 开下一局"）。
+     *
+     *   `wxml` 不支持函数调用，所以不能在模板里 `players.filter(...)`。
+     *   而"等房主"和"等 邓林"在酒桌上很不一样：**后者能直接喊他**。
+     */
+    const hostP = (room.players || []).filter(function (p) { return p.isHost })[0]
+    room.hostName = (hostP && hostP.name) || '房主'
+    /*
      * ★★ 2026-11-03：**云函数没部署时，把"做不到的那条规则"标注出来**。
      *
      *   「比大小」的规则里写着"5 颗全不同是单骰，可以重摇（最多 3 次）"，

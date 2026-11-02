@@ -3130,3 +3130,11 @@
 .gamepage.compact .cc-code { font-size: 76rpx; letter-spacing: 6rpx }   /* 76 是已有字号档，不新增 */
 .gamepage.compact .cc-hint { display: none }
 
+/* ★ 2026-11-03：非房主结算页的补充说明（房主那边是大按钮，这边只有一行小字会显得空） */
+.waiting-sub {
+  text-align: center;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, .52);
+}

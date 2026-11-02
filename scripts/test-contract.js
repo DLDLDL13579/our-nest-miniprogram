@@ -5091,3 +5091,31 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 「开过 N 次」所有玩家都记（单一调用点 + 防重复）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**非房主的结算页必须带房主名字**
+ *
+ * 模板原来是 `<view wx:else class="waiting">等房主开下一局</view>` ——
+ * 而**所有残留的结算 mock 都是 host:true**，所以那个分支从来没被渲染验证过。
+ *
+ * "等房主"和"等 邓林"在酒桌上很不一样：**后者能直接喊他**。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  assert.ok(/等 \{\{room\.hostName \|\| '房主'\}\} 开下一局/.test(wxml),
+    '★ 非房主结算页要带房主名字（"等 邓林"比"等房主"更有用）')
+  assert.ok(/room\.hostName = \(hostP && hostP\.name\) \|\| '房主'/.test(page),
+    '★ hostName 要在 decorate 里算（wxml 不支持 filter）')
+
+  /* mock 必须有"非房主结算"状态，否则那个 wx:else 分支永远测不到 */
+  const mock = fs.readFileSync(
+    path.join(ROOT, 'scripts/ui-render/mock/room.js'), 'utf8')
+  assert.ok(/overGuest: \(\) =>/.test(mock),
+    '★ mock 要有非房主的结算状态（否则 wx:else 分支从没被渲染验证过）')
+
+  ok('★ 非房主结算页：带房主名字 + mock 覆盖了 wx:else 分支')
+}

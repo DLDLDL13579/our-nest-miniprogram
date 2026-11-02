@@ -1397,7 +1397,18 @@
 
     <view class="actbar">
       <view wx:if="{{room.host}}" class="btn main bigbtn" bindtap="doAgain">再来一局</view>
-      <view wx:else class="waiting">等房主开下一局</view>
+      <!--
+        ★ 2026-11-03：非房主这里原来只有一行「等房主开下一局」，
+          而房主那边是一个大按钮 + 副按钮 —— 于是两边的**视觉重量差很多**，
+          非房主看到的是"一片空白里一行小字"。
+
+          补一句解释（为什么在等、能做什么），并且**把房主名字带上**
+          ——"等房主"和"等 邓林"在酒桌上是很不一样的：后者能直接喊他。
+      -->
+      <block wx:else>
+        <view class="waiting">等 {{room.hostName || '房主'}} 开下一局</view>
+        <view class="waiting-sub">这局结束了 · 你也可以先离开，下一局让朋友再拉你</view>
+      </block>
       <view class="actrow">
         <view wx:if="{{room.host}}" class="btn ghostb" bindtap="pickNewGame">换个玩法</view>
         <view class="textbtn" bindtap="leave">离开房间</view>
