@@ -1029,6 +1029,36 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
       '这些 feedback.fire 的动作名不存在（fire() 对未知动作是静默的，音效不会响）：\n    ' +
       badFire.join('\n    ') + '\n    可用动作：' + [...actionKeys].sort().join(' '))
     ok('★ 全部 feedback.fire 的动作名都存在（' + actionKeys.size + ' 个可用）')
+
+  /*
+   * ★ 2026-11-02：UI 文案里**不该出现句号** —— 句末的、句中的都不该。
+   *
+   * 原来只查过"句末句号"，所以「动画变快、幅度变小。觉得晃眼就打开」
+   * 这种**句中句号**漏了一年。
+   *
+   * 判据来自产品自己：界面文案是"标签 + 短句"，句号在界面上只是噪音；
+   * 需要分句时用「；」或「·」，全仓另外 20 多条都是这么写的。
+   */
+  {
+    const badPeriod = []
+    walkPages(PAGE_ROOTS).forEach(jsFile => {
+      const wxmlFile = jsFile.replace(/\.js$/, '.wxml')
+      if (!fs.existsSync(wxmlFile)) return
+      const src = fs.readFileSync(wxmlFile, 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+      /* 只看纯文本节点里的中文（跳过 <text> 里的表达式和属性） */
+      const re = />([^<>{}]*[\u4e00-\u9fa5][^<>{}]*)</g
+      let m
+      while ((m = re.exec(src))) {
+        const t = m[1].trim()
+        if (t.includes('。')) {
+          badPeriod.push(path.relative(ROOT, wxmlFile) + ' → 「' + t.slice(0, 28) + '」')
+        }
+      }
+    })
+    assert.deepStrictEqual(badPeriod, [],
+      '界面文案里不该用句号（分句用「；」或「·」）：\n    ' + badPeriod.join('\n    '))
+    ok('★ 界面文案没有句号（句中的也算）')
+  }
   }
 
   /* ③ 池化列表（POOL_SIZE）不能有幽灵条目 ——
