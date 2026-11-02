@@ -2710,7 +2710,14 @@ Page({
     this.setData({ joining: true, err: '' })
 
     const r = await call('room', {
-      action: 'join', code: code, name: this.data.myName || '玩家'
+      /*
+       * ★★ 2026-11-03：**不再传硬编码的 '玩家'**。
+       *
+       *   原来没设昵称时前端传 '玩家' —— 而云端只检查"非空"，
+       *   于是**一个房间里可以有两个叫「玩家」的人**，桌上分不清谁是谁。
+       *   现在传空串，云端会按座位号生成「玩家N」。
+       */
+      action: 'join', code: code, name: this.data.myName || ''
     }, { loading: '进房间' })
       .catch((e) => {
         /* no-room: 进不去 = 没进到房间里，没有可同步的状态。
