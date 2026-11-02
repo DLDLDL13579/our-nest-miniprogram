@@ -1058,6 +1058,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(badPeriod, [],
       '界面文案里不该用句号（分句用「；」或「·」）：\n    ' + badPeriod.join('\n    '))
     ok('★ 界面文案没有句号（句中的也算）')
+
+  /*
+   * ★ 2026-11-02：房间页里每个 `this._xxxTimer` 都必须进清理函数。
+   *
+   * AGENTS.md 记过这条（「所有定时器都要进清单」）——
+   * 不清的后果是：用户操作后立刻退出页面，定时器仍会对已卸载的页面 setData/调方法。
+   *
+   * 这轮我给"再来一局"加了 `_againTimer`，当场就踩了这个坑。
+   */
+  {
+    const roomJs = fs.readFileSync(
+      path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const assigned = new Set(
+      [...roomJs.matchAll(/this\.(_\w*[Tt]imer)\s*=/g)].map(m => m[1]))
+    /* onUnload 会调 clearCupTimers / clearCountdown，所以把这两个函数的体也算进清理 */
+    const clearBodies = ['clearCupTimers', 'clearCountdown', 'onUnload']
+      .map(fn => {
+        const i = roomJs.indexOf('  ' + fn + '(')
+        return i < 0 ? '' : roomJs.slice(i, i + 1200)
+      }).join('\n')
+    const uncleaned = [...assigned].filter(t =>
+      !new RegExp('clearTimeout\\(this\\.' + t + '\\)').test(clearBodies))
+    assert.deepStrictEqual(uncleaned, [],
+      '这些定时器没进清理函数（退出页面后仍会执行）：' + uncleaned.join(' '))
+    ok('★ 房间页的 ' + assigned.size + ' 个定时器都在清理清单里')
+  }
   }
   }
 

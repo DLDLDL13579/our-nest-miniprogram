@@ -569,6 +569,9 @@ Page({
     /* ★ `_bumpTimer` 原来不在任何清理函数里 —— 屏幕震动后 320ms 内离开页面，
        它仍会对已卸载的页面 setData({impact:false})。 */
     if (this._bumpTimer) { clearTimeout(this._bumpTimer); this._bumpTimer = null }
+    /* ★ 2026-11-02：`_againTimer`（再来一局后 260ms 自动开下一局）也在这里清。
+       不清的话，点完再来一局马上退出房间，260ms 后它会对已卸载的页面调 doStart()。 */
+    if (this._againTimer) { clearTimeout(this._againTimer); this._againTimer = null }
   },
 
   onUnload() {
@@ -2865,10 +2868,41 @@ Page({
     }
   },
 
-  doAgain() {
+  /**
+   * 再来一局。
+   *
+   * ★★★ 2026-11-02「线下面对面」：原来这里只是 `backToLobby()` ——
+   *   点完回到等人界面，**还得再点一次「开始」**。
+   *
+   *   而酒桌上的真实场景是：一局打完、人都在、有人喊"再来一把"。
+   *   这时候要的是**直接开下一局**，而不是回到大厅再点一次。
+   *   两次点击之间那几秒，桌上会有人问"开始了没"。
+   *
+   *   所以：回 lobby 之后，如果**我是房主、而且人数够**，自动开下一局。
+   *   人数不够（有人走了）就停在 lobby，让人看到"还差 N 个人才能开"。
+   *
+   *   ⚠️ 只对房主生效：非房主调 start 会被服务端拒；
+   *      而房主自动开始后，其他人靠轮询收到 phase 变化，体验是同步的。
+   */
+  async doAgain() {
     /* 再来一局是界面里唯一的重操作，点了必须有声音（2026-10-28 补） */
     sfx.play('toggleOn')
-    return this.backToLobby()
+    await this.backToLobby()
+    /*
+     * backToLobby 没有返回值（它内部 setData，失败时弹 toast）——
+     * 所以这里靠 stage 判断"是否真的回到了 lobby"，不能判返回值。
+     */
+    if (this._dead) return
+    const room = this.data.room || {}
+    const enough = !(room.shortBy > 0)
+    if (room.host && enough && this.data.stage === 'lobby') {
+      /* 稍微等一帧，让"回大厅"的界面先落定，否则会被倒计时直接盖掉 */
+      this._againTimer = setTimeout(() => {
+        if (this._dead) return
+        if (this.data.stage === 'lobby') this.doStart()
+      }, 260)
+    }
+    return r
   },
 
   /*
