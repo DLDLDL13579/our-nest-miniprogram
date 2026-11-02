@@ -3881,7 +3881,15 @@ Page({
         if (this._dead) return
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
-        feedback.fire(iLost ? 'lose' : 'win')
+        /*
+         * ★★★ 2026-11-03：`'lose'` **不是 FEEDBACK 表里的动作名**（表里叫 `penalized`）——
+         *   `fire()` 对未知动作只打一条 `console.warn` 然后**静默返回**，
+         *   所以**输了的时候一声不响、也不震**。
+         *
+         *   抓住它的方式很绕：查 `find-symbol.js celebrate` 的调用上下文时，
+         *   顺手看到这一行的 `fire(iLost ? 'lose' : 'win')`。
+         */
+        feedback.fire(iLost ? 'penalized' : 'win')
         if (!iLost) this.celebrate()
       }, 820))                             /*
                                             * ★★ 2026-11-02 重排：原来写 1080ms，

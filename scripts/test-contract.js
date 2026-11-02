@@ -4315,3 +4315,48 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 三个玩法赢了都有撒花 + 胜利音（' + count + ' 处配对）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**`feedback.fire()` 不许用表里没有的动作名**
+ *
+ * `fire(key)` 对未知 key 只做两件事：`console.warn` + `return` ——
+ * **静默失败**。所以拼错一个字（`'lose'` 而不是 `'penalized'`）的结果是
+ * "输了的时候一声不响、也不震"，而**没有任何报错**。
+ *
+ * 真实案例：`feedback.fire(iLost ? 'lose' : 'win')` —— 比大小输了没声音。
+ * 抓住它纯属运气（查 celebrate 的调用上下文时顺手看到）。
+ *
+ * 判据：把 `fire(` 括号里出现的所有字符串字面量，逐个对 FEEDBACK 的表。
+ * ========================================================================== */
+{
+  const fbSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/feedback.js'), 'utf8')
+  /* FEEDBACK 表的键（形如 `  keyName: {`） */
+  const valid = new Set([...fbSrc.matchAll(/^\s{2}(\w+):\s*\{/gm)].map(m => m[1]))
+  assert.ok(valid.size > 10, 'FEEDBACK 表只认出 ' + valid.size + ' 个动作，抽取可能失效')
+
+  const bad = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!f.endsWith('.js')) return
+      let src = fs.readFileSync(p, 'utf8')
+      src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      ;[...src.matchAll(/feedback\.fire\(([^)]*)\)/g)].forEach(m => {
+        ;[...m[1].matchAll(/'(\w+)'/g)].forEach(s => {
+          const key = s[1]
+          if (!valid.has(key)) {
+            bad.push(path.relative(ROOT, p) + '：fire(\'' + key + '\') —— 表里没有这个动作')
+          }
+        })
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual(bad, [],
+    '这些 fire() 动作名在 FEEDBACK 表里不存在（会静默失败）：\n    ' + bad.join('\n    '))
+  ok('★ 所有 feedback.fire() 的动作名都在表里（' + valid.size + ' 个可用）')
+}
