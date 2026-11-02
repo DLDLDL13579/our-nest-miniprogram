@@ -804,7 +804,19 @@
           ★ 催一下与它同行（2026-10-29）：原来单独占一行、孤零零悬在左边，
             信息和动作分离了半屏。"在等谁"和"催谁"本就是一件事。
         -->
-        <view wx:if="{{room.uw.waitingCount > 0}}" class="uw-waiting">
+        <!--
+          ★ 2026-11-02：原来这里直接说「还差 N 人」，而 N 排除了自己 ——
+            当我自己还没投时会显示成「已投 10/12 · 还差 1 人」，
+            玩家以为再等一个人就开票，实际还差两个（我 + 一个别人），永远等不到。
+
+            现在分开说：
+              · 我自己没投 → 「你还没投」（这是当前最该做的一件事）
+              · 我投了     → 「还差 N 人 · 某某 还没投」（催一下只对别人有意义）
+        -->
+        <view wx:if="{{!room.uw.iVoted}}" class="uw-waiting">
+          <text class="uw-waiting-t waitpulse">轮到你投了 · 点上面一个人</text>
+        </view>
+        <view wx:elif="{{room.uw.waitingCount > 0}}" class="uw-waiting">
           <text class="uw-waiting-t waitpulse">还差 {{room.uw.waitingCount}} 人{{room.uw.waitingNames.length ? ' · ' + room.uw.waitingNames[0] + ' 还没投' : ''}}</text>
           <!--
             催一下（2026-10-28）：知道在等谁之后，房主还得有个"拍桌子"的手段。

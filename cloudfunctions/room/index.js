@@ -776,8 +776,24 @@ function shape(room, openid) {
         waitingNames: alive
           .filter(p => p.openid !== openid && !(room.votes || []).some(v => v.by === p.openid))
           .map(p => p.name),
+        /*
+         * ★★★ 2026-11-02 修正一个会误导人的数字。
+         *
+         *   「已投 10 / 12」和「还差 N 人」原来**不是同一个口径**：
+         *     voteCount = 已投人数（含自己）
+         *     waitingCount = 还没投的**别人**（排除自己）
+         *
+         *   于是当我自己还没投时：12 人局已投 10 → 显示「还差 1 人」，
+         *   而实际还有 2 个人没投（我 + 1 个别人）。
+         *   玩家会以为"再等一个人就开票" —— 而这永远等不到。
+         *
+         *   waitingCount 保留原语义（"还差别人几个人"，催一下只对别人有意义），
+         *   另外给一个 `iVoted`，让界面能区分"我也没投"和"我投了，等别人"。
+         */
         waitingCount: alive
           .filter(p => p.openid !== openid && !(room.votes || []).some(v => v.by === p.openid)).length,
+        /* iVoted：我自己投没投（界面据此决定说「轮到你投」还是「还差 N 人」） */
+        iVoted: (room.votes || []).some(v => v.by === openid),
         /*
          * 平票重投：第一次平票不淘汰任何人，让平票的几个人各补一句、再投一次；
          * 第二次仍平票则由卧底获胜（"投不出结果"本身就是好人的失败）。

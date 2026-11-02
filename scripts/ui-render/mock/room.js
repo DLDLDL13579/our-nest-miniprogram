@@ -728,6 +728,23 @@ module.exports = {
     },
 
     /* 卧底满员 12 人：座位条与投票列表会不会挤爆 */
+    /* 我自己还没投：应显示「轮到你投了」，而不是「还差 N 人」 */
+    uwNotVoted: () => {
+      const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘']
+      const players = names.map((n, i) => ({
+        seat: i + 1, name: n, isMe: i === 0, isHost: i === 0, online: true,
+        diceCount: 0, inRound: true, out: false
+      }))
+      return {
+        stage: 'playing',
+        room: uwRoom({
+          id: 'r4', code: '902', game: 'undercover', phase: 'playing', host: true,
+          count: 6, players: players, gameName: '谁是卧底',
+          uw: { step: 'vote', word: '豆浆', aliveCount: 6, myVote: '', voteCount: 5, voterCount: 6,
+                iVoted: false, waitingCount: 1, waitingNames: ['老王'], reveal: [], lastOut: null }
+        })
+      }
+    },
     uw12: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎', '晓雯', '老陈', '阿凯', '小鱼']
       const players = names.map((n, i) => ({
@@ -739,7 +756,7 @@ module.exports = {
         room: uwRoom({
           id: 'r3', code: '815', game: 'undercover', phase: 'playing', host: true,
           count: 12, players: players, gameName: '谁是卧底',
-          uw: { step: 'vote', word: '豆浆', aliveCount: 12, myVote: '', voteCount: 5, voterCount: 12, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
+          uw: { step: 'vote', word: '豆浆', aliveCount: 12, myVote: '', voteCount: 5, voterCount: 12, iVoted: true, waitingCount: 2, waitingNames: ['老王', '小美'], reveal: [], lastOut: null }
         })
       }
     },
