@@ -18,16 +18,16 @@ const ok = (m) => { n++; console.log('  ✓ ' + m) }
 /* ① 大话骰 */
 assert.strictEqual(
   footText({ game: 'liar', phase: 'over', lastResult: { loserName: '倩萍' } }),
-  '倩萍 喝一杯'
+  '倩萍 喝 1 杯'
 )
-ok(`大话骰 → "倩萍 喝一杯"`)
+ok(`大话骰 → "倩萍 喝 1 杯"`)
 
 /* ② 比大小：取点数最少的那个（不是第一个） */
 assert.strictEqual(
   footText({ game: 'dice', phase: 'over', lastResult: { ranked: [
     { name: '邓林', total: 22 }, { name: '阿杰', total: 11 }, { name: '倩萍', total: 17 }
   ] } }),
-  '阿杰 点数最少，喝一杯'
+  '阿杰 点数最少，喝 1 杯'
 )
 ok('比大小 → 取点数最少的那个（不是第一个）')
 

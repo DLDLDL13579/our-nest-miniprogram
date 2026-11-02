@@ -19,7 +19,7 @@ function footText(room) {
   const lr = room.lastResult || {}
 
   if (room.game === 'liar' && lr.loserName) {
-    return lr.loserName + ' 喝一杯'
+    return lr.loserName + ' 喝 1 杯'
   }
   if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
     /*
@@ -33,7 +33,7 @@ function footText(room) {
     }
     /* 点数最少的那个喝 —— 排序取第一个 */
     const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
-    if (low) return low.name + ' 点数最少，喝一杯'
+    if (low) return low.name + ' 点数最少，喝 1 杯'
     return ''
   }
   if (room.game === 'undercover' && lr.kind === 'undercover') {

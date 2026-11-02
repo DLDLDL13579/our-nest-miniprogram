@@ -371,7 +371,7 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
     })
     assert.strictEqual(ov.streakText, '他 连赢 3 把', '连庄文字不对：' + ov.streakText)
     assert.strictEqual(ov.loserBoard, '我 今晚已经输了 3 局', '今晚最惨文字不对：' + ov.loserBoard)
-    assert.strictEqual(ov.settleFoot, '我 喝一杯', '结算收尾不对：' + ov.settleFoot)
+    assert.strictEqual(ov.settleFoot, '我 喝 1 杯', '结算收尾不对：' + ov.settleFoot)
 
     /* ④ 规则文案来自注册表，不是页面里另写一份 */
     assert.ok(ov.howList.length >= 3, '规则条目应来自注册表')
