@@ -1287,20 +1287,6 @@
 /* 结果标签 / 数字 / 输家（跟随时序，制造节奏） */
 .over-tag { animation: tagPop .42s cubic-bezier(.34, 1.56, .64, 1) backwards }
 .on-big   { animation: numPop .5s cubic-bezier(.34, 1.56, .64, 1) .08s backwards }
-.loserbox {
-  animation: loserPulse 1.1s ease-in-out .3s infinite;
-  /*
-   * ★★★ 2026-11-02 用户提醒「参与人员都在线下面对面」。
-   *
-   *   那结算页最重要的信息就是「谁喝一杯」——全桌都要看见。
-   *   而它原来只有 32rpx（16px）：手机斜放在桌上、灯光昏暗、
-   *   旁边的人隔着一张桌子，16px 根本读不出来。
-   *
-   *   提到 44rpx（22px），和赢家名字同档 —— 这两个本来就是一组信息。
-   */
-  font-size: 44rpx !important;
-}
-
 /* 开盅后的骰子墙逐行摊开 */
 .revealbox .rv-row {
   animation: rowIn .36s cubic-bezier(0, 0, .2, 1) backwards;
