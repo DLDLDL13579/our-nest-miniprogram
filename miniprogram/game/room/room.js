@@ -2927,6 +2927,22 @@ Page({
    *      而房主自动开始后，其他人靠轮询收到 phase 变化，体验是同步的。
    */
   async doAgain() {
+    /*
+     * ★★ 2026-11-03：防止**连点**。
+     *
+     *   流程是 `backToLobby → 120ms 后自动 doStart`。连点两次时会变成：
+     *     第一次：回 lobby → 120ms 后开新局（countdown）
+     *     第二次：把刚开的局**打回 lobby** —— 玩家看到"倒计时了又没了"
+     *
+     *   ⚠️ 这个保护**只在前端**：服务端的 `again` 不能拦（它是「回大厅」的入口，
+     *      玩到一半想退出来重开是正当需求，`test-room.js` ③ 就靠它）。
+     *
+     *   用时间窗而不是布尔标记：万一某次请求异常没走到 finally，
+     *   布尔标记会把按钮永久锁死，而时间窗自己会过期。
+     */
+    const now = Date.now()
+    if (this._againAt && now - this._againAt < 900) return
+    this._againAt = now
     /* 再来一局是界面里唯一的重操作，点了必须有声音（2026-10-28 补） */
     sfx.play('toggleOn')
     await this.backToLobby()
