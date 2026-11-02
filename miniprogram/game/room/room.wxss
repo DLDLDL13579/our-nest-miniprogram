@@ -2772,3 +2772,45 @@
   60%  { opacity: 1; transform: scale(1.12) }
   100% { opacity: 1; transform: scale(1) }
 }
+
+/* ============================================================
+   赢家名字的金色扫光（2026-11-02）
+   ------------------------------------------------------------
+   结算页最该被庆祝的是"谁赢了"，而原来它只有一层静态的 text-shadow。
+
+   商业游戏的常见做法是让金属字"扫一道光" —— 廉价的那版是无限闪烁，
+   高级的那版是**慢、稀、只在金色上过一道**。
+
+   实现用 ::after 光带而不是 `background-clip: text`：
+   后者依赖 `-webkit-text-fill-color: transparent`，在小程序里
+   **不同基础库的降级行为不一致**（有的显示黑块，有的完全不显示）——
+   而这类问题离线渲染也验证不出来。光带是纯几何，可靠得多。
+
+   ⚠️ 周期 2.6 秒 + 1.2 秒延迟：一局只结算一次，光扫过去就走，
+      不要让它变成"一直在闪"，那是廉价感的来源。
+   ============================================================ */
+.oh-name {
+  position: relative;
+  overflow: hidden;
+  /* 让 overflow:hidden 只裁光带，不裁文字阴影 */
+  padding: 4rpx 8rpx;
+}
+.oh-name::after {
+  content: '';
+  position: absolute;
+  top: -20%; bottom: -20%;
+  width: 36%;
+  left: -50%;
+  background: linear-gradient(100deg,
+    rgba(255, 248, 224, 0) 0%,
+    rgba(255, 248, 224, .55) 50%,
+    rgba(255, 248, 224, 0) 100%);
+  transform: skewX(-18deg);
+  animation: nameShine 2.6s ease-in-out 1.2s infinite;
+  pointer-events: none;
+}
+@keyframes nameShine {
+  0%   { left: -50% }
+  55%  { left: 115% }
+  100% { left: 115% }
+}
