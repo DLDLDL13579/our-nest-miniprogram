@@ -2836,3 +2836,36 @@
   background: linear-gradient(90deg, rgba(36,26,22,0) 0%, rgba(36,26,22,.92) 72%);
   pointer-events: none;
 }
+
+/* ============================================================
+   按钮的按下反馈（2026-11-02）
+   ------------------------------------------------------------
+   扫了一遍：20 个按钮类里**9 个没有 :active** —— 包括最重要的
+   `.bigbtn`（开始 / 摇盅 / 再来一局）。
+
+   没有按下反馈的按钮，点下去**像没反应**（尤其在手指有汗、屏幕有反光的时候），
+   而用户对"点了没反应"的容忍度是零 —— 他会再点一次，然后开始怀疑网络。
+
+   ⚠️ `.disabled` 的按钮不加 —— 它本来就不响应用户，给了反馈反而误导。
+   ============================================================ */
+.bigbtn:active,
+.btn:active,
+.pibtn:active,
+.openbtn:active,
+.rerollbtn:active {
+  transform: scale(.975);
+  filter: brightness(.94);
+}
+
+/* 主按钮按下时阴影收一点，像是"按进去了" */
+.bigbtn:active {
+  box-shadow: 0 3rpx 10rpx rgba(206, 87, 56, .28);
+}
+
+/* 不可点的按钮：完全没有反馈 */
+.bigbtn.disabled:active,
+.btn.disabled:active {
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
