@@ -231,3 +231,52 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     '结算 mock 的数值对不上：\n    ' + bad.join('\n    '))
   console.log('  ✓ 结算 mock 的 total / handName / 排名顺序都与真实 rankPlayers 一致')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**金花结算的牌必须是一副真牌**（除去公共牌后不能重复）
+ *
+ * ⚠️ 写这条时我第一版查错了：
+ *   "9 张牌去重后只有 7 张 → 有重复" ——
+ *   而重复的 `12-2` 是**公共牌（♣Q）**，本来就该出现在每个人手里。
+ *
+ *   金花的规则是「公共牌 1 张 + 每人私有 2 张」，所以：
+ *     · 每人的 cards 里**必须**有那张公共牌
+ *     · 除去公共牌后的**私有牌不能重复**（一副牌只有一张 Q♠）
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const hands = (s && s.room && s.room.lastResult &&
+      s.room.lastResult.kind === 'poker' && s.room.lastResult.hands) || []
+    if (!hands.length) return
+    const pub = s.room.poker && s.room.poker.publicCard
+    const pubId = pub ? (pub.r + '-' + pub.s) : null
+    const priv = []
+    hands.forEach(h => {
+      const ids = (h.cards || []).map(c => c.r + '-' + c.s)
+      /* 值域 */
+      ;(h.cards || []).forEach(c => {
+        /* ⚠️ poker.js 的约定是 **A=14**（RANKS[14]='A'），不是 13 —— 第一版断言写错了 */
+        if (!(c.r >= 2 && c.r <= 14 && c.s >= 0 && c.s <= 3)) {
+          bad.push(k + '/' + h.name + '：牌值越界 r=' + c.r + ' s=' + c.s)
+        }
+      })
+      /* 公共牌必须在每个人手里 */
+      if (pubId && ids.indexOf(pubId) < 0) {
+        bad.push(k + '/' + h.name + '：手里没有公共牌 ' + pubId)
+      }
+      priv.push(...ids.filter(x => x !== pubId))
+    })
+    /* 私有牌不能重复 */
+    const seen = new Set()
+    priv.forEach(x => {
+      if (seen.has(x)) bad.push(k + '：私有牌 ' + x + ' 出现在两个人手上')
+      seen.add(x)
+    })
+  })
+  assert.deepStrictEqual(bad, [],
+    '金花结算的牌有问题：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 金花结算的牌是真的一副（公共牌共享、私有牌不重复、值域合法）')
+}

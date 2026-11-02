@@ -632,28 +632,28 @@ module.exports = {
        *   这种 mock 失真会让我误判"牌面太宽放不下"之类根本不存在的问题。
        * （真实数据里 cardsText 就是服务端用 cardText 生成的。）
        */
-      const hands = names.map((n, i) => ({
-        name: n, out: i > 0,
-        /*
-         * 牌不能重复 —— 第一版 i=0 时算出来两张 ♠Q，
-         * 真实发牌（newDeck + shuffle）不会出现，但预览图会被它误导。
-         */
-        /*
-         * ⚠️ 第一版每个 i 都用同一张 ♠Q 当第一张 —— 预览图上 6 个人拿着同一张牌，
-         *    看起来很像是真的 bug（其实是 mock 的锅）。真实发牌不会重复，
-         *    mock 也不能重复，否则截图会骗人。
-         */
-        cards: [
-          { r: 14 - i, s: i % 4 },
-          { r: 12 - i, s: (i + 1) % 4 },
-          { r: 9 - i, s: (i + 2) % 4 }
-        ],
-        cardsText: [
-          poker.cardText({ r: 14 - i, s: i % 4 }),
-          poker.cardText({ r: 12 - i, s: (i + 1) % 4 }),
-          poker.cardText({ r: 9 - i, s: (i + 2) % 4 })
-        ]
-      }))
+      /*
+       * ★★ 2026-11-03：**用真正的发牌函数生成**（`dealDream` + `fullHand` + `rank`）。
+       *
+       *   原来手写的 `cards: [{ r: 14 - i, ... }]` 有三个问题：
+       *     ① `14 - i` 在 i=0 时给 r=14 —— **A 是 13，牌值越界**
+       *     ② **没有 `handName`** —— 结算页那一列牌型名是空的
+       *     ③ 三张牌是"自己、自己、自己"，**没有公共牌** ——
+       *        而金花的规则是「公共牌 + 私有 2 张」，每人都该有那张公共牌
+       *
+       *   而 mock 一旦和真实规则脱节，我看图就会误判"牌型名没显示是不是模板问题"。
+       */
+      const dealt = poker.dealDream(names.length)
+      const hands = names.map((n, i) => {
+        const full = poker.fullHand(dealt.publicCard, dealt.hands[i])
+        const rk = poker.rank(full)
+        return {
+          name: n, out: i > 0,
+          handName: rk.name,
+          cards: full,
+          cardsText: full.map(c => poker.cardText(c))
+        }
+      })
       return {
         stage: 'over',
         room: pkRoom({
@@ -667,8 +667,12 @@ module.exports = {
             kind: 'poker', winner: '邓林', winText: '邓林 赢',
             hands: hands
           },
-          poker: { drinks: [], 
-            step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
+          poker: { publicCard: dealt.publicCard, drinks: [], 
+            step: 'result',
+            /* ★ 2026-11-03：必须用 `dealt.publicCard`，不能再用模块级的 `PK_PUB` ——
+               否则**结算的牌（用 dealt 生成）和界面显示的公共牌（PK_PUB）不是同一张**，
+               于是每人的 cards 里都找不到那张"公共牌"。 */
+            publicCard: dealt.publicCard, publicText: poker.cardText(dealt.publicCard),
             myKnown: PK_MINE[0], myKnownText: poker.cardText(PK_MINE[0]),
             myKnownRed: /[♥♦]/.test(poker.cardText(PK_MINE[0])),
             folded: false, aliveCount: 1, myDrink: 0, last: null, winner: '邓林'
