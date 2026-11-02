@@ -4128,3 +4128,37 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 卧底身份与词不下发（shape 的 players 映射里没有 uwRole / uwWord）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**进行中只给自己的骰子**（大话骰的命门）
+ *
+ * `shape()` 里那一行：
+ *     dice: p.openid === openid ? (p.dice || []) : undefined
+ *     diceCount: (p.dice || []).length
+ *
+ * 一旦有人为了"显示骰子数"方便，把 `dice` 改成无条件下发 ——
+ * **抓包就能看到所有人的骰子**，大话骰直接失去意义。
+ * 而这个改动在界面上**看不出任何区别**（模板本来就只用自己的 dice）。
+ *
+ * 结算时的 `allDice`（所有人）是合理的 —— 那一局已经结束了。
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+  const i = cloud.indexOf('function shape(room, openid)')
+  const seg = cloud.slice(i, i + 4000)
+
+  assert.ok(/dice:\s*p\.openid === openid \? \(p\.dice \|\| \[\]\) : undefined/.test(seg),
+    '★ shape() 里骰子必须按 isMe 过滤（别人的给 undefined）')
+  assert.ok(/diceCount:\s*\(p\.dice \|\| \[\]\)\.length/.test(seg),
+    '★ 别人的骰子数要单独给（否则界面上显示不出"还差谁没摇"）')
+
+  /* 结算时的 allDice 必须是 phase=over 那条路径 */
+  const overIdx = cloud.indexOf("phase: 'over', lastResult: result")
+  assert.ok(overIdx > 0, '找不到结算写入的位置')
+  const allDiceIdx = cloud.indexOf('allDice: (room.players || []).map')
+  assert.ok(allDiceIdx > 0 && allDiceIdx < overIdx,
+    '★ allDice 必须只在结算（phase: over）时下发')
+
+  ok('★ 进行中只给自己的骰子（别人的只有数量），结算才揭晓全部')
+}
