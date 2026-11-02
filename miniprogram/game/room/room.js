@@ -2636,7 +2636,24 @@ Page({
         /* no-room: 进不去 = 没进到房间里，没有可同步的状态。
            同样要显示具体原因，理由见 doCreate 那段。 */
         trace.add('join.fail', (e && (e.friendly || e.message)) || '')
-        this.setData({ err: (e && (e.friendly || e.message)) || '进不去' })
+        {
+          const why = (e && (e.friendly || e.message)) || '进不去'
+          /*
+           * ★ 2026-11-02「线下面对面」：房间号输满 3 位会自动进房（不再让人点一次"进去"），
+           *   所以**输错一位也来不及改** —— 数字一到 3 个就提交了。
+           *
+           *   原来失败后只弹一句「没找到」，输入框里还留着那 3 个错号码，
+           *   用户得先删一位才能重输。桌上几个人等着的时候，这个动作很别扭。
+           *
+           *   改成：**号码本身有问题（找不到 / 过期 / 位数不对）就清空**，
+           *   让人直接重打；网络类错误保留输入，免得重输。
+           */
+          const codeProblem = /房间|找不到|过期|不存在|位数/.test(why)
+          this.setData({
+            err: why,
+            joinCode: codeProblem ? '' : this.data.joinCode
+          })
+        }
         this.setLoading(false)
         return null
       })
