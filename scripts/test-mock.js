@@ -280,3 +280,42 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     '金花结算的牌有问题：\n    ' + bad.join('\n    '))
   console.log('  ✓ 金花结算的牌是真的一副（公共牌共享、私有牌不重复、值域合法）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**53 个状态的基础合法性**（房间号 / 座位 / 骰子 / 唯一性）
+ *
+ * 这些"太简单而不值得测"的东西，恰恰是最容易被手写编坏的地方：
+ *   · 座位号跳号 → 界面上出现"seat 1,2,4"
+ *   · 两个人同名 → 结算页分不清谁是谁
+ *   · 骰子写个 7 → 渲染器找不到 dice-7.png，而它是**静默不显示**
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s.room || {}
+    if (r.code && !/^\d{3}$/.test(String(r.code))) {
+      bad.push(k + '：房间号不是 3 位数字（' + r.code + '）')
+    }
+    const ps = r.players || []
+    if (ps.length) {
+      const seats = ps.map(p => p.seat).sort((a, b) => a - b)
+      const want = ps.map((_, i) => i + 1)
+      if (JSON.stringify(seats) !== JSON.stringify(want)) {
+        bad.push(k + '：座位号不连续（' + seats.join(',') + '）')
+      }
+      ps.forEach(p => (p.dice || []).forEach(d => {
+        if (!(d >= 1 && d <= 6)) bad.push(k + '/' + p.name + '：骰子值 ' + d + '（应在 1~6）')
+      }))
+      const names = ps.map(p => p.name)
+      const dupN = [...new Set(names.filter((x, i) => names.indexOf(x) !== i))]
+      if (dupN.length) bad.push(k + '：玩家名重复（' + dupN.join(',') + '）')
+      const oids = ps.map(p => p.openid).filter(Boolean)
+      const dupO = [...new Set(oids.filter((x, i) => oids.indexOf(x) !== i))]
+      if (dupO.length) bad.push(k + '：openid 重复（' + dupO.join(',') + '）')
+    }
+  })
+  assert.deepStrictEqual(bad, [], 'mock 基础数据不合法：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 53 个状态的基础数据：房间号 3 位 / 座位连续 / 骰子 1~6 / 名字与 openid 唯一')
+}
