@@ -1107,11 +1107,23 @@
    *   提到 44rpx（22px），和赢家名字同档 —— 这两个本来就是一组信息。
    */
   font-size: 44rpx; font-weight: 700; color: #F0A38C; letter-spacing: 2rpx;
-  animation: loserPulse 1.1s ease-in-out infinite;
+  /*
+   * ★★★ 2026-11-02 重做「谁喝一杯」的脉冲。
+   *
+   * 原来：1.1 秒一次、同时 scale(1.06) + opacity(.85)。
+   * 三个问题叠在一起：
+   *   ① **1.1 秒太快** —— 每秒闪一次，而结算页要停留好几秒（大家在讨论谁喝）
+   *   ② **文字不该缩放** —— 它会触发重排，小字号的 6% 放大在部分机型上会发虚
+   *   ③ 两个维度同时动，看起来"晃"而不是"呼吸"
+   *
+   * 改成：2.4 秒一次、**只动 opacity**、幅度 .88~1。
+   * 这样它是"还在那儿"的心跳感，不会跟结算页其它动画（光晕 2.2s、扫光 2.6s）打架。
+   */
+  animation: loserPulse 2.4s ease-in-out infinite;
 }
 @keyframes loserPulse {
-  0%, 100% { transform: scale(1);    opacity: 1 }
-  50%      { transform: scale(1.06); opacity: .85 }
+  0%, 100% { opacity: 1 }
+  50%      { opacity: .88 }
 }
 
 .bigbtn {
