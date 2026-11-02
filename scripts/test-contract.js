@@ -2853,9 +2853,18 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   {
     const gamesSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
     const liarBlock = gamesSrc.slice(gamesSrc.indexOf("id: 'liar'"), gamesSrc.indexOf("id: 'dice'"))
-    assert.ok(/4 杯|四杯/.test(liarBlock), '★ 规则里没提反劈是 4 杯 —— 玩家不知道反劈的后果')
-    assert.ok(/2 杯|两杯/.test(liarBlock), '★ 规则里没提劈一次是 2 杯')
-    ok('大话骰规则说清了 1 / 2 / 4 杯三档')
+    /*
+     * ★ 2026-11-03：文案改成了「被劈了翻一倍（1→2→4→8 杯，最多 8 杯）」——
+     *   比原来的「劈一次 2 杯，反劈再翻一倍 4 杯」更清楚，而且**补上了 8 杯的封顶**
+     *   （云端是 `min(8, mult*2)`，原来规则只写到 4 杯）。
+     *
+     *   所以断言也从"出现过 4 杯"改成"说清了整条倍数链和封顶"。
+     */
+    assert.ok(/2[、\/→]?\s*4/.test(liarBlock) || /2 杯/.test(liarBlock),
+      '★ 规则里要说清劈的倍数链（至少到 2 杯、4 杯）')
+    assert.ok(/最多\s*8\s*杯/.test(liarBlock),
+      '★ 规则里必须写清劈的封顶是 8 杯（代码是 min(8, mult*2)）')
+    ok('大话骰规则说清了 1→2→4→8 杯的倍数链与 8 杯封顶')
   }
 
   /* ============ ③p 规则里写的场合数量要对得上 decks.js ============ */
