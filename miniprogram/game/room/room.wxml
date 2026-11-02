@@ -985,7 +985,12 @@
       <!-- 轮到我：弃牌 或 挑一个人比 -->
       <block wx:if="{{room.myTurn && !room.poker.folded}}">
         <view class="pk-now">轮到你了</view>
-        <view class="pk-note">挑一个人比牌 —— 输了就出局，两个都得亮牌</view>
+        <!--
+          ★ 2026-11-02 真机审核：单人房时下面**一个可选的人都没有**，
+          而这句话还写着「挑一个人比牌」—— 用户会盯着屏幕找人在哪。
+          有可比的人时才说这句，没有就说等谁。
+        -->
+        <view class="pk-note">{{room.pkTargetCount > 0 ? '挑一个人比牌 —— 输了就出局，两个都得亮牌' : '这局只有你一个人，等其他人进来'}}</view>
         <view class="pk-list">
           <!--
             ★ wx:for 与 wx:if 不能写在同一个标签上。
@@ -1248,7 +1253,12 @@
         <view class="oh-total">{{result.top}} 点</view>
       </view>
 
-      <view class="revealbox">
+      <!--
+        ★ 2026-11-02 真机审核：单人局时这里渲染成**一条空的灰条** ——
+        `.revealbox` 有背景色和 24rpx 内边距，而 `restRanked` 是空数组，
+        于是屏幕上出现一个没内容的灰色方块，看着像"加载失败"。
+      -->
+      <view class="revealbox" wx:if="{{result.restRanked.length}}">
         <view wx:for="{{result.restRanked}}" wx:key="seat" wx:for-index="ri"
               class="rv-row {{item.total === result.top ? 'win' : ''}}"
               style="--i:{{ri}}">

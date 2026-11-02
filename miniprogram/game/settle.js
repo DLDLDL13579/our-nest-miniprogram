@@ -22,6 +22,15 @@ function footText(room) {
     return lr.loserName + ' 喝一杯'
   }
   if (room.game === 'dice' && Array.isArray(lr.ranked) && lr.ranked.length) {
+    /*
+     * ★ 2026-11-02：「点数最少」要有**别人**做参照才成立。
+     *   单人局（soloTest 测试模式才有）里显示「玩家 点数最少，喝一杯」
+     *   读起来莫名其妙 —— 只有一个人，跟谁比最少？
+     */
+    if (lr.ranked.length === 1) {
+      const only = lr.ranked[0]
+      return only.name + ' 摇出 ' + (only.total || 0) + ' 点'
+    }
     /* 点数最少的那个喝 —— 排序取第一个 */
     const low = lr.ranked.slice().sort((a, b) => (a.total || 0) - (b.total || 0))[0]
     if (low) return low.name + ' 点数最少，喝一杯'

@@ -1629,6 +1629,13 @@ Page({
     try {
       const R = require('../../utils/liarRules.js')
       room.openNeedN = R.openNeed(room.count || 2, this.data.zhaiMode === 'zhai', 2)
+    /*
+     * 金花「可比的人」数量（2026-11-02）。
+     * 单人房时模板里那句「挑一个人比牌」会让用户到处找人 ——
+     * 而下面 pk-list 是空的（没有 !isMe 的玩家）。用这个数决定说什么话。
+     */
+    room.pkTargetCount = (room.players || []).filter(p =>
+      !p.isMe && !p.out && p.inRound !== false).length
     } catch (e) { room.openNeedN = 1 }
 
     /* 轮次提示：服务端已给 turn（座位号）和 me.seat，比一下就有 */
