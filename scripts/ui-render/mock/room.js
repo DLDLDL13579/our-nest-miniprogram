@@ -123,6 +123,8 @@ function pkRoom(r) {
      */
     myCards: [],
     nightDrinkList: [],
+    // ★ 2026-11-02：金花「可比的人」数量。mock 缺它会永远渲染成「只有你一个人」
+    pkTargetCount: 2,
     /*
      * ★★★ 图片源必须有默认值（2026-10-30 第四次踩同一个坑）。
      *
