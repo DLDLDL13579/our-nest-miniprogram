@@ -100,6 +100,9 @@ fi
 #   截图对 display / 重排类的规则不可信 —— 见 verify-compact.js 顶部长注释。
 node scripts/check-text-overflow.js 2>/dev/null
 
+# ★ 2026-11-03：音效结尾有没有爆音（判据是"末帧"，不是"尾部能量"）
+node scripts/check-audio-tail.js 2>/dev/null || python3 scripts/check-audio-tail.py 2>/dev/null
+
 # ★ 显式汇总（2026-10-30）。
 #   起因：有两次 test-all 以 exit=1 结束却只有一行 SyntaxError，重跑又过。
 #   `set -e` 理论上该让脚本中途退出，但它对**管道/子 shell/命令替换**有已知盲区，
