@@ -2600,13 +2600,34 @@ Page({
     } catch (e) {}
   },
 
-  bumpNightCount() {
+  bumpNightCount(gameId) {
     try {
       const d = new Date()
       const today = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate()
       const rec = wx.getStorageSync('nightGames') || {}
       const n = rec.date === today ? (Number(rec.n) || 0) : 0
       wx.setStorageSync('nightGames', { date: today, n: n + 1 })
+
+      /*
+       * ★★★ 2026-11-02 真机审核发现：**「我的」页的玩法战绩永远是「还没玩过」**。
+       *
+       * 根因是两个不同的 storage key：
+       *   这里写的是 `nightGames`（今晚第几局）
+       *   「我的」页读的是 `gameStats`（每个玩法开过几次）
+       * 而 `gameStats` **从来没有任何地方写过** —— 于是玩了十局，
+       * 战绩列表还是清一色的"还没玩过"。
+       *
+       * 现在开一局同时累加对应玩法。
+       */
+      /* ⚠️ 不能用 this.data.room.game —— setData 是异步的，那一刻可能还是旧值/空。
+         调用方传服务端刚返回的 game 进来（一定准确）。 */
+      const gid = gameId || (this.data.room && this.data.room.game) || ''
+      if (gid) {
+        const st = wx.getStorageSync('gameStats') || {}
+        st[gid] = (Number(st[gid]) || 0) + 1
+        wx.setStorageSync('gameStats', st)
+      }
+
       /* 返回"现在是今晚第几局"，结算页要显示它 */
       return n + 1
     } catch (e) { return 0 }
@@ -2640,7 +2661,7 @@ Page({
       })
     if (this.okOrSay(r)) {
       /* 记一局，并留下"今晚第几局"给结算页 */
-      this.setData({ nightRound: this.bumpNightCount() })
+      this.setData({ nightRound: this.bumpNightCount(r.room && r.room.game) })
       /* ★ stage 必须跟随服务端返回的 phase（start 之后是 countdown，不是 playing）。
          写死 'playing' 会让房主跳过倒计时、直接对着还没开始的游戏界面操作 ——
          「转盘无法转」「摇盅没反应」都是这么来的。 */
