@@ -4196,3 +4196,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 分享标题在最坏情况（' + longest + ' + 12 人 + 888）也只有 ' + full.length + ' 字')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**每个触点都要有反馈**（音效/提示/状态变化）
+ *
+ * "点了没反应"是这一类里最伤的一种 —— 而它的成因通常是：
+ *   处理方法里既没有 showToast、也没有 setData、也没有音效。
+ *
+ * 本项目历史上修过 13 处这种（`if (!m) return` 静默返回、
+ * `catch(() => null)` 吞错误）—— 那之后就该有一条覆盖性断言。
+ *
+ * ⚠️ 判据只到"有反馈"这一层，不判断"反馈得对不对" —— 后者测不了。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const js = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  const taps = [...new Set([...wxml.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]))]
+  const silent = []
+  taps.forEach(t => {
+    const m = new RegExp('\\n  (?:async )?' + t + '\\([^)]*\\)\\s*\\{').exec(js)
+    if (!m) return
+    /*
+     * ⚠️ 必须**截到方法体结束**（下一个 `\n  }` 或 `\n  },`），
+     *   不能固定长度 —— 固定 1200 字符会**跨进下一个方法**，
+     *   而下一个方法里有 setData → 假通过（反向验证时抓到的）。
+     */
+    const rest = js.slice(m.index + m[0].length)
+    const end = rest.search(/\n  \},?\n/) < 0 ? rest.length : rest.search(/\n  \},?\n/)
+    const body = rest.slice(0, end)
+    const hasFeedback = /showToast|okOrSay|showModal|setData|sfx\.play|feedback\.fire|wx\.showActionSheet|wx\.navigateTo/.test(body)
+    if (!hasFeedback) silent.push(t)
+  })
+  assert.deepStrictEqual(silent, [],
+    '这些触点点了不会有任何反馈（音效/提示/状态变化都没有）：\n    ' + silent.join('\n    '))
+  ok('★ ' + taps.length + ' 个触点都有反馈（音效 / 提示 / 状态变化）')
+}
