@@ -47,7 +47,6 @@ const FILES = {
   wheelStart: '/game/audio/wheel-start.wav',
   wheelStop: '/game/audio/wheel-stop.wav',
   // 情绪
-  drink: '/game/audio/drink.wav',
   whoosh: '/game/audio/whoosh.wav',
   // UI
   tap: '/game/audio/tap.wav',

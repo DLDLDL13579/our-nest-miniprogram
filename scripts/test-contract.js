@@ -3524,3 +3524,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些可点元素没有 :active 按下反馈（点下去像没反应）：\n    ' + real.join('\n    '))
   ok('★ 所有可点元素都有按下反馈（' + (bad.length - real.length) + ' 个白名单例外）')
 }
+
+/* ============================================================================
+ * 2026-11-02 追加：**注册了但从来没被播放的音效 = 白占包体积**
+ *
+ * 这轮删掉了 `drink.wav`（11KB）：它在 sfx.js 里注册了，但全局搜不到任何
+ * `sfx.play('drink')` —— 一个从来没响过的文件占着分包空间。
+ *
+ * ⚠️ 扫描要覆盖**动态调用**：`sfx.play(joined ? 'combo1' : 'toggleOff')` 里
+ *    的两个 key 都不是"play('x')"的字面形态，第一版判据漏了它们（假阳性 4 个）。
+ *    所以这里改成"扫所有单引号字符串"，宁可宽一点。
+ * ========================================================================== */
+{
+  const sfxSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+  const keys = [...sfxSrc.matchAll(/^\s+(\w+):\s*'\/game\/audio\/([\w-]+)\.wav'/gm)]
+    .map(m => m[1])
+  assert.ok(keys.length > 20, 'sfx 注册表只认出 ' + keys.length + ' 项')
+
+  /* 把所有 js 里的字符串字面量捞出来（覆盖动态调用写法的 key） */
+  const literals = new Set()
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) walk(p)
+      else if (f.endsWith('.js')) {
+        const src = fs.readFileSync(p, 'utf8')
+        ;[...src.matchAll(/'([\w-]+)'/g)].forEach(m => literals.add(m[1]))
+      }
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  /*
+   * 白名单（都有明确理由，不是"查不到就算了"）：
+   *   ambientRoom —— 走 playAmbient() 内部的 FILES.ambientRoom，不是字符串 key
+   *   combo2/3/4  —— 是 `sfx.play('combo' + n)` 拼出来的，源码里没有字面量
+   */
+  const ALLOW = ['ambientRoom', 'combo2', 'combo3', 'combo4']
+  const dead = keys.filter(k => !literals.has(k) && !ALLOW.includes(k))
+  assert.deepStrictEqual(dead, [],
+    '这些音效注册了但从没被播放（白占包体积）：\n    ' + dead.join('\n    '))
+  ok('★ ' + keys.length + ' 个音效都有调用点（没有白占体积的）')
+}

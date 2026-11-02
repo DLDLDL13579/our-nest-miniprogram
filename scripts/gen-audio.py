@@ -1962,7 +1962,6 @@ def ambient_room():
 
 
 ALL_V3 = [
-    ('impact-low',        _sp(impact_low, tail_ms=120, seed=27), SR_LO),
     ('combo-1',           lambda: combo_up(0), SR_MID),
     ('combo-2',           lambda: combo_up(1), SR_MID),
     ('combo-3',           lambda: combo_up(2), SR_MID),

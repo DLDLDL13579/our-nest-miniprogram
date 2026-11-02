@@ -171,6 +171,12 @@ MAP = [
          note='转盘咔哒 · 变体 2'),
     dict(dst='tick-3',      src='click_002.ogg', seconds=0.06, sr=44100, fifty=-16.0,
          note='转盘咔哒 · 变体 3'),
+    # ---------- 低频冲击层（2026-11-02）----------
+    # `impactLow` 不单独出现：它叠在 `diceOnTable` 和揭盅的中段，
+    # 作用就是"给撞击加一层低频体"。所以它必须是**真实的木头重击**，
+    # 而不是合成的正弦包络 —— 后者听起来是"嗡"不是"砸"。
+    dict(dst='impact-low', src='impactWood_heavy_000.ogg', seconds=0.34, sr=22050, fifty=-13.0,
+         note='低频冲击层（真实木头重击，低频 99%）'),
     # ---------- 纸牌 ----------
     dict(dst='card-deal',        src='cardPlace1.ogg', seconds=0.32, sr=44100, fifty=-20.0,
          note='发牌（起音 31ms、前 50ms −16.6，整包里最跟手的一张）'),
