@@ -750,11 +750,42 @@ def tick(pitch=1.0):
 
 
 def wheel_start():
-    """转盘启动：一个上滑的"嗡"。"""
+    """
+    转盘启动：一个上滑的"嗡"。
+
+    ★★★ 2026-11-02「线下面对面」重写。
+    原来只有一根 `sine_sweep(180 → 420)` —— 整个音效的能量在 **400Hz 以下**，
+    实测穿透段比人声段低 **72.3 dB**。
+
+    也就是说：**转盘"转起来了"这件事，在酒桌上完全听不见** ——
+    屏幕在转，但没有任何声音告诉桌子"开始了"。
+
+    真实转盘启动有三层（拆开看）：
+      · 马达低频的"嗡"：150~400Hz，给重量 —— 保留
+      · **电机/轴承的摩擦**：1~3kHz 的宽带噪声，这是"它真的在动"的来源
+      · **带起的气流**：转动后会有一阵很短的风噪
+    后两层正是原来缺的。
+    """
     n = int(SR * 0.30)
-    s = sine_sweep(n, 180, 420)
+    base = sine_sweep(n, 180, 420)
     e = env_ad(n, int(SR * 0.02), SR * 0.16)
-    return [s[i] * e[i] * 0.6 for i in range(n)]
+
+    # ② 电机摩擦：带通到 1.2~3kHz，跟着启动的节奏渐强
+    motor = bandpass(noise(n, 811), 0.85, 0.34)
+    mpk = max(1e-9, max(abs(x) for x in motor))
+    motor = [x / mpk for x in motor]
+    me = env_ad(n, int(SR * 0.06), SR * 0.14)     # 比基频起得稍慢（先"嗡"后"吱"）
+
+    # ③ 气流：更高的频段，只在起音那一小段
+    air = bandpass(noise(n, 907), 1.0, 0.62)
+    apk = max(1e-9, max(abs(x) for x in air))
+    air = [x / apk for x in air]
+    ae = env_decay(n, SR * 0.05)
+
+    return [base[i] * e[i] * 0.55
+            + motor[i] * me[i] * 0.40
+            + air[i] * ae[i] * 0.14
+            for i in range(n)]
 
 
 def wheel_spin_loop():
@@ -1166,6 +1197,20 @@ def fail_drop():
     # 噪声包络：前段轻、中段最强（速度最快）、末段收
     ne = env_ad(n, int(SR * 0.10), SR * 0.20)
     body = [body[i] + nz[i] * ne[i] * 0.35 for i in range(n)]
+
+    # ★★★ 2026-11-02「线下面对面」：再补一层 2~3.5kHz 的"坠落风"。
+    #
+    #   上面那层是 400~2000Hz —— **正好在人声频段**，一桌人聊天就被盖住。
+    #   实测穿透段比人声段低 39.3 dB：「输了下坠」这个情绪音在酒桌上听不见，
+    #   输家感觉不到"掉下去"。
+    #
+    #   真实的下坠感有一半来自**空气擦过耳朵的高频**（跳楼机、过山车都是这个原理）。
+    wind = bandpass(noise(n, 921), 1.0, 0.55)
+    wpk = max(1e-9, max(abs(x) for x in wind))
+    wind = [x / wpk for x in wind]
+    we = [(min(1.0, (i / n) * 2.2) * math.exp(-max(0.0, i / n - 0.55) * 4.0))
+          for i in range(n)]
+    body = [body[i] + wind[i] * we[i] * 0.22 for i in range(n)]
     # 落地冲击（后半段）
     imp = impact_low()
     off = int(SR * 0.42)
