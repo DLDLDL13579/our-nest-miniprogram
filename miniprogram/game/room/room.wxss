@@ -39,7 +39,7 @@
   position: absolute;
   top: -30rpx;
   width: 12rpx; height: 20rpx;
-  border-radius: 2rpx;
+  border-radius: 4rpx;
   /*
    * ★ 撒花要像纸片，不像雪（2026-10-30 改）。
    *
@@ -244,7 +244,7 @@
 .gamepage .xs { color: rgba(255, 255, 255, 0.52) }
 
 .tin {
-  width: 100%; height: 88rpx; border-radius: 18rpx;
+  width: 100%; height: 88rpx; border-radius: 20rpx;
   padding: 0 24rpx; font-size: 27rpx;
   border: 2rpx solid var(--line);
 }
@@ -261,7 +261,7 @@
  */
 
 .errbox {
-  margin-top: 20rpx; padding: 20rpx 24rpx; border-radius: 18rpx;
+  margin-top: 20rpx; padding: 20rpx 24rpx; border-radius: 20rpx;
   background: rgba(224,113,79,.2); color: #F0A38C;
   font-size: 24rpx; text-align: center;
 }
@@ -347,7 +347,7 @@
 .plist-r { display: flex; align-items: center; gap: 10rpx }
 .lockbtn {
   /* 可见尺寸不大，但**点按面积要够** —— 用 padding 撑到 88rpx 高（视觉上仍是个小标签） */
-  padding: 4rpx 12rpx; border-radius: 10rpx;
+  padding: 4rpx 12rpx; border-radius: 12rpx;
   min-height: 88rpx; display: flex; align-items: center;
   font-size: 18rpx; color: rgba(255,255,255,.62);
   background: rgba(255,255,255,.07);
@@ -369,7 +369,7 @@
 /* 掉线标记：比灰点明确得多 —— 桌上最容易发生的是"他去接电话了" */
 .poff {
   flex: none; white-space: nowrap;
-  margin-left: 8rpx; padding: 1rpx 8rpx; border-radius: 6rpx;
+  margin-left: 8rpx; padding: 1rpx 8rpx; border-radius: 8rpx;
   font-size: 18rpx; color: #E8A08C;
   background: rgba(224, 113, 79, .18);
 }
@@ -954,7 +954,7 @@
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, var(--gold), #C08A18);
   color: #2C1A08; font-size: 28rpx; font-weight: 700;
-  border-radius: 22rpx;
+  border-radius: 24rpx;
   box-shadow: 0 8rpx 22rpx rgba(192, 138, 24, .38);
 }
 /* 倍数徽章：被劈过就要一眼看到"这局赌注是几倍" */
@@ -1071,7 +1071,7 @@
 .pkr-face {
   /* 46rpx 时牌上的点数糊成一团（真实牌面的细节全丢）—— 放到 56，行高还有余量 */
   width: 56rpx; height: 75rpx;
-  border-radius: 6rpx;
+  border-radius: 8rpx;
   flex: none;
 }
 .pkr-face.out { opacity: .55; filter: saturate(.6) }
@@ -1126,7 +1126,7 @@
 .rv-total { font-size: 27rpx; font-weight: 700; color: var(--cream); margin-left: auto }
 /* 列表里标一下谁摸到豹子（它是这局真正的稀有点，值得被看见） */
 .rv-leopard {
-  font-size: 18rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 6rpx;
+  font-size: 18rpx; font-weight: 700; padding: 2rpx 10rpx; border-radius: 8rpx;
   background: rgba(232,179,60,.22); color: #F0C860; flex: none;
 }
 
@@ -1215,7 +1215,7 @@
 .actrow {
   display: flex; gap: 18rpx;
 }
-.actrow .btn { flex: 1; height: 76rpx; font-size: 27rpx; border-radius: 18rpx }
+.actrow .btn { flex: 1; height: 76rpx; font-size: 27rpx; border-radius: 20rpx }
 
 /* 破坏性操作：只留文字。不做点击高亮，反而更退后 */
 /* 底部一行两个小字按钮（看规则 / 离开房间） */
@@ -1715,7 +1715,7 @@
   position: relative;
   margin-bottom: var(--gap-2);
   padding: 5rpx;                       /* 给金色边留出"金箔"的厚度 */
-  border-radius: 26rpx;
+  border-radius: 28rpx;
   background: linear-gradient(150deg, #6B4E86, #3A2C4A);
   box-shadow: 0 10rpx 28rpx rgba(0,0,0,.32);
   transition: transform .16s ease-out, box-shadow .18s ease-out, background .18s ease-out;
@@ -1726,7 +1726,7 @@
   box-shadow: 0 16rpx 40rpx rgba(140, 100, 200, .42);
 }
 .uw-card-in {
-  border-radius: 22rpx;
+  border-radius: 24rpx;
   border: 2rpx solid rgba(232,179,60,.45);
   background: linear-gradient(160deg, rgba(58,44,74,.92), rgba(36,28,48,.96));
   padding: 56rpx 30rpx;
@@ -1783,7 +1783,7 @@
 .pitem.canedit:active { background: rgba(255,255,255,.1) }
 .pedit {
   position: relative;
-  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 6rpx;
+  font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 8rpx;
   background: rgba(232,179,60,.2); color: var(--gold);
   /*
    * ★★★ 2026-11-02 可用性：这个小标签的**实际高度只有约 11rpx（5.5px）** ——
@@ -2174,7 +2174,7 @@
 .pk-side {
   position: absolute; left: 0; top: 0;
   width: 136rpx; height: 192rpx;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 6rpx 16rpx rgba(0,0,0,.3);
   transition: opacity .16s ease-out, transform .26s cubic-bezier(.34, 1.2, .64, 1);
@@ -2571,7 +2571,7 @@
 .revealbox .die-img.hit {
   opacity: 1;
   box-shadow: 0 0 0 4rpx rgba(232, 179, 60, .9), 0 4rpx 14rpx rgba(232, 179, 60, .35);
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   transform: scale(1.08);
   transition: transform .18s ease-out, box-shadow .18s ease-out, opacity .18s ease-out;
 }
@@ -2581,7 +2581,7 @@
    并列第一时会有多行同时高亮 —— 这是对的，不该只让一个人亮。 */
 .rv-row.win {
   background: rgba(232, 179, 60, .12);
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   padding-left: 16rpx;
   padding-right: 12rpx;
   box-shadow: inset 4rpx 0 0 rgba(232, 179, 60, .85);
@@ -2602,7 +2602,7 @@
 .pkask-row { display: flex; gap: 18rpx; margin-top: 30rpx }
 .pkask-btn {
   flex: 1; text-align: center;
-  padding: 26rpx 0; border-radius: 18rpx;
+  padding: 26rpx 0; border-radius: 20rpx;
   font-size: 27rpx; font-weight: 600;
   transition: transform .1s, opacity .1s;
 }
@@ -2690,13 +2690,13 @@
 .pk-back-img {
   position: absolute; left: 0; top: 0;
   width: 100%; height: 100%;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
 }
 
 /* 比牌记录里的牌面小图（2026-10-30，与手牌区同一套素材） */
 .pkl-card-img {
   width: 34rpx; height: 48rpx;
-  border-radius: 3rpx;
+  border-radius: 4rpx;
   background: var(--card);
   margin-right: 4rpx;
 }

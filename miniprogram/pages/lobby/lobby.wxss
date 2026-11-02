@@ -111,7 +111,7 @@
 .join-btn {
   flex: none; height: 68rpx; padding: 0 38rpx;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 18rpx; font-size: 27rpx; font-weight: 600;
+  border-radius: 20rpx; font-size: 27rpx; font-weight: 600;
   /* 未输满 3 位时是"待命"态：浅底浅字，而不是灰掉看不见 */
   background: rgba(255,255,255,.1); color: var(--ink3);
   transition: background .16s, color .16s;
@@ -122,7 +122,7 @@
 .errbox {
   margin: 0 0 var(--gap-2); padding: 18rpx 22rpx;
   background: rgba(224,113,79,.14); border-left: 6rpx solid var(--brand2);
-  border-radius: 14rpx; font-size: 24rpx; color: var(--brand2); line-height: 1.6;
+  border-radius: 16rpx; font-size: 24rpx; color: var(--brand2); line-height: 1.6;
 }
 
 /* ============================================================
@@ -215,7 +215,7 @@
   display: flex; align-items: flex-start; justify-content: space-between;
 }
 .gc-icon {
-  width: 66rpx; height: 66rpx; border-radius: 18rpx; flex: none;
+  width: 66rpx; height: 66rpx; border-radius: 20rpx; flex: none;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #F6E9D8, #EBD8C0);
   border: 2rpx solid rgba(200, 160, 120, .28);
@@ -291,7 +291,7 @@
    玩家会想"为什么它在第一个"，标签直接回答这个问题。 */
 .gc-recent {
   font-size: 18rpx; padding: 2rpx 10rpx;
-  border-radius: 6rpx;
+  border-radius: 8rpx;
   background: var(--goldsoft);
   color: #8A6A22;
   flex: none;

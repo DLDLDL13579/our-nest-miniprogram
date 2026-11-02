@@ -148,7 +148,7 @@
 .diag-body {
   flex: 1; min-height: 200rpx;
   background: rgba(0,0,0,.28);
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   padding: 18rpx;
 }
 .diag-text {
