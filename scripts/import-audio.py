@@ -114,9 +114,15 @@ MAP = [
     # ★ 骰子落定的多采样变体（2026-10-30）：一局要响十几次，
     #   只靠 playbackRate ±4% 变调是"同一个声音变声"，而这是三份不同录音。
     #   参数与主文件保持一致（同样的裁切长度/响度目标），只换素材。
-    dict(dst='dice-settle-2',    src='dieThrow2.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+    # ★★ 2026-11-02：主文件原来只有合成版 —— 而 2/3 变体已经是真实录音，
+    #   意味着一局 5 颗骰子里，前几颗是合成的"嗒"、后面是真实的"嗒"，
+    #   **同一种声音在一屏里出现两种音色**。
+    #   dieThrow1 起音 34ms（导入时会按能量裁掉前面的静默，等效起音 0）。
+    dict(dst='dice-settle',      src='dieThrow1.ogg', seconds=0.30, sr=44100, fifty=-15.5,
+         note='逐颗落定 · 主文件（与 2/3 变体同源，音色统一）'),
+    dict(dst='dice-settle-2',    src='dieThrow2.ogg',  seconds=0.30, sr=44100, fifty=-12.6,
          note='逐颗落定（起音 3ms，一局十几下必须克制）'),
-    dict(dst='dice-settle-3',    src='dieThrow3.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+    dict(dst='dice-settle-3',    src='dieThrow3.ogg',  seconds=0.30, sr=44100, fifty=-18.8,
          note='逐颗落定 · 变体 3'),
     dict(dst='dice-on-table',    src='diceThrow3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
          note='揭盅后骰子在桌上滚两下（起音 12ms）'),
@@ -144,6 +150,27 @@ MAP = [
          note='揭盅：一声真实的「当」（起音 1ms）'),
     dict(dst='glass-clink', src='impactGlass_heavy_001.ogg', seconds=0.55, sr=44100, fifty=-13.0,
          note='碰杯（罚酒/干杯那一刻）'),
+    # ---------- 其余真实物理事件（2026-11-02 第三批）----------
+    # 判据：**现实里真实存在的声音**就该用录音；
+    #       纯情绪/氛围（combo、fail-drop、confetti、whoosh）留合成 ——
+    #       现实中没有"连击音"这种东西，硬做录音反而假。
+    dict(dst='dice-shake',  src='dieShuffle2.ogg', seconds=1.05, sr=44100, rms=-22.0,
+         note='摇骰（比大小那一下，和 cup-shake 同源不同段）'),
+    # ★ 2026-11-02：「抬盅」是**持续动作**（手伸过去、抓住、抬起来），
+    #   起音那一下本来就很轻 —— 用「前 50ms」衡量它是不对的，
+    #   真实录音的 dieGrab2 起音在 178ms。改用整体 RMS 定标。
+    dict(dst='cup-lift',    src='dieGrab2.ogg', seconds=0.83, sr=44100, rms=-24.0,
+         note='抬盅（揭开前的最后一刻）'),
+    dict(dst='countdown',   src='click_002.ogg', seconds=0.06, sr=44100, fifty=-15.0,
+         note='读秒「嗒」（3-2 各一声）'),
+    dict(dst='countdown-go', src='switch_001.ogg', seconds=0.40, sr=44100, fifty=-13.0,
+         note='读秒收尾「开始」（真实开关的落定感）'),
+    dict(dst='toggle-off',  src='switch_001.ogg', seconds=0.30, sr=44100, fifty=-17.0,
+         note='开关关闭'),
+    dict(dst='tick-2',      src='click_005.ogg', seconds=0.06, sr=44100, fifty=-14.0,
+         note='转盘咔哒 · 变体 2'),
+    dict(dst='tick-3',      src='click_002.ogg', seconds=0.06, sr=44100, fifty=-16.0,
+         note='转盘咔哒 · 变体 3'),
     # ---------- 纸牌 ----------
     dict(dst='card-deal',        src='cardPlace1.ogg', seconds=0.32, sr=44100, fifty=-20.0,
          note='发牌（起音 31ms、前 50ms −16.6，整包里最跟手的一张）'),
@@ -359,7 +386,24 @@ def process(one, src_dir, dry=False):
 
     if not dry:
         os.makedirs(OUT_DIR, exist_ok=True)
-        sf.write(dst, d.astype(np.float32), sr_out, subtype='PCM_16')
+        # ★★★ 2026-11-02：**在 int16 域再消一次直流**。
+        #
+        #   上面第 374 行已经在浮点域减了均值，但那不够 —— `PCM_16` 的量化
+        #   是"向零截断"，会重新引入 -0.5 LSB 的偏移。对 1 秒的音效无所谓，
+        #   对 **10ms 的极短音**（tick-2 / countdown）就致命：
+        #   实测 tick-2 的 DC 偏置 698（判据 50），播放时会"噗"一声。
+        #
+        #   做法：先按 int16 量化一遍，把整数的均值减掉，再写回去。
+        q = np.round(d * 32767.0)
+        q = np.clip(q, -32768, 32767)
+        q = q - int(np.round(np.mean(q)))
+        # 消直流会把峰值整体抬起来一点（减掉均值 = 平移波形）——
+        # 所以这里要再压一次，否则 tick-2 这种满幅短音会顶到 -0.16 dBFS
+        qp = float(np.max(np.abs(q)))
+        if qp > PEAK_CEIL * 32767:
+            q = q * (PEAK_CEIL * 32767 / qp)
+        q = np.clip(q, -32768, 32767)
+        sf.write(dst, (q / 32767.0).astype(np.float32), sr_out, subtype='PCM_16')
 
     return ('ok', one['dst'], dict(
         sec=len(d) / sr_out, sr=sr_out,

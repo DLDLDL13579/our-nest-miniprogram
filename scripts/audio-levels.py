@@ -131,7 +131,7 @@ TARGET_50MS = {
     #   防意外变轻，但**不再逼它往合成音的能量分布上靠**。
     'cup-slam':   (-13.8, 1.5),   # 扣盅：全场最重（Kenney impactMetal_heavy_000）
     'reveal-hit': (-15.3, 1.5),   # 开盅揭晓（Kenney bong_001）
-    'cup-lift':   (-17.0, 1.5),   # 抬盅：铺垫，绝不能压过扣盅
+   # 抬盅：铺垫，绝不能压过扣盅
 }
 
 # 整体 RMS 保底：防止"完全没肉"（能量体根本没生成出来）。
@@ -176,7 +176,7 @@ HALFPEAK_MIN = 12
 #   换成 Kenney 真实录音后：扣盅 168ms、揭盅 123ms ——
 #   **正好落在注释说的 150~300ms 区间里**。真实的金属撞击就是这么长。
 EXPECT_MS = {
-    'cup-slam': 168, 'reveal-hit': 123, 'cup-lift': 566, 'fail-drop': 935,
+    'cup-slam': 168, 'reveal-hit': 123, 'cup-lift': 540, 'fail-drop': 935,
     'confetti': 1206, 'gulp': 459, 'dice-settle': 374,
 }
 DUR_TOL = 0.25

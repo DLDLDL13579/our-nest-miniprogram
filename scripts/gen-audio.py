@@ -346,7 +346,18 @@ def sharpen_transient(sig, sr=SR, ms=1.2, boost=1.0):
     #   不是"更响"。所以允许峰值最多涨 15%（保留那点"扎"），其余压回来。
     after = max((abs(x) for x in out), default=0.0)
     cap = best * 1.15
-    if after > cap > 0:
+    # ★★★ 2026-11-02 修一个把整段录音缩成静音的 bug。
+    #
+    #   `best` 是**前 80ms 窗口内**的峰值，而 `after` 是全文件峰值。
+    #   原来的判断是 `if after > cap`，于是当"峰值不在前 80ms 内"时
+    #   （Kenney 的 dieShuffle2：首个有声样本在 **92ms**），
+    #   `best` 只有约 0.002、`after` 是 1.12 → `kk = 1/590`
+    #   → **整个文件被缩到 -55 dBFS，等于静音**。
+    #
+    #   这个函数对合成音是安全的（起音必在 0~4ms），
+    #   对真实录音却会踩空。判据：**缩放前先确认"窗口内的峰值"确实是全文件的峰值**，
+    #   否则说明这个素材的峰值不在起音处，锐化无从下手，跳过即可。
+    if best > 0 and after > 0 and after > cap and best >= after * 0.5:
         kk = cap / after
         out = [x * kk for x in out]
     return out
@@ -1069,7 +1080,6 @@ ALL = [
     # (文件名, 生成函数, 输出采样率)
     # 采样率按各自最高有效频率定 —— 脆响/噪声用 HI，纯低频用 LO
     # 骰子
-    ('dice-settle',  _sp(dice_settle, tail_ms=180, seed=45), SR_MID),
     # 转盘
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
     # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
@@ -1090,9 +1100,6 @@ ALL = [
     # 代价：文件从 0.5KB 涨到约 2KB —— 这两个加起来不到 5KB，可以忽略。
     # ★ toggle 也走 22050：它的"咔"主体是宽带瞬态，11025 的 Nyquist(5.5k)
     #   会把最脆的那一段切掉。
-    ('toggle-off',   toggle_off,              SR_HI),
-    ('countdown',    countdown,               SR_MID),
-    ('countdown-go', countdown_go,            SR_MID),
 ]
 
 
@@ -1966,7 +1973,6 @@ ALL_V3 = [
     ('gulp',              gulp,              SR_MID),
     ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_MID),
     # v4 骰盅组：让摇骰子像现实 —— 入盅 / 摇盅 / 扣盅 / 揭盅 / 桌上滚动
-    ('cup-lift',          _sp(cup_lift, tail_ms=140, seed=67), SR_MID),
     # v5 纸牌组：牌是薄片，反射比骰子短得多（tail 只要 90~140ms）
     # v6 环境底噪（调研第 10 条）
     ('ambient-room',      ambient_room,      SR_LO),

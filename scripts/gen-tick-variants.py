@@ -76,6 +76,24 @@ def write(path, s):
 
 
 def main():
+    """
+    ⚠️ 2026-11-02：`tick` 已经换成 Kenney 的真实录音（click_003），
+    而本脚本生成的是**合成的** 1330Hz / 1470Hz 脉冲变体 ——
+    跑它会把这个音效的三个变体变成"合成 + 真实"混搭。
+
+    所以默认**不生成**，要用显式 `--force` 才跑：
+
+        python3 scripts/gen-tick-variants.py --force
+
+    （保留它是因为变体机制本身还有用：如果要换一套新的真实录音，
+      这里可以改成"基于真实 tick 做音高/衰减变化"而不是重新合成。）
+    """
+    import sys as _sys
+    if '--force' not in _sys.argv:
+        print('跳过：tick 系列现在是真实录音，跑本脚本会把变体换回合成音。')
+        print('      确实要重新生成请加 --force')
+        return
+
     main_tick = os.path.join(OUT, 'tick.wav')
     if not os.path.exists(main_tick):
         raise SystemExit('找不到 tick.wav')
