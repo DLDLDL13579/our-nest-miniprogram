@@ -3270,7 +3270,26 @@ Page({
     if (r && r.ok) return true
     /* r 为 null = catch 已经弹过提示了，不要重复弹 */
     if (r && r.msg && !this._dead) {
-      wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
+      /*
+       * ★★★ 2026-11-02：云函数版本落后时，服务端兜底会返回
+       *   「不认识的操作：reroll」—— 而那是**内部术语**。
+       *
+       * 用户看到它只会觉得"手机坏了 / 这 App 有 bug"，
+       * 而真实原因是「前端上新版、云端还是旧的」这个部署问题
+       * （AGENTS.md 记过的最隐蔽一类故障）。
+       *
+       * 所以翻译成一句人话，同时把原话记进 trace —— 排查时要看得到。
+       */
+      const protoMismatch = /不认识的操作|unknown action|not a function/i.test(r.msg)
+      if (protoMismatch) {
+        trace.add('proto-mismatch', r.msg)
+        wx.showToast({
+          title: '这个功能还没上线，重进房间试试',
+          icon: 'none', duration: 2600
+        })
+      } else {
+        wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
+      }
     }
     return false
   },
