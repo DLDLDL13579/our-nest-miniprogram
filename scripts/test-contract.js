@@ -3722,3 +3722,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ ' + registered.size + ' 个音效文件与注册表一一对应（无缺失、无孤儿）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**分享链接的参数契约**
+ *
+ * 分享出去的东西有三环，断一环就"朋友点进来不知道发生了什么"：
+ *   ① `onShareAppMessage` 的 `path` 里必须带房间号
+ *   ② `onLoad` 必须认识那个参数名并清洗
+ *   ③ 清洗规则必须和服务端的 3 位房间号一致
+ *
+ * 而这三环**在本地完全自洽时也可能出错** —— 比如改了参数名忘了改另一边，
+ * 表现是"朋友点进来落到大厅，还得手输房间号"，而分享的人毫不知情。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  const share = /path:\s*'\/game\/room\/room\?code='\s*\+\s*r\.code/.test(src)
+  assert.ok(share, 'onShareAppMessage 的 path 必须带 ?code= 房间号')
+
+  assert.ok(/\bq\.code\b/.test(src), 'onLoad 里必须读 q.code')
+  assert.ok(/replace\(\/\\D\/g,\s*''\)\.slice\(0,\s*3\)/.test(src),
+    'q.code 必须清洗成 3 位纯数字（和服务端的房间号格式一致）')
+
+  /* 标题长度：微信群里约显示 20 字，超出会截掉房间号 */
+  assert.ok(/full\.length <= 20/.test(src),
+    '分享标题要控制在 20 字内，否则群聊里会把房间号截掉')
+
+  ok('★ 分享链接契约完整（path 带 code / onLoad 读并清洗 / 标题不截断）')
+}
