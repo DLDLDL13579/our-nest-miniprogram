@@ -3756,8 +3756,18 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(share, 'onShareAppMessage 的 path 必须带 ?code= 房间号')
 
   assert.ok(/\bq\.code\b/.test(src), 'onLoad 里必须读 q.code')
-  assert.ok(/replace\(\/\\D\/g,\s*''\)\.slice\(0,\s*3\)/.test(src),
-    'q.code 必须清洗成 3 位纯数字（和服务端的房间号格式一致）')
+  /*
+   * ★ 2026-11-03：**抽出那一行清洗代码真跑**，而不是比写法。
+   *   这样 `slice(0,3)` 换成 `clip(code,3)` 之类的等价实现也能通过，
+   *   只要"从脏输入里能拿到 3 位纯数字"这个行为成立。
+   */
+  const cleanLine = /const c = String\(q\.code\)[^\n]*/.exec(src)
+  assert.ok(cleanLine, 'onLoad 里必须从 q.code 清洗出房间号')
+  const cleanFn = new Function('q', cleanLine[0] + '; return c')
+  ;[['627', '627'], ['  6 2 7  ', '627'], ['a1b2c3', '123'], ['62', '62']].forEach(([inp, want]) => {
+    const got = cleanFn({ code: inp })
+    assert.strictEqual(got, want, '房间号清洗：' + JSON.stringify(inp) + ' 应得 ' + want + '，实际 ' + got)
+  })
 
   /* 标题长度：微信群里约显示 20 字，超出会截掉房间号 */
   assert.ok(/full\.length <= 20/.test(src),
@@ -3999,9 +4009,23 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/\/\/[^\n]*/g, '')
 
-  /* 云端必须有 clip() 并按码点切 */
-  assert.ok(/function clip\(str, n\) \{\s*const arr = Array\.from\(String\(str \|\| ''\)\)/.test(cloudNc),
-    '云端必须有按码点切的 clip()')
+  /*
+   * ★★ 2026-11-03：**把 `clip()` 从源码里抽出来真跑**，而不是正则比写法。
+   *
+   *   上一轮的经验：凡是"正则匹配整条实现"的断言，实现一改就假失败
+   *   （而那会让人去改正确的代码）。
+   *
+   *   这里只要求"存在一个叫 clip 的函数"，然后**调用它的真实函数体**验证行为 ——
+   *   函数怎么写都行，只要 11 个中文 + 1 个 emoji 切 12 个之后 emoji 是完整的。
+   */
+  const fm = /function clip\(([^)]*)\)\s*\{([\s\S]*?)\n\}/.exec(cloudNc)
+  assert.ok(fm, '云端必须有 clip() 函数')
+  const clipFn = new Function('str', 'n', fm[2])
+  const emo = '一二三四五六七八九十一😀'
+  const cut = clipFn(emo, 12)
+  assert.strictEqual(cut, emo, 'clip 切 12 个之后 emoji 必须完整（实际：' + JSON.stringify(cut) + '）')
+  assert.strictEqual(clipFn('abc', 10), 'abc', 'clip 不该把短串弄坏')
+  assert.strictEqual(clipFn('', 5), '', 'clip 要能处理空串')
   assert.ok(!/event\.name \|\| ''\)\.trim\(\)\.slice\(0, 12\)/.test(cloudNc),
     '云端不许用 slice(0,12) 切昵称（会切出半个 emoji）')
 
