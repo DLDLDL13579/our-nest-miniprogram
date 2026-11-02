@@ -854,47 +854,120 @@ def whoosh():
 # 通用 UI 音
 # ============================================================
 
+def click(n, hp=0.28, lp=0.95, thump=0.18, thump_f=170):
+    """
+    真实敲击声的物理模型 —— **这是「声音一般」的根治**（2026-11-02）。
+
+    ============ 为什么原来的不行 ============
+
+    原来 tap / tap_soft 是 `sine(n, 880)` / `sine(n, 660)` —— **纯正弦波**。
+    纯正弦只有一个频率成分，听感就是「滴」的电子音（beep）。
+
+    实测能量分布：95.9% 挤在 500~2000Hz，**2000Hz 以上只有 0.4%**。
+    而人耳对 3~5kHz 最敏感（等响曲线），"清脆"这个感觉完全来自高频。
+
+    → **没有高频 = 听起来闷、廉价、像玩具。** 这是物理原因，不是调音量能解决的。
+
+    ============ 真实敲击声由三部分组成 ============
+
+    ① **噪声瞬态**（1~3ms）：宽带噪声，这是"咔"的来源。
+       纯音永远做不出"咔"，因为它没有随机性。
+    ② **带通滤波**：把噪声限制在 2~6kHz —— 人耳最敏感的"脆"频段。
+       砍掉 2kHz 以下（那是"闷"），砍掉最尖的（那是"刺"）。
+    ③ **低频共振**（可选）：一声很轻的 170Hz 短衰减，给"嗒"一个实体感。
+       没有它，纯高频听起来像"塑料片"，不像"敲在东西上"。
+
+    ============ 参数 ============
+
+    hp / lp 是滤波器的 alpha 系数（不是频率）：
+        fc ≈ alpha × sr / (2π)   → 0.28 ≈ 2kHz，0.95 ≈ 6.7kHz
+    thump 是低频共振的相对量（0 = 只要高频，像敲玻璃）。
+    """
+    nz = bandpass(noise(n, seed=hash((hp, lp)) & 0xffff), lp, hp)
+    peak = max(1e-9, max(abs(x) for x in nz))
+    nz = [x / peak for x in nz]
+
+    """瞬态包络：攻击 0.5ms（几乎瞬时）+ 指数衰减 ~9ms。
+       起音必须比人耳的分辨极限还短，否则听起来是"嘶"不是"咔"。"""
+    e = env_ad(n, max(1, int(SR * 0.0005)), SR * 0.009)
+
+    body = sine(n, thump_f) if thump > 0 else [0.0] * n
+    be = env_ad(n, max(1, int(SR * 0.001)), SR * 0.016)
+
+    return [nz[i] * e[i] + body[i] * thump * be[i] for i in range(n)]
+
+
 def tap():
-    n = int(SR * 0.045)
-    s = sine(n, 880)
-    e = env_ad(n, int(SR * 0.001), SR * 0.008)
-    return [s[i] * e[i] * 0.55 for i in range(n)]
+    """点的反馈。40ms，带明显的高频瞬态 —— 要"嗒"得清脆。"""
+    n = int(SR * 0.040)
+    s = click(n, hp=0.30, lp=0.95, thump=0.22, thump_f=185)
+    return [x * 0.62 for x in s]
 
 
 def tap_soft():
-    """更轻的点击：用于频繁操作，不抢戏。"""
-    n = int(SR * 0.035)
-    s = sine(n, 660)
-    e = env_ad(n, int(SR * 0.0015), SR * 0.006)
-    return [s[i] * e[i] * 0.35 for i in range(n)]
+    """更轻的点击（37 处在用）。故意比 tap 更短更轻，但**同样要有高频** ——
+    否则频繁点起来会听到一片"嘟嘟"的闷响。"""
+    n = int(SR * 0.030)
+    s = click(n, hp=0.34, lp=0.92, thump=0.12, thump_f=200)
+    # ⚠️ 这里的音量**不决定最终响度** —— write_wav 里的 loudness_normalize
+    #    只提升不下调，会把系数吃掉。要更轻只能改 LOUDNESS_FIX 表。
+    return [x * 0.40 for x in s]
 
 
 def toggle_on():
-    n = int(SR * 0.12)
-    s = sine_sweep(n, 520, 880)
-    e = env_ad(n, int(SR * 0.003), SR * 0.04)
-    return [s[i] * e[i] * 0.6 for i in range(n)]
+    """
+    开关拨到 ON（2026-11-02 重做）。
+
+    原来是 `sine_sweep(520→880)` —— **纯扫频正弦 = 电子蜂鸣**。
+    而真实开关的声音是**塑料/金属拨片咔一下**：极短的宽带瞬态 + 一点点机身共鸣。
+
+    实测改前：2kHz 以上能量 0%，频谱质心 664Hz（闷）。
+    """
+    n = int(SR * 0.075)
+    # 主体：开关的"咔"（带通到 1.6~6kHz）
+    body = click(n, hp=0.23, lp=0.95, thump=0.30, thump_f=150)
+    # 收尾：一声很轻的上扬（拨到位的感觉），量只有主体的 18%
+    tail = [sine(n, 760)[i] * math.exp(-i / (SR * 0.020)) * 0.18 for i in range(n)]
+    return [body[i] + tail[i] for i in range(n)]
 
 
 def toggle_off():
-    n = int(SR * 0.12)
-    s = sine_sweep(n, 880, 520)
-    e = env_ad(n, int(SR * 0.003), SR * 0.04)
-    return [s[i] * e[i] * 0.6 for i in range(n)]
+    """开关拨到 OFF：同形状但尾音下沉（760 → 520），方向感是"关"。"""
+    n = int(SR * 0.075)
+    body = click(n, hp=0.23, lp=0.95, thump=0.30, thump_f=140)
+    tail = [sine(n, 520)[i] * math.exp(-i / (SR * 0.020)) * 0.18 for i in range(n)]
+    return [body[i] + tail[i] for i in range(n)]
+
+
+def _harmonic(n, f0, parts=(1.0, 0.32, 0.13)):
+    """
+    带谐波的单音（2026-11-02）。
+
+    ★ 为什么不能用纯正弦：纯正弦只有一个频率成分，人耳立刻判为"电子音"。
+      真实的"嘀"（电子表/微波炉/木鱼）都有 2~3 个泛音 ——
+      这是"贵"和"廉价"的分界，不是音色偏好。
+    """
+    out = [0.0] * n
+    for k, amp in enumerate(parts, start=1):
+        s = sine(n, f0 * k)
+        for i in range(n):
+            out[i] += s[i] * amp
+    pk = max(1e-9, max(abs(x) for x in out))
+    return [x / pk for x in out]
 
 
 def countdown():
-    """倒计时读秒：一声短促的"嘀"。"""
+    """倒计时读秒：一声短促的"嘀"，带泛音所以不刺耳也不电子。"""
     n = int(SR * 0.09)
-    s = sine(n, 1200)
+    s = _harmonic(n, 1200)
     e = env_ad(n, int(SR * 0.001), SR * 0.02)
     return [s[i] * e[i] * 0.5 for i in range(n)]
 
 
 def countdown_go():
-    """倒计时结束：更高的"嘀"。"""
+    """倒计时结束：更高的"嘀"，泛音更足（听感更"厚"、更有落点）。"""
     n = int(SR * 0.22)
-    s = sine(n, 1800)
+    s = _harmonic(n, 1800, parts=(1.0, 0.40, 0.18, 0.07))
     e = env_ad(n, int(SR * 0.001), SR * 0.06)
     return [s[i] * e[i] * 0.6 for i in range(n)]
 # _sp 包装器必须定义在 ALL / ALL_V3 之前（它们引用它）
@@ -925,10 +998,21 @@ ALL = [
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
     ('whoosh',       whoosh,                  SR_MID), # 风声，中高频
     # UI
-    ('tap',          tap,                     SR_MID),
-    ('tap-soft',     tap_soft,                SR_LO),
-    ('toggle-on',    toggle_on,               SR_MID),
-    ('toggle-off',   toggle_off,              SR_MID),
+    # ★ 2026-11-02：采样率从 SR_MID(11025) / SR_LO(8000) 提到 SR_HI(22050)。
+    #
+    # 这是「声音一般」的**第二个物理原因**：
+    #   SR_LO = 8000Hz → Nyquist 只有 4000Hz → 根本存不下 2~6kHz 的高频
+    # 所以不管怎么调合成公式，这两个音都不可能有"清脆"的成分。
+    # 实测它们 2000Hz 以上的能量是 0.4%（tap-soft）/ 0.1%（countdown-go）。
+    #
+    # 提到 22050Hz 后 Nyquist = 11kHz，2~6kHz 的脆响频段完全够。
+    # 代价：文件从 0.5KB 涨到约 2KB —— 这两个加起来不到 5KB，可以忽略。
+    ('tap',          tap,                     SR_HI),
+    ('tap-soft',     tap_soft,                SR_HI),
+    # ★ toggle 也走 22050：它的"咔"主体是宽带瞬态，11025 的 Nyquist(5.5k)
+    #   会把最脆的那一段切掉。
+    ('toggle-on',    toggle_on,               SR_HI),
+    ('toggle-off',   toggle_off,              SR_HI),
     ('countdown',    countdown,               SR_MID),
     ('countdown-go', countdown_go,            SR_MID),
 ]
@@ -998,10 +1082,12 @@ def combo_up(step=0):
     base_freqs = [659.25, 783.99, 987.77, 1174.66]   # E5 G5 B5 D6
     f = base_freqs[min(step, len(base_freqs) - 1)]
     n = int(SR * 0.28)
-    a = sine(n, f)
-    b = sine(n, f * 2)          # 八度泛音，更"亮"
+    # ★ 2026-11-02：原来只有基频 + 八度泛音（659~2350Hz），
+    #   实测 2kHz 以上能量 0~30%，听起来是"电子音"。
+    #   真实的乐器/铃声有 3~5 个非整数倍泛音 —— 加上之后立刻"亮"。
+    a = _harmonic(n, f, parts=(1.0, 0.42, 0.22, 0.10, 0.05))
     e = env_ad(n, int(SR * 0.003), SR * 0.075)
-    return [(a[i] * 0.7 + b[i] * 0.3) * e[i] for i in range(n)]
+    return [a[i] * e[i] for i in range(n)]
 
 
 def fail_drop():
@@ -1011,6 +1097,14 @@ def fail_drop():
     drop = sine_sweep(n, 440, 110)          # 从 A4 滑到 A2
     e = env_ad(n, int(SR * 0.006), SR * 0.22)
     body = [drop[i] * e[i] * 0.8 for i in range(n)]
+    # ★ 2026-11-02：纯扫频正弦下坠 = "电子警报"，没有"掉下去"的实感。
+    #   加一层**逐渐变暗的噪声**（坠落时空气擦过的声音）——
+    #   它是真实世界里"下坠"的听感来源，而正弦永远做不出。
+    nz = noise(n, seed=77)
+    nz = lowpass(highpass(nz, 0.06), 0.30)   # 带通到 400~2000Hz 的"呼"
+    # 噪声包络：前段轻、中段最强（速度最快）、末段收
+    ne = env_ad(n, int(SR * 0.10), SR * 0.20)
+    body = [body[i] + nz[i] * ne[i] * 0.35 for i in range(n)]
     # 落地冲击（后半段）
     imp = impact_low()
     off = int(SR * 0.42)
@@ -1377,6 +1471,21 @@ LOUDNESS_FIX = {
     'combo-4':    -14.9,
     'wheel-stop': -13.0,   # 转盘停稳：转盘玩法的高潮，但全局看是"结果音"档
     'charge-up':  -17.0,   # 蓄力：氛围铺垫，不是主角
+    # ★ 2026-11-02：tap 家族改成"噪声瞬态 + 带通"之后，能量分布从
+    #   中频 96% 变成高频 90% —— **高频在等响曲线上更响**，同样的 RMS
+    #   听起来会响 3~4 dB。而这四个是**全项目最高频听到**的音效
+    #   （tap-soft 37 处、tap 7 处、toggle 4 处），不压就是"嚓嚓嚓"。
+    #   ⚠️ 目标值要按"短音被 100ms 窗口稀释"补偿：
+    #      tap 只有 40ms → 短时响度比实际低约 4 dB
+    #      tap-soft 30ms → 低约 5 dB
+    #      所以 target 要比想要的实际值**再低 4~5 dB**。
+    #   目标实际值：tap ≈ -17、tap-soft ≈ -18（和改前的 -17.2 / -18.1 持平）。
+    'tap':        -16.5,
+    'tap-soft':   -17.5,
+    # 读秒是**提示**，不是事件 —— 原来 -13.5 比过程落定(-18.7)还响 5dB。
+    # 连读 3 下会显得吵。压到 -16.5。
+    # （"开始"那一拍 countdown-go 保持 -10.5，它是真正的落点，和扣盅同级。）
+    'countdown':  -16.5,
 }
 
 # ============================================================
@@ -1646,7 +1755,7 @@ ALL_V3 = [
     ('combo-2',           lambda: combo_up(1), SR_MID),
     ('combo-3',           lambda: combo_up(2), SR_MID),
     ('combo-4',           lambda: combo_up(3), SR_MID),
-    ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_MID),
+    ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_HI),
     ('charge-up',         charge_up,         SR_LO),
     ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21, final_sharpen=False), SR_HI),
     ('countdown-urgent',  countdown_urgent,  SR_MID),

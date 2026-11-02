@@ -1072,7 +1072,7 @@ Page({
       if (isLast) feedback.fire('countdownGo')
       else feedback.fire('countdownTick')
       this.setData({
-        cdText: isLast ? '开始！' : String(sec),
+        cdText: isLast ? '开始' : String(sec),
         cdTick: (this.data.cdTick || 0) + 1
       })
       if (left > -200) {

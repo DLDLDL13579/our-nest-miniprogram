@@ -322,7 +322,14 @@ const PRELOAD_KEYS = [
   /* 转盘 */
   'wheelStop',
   /* 通用 */
-  'tapSoft', 'toggleOn', 'confetti', 'countdownGo'
+  'tapSoft', 'toggleOn', 'confetti', 'countdownGo',
+  /*
+   * ★ 2026-11-02 补：这两个原来没预加载，但它们**最贴手** ——
+   *   tap（7 处，所有按钮的点击反馈）
+   *   tick（转盘咔哒，一局要响几十次）
+   * 点击反馈如果晚到，用户会觉得"点了没反应"（哪怕只是晚 60ms）。
+   */
+  'tap', 'tick'
 ]
 
 /**
@@ -361,10 +368,42 @@ function preload() {
     /* 变体数组时预加载第一个（主文件）—— 直接把数组赋给 a.src 会失效 */
     const srcOrList = FILES[k]
     if (!srcOrList) return
-    const src = Array.isArray(srcOrList) ? srcOrList[0] : srcOrList
-    /* 池化的音效（POOL_SIZE > 1）跳过：它们的实例是按 slot 名建的，
-       预加载塞进 pool[k] 会和真正的播放逻辑打架 */
-    if (POOL_SIZE[k] > 1) return
+    const variants = Array.isArray(srcOrList) ? srcOrList : null
+    const src = variants ? variants[0] : srcOrList
+    const size = variants ? variants.length : (POOL_SIZE[k] || 1)
+
+    /*
+     * ★★★ 池化音效必须**每个 slot 都预加载**（2026-11-02 修）。
+     *
+     * 原来这里写的是：
+     *     if (POOL_SIZE[k] > 1) return     ← 池化的直接跳过
+     *
+     * 而 PRELOAD_KEYS 里恰恰有 4 个池化的：
+     *     shakerMetal(3) / cupSlam(2) / diceOnTable(2) / tapSoft(2)
+     *
+     * 后果：**摇盅、扣盅、骰子落桌、点击反馈，第一次播都要现场加载音频**。
+     *   加载时长几十到几百毫秒不等，而这几个音全是**贴着动画冲击帧**播的 ——
+     *   画面已经开始摇了，声音才追上来。
+     *
+     * 这正是用户说的「不仅是优化声音本体，还需要优化声音时机」的根因之一：
+     * 音色再好，晚 80ms 到就不是"卡在点上"。
+     *
+     * slot 命名必须和 play() 里一致（`key + '#' + i`），否则会建出两份实例。
+     */
+    if (size > 1) {
+      for (let i = 0; i < size; i++) {
+        const slot = k + '#' + i
+        if (pool[slot]) continue
+        try {
+          const a = wx.createInnerAudioContext()
+          watchAudioError(a, k)
+          a.src = variants ? variants[i] : srcOrList
+          a.obeyMuteSwitch = false
+          pool[slot] = a
+        } catch (e) { /* 单个失败不影响其它 */ }
+      }
+      return
+    }
     if (pool[k]) return
     try {
       const a = wx.createInnerAudioContext()
