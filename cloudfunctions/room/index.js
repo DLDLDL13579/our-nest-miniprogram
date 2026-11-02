@@ -434,6 +434,20 @@ function gameCap(gameId) {
   return Number.isFinite(n) && n > 0 ? n : MAX_PLAYERS
 }
 
+/**
+ * ★★★ 2026-11-03：**按码点切字符串**，不要用 `slice(0, n)`。
+ *
+ *   JS 的 `slice` 按 **UTF-16 码元**切，而 emoji 占 2 个码元 ——
+ *   `'一二三四五六七八九十一😀'.slice(0, 12)` 会切出 `一二…十\ud83d`，
+ *   也就是**半个 emoji**，界面上显示成一个乱码方块。
+ *
+ *   昵称限 12 字，用户完全可能用 11 个中文 + 1 个 emoji 撞上这个位置。
+ */
+function clip(str, n) {
+  const arr = Array.from(String(str || ''))
+  return arr.length <= n ? arr.join('') : arr.slice(0, n).join('')
+}
+
 /* 自定义题：单条长度上限 / 每人每类条数上限 */
 const MAX_CARD = 60
 const MAX_CARDS_PER_KIND = 20
@@ -1116,7 +1130,7 @@ exports.main = async (event) => {
         } catch (e) { /* 清理失败不影响任何功能 */ }
       }
 
-      const name = String(event.name || '').trim().slice(0, 12) || '玩家1'
+      const name = clip(String(event.name || '').trim(), 12) || '玩家1'
       const game = gameOf(event.game) ? event.game : 'dice'
       /*
        * 题卡场合（转盘用）：房主开局前选，全场同步。
@@ -1130,7 +1144,7 @@ exports.main = async (event) => {
        *   却白白多吃一次 openapi 往返（实测几百毫秒）——
        *   而云函数默认超时只有 3 秒，这一下足够把开局拖到超时。
        */
-      const sec = await safe(String(event.name || '').trim().slice(0, 12), OPENID, { degradable: true })
+      const sec = await safe(clip(String(event.name || '').trim(), 12), OPENID, { degradable: true })
       /*
        * 这里原来写的是 `_debug: sec._debug` —— 而 safe() 返回的字段叫 **`_code`**
        * （见 safe 里 `return { pass:false, code:'SEC_UNAVAILABLE', _code: code }`）。
@@ -1199,7 +1213,7 @@ exports.main = async (event) => {
        * 但座位号要等原子 push 之后重编号才知道（见下面的 `_.push` 竞态说明），
        * 所以这里先给占位名 —— 真正唯一的默认名在座位定下来之后再补。
        */
-      const rawName = String(event.name || '').trim().slice(0, 12)
+      const rawName = clip(String(event.name || '').trim(), 12)
       const name = rawName || '玩家'
       /*
        * 同 create：只有用户自己写的名字才过内容安全，并且**必须同样降级**。
@@ -1428,7 +1442,7 @@ exports.main = async (event) => {
     if (action === 'rename') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
-      const raw = String(event.name || '').trim().slice(0, 12)
+      const raw = clip(String(event.name || '').trim(), 12)
       if (!raw) return { ok: false, msg: '名字不能是空的' }
       /* 同 join：改名也是昵称，检查服务不可用时降级放行 */
       const sec = await safe(raw, OPENID, { degradable: true })

@@ -459,7 +459,12 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         html: meWxml,
         cls: 'mein',
         cloud: () => {
-          const m = /const name = String\(event\.name \|\| ''\)\.trim\(\)\.slice\(0, (\d+)\)/.exec(cloudSrc)
+          /*
+           * ★ 2026-11-03：抽取方式跟着实现变了（`slice(0,12)` → `clip(..., 12)`）。
+           *   这类"从源码里抽一个数"的断言，**实现一变它就会失灵** ——
+           *   而失灵的表现是"找不到云端限制"，不是"限制不对"。
+           */
+          const m = /const name = clip\(String\(event\.name \|\| ''\)\.trim\(\), (\d+)\)/.exec(cloudSrc)
           return m ? Number(m[1]) : null
         }
       },
@@ -3971,4 +3976,46 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.ok(/const text = String\(event\.text \|\| ''\)\s*\.replace\(\/\\s\+\/g, ' '\)/.test(cloud),
     '加题时必须把换行/连续空白折成一个空格（否则会把界面撑乱）')
   ok('★ 自定义题卡会折成单行（换行不撑爆界面）')
+}
+
+/* ============================================================================
+ * 2026-11-03 追加：**按码点切字符串，不要用 slice**
+ *
+ * `'一二三四五六七八九十一😀'.slice(0, 12)` 结果是 `一二…十\ud83d` ——
+ * **半个 emoji**，界面上是个乱码方块。
+ *
+ * 昵称限 12 字，用户完全可能用 11 个中文 + 1 个 emoji 撞上这个位置。
+ * 而"半个 emoji"不会报错，只会让那个玩家的名字看起来像坏了。
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  /* ⚠️ 必须先剥注释 —— `clip()` 的注释里**举了** `slice(0, 12)` 这个反例 */
+  const cloudNc = cloud
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+
+  /* 云端必须有 clip() 并按码点切 */
+  assert.ok(/function clip\(str, n\) \{\s*const arr = Array\.from\(String\(str \|\| ''\)\)/.test(cloudNc),
+    '云端必须有按码点切的 clip()')
+  assert.ok(!/event\.name \|\| ''\)\.trim\(\)\.slice\(0, 12\)/.test(cloudNc),
+    '云端不许用 slice(0,12) 切昵称（会切出半个 emoji）')
+
+  /* 前端同理 */
+  assert.ok(!/nm\.slice\(0, 12\)/.test(page),
+    '前端不许用 slice(0,12) 切昵称')
+  assert.ok(/Array\.from\(String\(nm\)\)/.test(page),
+    '前端切昵称要按码点')
+
+  /* 实测：13 码元（11 中文 + emoji）按码点切 12 个是完整的 */
+  const s = '一二三四五六七八九十一😀'
+  const byCode = Array.from(s).slice(0, 12).join('')
+  assert.strictEqual(byCode, s, '按码点切 12 个应该保留完整的 emoji')
+  assert.ok(s.slice(0, 12).charCodeAt(11) >= 0xD800,
+    '（这个用例应该能复现 slice 切出半个 emoji 的现象）')
+
+  ok('★ 昵称按码点切（emoji 不会被切成半个）')
 }

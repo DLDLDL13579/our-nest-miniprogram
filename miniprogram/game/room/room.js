@@ -450,7 +450,15 @@ Page({
 
     /* 名字：本机存的那一个（大厅 / 我的页里改），不再依赖配对信息 */
     const nm = String(wx.getStorageSync('nick') || '').trim()
-    if (nm) patch.myName = nm.slice(0, 12)
+    if (nm) {
+      /*
+       * ★ 2026-11-03：按**码点**切，不用 slice。
+       *   slice 按 UTF-16 码元切，而 emoji 占 2 个 —— 11 个中文 + 1 个 emoji
+       *   会被切出半个 emoji（界面上是乱码方块）。
+       */
+      const chars = Array.from(String(nm))
+      patch.myName = (chars.length <= 12 ? chars : chars.slice(0, 12)).join('')
+    }
 
     if (q.game && gameOf(q.game)) {
       patch.pickGame = q.game
