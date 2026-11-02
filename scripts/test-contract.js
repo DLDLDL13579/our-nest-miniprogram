@@ -4539,3 +4539,55 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 有节奏的动作都在 feedback 表里（' + keys.size + ' 个），连续动作不震')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**震动必须走 feedback，不能被绕过**
+ *
+ * `feedback` 里有一步会乘 `h.isReduceMotion()` —— 用户开了「减少动效」，
+ * 震动就该全停。而任何**直接调 `haptic.short()` / `haptic.long()` 的地方
+ * 都会绕过这一层**，表现为"我明明关了动效，怎么还震"。
+ *
+ * 判据：`haptic.*()` 只允许出现在 `feedback.js` 里（它是唯一的出口）。
+ * ========================================================================== */
+{
+  const bad = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!f.endsWith('.js')) return
+      /* feedback.js 自己当然可以调 haptic */
+      if (p.endsWith('feedback.js') || p.endsWith('haptic.js')) return
+      /*
+       * ★ 白名单：**开关本身的即时反馈**。
+       *
+       *   `lobby.js` / `me.js` 里那个 `haptic.vibrate('light')` 是"用户刚把震动打开、
+       *   立刻震一下让他确认已生效" —— 它**必须**绕过 feedback，
+       *   因为 feedback 会乘 `isReduceMotion()`，而"打开震动"这个动作
+       *   如果被"减少动效"拦掉，用户就永远得不到反馈。
+       *
+       *   ⚠️ 但只允许"开关自己"这一处 —— 所以白名单是**精确到行号特征**的：
+       *     该文件里出现 `haptic.vibrate` 的次数必须 ≤ 1，且邻近有 setHapticOn。
+       */
+      if (p.endsWith('lobby.js') || p.endsWith('me.js')) {
+        const body = fs.readFileSync(p, 'utf8')
+        const n = (body.match(/haptic\.vibrate\(/g) || []).length
+        const nearToggle = /setHapticOn|toggleMute|toggleHaptic/.test(
+          body.slice(Math.max(0, body.indexOf('haptic.vibrate') - 400),
+                     body.indexOf('haptic.vibrate') + 200))
+        if (n <= 1 && nearToggle) return
+      }
+      let src = fs.readFileSync(p, 'utf8')
+      src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      ;[...src.matchAll(/\bhaptic\.(short|long|tap|vibrate)\s*\(/g)].forEach(m => {
+        bad.push(path.relative(ROOT, p) + '：' + m[0])
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual(bad, [],
+    '这些地方绕过了 feedback 直接震（「减少动效」开关会失效）：\n    ' + bad.join('\n    '))
+  ok('★ 震动只从 feedback 出口（「减少动效」开关才能真正生效）')
+}
