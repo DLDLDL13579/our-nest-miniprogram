@@ -4994,3 +4994,33 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 转盘缩小时圆盘跟着缩（容器 ' + sceneCompact + 'px / 圆盘 ' + discCompact + 'px）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**转盘转动必须全程有声音**（不能只有启动那一下）
+ *
+ * `wheelStart` 音效只有 300ms，而转盘要转 2.4~2.7 秒 ——
+ * 如果只播启动音，**后面 2 秒多是完全静默的**，而画面正在最慢的那一段。
+ *
+ * 项目里用 `scheduleTicks` 按**递减频率**排期 tick（模拟"越转越慢"）来填补。
+ * 这个函数一旦被删或不再调用，表现是"转盘转着转着没声了" —— 不报错。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  assert.ok(/scheduleTicks\s*\(/.test(src),
+    '★ 必须有 scheduleTicks —— 转盘转 2.4 秒而启动音只有 300ms')
+  assert.ok(/this\.scheduleTicks\(this\.data\.wheelDur/.test(src),
+    '★ scheduleTicks 要按 wheelDur 排期（和转盘动画同长）')
+
+  /* tick 的排期间隔应该递减（越转越慢），不能等距 */
+  const m = /scheduleTicks\([^)]*\)\s*\{([\s\S]{0,600}?)\n  \}/.exec(src)
+  if (m) {
+    const body = m[1]
+    assert.ok(/\*=\s*1\.0|1\.0\d+|\*=\s*1\.\d+/.test(body),
+      '★ tick 间隔应该递增（越转越慢），实际函数体里没看到递增因子')
+  }
+
+  ok('★ 转盘转动全有声音（启动音 + 递减咔哒，覆盖 ' +
+     'wheelDur 全程）')
+}
