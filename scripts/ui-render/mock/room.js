@@ -830,6 +830,12 @@ module.exports = {
       s.compact = true
       return s
     },
+    /* ★ 2026-11-03：转盘的小屏状态（转盘收到 464rpx，上下留白） */
+    compactWheel: () => {
+      const base = module.exports.states.wheel()
+      base.compact = true
+      return base
+    },
     compactLiar: () => {
       const s = module.exports.states.liarPlay()
       s.compact = true

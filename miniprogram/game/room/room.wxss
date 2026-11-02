@@ -3105,6 +3105,20 @@
  */
 .gamepage.compact .cs-hint { display: none }
 
+/*
+ * ★ 2026-11-03：转盘在小屏上**贴得太满** —— 560rpx 加上房间号栏和底部按钮，
+ *   纵向几乎没有呼吸空间（渲染图上它紧贴房间号那一行）。
+ *
+ *   收到 464rpx（83%）—— 扇区文字仍然读得清（它们本来就是 20rpx 的小字），
+ *   而上下各让出约 50rpx 的空白。
+ */
+.gamepage.compact .wheelscene { width: 464rpx; height: 464rpx; margin-top: 12rpx }
+/*
+ * ⚠️ 圆盘自己是 `position: absolute` + 写死的 560rpx —— **只改容器不改它，圆盘会溢出容器压住标题**。
+ *   这一条是渲染图上转盘盖住「转一下」才发现的。
+ */
+.gamepage.compact .ws-disc { width: 464rpx; height: 464rpx }
+
 /* 金花操作页：小屏上「换底牌/换手牌/弃牌」会被挤出屏幕，牌区收 13% */
 .gamepage.compact .pk-flip { width: 118rpx; height: 167rpx }
 .gamepage.compact .pk-side { width: 118rpx; height: 167rpx }

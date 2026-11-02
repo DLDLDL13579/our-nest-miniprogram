@@ -4954,3 +4954,43 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 四条修复规则持续生效（换行 / 弹层 / 不拆词 / 列表可滚）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**绝对定位的子元素也要跟着容器缩**
+ *
+ * `.wheelscene` 是容器，`.ws-disc`（圆盘）是它里面 `position: absolute` 的子元素
+ * —— 而圆盘的 width/height **写死在 560rpx**。
+ *
+ * 只缩容器（到 464rpx）的结果：**圆盘不变，溢出容器，压住下面的标题**。
+ * 而这个在代码里完全看不出来（两条规则各自都对），只有渲染图上能看到。
+ *
+ * 判据：凡是"容器里有 absolute 子元素"的组合，缩容器时必须同时缩子元素。
+ * ========================================================================== */
+{
+  const { execFileSync } = require('child_process')
+  const probe = (sel, prop) => {
+    try {
+      const out = execFileSync('node',
+        [path.join(ROOT, 'scripts/check-css-applied.js'), sel, prop],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      const m = /= ([^\n]*)$/.exec(out.trim())
+      return m ? m[1].trim() : ''
+    } catch (e) { return '' }
+  }
+  const px = (v) => parseFloat(v) || 0
+
+  const sceneBase = px(probe('.wheelscene', 'width'))
+  const sceneCompact = px(probe('.gamepage.compact .wheelscene', 'width'))
+  const discBase = px(probe('.ws-disc', 'width'))
+  const discCompact = px(probe('.gamepage.compact .ws-disc', 'width'))
+
+  assert.ok(sceneCompact > 0 && sceneCompact < sceneBase,
+    '紧凑态容器应该比基础态小（' + sceneCompact + ' vs ' + sceneBase + '）')
+  assert.ok(discCompact > 0 && discCompact < discBase,
+    '★ 紧凑态圆盘也必须比基础态小（' + discCompact + ' vs ' + discBase + '）—— ' +
+    '圆盘是 absolute 定位，只缩容器它会溢出并压住标题')
+  assert.ok(discCompact <= sceneCompact + 1,
+    '★ 圆盘不能比容器大（' + discCompact + ' > ' + sceneCompact + '），否则溢出压住下面的内容')
+
+  ok('★ 转盘缩小时圆盘跟着缩（容器 ' + sceneCompact + 'px / 圆盘 ' + discCompact + 'px）')
+}
