@@ -1796,9 +1796,20 @@ Page({
       const uniq = new Set(md)
       const isSingle = md.length === 5 && uniq.size === 5
       const mine = (room.players || []).filter(x => x.isMe)[0] || {}
+      /*
+       * ★★ 2026-11-03：**探测云端版本，旧云端就不显示这个按钮**。
+       *
+       *   `rerollCount` 是跟着单骰重摇一起加进 `shape()` 的字段 ——
+       *   云端**没部署**时它根本不存在，而 `Number(undefined) || 0 === 0`
+       *   会让按钮照常显示；点了才收到「这个功能还没上线」。
+       *
+       *   用 `in` 判字段存在性（而不是取值）就能区分"旧云端"和"刚开局计数为 0"。
+       *   这样前端先上线、云函数后部署也不会有"点了才知道不能用"的坑。
+       */
+      const cloudHasReroll = mine && Object.prototype.hasOwnProperty.call(mine, 'rerollCount')
       const used = Number(mine.rerollCount) || 0
       const notCalledYet = !room.bid || room.bid.bySeat !== mine.seat
-      room.canReroll = isSingle && used < 3 && notCalledYet && room.phase === 'playing'
+      room.canReroll = cloudHasReroll && isSingle && used < 3 && notCalledYet && room.phase === 'playing'
     } else {
       room.canReroll = false
     }
