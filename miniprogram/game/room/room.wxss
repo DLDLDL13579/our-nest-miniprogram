@@ -112,10 +112,32 @@
   transition-duration: .1s !important;
   transition-delay: 0s !important;
 }
-/* 持续循环的装饰动画（烛光、光晕呼吸）直接停掉 —— 它们才是"晃眼"的来源 */
+/*
+ * 持续循环的**装饰**动画直接停掉 —— 它们才是"晃眼"的来源。
+ *
+ * ★ 2026-11-02：原来只停了 3 个（烛光、结算光晕、连庄光晕），
+ *   而全仓还有 5 个循环动画在「减少动效」下照转：
+ *     `.loserbox`   输家脉冲 2.4s
+ *     `.waitpulse`  等待呼吸 2.6s
+ *     `.cd-glow`    倒计时光晕
+ *     `.nettip`     网络提示呼吸
+ *     `.eh-glow`    进场页光晕
+ *   而它们的共同点就是"一直动"—— 恰恰是这个开关要关掉的东西。
+ *
+ * ⚠️ **功能性动画不在此列**：`.gamepage.rolling`（摇盅整页震）、
+ *    `.cs-cup.shaking`（盅在晃）、`.rl-dice`（骰子翻滚）——
+ *    它们表达的是"正在发生什么"，停掉会让玩家以为卡住了。
+ *    （它们已经时长压到 0.12s，幅度足够小。）
+ */
 .reduce-motion .cs-spot,
 .reduce-motion .oh-glow,
-.reduce-motion .lb-glow {
+.reduce-motion .lb-glow,
+.reduce-motion .loserbox,
+.reduce-motion .waitpulse,
+.reduce-motion .cd-glow,
+.reduce-motion .nettip,
+.reduce-motion .eh-glow,
+.reduce-motion .oh-name::after {
   animation: none !important;
 }
 

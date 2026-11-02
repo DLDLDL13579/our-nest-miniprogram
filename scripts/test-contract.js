@@ -3619,3 +3619,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '按模数取样式的地方，样式数量不够：\n    ' + bad.join('\n    '))
   ok('★ 按模数取样式：头像 8 色 / 撒花 5 式 / 倒计时 2 态 —— 都对得上')
 }
+
+/* ============================================================================
+ * 2026-11-02 追加：**「减少动效」必须覆盖所有装饰性循环动画**
+ *
+ * 用户能打开「我的 → 减少动效」，说明他会用这个开关。
+ * 而它原来只停了 3 个动画，全仓还有 5 个 `infinite` 在照转。
+ *
+ * 判据：扫房间页 CSS 里所有 `animation: ... infinite` 的类，
+ * 排除**功能性**的三个（它们表达"正在发生什么"，停掉会被当成卡住），
+ * 剩下的必须都能在 `.reduce-motion` 规则里找到。
+ * ========================================================================== */
+{
+  const css = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  /* 功能性循环（摇盅、滚动、整页震）—— 不该被"减少动效"停掉 */
+  const FUNCTIONAL = ['cs-cup', 'gamepage', 'rl-dice', 'rl-rink']
+
+  /* 找出所有带 infinite 的类 */
+  const loops = new Set()
+  const re = /\.([\w-]+)(?:\.[\w-]+)?\s*\{([^}]*infinite[^}]*)\}/g
+  let m
+  while ((m = re.exec(css))) {
+    if (!FUNCTIONAL.includes(m[1])) loops.add(m[1])
+  }
+
+  /* 从 `.reduce-motion` 规则里抽出被停掉的类 */
+  const rmBlock = css.slice(css.indexOf('.reduce-motion .cs-spot'))
+  const rmRule = rmBlock.slice(0, rmBlock.indexOf('}'))
+  const covered = new Set([...rmRule.matchAll(/\.reduce-motion\s+\.([\w-]+)/g)].map(x => x[1]))
+
+  const missing = [...loops].filter(c => !covered.has(c))
+  assert.deepStrictEqual(missing, [],
+    '这些循环动画在「减少动效」下还在转：\n    ' + missing.join('\n    '))
+  ok('★ 「减少动效」覆盖了 ' + loops.size + ' 个装饰循环动画')
+}
