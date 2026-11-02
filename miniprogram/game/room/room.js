@@ -928,6 +928,22 @@ Page({
     if (prev && prev.count !== room.count) {
       const joined = room.count > prev.count
       sfx.play(joined ? 'combo1' : 'toggleOff')
+      /*
+       * ★ 2026-11-02 调研落地（Jackbox 的「主持人感」）：
+       *   原来只有音效 —— 桌上有声音，但没人"报一声是谁来了"。
+       *   而酒桌上最自然的一句话就是「欸 XX 来了」。
+       *
+       *   只在 **lobby 阶段**报（等人时才有意义）。
+       *   游戏中不报 —— 那会打断"轮到你"这类更要紧的提示。
+       */
+      if (room.phase === 'lobby' && stageOf(room.phase) === 'lobby') {
+        const before = {}
+        ;(prev.players || []).forEach(p => { before[p.openid] = 1 })
+        const who = (room.players || []).filter(p => !before[p.openid] && !p.isMe)[0]
+        if (joined && who) {
+          wx.showToast({ title: who.name + ' 来了', icon: 'none', duration: 1500 })
+        }
+      }
     }
     /* 有人叫骰了 —— 用筹码声，像"下注" */
     if (prev && room.bid && (!prev.bid || prev.bid.at !== room.bid.at)) {
