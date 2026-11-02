@@ -2426,7 +2426,19 @@ exports.main = async (event) => {
       if (room.game !== 'wheel') return { ok: false, msg: '这个房间玩的不是转盘' }
 
       const type = event.type === 'dare' ? 'dare' : 'truth'
-      const text = String(event.text || '').trim().slice(0, MAX_CARD)
+      /*
+       * ★★ 2026-11-03：**把换行折成空格，并合并连续空白**。
+       *
+       *   `textarea` 允许换行，而题卡在界面上是一整段（`.cb-text` 没有行数限制）——
+       *   60 个字里如果塞了 5 个换行，那道题会把转盘/按钮挤出屏幕，
+       *   而**这不报错**，只是"界面怎么乱了"。
+       *
+       *   题库里 200 条内置题全是单行，自定义题也该是。
+       */
+      const text = String(event.text || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, MAX_CARD)
       if (!text) return { ok: false, msg: '题目不能是空的' }
 
       /*
