@@ -237,6 +237,21 @@ function calcDiceResult(players, prevStreaks) {
       winners: rk.winners,
       leopardWin: rk.leopardWin,
       leopardFace: rk.leopardFace,
+      /*
+       * ★★★ 2026-11-03：**模板用的是 `handicapWin` / `handicapFace`，而不是这两个旧的**。
+       *
+       *   `dicerank.js` 里两个字段都输出（`handicapWin` 是"四条及以上"的推广版，
+       *   `leopardWin` 是它的旧名），注释写着"两个旧字段保留，值和 handicapWin 一致"。
+       *
+       *   而云端只把 `leopardWin` 传出去 —— 于是模板里那一行
+       *     `wx:elif="{{result.handicapWin}}"` 永远拿不到值，
+       *   **「四 条」徽章从来没显示过**。
+       *
+       *   （豹子那条用的是 `leopardWin`，所以一直正常 —— 这是"两个名字都能用"
+       *    给了人安全感，而实际只通了其中一个。）
+       */
+      handicapWin: rk.handicapWin,
+      handicapFace: rk.handicapFace,
       top: rk.top,
       streaks: streaks,
       maxStreak: maxStreak,

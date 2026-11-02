@@ -4628,3 +4628,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些是幽灵字段（模板读了但没人写）：\n    ' + bad.join('\n    '))
   ok('★ 结算区引用的字段都有人产出（topHand / topDice / restRanked）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**`result.xxx` 也要查幽灵字段**（补 ④ 的漏洞）
+ *
+ * ④ 只查 `room.` 前缀 —— 因为 `item.` 在模板里多义（players/decks/cards 都叫 item）。
+ * 而 `result.` **只有一个来源**（比大小/大话骰/卧底的结算对象），可以精确查。
+ *
+ * 真实案例：`{{result.topHand}}` 在模板里待了很久，
+ * 而云端 `calcDiceResult` 从来没返回过它 —— 英雄区永远没有牌型名。
+ *
+ * ⚠️ 允许的来源有三个：
+ *   ① 云函数返回（`calcDiceResult` 等）
+ *   ② `decorate` 里补（`lr.topDice = ...`、`lr.restRanked = ...`）
+ *   ③ **前端补算**（`lr.ranked[0].handName` 这种从别处取的，也要算数）
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const pageSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const cloudSrc = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+
+  const fields = [...new Set([...wxml.matchAll(/result\.(\w+)/g)].map(m => m[1]))]
+  const missing = fields.filter(f => {
+    const inCloud = new RegExp('\\b' + f + '\\s*:').test(cloudSrc)
+    const inPage = new RegExp('\\b' + f + '\\s*[=:]').test(pageSrc)
+    return !inCloud && !inPage
+  })
+
+  assert.deepStrictEqual(missing, [],
+    '这些 `result.xxx` 是幽灵字段（模板在用，但云函数和 decorate 都没产出）：\n    ' +
+    missing.join('\n    ') + '\n    （`result` 只有结算对象一个来源，可以直接查）')
+  ok('★ 模板里 ' + fields.length + ' 个 result.xxx 字段都有人产出')
+}
