@@ -107,8 +107,6 @@ MAP = [
          note='摇盅 1 秒（feedback.cupShake 的 animMs=1050）'),
     dict(dst='shaker-metal',     src='dieShuffle3.ogg', seconds=0.90, sr=44100, rms=-24.0,
          note='金属盅摇动（大话骰开局那一下）'),
-    dict(dst='dice-tumble-wood', src='dieShuffle3.ogg', seconds=1.00, sr=22050, rms=-21.0,
-         note='骰子翻滚（比大小用）'),
     dict(dst='dice-into-cup',    src='diceThrow1.ogg', seconds=0.45, sr=44100, fifty=-20.0,
          note='骰子入盅（起音 24ms）'),
     # ★ 骰子落定的多采样变体（2026-10-30）：一局要响十几次，
@@ -158,8 +156,6 @@ MAP = [
     # 判据：**现实里真实存在的声音**就该用录音；
     #       纯情绪/氛围（combo、fail-drop、confetti、whoosh）留合成 ——
     #       现实中没有"连击音"这种东西，硬做录音反而假。
-    dict(dst='dice-shake',  src='dieShuffle2.ogg', seconds=1.05, sr=44100, rms=-22.0,
-         note='摇骰（比大小那一下，和 cup-shake 同源不同段）'),
     # ★ 2026-11-02：「抬盅」是**持续动作**（手伸过去、抓住、抬起来），
     #   起音那一下本来就很轻 —— 用「前 50ms」衡量它是不对的，
     #   真实录音的 dieGrab2 起音在 178ms。改用整体 RMS 定标。

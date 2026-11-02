@@ -3681,3 +3681,44 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 轮询按阶段自适应（lobby 3 秒 / 局内 1.5 秒），且阶段变化时重挂')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**音频文件不能"注册了却没声音"或"存在了却没人用"**
+ *
+ * 这轮删掉两个死文件（133 KB）：
+ *   · `dice-shake.wav`        —— sfx.js 里 0 次引用（映射漏在生成脚本里）
+ *   · `dice-tumble-wood.wav`  —— 注释里写着"已删"，而生成脚本还在造它
+ *
+ * 死音频的危害不只是占体积：**每次跑 import-audio.py 都会把它重新造出来**，
+ * 而它没有调用点，所以永远不会响 —— 也就永远没人发现它还在。
+ * ========================================================================== */
+{
+  const sfxSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+  const registered = new Set(
+    [...sfxSrc.matchAll(/'\/game\/audio\/([\w-]+)\.wav'/g)].map(m => m[1]))
+
+  /* ① 注册了的必须真的有文件 */
+  const missing = [...registered].filter(
+    n => !fs.existsSync(path.join(ROOT, 'miniprogram/game/audio', n + '.wav')))
+  assert.deepStrictEqual(missing, [], '这些音效注册了但文件不存在：\n    ' + missing.join('\n    '))
+
+  /*
+   * ② 有文件的应该被注册（否则就是死文件）
+   *
+   * ⚠️ `tick` 是**唯一留在主包**（`miniprogram/audio/`）的音效 ——
+   *   「我的」页试听要用它，而主包不能引用分包的文件。
+   *   所以它的注册路径是 `'/audio/tick.wav'`，不在 `game/audio/` 里。
+   *   而 `game/audio/tick.wav` 曾经**同时存在一份旧版**（836 字节 vs 928）——
+   *   两处同名不同内容，注册用的是旧的那份，游戏里听到的也是旧的。
+   *   已合并成主包一份。
+   */
+  const MAIN_PKG = ['tick']
+  const dir = path.join(ROOT, 'miniprogram/game/audio')
+  const onDisk = fs.readdirSync(dir).filter(f => f.endsWith('.wav')).map(f => f.slice(0, -4))
+  const orphans = onDisk.filter(n => !registered.has(n) && !MAIN_PKG.includes(n))
+  assert.deepStrictEqual(orphans, [],
+    '这些音频文件没有任何地方注册（白占分包体积）：\n    ' + orphans.join('\n    '))
+
+  ok('★ ' + registered.size + ' 个音效文件与注册表一一对应（无缺失、无孤儿）')
+}
