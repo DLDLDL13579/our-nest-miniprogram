@@ -1081,13 +1081,13 @@ ALL = [
     # 采样率按各自最高有效频率定 —— 脆响/噪声用 HI，纯低频用 LO
     # 骰子
     # 转盘
-    ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
+    ('wheel-start',  wheel_start,             SR_HI),  # 2026-11-02 加了 1.2~3kHz 电机层，8000 存不下
     # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
     # 这一串咔哒的本体是中频撞击，降采样率听感无损、体积减半（原 68.9 KB → 约 34 KB）
     ('wheel-stop',   _sp(wheel_stop, tail_ms=240, seed=49), SR_HI),   # 2026-11-02：2~5kHz 泛音要 22050 才存得下
     # 情绪
     ('drink',        drink,                   SR_LO),  # 最高 392Hz
-    ('whoosh',       whoosh,                  SR_MID), # 风声，中高频
+    ('whoosh',       whoosh,                  SR_HI),  # 风声是宽带噪声，11025 的 Nyquist 只到 5.5k
     # UI
     # ★ 2026-11-02：采样率从 SR_MID(11025) / SR_LO(8000) 提到 SR_HI(22050)。
     #
@@ -1965,10 +1965,10 @@ ALL_V3 = [
     ('combo-3',           lambda: combo_up(2), SR_MID),
     ('combo-4',           lambda: combo_up(3), SR_MID),
     ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_HI),
-    ('charge-up',         charge_up,         SR_MID),   # 2026-11-02：泛音要到 3.8kHz，8000Hz 存不下
+    ('charge-up',         charge_up,         SR_HI),    # 泛音到 3.8kHz，22050 才从容
     ('countdown-urgent',  countdown_urgent,  SR_MID),
     ('gulp',              gulp,              SR_MID),
-    ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_MID),
+    ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_HI),   # 撒花是噪声，22050 存得下更多高频
     # v4 骰盅组：让摇骰子像现实 —— 入盅 / 摇盅 / 扣盅 / 揭盅 / 桌上滚动
     # v5 纸牌组：牌是薄片，反射比骰子短得多（tail 只要 90~140ms）
     # v6 环境底噪（调研第 10 条）
