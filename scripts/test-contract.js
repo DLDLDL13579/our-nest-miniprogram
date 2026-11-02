@@ -4708,3 +4708,28 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 长名字时「喝 1 杯」整体换行，不会被拆成「杯」单独一行')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**规则不能承诺界面做不到的事**
+ *
+ * 「比大小」的规则写着"5 颗全不同是单骰，可以重摇（最多 3 次）"，
+ * 而云函数没升级时前端**已经把按钮藏了**（能力探测）——
+ * 于是玩家会遇到："规则说能重摇，界面上找不到按钮。"
+ *
+ * 现在云端不支持时，那条规则后面会加「（暂未开放）」。
+ *
+ * 判据：能力探测（`cloudHasReroll`）和规则标注必须**同时存在** ——
+ * 只藏按钮不标规则、或只标规则不藏按钮，都是一半。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  const hasProbe = /const cloudHasReroll = mine && Object\.prototype\.hasOwnProperty\.call\(mine, 'rerollCount'\)/.test(src)
+  const hasNote = /暂未开放/.test(src)
+
+  assert.ok(hasProbe, '缺能力探测：云函数不支持 reroll 时应该藏按钮')
+  assert.ok(hasNote, '缺规则标注：云函数不支持 reroll 时，规则里该写「暂未开放」')
+
+  ok('★ 「重摇」：按钮和规则一起按云端能力降级（不会一边有一边没有）')
+}

@@ -1932,7 +1932,27 @@ Page({
      */
     const gmeta = gameOf(room.game)
     room.gameName = gmeta ? gmeta.name : ''
-    room.howList = gmeta && Array.isArray(gmeta.how) ? gmeta.how : []
+    room.howList = gmeta && Array.isArray(gmeta.how) ? gmeta.how.slice() : []
+    /*
+     * ★★ 2026-11-03：**云函数没部署时，把"做不到的那条规则"标注出来**。
+     *
+     *   「比大小」的规则里写着"5 颗全不同是单骰，可以重摇（最多 3 次）"，
+     *   而云函数没升级时 `reroll` 这个 action 不存在 —— 前端已经**隐藏了按钮**。
+     *
+     *   于是玩家会遇到：**规则说能重摇，界面上找不到按钮**。
+     *   （反过来"按钮在但点了报错"更糟，那个已经用能力探测避免了。）
+     *
+     *   这里做的是最后一层：**规则也标注"暂未开放"**，让两处一致。
+     */
+    if (room.game === 'dice') {
+      const me = (room.players || []).filter(function (p) { return p.isMe })[0]
+      const cloudHasReroll = me && Object.prototype.hasOwnProperty.call(me, 'rerollCount')
+      if (!cloudHasReroll) {
+        room.howList = room.howList.map(function (t) {
+          return /重摇/.test(t) ? t + '（暂未开放）' : t
+        })
+      }
+    }
     /*
      * 人数要求：从注册表取，不在界面里写死。
      * ★ 服务端为了调试允许单开（"一个人先看看玩法"），但**产品上不该让人
