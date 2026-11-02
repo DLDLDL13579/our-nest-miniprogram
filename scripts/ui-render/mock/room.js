@@ -717,10 +717,25 @@ module.exports = {
 
     dice8: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘', '阿强', '胖虎']
-      const ranked = names.map((n, i) => ({
-        name: n, seat: i + 1, total: 6 + ((i * 7) % 25),
-        dice: [((i * 3) % 6) + 1, ((i * 5) % 6) + 1, ((i * 2) % 6) + 1, ((i + 4) % 6) + 1, ((i * 4) % 6) + 1]
-      })).sort((a, b) => b.total - a.total)
+      /*
+       * ★★ 2026-11-03：**用真实的 rankPlayers 生成排名**。
+       *
+       *   原来这里是手写的 `total: 6 + ((i * 7) % 25)` ——
+       *   而比大小早就从"比总点数"改成了**比牌型**，所以：
+       *     · `total` 是凭空编的（和 dice 数组对不上）
+       *     · **没有 `handName`** → 结算页那一列牌型名一直是空的
+       *
+       *   现在用 `dicerank.rankPlayers` 算，和线上同一套逻辑。
+       */
+      const dicerank = require('../../../miniprogram/utils/dicerank.js')
+      const fakeDice = [
+        [4, 6, 3, 6, 5], [2, 2, 3, 5, 1], [6, 6, 6, 2, 1], [1, 1, 1, 1, 3],
+        [5, 5, 2, 3, 4], [3, 3, 3, 3, 3], [2, 4, 6, 1, 5], [6, 5, 4, 3, 2]
+      ]
+      const rk8 = dicerank.rankPlayers(names.map((n, i) => ({
+        name: n, seat: i + 1, dice: fakeDice[i]
+      })))
+      const ranked = rk8.ranked
       return {
         stage: 'over',
         /*
