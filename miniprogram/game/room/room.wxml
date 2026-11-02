@@ -1296,7 +1296,7 @@
         </view>
       </view>
 
-      <view class="loserbox">{{result.loserName}} 喝 1 杯</view>
+      <view class="loserbox {{penaltyFlash ? 'flash' : ''}}">{{result.loserName}} 喝 1 杯</view>
       <!--
         超时被自动开的要说清楚（2026-10-28）。
         否则桌上会以为"是谁开的？"——而实际上没人开，是系统替他开的。

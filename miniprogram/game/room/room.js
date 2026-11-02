@@ -632,6 +632,8 @@ Page({
     /* ★ 2026-11-02：`_againTimer`（再来一局后 260ms 自动开下一局）也在这里清。
        不清的话，点完再来一局马上退出房间，260ms 后它会对已卸载的页面调 doStart()。 */
     if (this._againTimer) { clearTimeout(this._againTimer); this._againTimer = null }
+    /* ★ 2026-11-03：`penaltyFlash` 的自动摘除定时器（被罚动画用） */
+    if (this._penaltyTimer) { clearTimeout(this._penaltyTimer); this._penaltyTimer = null }
   },
 
   onUnload() {
@@ -3750,8 +3752,29 @@ Page({
       })
     if (this.okOrSay(r)) {
       feedback.fire('penalized')
+      this.flashPenalty()
       this.applyRoom(r.room)
     }
+  },
+
+  /*
+   * ★★ 2026-11-03：**"被罚"的视觉反馈**（一次性的，不是 CSS 自己动）。
+   *
+   *   上一轮我判断"风险大于收益"——因为 CSS animation 会在每 1.5 秒的
+   *   setData 重建中反复重播（AGENTS.md 记过这个坑）。
+   *
+   *   但那个判断**不完整**：把"什么时候加 class"交给 js 控制就不会重播 ——
+   *   加上 600ms 后自己摘掉，轮询来时 class 早就没了。
+   *
+   *   ★ 判据：**"CSS 自己动"和"js 让它动一次"是两件事**，
+   *     前者的坑（重播）不适用于后者。
+   */
+  flashPenalty() {
+    if (!this.data.penaltyFlash) this.setData({ penaltyFlash: true })
+    clearTimeout(this._penaltyTimer)
+    this._penaltyTimer = setTimeout(() => {
+      if (!this._dead) this.setData({ penaltyFlash: false })
+    }, 600)
   },
 
   async doOpen() {

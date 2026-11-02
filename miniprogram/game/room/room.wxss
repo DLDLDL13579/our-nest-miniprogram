@@ -1136,6 +1136,23 @@
   font-size: 20rpx; color: rgba(255,255,255,.52);
 }
 
+/*
+ * ★★ 2026-11-03：「被罚」的一次性动画。
+ *
+ *   由 js 的 flashPenalty() 加 class、600ms 后摘掉 ——
+ *   **不是 CSS 自己动**，所以不会被 1.5 秒的轮询重播。
+ *
+ *   动作：从略小略低砸下来，带一点点过冲（0.96 → 1.03 → 1）。
+ *   和声音对齐：failDrop 在 0ms、glassClink 在 260ms，
+ *   而动画 360ms 正好在第二声之前收住。
+ */
+@keyframes penaltyIn {
+  0%   { transform: translateY(-16rpx) scale(.94); opacity: .3 }
+  55%  { transform: translateY(0) scale(1.04); opacity: 1 }
+  100% { transform: translateY(0) scale(1); opacity: 1 }
+}
+.loserbox.flash { animation: penaltyIn .36s cubic-bezier(.34, 1.2, .64, 1) both }
+
 .loserbox {
   margin: 30rpx 0 26rpx;
   /*
