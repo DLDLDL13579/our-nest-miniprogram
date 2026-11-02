@@ -578,8 +578,14 @@ module.exports = {
       myRolled: true, diceShown: false, rolling: false, liarReady: false,
       myDice: [3, 5, 1, 6, 3],
       room: pkRoom({
-        game: 'liar', phase: 'playing', host: false, turn: 2, myTurn: false,
-        turnName: '倩萍', count: 3,
+        game: 'liar', phase: 'playing', host: false, turn: 3, myTurn: false,
+        /*
+         * ★★ 2026-11-03：`turn` 原来是 2 —— 而 `bid.bySeat` 也是 2（倩萍刚叫完）。
+         *   3 人局里"自己叫完又轮到自己"是不可能的，界面上就会显示
+         *   「倩萍 叫的 1个1」+「等 倩萍 叫」这种自相矛盾的组合。
+         *   叫完应该轮到下一个人（seat 3 阿杰）。
+         */
+        turnName: '阿杰', count: 3,
         bid: { bySeat: 2, byName: '倩萍', n: 1, face: 1, zhai: false, mult: 1 },
         players: [
           { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: false, online: true, diceCount: 5 },

@@ -319,3 +319,31 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   assert.deepStrictEqual(bad, [], 'mock 基础数据不合法：\n    ' + bad.join('\n    '))
   console.log('  ✓ 53 个状态的基础数据：房间号 3 位 / 座位连续 / 骰子 1~6 / 名字与 openid 唯一')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**叫完骰不该又轮到自己**
+ *
+ * `liarCold` 原来是 `bid.bySeat = 2` + `turn = 2` —— 倩萍刚叫完 1个1，
+ * 又轮到倩萍叫。3 人局里这不可能，而界面上会显示
+ * 「倩萍 叫的 1个1」+「等 倩萍 叫」这种自相矛盾的组合。
+ *
+ * 判据：大话骰状态里，`turn` 不能等于 `bid.bySeat`（人数 > 1 时）。
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach(k => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s.room || {}
+    if (r.game !== 'liar' || r.phase !== 'playing') return
+    const n = r.count || (r.players || []).length
+    if (n <= 1) return
+    const by = r.bid && r.bid.bySeat
+    if (by && r.turn && Number(by) === Number(r.turn)) {
+      bad.push(k + '：bid.bySeat=' + by + ' 且 turn=' + r.turn +
+        '（' + n + ' 人局里叫完不该又轮到自己）')
+    }
+  })
+  assert.deepStrictEqual(bad, [], 'mock 的回合数据自相矛盾：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 大话骰状态：叫完骰之后不会又轮到自己')
+}

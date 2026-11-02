@@ -1256,7 +1256,7 @@
 
     <view wx:if="{{room.game === 'liar' && result}}" class="center-box">
       <view class="over-tag {{result.bidderWins ? 'ok' : 'no'}}">
-        {{result.bidderWins ? '叫骰成立' : '吹牛被抓'}}
+        {{result.bidderName ? result.bidderName + ' ' : ''}}{{result.bidderWins ? '叫骰成立' : '吹牛被抓'}}
       </view>
       <view class="over-num">
         <text class="on-big">{{result.actual}}</text>
