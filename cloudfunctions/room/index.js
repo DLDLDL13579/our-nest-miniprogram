@@ -2247,6 +2247,61 @@ exports.main = async (event) => {
     }
 
     /* ================= 摇骰子：比大小（多人版） ================= */
+    /*
+     * ★★★ 2026-11-02 新增：**单骰重摇**。
+     *
+     * 真实酒桌规则（维基百科「大话骰」条目的术语表）：
+     *   「单骰，5 个骰子点数各不同，可出示后重摇，但次数不能超三次否则罚酒」
+     *
+     * 摇到 12345 这种顺子（5 颗全不同）在「比大小」里是最烂的牌型 ——
+     * 概率约 1/11，而且**没有任何翻盘手段**，只能认命。
+     * 真实玩法给了"重摇"这个出口，我们也应该有。
+     *
+     * 约束（每一条都有理由）：
+     *   · 只能在自己**还没叫骰**时重摇 —— 叫了就固定了，否则可以反悔
+     *   · 必须真的是单骰（5 颗全不同）—— 否则等于无限重摇
+     *   · 最多 3 次（调研原文），超过就认命
+     */
+    if (action === 'reroll') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'dice') return { ok: false, msg: '这个房间玩的不是比大小' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
+
+      const meR = (room.players || []).filter(p => p.openid === OPENID)[0]
+      if (!meR) return { ok: false, msg: '你不在这个房间里' }
+      if (meR.inRound === false) return { ok: false, msg: '你是这一局中途进来的，下一局就能一起玩' }
+
+      const cur = (meR.dice || []).filter(d => Number.isInteger(d) && d >= 1 && d <= 6)
+      if (cur.length !== DICE_PER_PLAYER) {
+        return { ok: false, msg: '还没摇' }
+      }
+      /* 单骰 = 5 颗点数全不同 */
+      if (new Set(cur).size !== cur.length) {
+        return { ok: false, msg: '只有五颗点数都不相同时才能重摇' }
+      }
+      /* 已经叫过骰就不能重摇了 */
+      /* bid 里没有 openid，用座位号比对（和 pi/open 那边一致） */
+      if (room.bid && room.bid.bySeat === meR.seat) {
+        return { ok: false, msg: '你叫过骰了，不能再重摇' }
+      }
+      const used = Number(meR.rerollCount) || 0
+      if (used >= 3) return { ok: false, msg: '已经重摇 3 次了，认命吧' }
+
+      const dice2 = []
+      for (let i = 0; i < DICE_PER_PLAYER; i++) dice2.push(1 + Math.floor(Math.random() * 6))
+
+      const out2 = await dbCall('reroll.update', () => updateGuarded(room._id, (fresh) => {
+        const players2 = (fresh.players || []).map(p =>
+          p.openid === OPENID
+            ? Object.assign({}, p, { dice: dice2, rerollCount: used + 1, rolledAt: ts })
+            : p)
+        return { data: { players: players2, updatedAt: ts } }
+      }))
+      if (!out2 || !out2.ok) return { ok: false, msg: '重摇没成功，再试一次' }
+      return { ok: true, room: shape(out2.room, OPENID) }
+    }
+
     if (action === 'roll') {
       const { room, err } = await loadRoom(event, OPENID, true)
       if (err) return { ok: false, msg: err }
@@ -2321,7 +2376,7 @@ exports.main = async (event) => {
        */
       const out = await dbCall('roll.update', () => updateGuarded(room._id, (fresh) => {
       const players = (fresh.players || []).map(p =>
-        p.openid === OPENID ? Object.assign({}, p, { dice: dice, rolledAt: ts }) : p)
+        p.openid === OPENID ? Object.assign({}, p, { dice: dice, rolledAt: ts, rerollCount: 0 }) : p)
 
       /*
        * ★★ 判"全员摇完"只能看**参与本局**的人。

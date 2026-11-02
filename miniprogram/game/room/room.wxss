@@ -2716,3 +2716,10 @@
   font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
   margin-left: 10rpx; flex: none;
 }
+
+/* 单骰重摇（2026-11-02）：比主按钮轻一档 —— 它是"补救"，不是主要动作 */
+.rerollbtn { margin-top: 18rpx; font-size: 28rpx }
+.rerollhint {
+  margin-top: 10rpx; text-align: center;
+  font-size: 21rpx; color: rgba(255, 255, 255, 0.52);
+}

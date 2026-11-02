@@ -321,6 +321,7 @@ Page({
     wheelCls: '',
     wheelText: '',
     wheelSpinning: false,
+    rerolling: false,          // 单骰重摇进行中
     cdStuck: false,
     /* 离开房间的页面内确认卡（与金花的确认卡同一套样式，不再用系统弹窗） */
     askLeave: false,
@@ -1695,6 +1696,25 @@ Page({
       const R = require('../../utils/liarRules.js')
       room.openNeedN = R.openNeed(room.count || 2, this.data.zhaiMode === 'zhai', 2)
     /*
+     * ★ 2026-11-02：比大小能不能「单骰重摇」。
+     *
+     * 三个条件缺一不可（服务端还会再校验一次，这里只是决定按钮显不显示）：
+     *   · 已经摇过 5 颗
+     *   · 五颗**点数全不同**（这就是"单骰"，最烂的牌型）
+     *   · 还没叫过骰 / 还没重摇过 3 次
+     */
+    if (room.game === 'dice') {
+      const md = (room.me && room.me.dice) || []
+      const uniq = new Set(md)
+      const isSingle = md.length === 5 && uniq.size === 5
+      const mine = (room.players || []).filter(x => x.isMe)[0] || {}
+      const used = Number(mine.rerollCount) || 0
+      const notCalledYet = !room.bid || room.bid.bySeat !== mine.seat
+      room.canReroll = isSingle && used < 3 && notCalledYet && room.phase === 'playing'
+    } else {
+      room.canReroll = false
+    }
+    /*
      * 金花「可比的人」数量（2026-11-02）。
      * 单人房时模板里那句「挑一个人比牌」会让用户到处找人 ——
      * 而下面 pk-list 是空的（没有 !isMe 的玩家）。用这个数决定说什么话。
@@ -2846,6 +2866,29 @@ Page({
      全流程照现实走：摇盅 → 扣盅 → 揭盅 → 骰子在桌上滚两下才停。
      每一步都有对应的声音和动画，不是"点一下出结果"。
      ================= */
+
+  /**
+   * 单骰重摇（2026-11-02，按真实酒桌规则）。
+   *
+   * 摇到五颗全不同的「顺子」在比大小里是最烂的牌型，概率约 1/11，
+   * 而真实玩法给了"重摇"这个出口（维基百科「大话骰」术语表：
+   * 「单骰，5 个骰子各不同，可出示后重摇，但次数不能超三次」）。
+   *
+   * 服务端会再校验一次：必须真是单骰、没叫过骰、没超过 3 次。
+   */
+  async doReroll() {
+    if (!this.specGuard()) return
+    if (!this.data.room || this.data.rerolling) return
+    this.setData({ rerolling: true })
+    const r = await call('room', { action: 'reroll', id: this.data.room.id }, { silent: true })
+      .catch(() => null)
+    this.setData({ rerolling: false })
+    if (this.okOrSay(r)) {
+      sfx.play('cupShake')   /* 重摇就是再摇一次盅 */
+      this.applyRoom(r.room)
+      wx.showToast({ title: '重摇了一次', icon: 'none', duration: 1200 })
+    }
+  },
 
   async doRoll() {
     if (!this.specGuard()) return

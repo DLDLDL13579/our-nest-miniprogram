@@ -576,6 +576,20 @@ module.exports = {
     }),
 
     /* 比大小：摇盅中 */
+    /* 单骰（五颗全不同）：验「重摇」按钮（2026-11-02 按真实规则加的） */
+    diceSingle: () => ({
+      stage: 'playing', myRolled: true, diceShown: true,
+      myDice: [1, 2, 3, 4, 6],
+      room: pkRoom({
+        game: 'dice', phase: 'playing', host: true, count: 2, canReroll: true,
+        bid: null,
+        me: { seat: 1, name: '邓林', dice: [1, 2, 3, 4, 6], rerollCount: 0 },
+        players: [
+          { seat: 1, name: '邓林', isMe: true, isHost: true, online: true, dice: [1, 2, 3, 4, 6], diceCount: 5, rerollCount: 0 },
+          { seat: 2, name: '倩萍', isMe: false, online: true, dice: [], diceCount: 0 }
+        ]
+      })
+    }),
     diceRoll: () => ({
       stage: 'playing',
       cupSrc: 'cup-shake', cupCls: 'shaking', cupHint: '摇盅中…',
