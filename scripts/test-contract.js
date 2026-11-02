@@ -3927,3 +3927,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '用户文案里出现了 Markdown 语法（小程序不渲染）：\n    ' + bad.join('\n    '))
   ok('★ 用户文案里没有 Markdown 语法（注释里的不算）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**每个阶段都必须有出口**（不能是死路）
+ *
+ * 阶段机是 entry → lobby → countdown → playing → over → lobby。
+ * 而"某个阶段一个能点的东西都没有"就是死路 —— 玩家只能杀进程重进。
+ *
+ * 本项目踩过一次：倒计时阶段顶部栏被隐藏（`gbar` 有 `stage !== 'countdown'`），
+ * 而如果网络断了导致一直停在倒计时，**屏幕上没有任何返回入口**。
+ * 现在有 `goBack` 兜底。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const blocks = wxml.split(/<block wx:(?:if|elif)="\{\{stage === '(\w+)'\}\}">/)
+  const stages = []
+  for (let i = 1; i < blocks.length; i += 2) {
+    const st = blocks[i]
+    const body = blocks[i + 1] || ''
+    const taps = new Set([...body.matchAll(/bindtap="(\w+)"/g)].map(m => m[1]))
+    stages.push({ st, n: taps.size })
+  }
+  assert.ok(stages.length >= 5, '阶段块只认出 ' + stages.length + ' 个')
+  const dead = stages.filter(x => x.n === 0).map(x => x.st)
+  assert.deepStrictEqual(dead, [], '这些阶段没有任何可点的东西（死路）：' + dead.join(' '))
+  ok('★ 五个阶段都有出口：' + stages.map(x => x.st + ' ' + x.n).join(' / '))
+}
