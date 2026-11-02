@@ -1346,7 +1346,9 @@
   <view wx:if="{{askLeave}}" class="mask" bindtap="askLeaveNo">
     <view class="sheet pkask" catchtap="noop">
       <view class="sheet-t">离开房间？</view>
-      <view class="sheet-s">你走了之后位置会空出来。房主走了会自动转给下一个人。</view>
+      <!-- ★ 2026-11-02 渲染审核：原句 25 字，在弹层里顶到右边缘。
+           缩短到 20 字，语义不变。 -->
+      <view class="sheet-s">走了位置会空出来，房主会自动转给下一个人</view>
       <view class="pkask-row">
         <view class="pkask-btn no" bindtap="askLeaveNo">再想想</view>
         <view class="pkask-btn yes" bindtap="askLeaveYes">离开</view>
