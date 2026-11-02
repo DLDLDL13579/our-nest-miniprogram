@@ -595,7 +595,12 @@
 
       <view wx:if="{{room.bid && room.myTurn}}" class="liar-acts">
         <view class="btn openbtn" bindtap="doOpen">
-          开！我不信（{{room.bid.n}} 个 {{room.bid.face}}）
+          <!--
+            ★ 2026-11-02 统一去掉动作按钮的感叹号（用户明确说过「开始！」不要「！」）。
+              「开！我不信」还啰嗦 —— 开牌本身就是"我不信"这个动作，
+              说了两遍。改成「开（3 个 4）」，一眼知道点下去会发生什么。
+          -->
+          开（{{room.bid.n}} 个 {{room.bid.face}}）
         </view>
         <!--
           劈：加倍赌对方在吹。酒桌上最有火药味的一个动作 ——
@@ -603,7 +608,7 @@
           ⚠️ 只有别人叫的骰才能劈（自己叫的不能自己劈，服务端也拦）。
         -->
         <view wx:if="{{room.bid.lastSeat !== room.me.seat && room.bid.mult < 8}}"
-              class="btn pibtn" bindtap="doPi">劈！</view>
+              class="btn pibtn" bindtap="doPi">劈</view>
       </view>
     </block>
 
@@ -651,7 +656,7 @@
       </view>
 
       <view class="btn main bigbtn {{rolling || myRolled ? 'disabled' : ''}}" bindtap="doRoll">
-        {{rolling ? '摇盅中…' : (myRolled ? '已扣盅，等其他人' : '摇盅！')}}
+        {{rolling ? '摇盅中…' : (myRolled ? '已扣盅，等其他人' : '摇盅')}}
       </view>
       <!--
         等别人的时候，明确说是**谁**还没摇 —— 不然就是干等。
@@ -1110,7 +1115,7 @@
 
       <block wx:if="{{room.host}}">
         <view class="btn main bigbtn {{wheelSpinning ? 'disabled' : ''}}" bindtap="doSpin">
-          {{wheelSpinning ? '转着呢…' : '转！'}}
+          {{wheelSpinning ? '转着呢…' : '转'}}
         </view>
       </block>
       <view wx:else class="waiting">等房主转</view>

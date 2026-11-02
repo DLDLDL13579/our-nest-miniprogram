@@ -296,9 +296,9 @@ module.exports = {
 
     /* 开局倒计时（普通读秒 / 最后一拍） */
     cd: () => ({ stage: 'countdown', cdText: '3', cdTick: 1, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 2200, host: true }) }),
-    cdGo: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
+    cdGo: () => ({ stage: 'countdown', cdText: '开始', cdTick: 4, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
     /* 倒计时走完却没进游戏（网络断了）—— 兜底出口应该出现 */
-    cdStuck: () => ({ stage: 'countdown', cdText: '开始！', cdTick: 4, cdStuck: true, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
+    cdStuck: () => ({ stage: 'countdown', cdText: '开始', cdTick: 4, cdStuck: true, room: pkRoom({ game: 'liar', phase: 'countdown', countdownMs: 200, host: true }) }),
 
     /* 中途加入只能观战 */
     spectate: () => ({
