@@ -155,8 +155,23 @@ function options(playerCount, cur, zhaiMode, max) {
 
   /* 首叫从起叫档起；之后从上家的叫法往上扫 */
   const startN = cur ? 1 : openNeed(p, zhai, 2)
+  /*
+   * ★ 2026-11-03：**同一个数量内，点数从"上家叫的那个"开始循环**。
+   *
+   *   场景：上家叫 6个4（不斋），我切到斋 —— 合法的第一个数量是 3。
+   *   而 3 这一档里，最自然的是「3个4斋」（数量减半、点数不变），
+   *   原来却排在「3个1斋」后面（1→2→3→4 的顺序）。
+   *
+   *   玩家看到的第一屏是 3个1 / 3个2 / 3个3 / 3个4 ——
+   *   他得往后翻 3 个才能找到"跟我刚才叫的同一个点数"。
+   *
+   *   改成从 `cur.face` 起循环：3个4 / 3个5 / 3个6 / 3个1 / 3个2 / 3个3。
+   */
+  const f0 = cur ? (Number(cur.face) || 1) : 1
+  const faceOrder = []
+  for (let k = 0; k < 6; k++) faceOrder.push(((f0 - 1 + k) % 6) + 1)
   for (let n = startN; n <= total; n++) {
-    for (let f = 1; f <= 6; f++) {
+    for (const f of faceOrder) {
       /*
        * ★★ 2026-11-03：**不斋时不生成「N个1」**。
        *

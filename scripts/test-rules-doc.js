@@ -307,3 +307,37 @@ console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
 
   console.log('  ✓ 比大小/金花的规则链与代码一致（含两对先比大对、散牌逐张比、A23 第二大）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**叫骰选项的第一个要是"最自然的下一步"**
+ *
+ * 原来同一个数量内按 1→2→3→4→5→6 排。于是上家叫 6个4、
+ * 我切到斋之后，第一个选项是「3个1斋」—— 而最自然的是「3个4斋」
+ * （数量减半、点数不变）。玩家得往后翻 3 个才能找到。
+ *
+ * 改成从 `cur.face` 起循环。
+ * ========================================================================== */
+{
+  const R = require('../miniprogram/utils/liarRules.js')
+
+  /* 切斋：上家 6个4（不斋）→ 第一个应该还是 4 点 */
+  const z = R.options(4, { n: 6, face: 4, zhai: false }, true, 24)
+  assert.strictEqual(z[0].face, 4, '切斋后第一个选项应该还是 4 点（实际 ' + z[0].label + '）')
+  assert.ok(z[0].n < 6, '切斋后第一个数量应该小于 6（减半）')
+
+  /* 不斋：上家 6个4 → 第一个应该是 6个5（点数+1，同数量） */
+  const nz = R.options(4, { n: 6, face: 4, zhai: false }, false, 24)
+  assert.strictEqual(nz[0].n, 6, '同形态时第一个应该还是同数量（实际 ' + nz[0].label + '）')
+  assert.strictEqual(nz[0].face, 5, '同形态时第一个应该是点数+1（实际 ' + nz[0].label + '）')
+
+  /* 首叫：没有"上家点数"可参照，从 1 起循环到第一个合法值 */
+  const first = R.options(4, null, false, 24)
+  assert.ok(first.length > 0, '首叫必须有选项')
+  assert.ok(first[0].n >= R.openNeed(4, false, 2), '首叫第一个不能低于起叫档')
+
+  /* 上家叫 1 时：循环从 1 起，而 1 已经叫过，应该自然落到 2 */
+  const afterOne = R.options(4, { n: 7, face: 1, zhai: true }, true, 24)
+  assert.strictEqual(afterOne[0].face, 2, '上家叫 1 之后第一个应该是 2 点（实际 ' + afterOne[0].label + '）')
+
+  console.log('  ✓ 叫骰选项的第一个是"最自然的下一步"（切斋保留点数 / 上叫点数+1 / 首叫从合法值起）')
+}
