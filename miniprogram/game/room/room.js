@@ -24,6 +24,16 @@
  */
 const { call } = require('../../utils/cloud.js')
 /* 测试开关（soloTest）：一个人也能开局，见 config.js 的说明 */
+/*
+ * 「该你了，摇盅」—— 这句提示在**两处**用到（进 playing 时、摇盅动画结束后）。
+ *
+ * ★ 2026-11-02：写成一个常量，因为原来两处各写一遍，**一处带感叹号一处不带**
+ *   （`'该你了，摇盅！'` 和 `'该你了，摇盅'`）。
+ *   而用户明确说过「'开始！'可以不要'！'」——
+ *   同一个提示在一屏里出现两种写法，是最容易被忽略的那类不一致。
+ */
+const HINT_ROLL_NOW = '该你了，摇盅'
+
 const CFG = require('../../config.js')
 const sfx = require('../sfx.js')
 const settleFoot = require('../../game/settle.js')
@@ -1044,8 +1054,8 @@ Page({
       }
       /* 还没摇的人：给一句明确的"该你了"，而不是一片空白 */
       if (!rolled && room.phase === 'playing' && !this.data.rolling && !this.data.myRolled) {
-        if (this.data.cupHint !== '该你了，摇盅！') {
-          this.setData({ cupHint: '该你了，摇盅！' })
+        if (this.data.cupHint !== HINT_ROLL_NOW) {
+          this.setData({ cupHint: HINT_ROLL_NOW })
         }
       }
     }
@@ -1105,7 +1115,7 @@ Page({
     this._cupTimers.push(setTimeout(() => {
       if (this.data.stage !== 'playing') return
       /* 摇完自然扣下 —— 但玩家的骰子还没摇，所以扣的是"空盅" */
-      this.setData({ cupSrc: 'cup-down', cupCls: '', cupHint: '该你了，摇盅' })
+      this.setData({ cupSrc: 'cup-down', cupCls: '', cupHint: HINT_ROLL_NOW })
     }, 1050))
   },
 
@@ -3067,7 +3077,7 @@ Page({
      */
     this.setData({
       cupSrc: 'cup-up', cupCls: 'lift',
-      diceShown: true, cupHint: '开了！'
+      diceShown: true, cupHint: '开了'
     }, () => {
       if (this._dead) return
       feedback.fire('cupLift')

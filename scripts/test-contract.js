@@ -1083,6 +1083,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     assert.deepStrictEqual(uncleaned, [],
       '这些定时器没进清理函数（退出页面后仍会执行）：' + uncleaned.join(' '))
     ok('★ 房间页的 ' + assigned.size + ' 个定时器都在清理清单里')
+
+  /*
+   * ★ 2026-11-02：**面向用户的文案里不许有感叹号**。
+   *
+   * 用户明确说过「'开始！'可以不要'！'」。前几轮清过动作按钮上的，
+   * 但这轮发现「该你了，摇盅！」还在 —— 而且同一个提示在另一处
+   * 写成「该你了，摇盅」，一屏里两种写法。
+   *
+   * 只查**字符串字面量里的**感叹号，注释里提到「开始！」不算。
+   */
+  {
+    const badBang = []
+    const files = []
+    walkPages(PAGE_ROOTS).forEach(f => {
+      files.push(f)
+      const w = f.replace(/\.js$/, '.wxml')
+      if (fs.existsSync(w)) files.push(w)
+    })
+    files.forEach(f => {
+      let src = fs.readFileSync(f, 'utf8')
+      /* ★ 先把**跨行**注释整块剥掉 —— 只跳"注释行"会漏掉块注释的中间行，
+         而块注释里经常举例写「"开始！"」这种带感叹号的原文。 */
+      src = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+      src = src.replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '))
+      const lines = src.split('\n')
+      lines.forEach((line, i) => {
+        /* 再跳过单行注释 */
+        if (/^\s*(\*|\/\/)/.test(line)) return
+        /* 提取这一行里的字符串字面量 */
+        const lits = line.match(/'[^']*'|"[^"]*"/g) || []
+        lits.forEach(lit => {
+          if (lit.includes('！') && !lit.includes('★')) {
+            badBang.push(path.relative(ROOT, f) + ':' + (i + 1) + ' → ' + lit.slice(0, 30))
+          }
+        })
+      })
+    })
+    assert.deepStrictEqual(badBang, [],
+      '面向用户的文案里不要用感叹号：\n    ' + badBang.join('\n    '))
+    ok('★ 用户文案里没有感叹号（用户明确要求过）')
+  }
   }
   }
   }
