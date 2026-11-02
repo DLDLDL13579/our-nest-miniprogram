@@ -118,6 +118,22 @@
 }
 .join-btn.on { background: var(--brand); color: #fff }
 .join-btn.on:active { opacity: .82 }
+/*
+ * ★★ 2026-11-03：**触控面积补到 88rpx，视觉不变**。
+ *
+ *   按钮实际高 68rpx（微信推荐 ≥88rpx），手指点偏一点就落空 ——
+ *   而这在大厅上是"最重要的一次点击"（输完房间号按进去）。
+ *
+ *   用 ::after 往下各扩 10rpx：视觉还是 68rpx 的样子，
+ *   但命中区域变成 88rpx。这是移动端通用做法，
+ *   比"把按钮做大"好 —— 后者会挤动整行布局。
+ */
+.join-btn { position: relative }
+.join-btn::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: -10rpx; bottom: -10rpx;
+}
 
 .errbox {
   margin: 0 0 var(--gap-2); padding: 18rpx 22rpx;
