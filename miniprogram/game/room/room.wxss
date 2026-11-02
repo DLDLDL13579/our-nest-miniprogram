@@ -3104,7 +3104,6 @@
  *   优先级很清楚：**能操作 > 有说明**。
  */
 .gamepage.compact .cs-hint { display: none }
-.gamepage.compact .cs-die-scene { width: 52rpx; height: 52rpx }
 
 /* 金花操作页：小屏上「换底牌/换手牌/弃牌」会被挤出屏幕，牌区收 13% */
 .gamepage.compact .pk-flip { width: 118rpx; height: 167rpx }

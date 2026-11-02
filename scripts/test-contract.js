@@ -4847,3 +4847,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 页面可滚动（min-height:100vh / 无 overflow:hidden），紧凑骰盅 ' + compactH + 'rpx')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**同一个选择器在 compact 里不许定义两次**
+ *
+ * `.gamepage.compact .cs-die-scene` 曾经出现两条（44rpx 和 52rpx）——
+ * **后者静默覆盖前者**，于是"我改成了 44"实际是 52，而渲染图上根本看不出来。
+ *
+ * 这是 CSS 的经典陷阱：重复定义不报错，只有最后一条生效。
+ * ========================================================================== */
+{
+  /* 只查 room.wxss 里 `.gamepage.compact` 前缀的选择器 */
+  const wxss = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+
+  const seen = new Map()
+  const dup = []
+  ;[...wxss.matchAll(/(\.gamepage\.compact[^{]*)\{/g)].forEach(m => {
+    const sel = m[1].trim().replace(/\s+/g, ' ')
+    if (seen.has(sel)) dup.push(sel)
+    else seen.set(sel, true)
+  })
+
+  assert.deepStrictEqual([...new Set(dup)], [],
+    '这些 compact 选择器定义了不止一次（后者会静默覆盖前者）：\n    ' + dup.join('\n    '))
+  ok('★ ' + seen.size + ' 个 compact 选择器都只定义一次')
+}
