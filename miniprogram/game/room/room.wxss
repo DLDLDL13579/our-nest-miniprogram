@@ -1006,6 +1006,13 @@
   position: relative;
   margin-top: 12rpx;
   font-size: 32rpx; font-weight: 700; color: #F6E7C3;
+  /*
+   * ★ 2026-11-02 调研落地（GameAnalytics：任何重要元素都要有动画）。
+   *   大话骰结算的「实际 N 个」有 numPop，而比大小结算的「18 点」是死的 ——
+   *   同一个位置的同类信息，一个动一个不动，看着像漏了。
+   *   这里补上同一条曲线，和 `.on-big` 保持一致。
+   */
+  animation: numPop .5s cubic-bezier(.34, 1.56, .64, 1) .12s backwards;
 }
 
 /* 结算页的小牌面：比游戏中的牌小一号，但用同一套真图 —— 一眼是同一副牌 */
@@ -2638,6 +2645,46 @@
   font-size: 28rpx; font-weight: 600;
   color: rgba(255, 255, 255, 0.78);
   letter-spacing: .5rpx;
+  /*
+   * ★ 2026-11-02：这句话是整页最该被念出来的一句，必须"跳出来"。
+   *   延迟 0.26s —— 等上面的「3 个 6」数字先弹完，再接这句，
+   *   观感才是"先看到事实，再听到吐槽"。
+   */
+  animation: gapIn .42s cubic-bezier(.34, 1.56, .64, 1) .26s backwards;
+}
+@keyframes gapIn {
+  0%   { opacity: 0; transform: translateY(10rpx) scale(.94) }
+  60%  { opacity: 1; transform: translateY(0) scale(1.03) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
 }
 .gap-line.bad  { color: #E8B33C }        /* 吹炸了：金色，像"好戏" */
 .gap-line.good { color: #7FD8A8 }        /* 叫保守了：绿色，像"你亏了" */
+
+/* ============================================================
+   动画性能：给"频繁动的图形"开 GPU 合成层（2026-11-02 调研落地）
+   ------------------------------------------------------------
+   来源：微信官方「界面渲染 / 动画」+ 小程序动画性能实践
+     · `transform: translateZ(0)` 创建一个渲染层，交给合成器
+     · `will-change: transform` 提示浏览器提前准备
+     · 只对**会动的图形**加；加多了反而有害（每个图层都吃内存）
+
+   ⚠️ 两条纪律：
+     ① **不给文字加** —— translateZ(0) 会让文字在部分机型上发虚，
+        文字动画宁可走 will-change: opacity
+     ② 只覆盖"一屏里同时十几个一起动"的那几类：
+        骰子、骰盅、牌面、结算骰子
+   ============================================================ */
+
+.cs-die,
+.cs-cup,
+.pkr-face,
+.oh-die,
+.die-img {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* 屏幕震动：整页在动，但它只持续 0.4 秒，用 will-change 提示即可，
+   不加 translateZ —— `.gamepage` 是所有弹层的祖先，
+   给它建图层会把整棵子树都拖进去，反而更慢。 */
+.gamepage.impact { will-change: transform }
