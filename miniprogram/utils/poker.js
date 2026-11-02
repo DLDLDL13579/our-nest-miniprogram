@@ -246,7 +246,16 @@ function handHint(a, b) {
   const best = bestHand(a, b)
   if (!best) return ''
   const rk = rank(best.cards)
-  return '最大能到：' + rk.name + '（差 ' + cardText(best.hidden) + '）'
+  /*
+   * ★ 2026-11-02：把「差」改成「想成」。
+   *
+   *   这条提示的机制是：暗牌**就是你能想象到的最强那张**（比牌按它算）。
+   *   而原来写「差 ♥Q」——「差」字暗示"还差这张牌没发下来"，
+   *   玩家会以为要等运气；实际是"你把它想成 ♥Q 就成立"。
+   *
+   *   一个字之差，把"想象"说成了"等待" —— 而这正好是这个玩法的核心。
+   */
+  return '最大能到：' + rk.name + '（想成 ' + cardText(best.hidden) + '）'
 }
 
 /** 给界面用的牌面文字，如 "♠A" */
