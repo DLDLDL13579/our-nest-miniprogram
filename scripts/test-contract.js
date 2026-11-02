@@ -4471,3 +4471,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.deepStrictEqual(tooClose, [], '这些玩法的颜色太接近：\n    ' + tooClose.join('\n    '))
   ok('★ 五个玩法主题色两两不同且色相拉开 ≥25°')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**不许有"定义了但没人用"的 CSS 变量**
+ *
+ * `--gap-1: 16rpx` 定义了却全仓 0 引用 —— 而它的兄弟 `--gap-2` / `--gap-3`
+ * 都在用。这类"半套变量"会让人以为间距系统是完整的。
+ *
+ * ⚠️ 判据的坑：`var(--dx, 0px)` 是带默认值的写法，而
+ * `var\((--[\w-]+)\)` 这种要求闭合的正则**匹配不到它** ——
+ * 第一版就把撒花动画的 `--dx` / `--rot` 误报成死变量。
+ * 必须用 `var\(\s*(--[\w-]+)`（不要求闭合）。
+ * ========================================================================== */
+{
+  let css = ''
+  let tpl = ''
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (f.endsWith('.wxss')) css += fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      if (f.endsWith('.wxml')) tpl += fs.readFileSync(p, 'utf8')
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  const defs = new Set([...css.matchAll(/(--[\w-]+):/g)].map(m => m[1]))
+  const used = new Set([
+    ...[...css.matchAll(/var\(\s*(--[\w-]+)/g)].map(m => m[1]),
+    ...[...tpl.matchAll(/var\(\s*(--[\w-]+)/g)].map(m => m[1])
+  ])
+  const dead = [...defs].filter(d => !used.has(d)).sort()
+
+  assert.deepStrictEqual(dead, [],
+    '这些 CSS 变量定义了但没有任何 var() 引用：\n    ' + dead.join('\n    ') +
+    '\n    （注意：var(--x, 默认值) 的写法也算引用）')
+  ok('★ ' + defs.size + ' 个 CSS 变量都有引用（没有半套变量）')
+}
