@@ -1978,6 +1978,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 云调用都走 okOrSay 处理业务错误')
   }
 
+  /*
+   * ★★★ ④·h CSS 动画节奏 与 JS 音效节奏 必须一致（2026-11-02）。
+   *
+   * 骰子逐颗落定这件事写在两个地方：
+   *   wxss  `.cs-die { animation-delay: calc(var(--i) * 90ms) }`   ← 视觉节奏
+   *   js    `const DIE_DROP_MS = 90`                                ← 声音节奏
+   *
+   * 两处一致时，画面"啪啪啪啪啪"和耳朵听到的完全对上。
+   * 改一处忘另一处，就是那种说不上来但一眼假的错位 ——
+   * 而且它不报错、不崩、静态检查也看不出来。
+   *
+   * 这不是推演出来的风险：转盘咔哒那边就因为"传 2600、动画 2700"
+   * 错了 100ms，实测最后 300ms 完全静音。
+   */
+  {
+    const wxssD = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    const jsD = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const cssM = /animation-delay:\s*calc\(var\(--i\)\s*\*\s*(\d+)ms\)/.exec(wxssD)
+    const jsM = /const\s+DIE_DROP_MS\s*=\s*(\d+)/.exec(jsD)
+    assert.ok(cssM, '没找到 .cs-die 的 animation-delay 节奏')
+    assert.ok(jsM, '没找到 DIE_DROP_MS 常量')
+    assert.strictEqual(jsM[1], cssM[1],
+      '骰子落定的视觉节奏(' + cssM[1] + 'ms)和声音节奏(' + jsM[1] + 'ms)不一致 —— 画面和声音会错位')
+    ok('★ 骰子落定：视觉 ' + cssM[1] + 'ms = 声音 ' + jsM[1] + 'ms')
+  }
+
   console.log('\n=== ④ 模板引用的 room.xxx 必须由服务端真实返回（幽灵字段检测）===')
   /*
    * 判据：把 room 云函数**真实响应**里的 room 对象字段收集起来，
