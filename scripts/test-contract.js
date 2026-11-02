@@ -3849,3 +3849,49 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些文案里的精确数量该用阿拉伯数字：\n    ' + bad.join('\n    '))
   ok('★ 文案里的精确数量用阿拉伯数字（颗/轮/杯/次/张）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**方法定义了就要有人调**
+ *
+ * 金花的「换牌」曾经是这个坑：方法、服务端 action、代价计算、二次确认弹窗
+ * 全都齐了，**模板里从来没有按钮调用它** —— 规则说"换底牌喝 1 杯"，
+ * 玩家在界面上找不到入口。
+ *
+ * 这条断言扫全部方法，排除生命周期（微信框架调）和下划线私有方法，
+ * 剩下的必须能在别处找到至少一次引用。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const methods = [...src.matchAll(/^  (?:async )?(\w+)\([^)]*\)\s*\{/gm)].map(m => m[1])
+  const LIFECYCLE = new Set(['onLoad', 'onShow', 'onHide', 'onUnload', 'onReady',
+    'onPullDownRefresh', 'onReachBottom', 'onShareAppMessage', 'onShareTimeline',
+    'onPageScroll', 'onResize'])
+
+  /* 把 miniprogram 下所有 js/wxml 拼起来（页面、分包都要算） */
+  let all = ''
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) walk(p)
+      else if (/\.(js|wxml)$/.test(f)) all += fs.readFileSync(p, 'utf8')
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  const dead = []
+  methods.forEach(m => {
+    if (m.startsWith('_') || LIFECYCLE.has(m)) return
+    const calls = (all.match(new RegExp('\\b' + m + '\\s*\\(', 'g')) || []).length
+    let quoted = 0
+    ;["'", '"'].forEach(q => {
+      quoted += (all.split(q + m + q).length - 1)
+    })
+    /* 减掉定义那一次 */
+    if (calls + quoted - 1 < 1) dead.push(m)
+  })
+  assert.deepStrictEqual(dead, [],
+    '这些方法定义了但没有任何地方调用：\n    ' + dead.join('\n    '))
+  ok('★ 房间页 ' + (methods.length - LIFECYCLE.size) + ' 个方法都有调用点（无死代码）')
+}
