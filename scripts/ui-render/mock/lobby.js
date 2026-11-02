@@ -45,6 +45,15 @@ module.exports = {
   states: {
     /* 输了两位还没输满 —— 按钮应该是"待命"态 */
     typing: () => ({ joinCode: '12' }),
+    /*
+     * ★ 2026-11-03：**小屏紧凑模式**的预览状态。
+     *
+     *   `compact` 在真机上来自 `wx.getSystemInfoSync().windowHeight <= 600`，
+     *   而渲染器不提供 systemInfo —— 所以必须在 mock 里显式给。
+     *   不给的话，`--height 504` 渲染出来和正常屏**一模一样**（图片哈希都不变），
+     *   而我还会以为是 CSS 没生效。
+     */
+    compact: () => ({ joinCode: '12', compact: true }),
     /* 输错了 */
     error: () => ({ joinCode: '123', err: '房间不存在或已解散' }),
     /* 只有两个玩法（玩法还没长起来时的样子） */

@@ -160,7 +160,19 @@ Page({
   },
 
   onLoad() {
-    this.setData({ muted: sfx.isMuted(), hapticOn: haptic.isHapticOn() })
+    /*
+     * ★★ 2026-11-03：**小屏紧凑模式**（和房间页同一套判据）。
+     *
+     *   iPhone SE 那种 568pt 高的屏上，hero 卡要占掉近 1/3 屏，
+     *   于是**一屏只能看到 2 个玩法卡** —— 而大厅最重要的事是"五个玩法都在"。
+     *
+     *   用 `compact` 类收掉 hero 的多余间距，让第三行的卡能露出一点
+     *   （露一点就足以暗示"下面还有"，比完全看不到强得多）。
+     */
+    let sys = {}
+    try { sys = wx.getSystemInfoSync() } catch (e) {}
+    const compact = (sys.windowHeight || 800) <= 600
+    this.setData({ muted: sfx.isMuted(), hapticOn: haptic.isHapticOn(), compact: compact })
   },
 
   /* 从房间退回来时刷新开关状态 —— 房间页里也能改，别让两边显示不一致 */

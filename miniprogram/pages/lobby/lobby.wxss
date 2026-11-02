@@ -332,3 +332,26 @@
 
 /* 「进房」按钮的按下反馈（2026-11-02，断言扫出来的） */
 .join-in:active { transform: scale(.98); filter: brightness(.94) }
+
+/* ============================================================================
+ * 2026-11-03：**小屏紧凑模式**
+ *
+ * iPhone SE 那种 568pt 高的屏，hero 卡占掉近 1/3 屏 →
+ * 一屏只能看到 2 个玩法卡，而大厅最重要的事是"五个玩法都在"。
+ *
+ * ⚠️ 这里是 `.page.compact`（根容器上的类），**不是 `@media`** ——
+ *   rpx 在媒体查询里不解析，写成 `@media (max-height: 1200rpx)` 会**静默失效**
+ *   （本项目踩过，见 AGENTS.md）。
+ * ========================================================================== */
+.page.compact .lb-hero {
+  padding: 22rpx 26rpx 18rpx;
+  margin-bottom: 14rpx;
+}
+.page.compact .lb-lbl { font-size: 24rpx }
+.page.compact .lb-t { font-size: 46rpx }
+.page.compact .lb-s { margin-top: 8rpx }
+.page.compact .lb-stats { margin-top: 10rpx }
+/* 「理性饮酒」那行在小屏上收起来 —— 它是法律提示，真机上首屏看不到也在「关于」里 */
+.page.compact .lb-sober { display: none }
+.page.compact .joinbar { padding: 14rpx 0 }
+.page.compact .grid { gap: 14rpx }

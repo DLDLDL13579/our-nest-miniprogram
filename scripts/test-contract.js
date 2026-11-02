@@ -4775,3 +4775,43 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '玩法名硬编码在别处（改注册表时不会跟着变）：\n    ' + bad.join('\n    '))
   ok('★ ' + names.length + ' 个玩法名都只来自注册表（没有硬编码）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**大厅也要有小屏紧凑模式**
+ *
+ * 房间页早就有 `.gamepage.compact`（iPhone SE 那种 568pt 高的屏），
+ * 而**大厅一直没有** —— 于是小屏上一屏只能看到 2 个玩法卡，
+ * 而大厅最重要的事是"五个玩法都在"。
+ *
+ * ⚠️ 两个坑（都踩过）：
+ *   ① 必须用 `.page.compact` 类，不能用 `@media`（rpx 在媒体查询里不解析）
+ *   ② mock 必须显式给 `compact: true` —— 真机上它来自 `wx.getSystemInfoSync`，
+ *      而渲染器不提供 systemInfo，不给的话 `--height 504` 渲染出来完全一样
+ * ========================================================================== */
+{
+  const js = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/lobby/lobby.js'), 'utf8')
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxml'), 'utf8')
+  const wxss = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxss'), 'utf8')
+
+  assert.ok(/windowHeight[\s\S]{0,40}<= 600/.test(js),
+    '大厅 onLoad 里要按 windowHeight 算 compact（和房间页同一套判据）')
+  assert.ok(/class="page \{\{compact \? 'compact' : ''\}\}"/.test(wxml),
+    '根容器要挂 compact 类')
+  assert.ok(/\.page\.compact\s+\.lb-hero/.test(wxss),
+    '要有 `.page.compact` 规则（不能用 @media）')
+  /* ⚠️ 先剥注释 —— 规则里那段注释**正是在解释"为什么不用 @media"** */
+  const wxssNc = wxss.replace(/\/\*[\s\S]*?\*\//g, '')
+  assert.ok(!/@media\s*\(max-height/.test(wxssNc),
+    '不许用 @media (max-height) —— rpx 不解析，px 版本渲染器也测不到')
+
+  /* mock 必须有 compact 状态，否则"--height 504"看不出任何变化 */
+  const mock = fs.readFileSync(
+    path.join(ROOT, 'scripts/ui-render/mock/lobby.js'), 'utf8')
+  assert.ok(/compact:\s*\(\)\s*=>\s*\(\{[^}]*compact:\s*true/.test(mock),
+    'mock 里要有 compact 状态（否则没法预览小屏效果）')
+
+  ok('★ 大厅小屏紧凑模式完整（判据/类/样式/mock 四处都在）')
+}
