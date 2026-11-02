@@ -115,6 +115,15 @@ function pkRoom(r) {
     soloOk: true,
     shortBy: 0,
     /*
+     * ★ 2026-11-02：这三个 room 级字段 mock 缺，导致 8 个状态渲染报错 ——
+     *   真机安全（模板对 undefined.length 静默为假），但**那几块区域从没被渲染验证过**：
+     *   · myCards      —— "已加 N 条 · 抽得到" + 自定义题列表（服务端 shape:802）
+     *   · poker.drinks —— 金花每人换牌喝了多少
+     *   · nightDrinkList —— 今晚酒量条
+     */
+    myCards: [],
+    nightDrinkList: [],
+    /*
      * ★★★ 图片源必须有默认值（2026-10-30 第四次踩同一个坑）。
      *
      * 模板写的是 `src="/game/images/cup/{{cupSrc}}.png"` ——
@@ -151,9 +160,16 @@ function uwRoom(r) {
   return Object.assign({
     me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     turn: 0, round: 1, bid: null, lastResult: null, spin: null, deck: 'food',
-    myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: []
+    myTurn: false, turnName: '', waitingCount: 0, waitingNames: '', options: [],
+    nightDrinkList: [], myCards: [], confetti: []
   }, r)
 }
+
+/*
+ * ★ 2026-11-02：兜底 —— 任何状态的 room 缺这几个数组字段时补空，
+ *   免得每加一个 mock 状态就漏一次（这已经是第 5 次漏同类字段了）。
+ */
+const _origStates = {}
 
 module.exports = {
   __height: 1400,
@@ -168,6 +184,16 @@ module.exports = {
      * 之前给单个状态补过三次，每次下一个状态又忘 —— 现在放默认值，全体继承。
      */
     cupSrc: 'cup-down', cupCls: '', diceShown: false, diceRolling: false,
+    /*
+     * ★ 2026-11-02：这几个页面级字段 mock 一直没有，导致 **45 个渲染状态全部报**
+     *   `confetti.length → Cannot read properties of undefined`。
+     *   真机上它们是安全的（`data` 里有默认 `[]`，小程序对 undefined.length 静默为假），
+     *   但**渲染图里这些区块从来没显示过** —— 撒花特效、金花手牌区缩略、
+     *   事件流、今晚酒量条，全是黑盒。
+     *
+     *   mock 的意义是复刻真实数据；缺字段 = 那块永远验证不到。
+     */
+    confetti: [], myCards: [], events: [], nightDrinkList: [],
     stage: 'entry',
     room: null,
     games: GAME_SWITCH,
@@ -278,7 +304,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: false, turn: 2, myTurn: false, turnName: '倩萍',
         spectating: true,
-        poker: {
+        poker: { drinks: [],
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: null, myKnownText: '', folded: true, aliveCount: 3, myDrink: 0,
           last: null, winner: null
@@ -591,7 +617,7 @@ module.exports = {
             kind: 'poker', winner: '邓林', winText: '邓林 赢',
             hands: hands
           },
-          poker: {
+          poker: { drinks: [], 
             step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
             myKnown: PK_MINE[0], myKnownText: poker.cardText(PK_MINE[0]),
             myKnownRed: /[♥♦]/.test(poker.cardText(PK_MINE[0])),
@@ -708,7 +734,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: false,
         turn: 2, myTurn: false, turnName: '倩萍',
-        poker: {
+        poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           hintText: poker.handHint(PK_PUB, PK_MINE[1]),
@@ -746,7 +772,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
-        poker: {
+        poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           hintText: poker.handHint(PK_PUB, PK_MINE[1]),
@@ -766,7 +792,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
-        poker: {
+        poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           /* 牌型提示走真实函数算，保证和线上一致 */
@@ -793,7 +819,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: true,
         turn: 2, myTurn: false, turnName: '倩萍',
-        poker: {
+        poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           folded: false, aliveCount: 3, myDrink: 0.5, log: [],
@@ -807,7 +833,7 @@ module.exports = {
       room: pkRoom({
         game: 'poker', phase: 'playing', host: true,
         turn: 1, myTurn: true, turnName: '邓林',
-        poker: {
+        poker: { drinks: [], 
           step: 'play', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           folded: false, aliveCount: 2, myDrink: 1, log: [],
@@ -862,7 +888,7 @@ module.exports = {
               cardsText: ['♣Q', '♠7', '♥5'] }
           ]
         },
-        poker: {
+        poker: { drinks: [], 
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
           folded: false, aliveCount: 1, myDrink: 0, last: null, winner: '邓林'
