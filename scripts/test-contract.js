@@ -4651,15 +4651,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const cloudSrc = fs.readFileSync(
     path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
 
-  const fields = [...new Set([...wxml.matchAll(/result\.(\w+)/g)].map(m => m[1]))]
-  const missing = fields.filter(f => {
-    const inCloud = new RegExp('\\b' + f + '\\s*:').test(cloudSrc)
-    const inPage = new RegExp('\\b' + f + '\\s*[=:]').test(pageSrc)
-    return !inCloud && !inPage
+  /*
+   * ★ 2026-11-03：从只查 `result.` 扩到 `result.` / `poker.` / `uw.` 三组。
+   *
+   *   它们都只有一个来源（结算对象 / 金花的 poker 子对象 / 卧底的 uw 子对象），
+   *   不像 `item.` 那样多义 —— 所以可以精确查。
+   *
+   *   ④ 只查了 `room.` 的 35 个字段，而 `poker.` 9 个、`uw.` 13 个从来没查过。
+   *   这一轮补上了，结果是全部有产出（没有幽灵）。
+   */
+  let totalFields = 0
+  const allMissing = []
+  ;['result', 'poker', 'uw'].forEach(pfx => {
+    const fields = [...new Set([...wxml.matchAll(new RegExp(pfx + '\\.(\\w+)', 'g'))].map(m => m[1]))]
+    totalFields += fields.length
+    fields.forEach(f => {
+      const inCloud = new RegExp('\\b' + f + '\\s*:').test(cloudSrc)
+      const inPage = new RegExp('\\b' + f + '\\s*[=:]').test(pageSrc)
+      if (!inCloud && !inPage) allMissing.push(pfx + '.' + f)
+    })
   })
 
-  assert.deepStrictEqual(missing, [],
-    '这些 `result.xxx` 是幽灵字段（模板在用，但云函数和 decorate 都没产出）：\n    ' +
-    missing.join('\n    ') + '\n    （`result` 只有结算对象一个来源，可以直接查）')
-  ok('★ 模板里 ' + fields.length + ' 个 result.xxx 字段都有人产出')
+  assert.deepStrictEqual(allMissing, [],
+    '这些是幽灵字段（模板在用，但云函数和 decorate 都没产出）：\n    ' +
+    allMissing.join('\n    ') +
+    '\n    （这三个前缀都只有一个来源，可以直接查）')
+  ok('★ 模板里 ' + totalFields + ' 个 result./poker./uw. 字段都有人产出')
 }
