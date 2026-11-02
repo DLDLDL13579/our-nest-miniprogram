@@ -300,10 +300,26 @@
   font-size: 24rpx; font-weight: 700; color: #241A16;
   margin-right: 10rpx;
 }
-.pav.s0 { background: var(--gold) }
-.pav.s1 { background: #E0714F }
-.pav.s2 { background: #7FA890 }
-.pav.s3 { background: #9AA8C8 }
+/*
+ * ★★★ 2026-11-02：头像颜色从 **4 种扩到 8 种**。
+ *
+ *   大话骰和比大小都支持 8 人，而 `seat % 4` 只有 4 种颜色 ——
+ *   **1 号（座位 1）和 5 号（座位 5）的头像完全同色**，
+ *   桌上认不出谁是谁。这是"人多时才出现"的 bug，平时看不出来。
+ *
+ *   色相间隔 45°（8 等分），亮度 62%、饱和 42%：
+ *     · 亮度够高，深色背景上清楚
+ *     · 饱和度压到 42%，8 个色块并排不会像「调色盘」
+ *     · 近景是**首字母**（`initial`），所以底色只要"能区分"就够，不需要抢眼
+ */
+.pav.s0 { background: #C77575 }   /*   0° */
+.pav.s1 { background: #C7B275 }   /*  45° */
+.pav.s2 { background: #9EC775 }   /*  90° */
+.pav.s3 { background: #75C78A }   /* 135° */
+.pav.s4 { background: #75C7C7 }   /* 180° */
+.pav.s5 { background: #758AC7 }   /* 225° */
+.pav.s6 { background: #9E75C7 }   /* 270° */
+.pav.s7 { background: #C775B2 }   /* 315° */
 
 /* 玩家列表标题行的右侧：锁房开关 + 人数 */
 .plist-r { display: flex; align-items: center; gap: 10rpx }

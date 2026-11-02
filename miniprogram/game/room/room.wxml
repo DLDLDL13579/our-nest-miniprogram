@@ -240,7 +240,7 @@
             class="pitem {{item.isMe ? 'me' : ''}} {{item.isMe ? 'canedit' : ''}}"
             data-me="{{item.isMe}}" bindtap="renameMe">
         <!-- 首字头像：多人局里"认人"比"认编号"快得多 -->
-        <view class="pav s{{item.seat % 4}}">{{item.initial}}</view>
+        <view class="pav s{{item.seat % 8}}">{{item.initial}}</view>
         <view class="pseat">{{item.seat}}</view>
         <view class="pname">
           <!-- ★ 名字要能截断（2026-10-30）：最长允许 12 个字，加上「我/房主/掉线」
@@ -800,7 +800,7 @@
                   class="uw-p {{item.isMe ? 'self' : ''}} {{room.uw.myVote === item.openid ? 'picked' : ''}}"
                   data-oid="{{item.openid}}" bindtap="uwVote">
               <!-- 首字头像（与大厅玩家列表同一套）：12 人局里"认脸"比"认名字"快得多 -->
-              <view class="pav s{{item.seat % 4}}">{{item.initial}}</view>
+              <view class="pav s{{item.seat % 8}}">{{item.initial}}</view>
               <text class="uw-pn">{{item.name}}</text>
               <text wx:if="{{item.isMe}}" class="uw-tag">我</text>
               <text wx:if="{{room.uw.myVote === item.openid}}" class="uw-tick">已投</text>
