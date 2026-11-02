@@ -3473,6 +3473,21 @@ Page({
 
   async doBid(e) {
     if (!this.specGuard()) return
+    /*
+     * ★★ 2026-11-03：防止**连点叫骰**。
+     *
+     *   叫骰是"往上叫"——连点两次会变成：
+     *     第一次：3个4 → 4个4
+     *     第二次：4个4 → 4个5（拿的是 just setData 之后的新选项）
+     *   于是**用户以为只点了一次，实际叫了两手**。
+     *   而大话骰里多叫一手是实打实的劣势（把天花板抬高了）。
+     *
+     *   用时间窗（600ms）不是布尔标记：万一某次异常没走到 finally，
+     *   布尔标记会把叫骰**永久锁死**，那比连点严重得多。
+     */
+    const nowBid = Date.now()
+    if (this._bidAt && nowBid - this._bidAt < 600) return
+    this._bidAt = nowBid
     const ds = e.currentTarget.dataset
     const i = Number(ds.i)
     /*
