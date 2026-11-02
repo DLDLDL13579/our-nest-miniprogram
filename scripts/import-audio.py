@@ -118,11 +118,11 @@ MAP = [
     #   意味着一局 5 颗骰子里，前几颗是合成的"嗒"、后面是真实的"嗒"，
     #   **同一种声音在一屏里出现两种音色**。
     #   dieThrow1 起音 34ms（导入时会按能量裁掉前面的静默，等效起音 0）。
-    dict(dst='dice-settle',      src='dieThrow1.ogg', seconds=0.30, sr=44100, fifty=-15.5,
+    dict(dst='dice-settle',      src='dieThrow1.ogg', seconds=0.30, sr=44100, fifty=-19.0, allow_down_db=5.0,
          note='逐颗落定 · 主文件（与 2/3 变体同源，音色统一）'),
-    dict(dst='dice-settle-2',    src='dieThrow2.ogg',  seconds=0.30, sr=44100, fifty=-12.6,
+    dict(dst='dice-settle-2',    src='dieThrow2.ogg',  seconds=0.30, sr=44100, fifty=-11.0,
          note='逐颗落定（起音 3ms，一局十几下必须克制）'),
-    dict(dst='dice-settle-3',    src='dieThrow3.ogg',  seconds=0.30, sr=44100, fifty=-18.8,
+    dict(dst='dice-settle-3',    src='dieThrow3.ogg',  seconds=0.30, sr=44100, fifty=-17.5,
          note='逐颗落定 · 变体 3'),
     dict(dst='dice-on-table',    src='diceThrow3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
          note='揭盅后骰子在桌上滚两下（起音 12ms）'),
@@ -146,7 +146,7 @@ MAP = [
     #   换成真实录音之后，`bong_001` 的前 50ms 能量天然比合成版高，
     #   实测 -12.78 —— **比扣盅（-13.81）还响**，层级反了。
     #   而「扣盅是全场最重的一下」是这个游戏的声音骨架，不能让揭盅压过去。
-    dict(dst='reveal-hit', src='bong_001.ogg', seconds=0.70, sr=44100, fifty=-15.0,
+    dict(dst='reveal-hit', src='bong_001.ogg', seconds=0.70, sr=44100, fifty=-18.3,
          note='揭盅：一声真实的「当」（起音 1ms）'),
     dict(dst='glass-clink', src='impactGlass_heavy_001.ogg', seconds=0.55, sr=44100, fifty=-13.0,
          note='碰杯（罚酒/干杯那一刻）'),
@@ -287,7 +287,8 @@ def soft_limit(x, ceil=PEAK_CEIL, knee=0.72):
 MAX_GAIN_DB = 8.0   # 单次归一化最多提这么多 —— 再多就是暴力压缩，会糊
 
 
-def normalize(x, sr, target_db, mode='fifty', max_gain_db=MAX_GAIN_DB, limit=True):
+def normalize(x, sr, target_db, mode='fifty', max_gain_db=MAX_GAIN_DB, limit=True,
+              allow_down_db=0.0):
     """
     把响度推到目标，并守住峰值线。**增益有上限**。
 
@@ -304,8 +305,16 @@ def normalize(x, sr, target_db, mode='fifty', max_gain_db=MAX_GAIN_DB, limit=Tru
         return x
     need = target_db - cur
     if need <= 0:
-        return x
-    gain = min(need, max_gain_db)
+        # ★ 2026-11-02：加一个**受控的降幅**（默认仍然不降）。
+        #   原来一律 return，导致"真实录音比目标响"时无法压下来 ——
+        #   而「逐颗落定」恰好需要压（一局响十几次，必须克制）。
+        #   `allow_down_db` 是每个条目显式声明"最多能降多少"，不是全局放开。
+        cap_down = allow_down_db
+        if need >= -abs(cap_down):
+            return x
+        gain = max(need, -abs(cap_down))
+    else:
+        gain = min(need, max_gain_db)
     y = x * (10 ** (gain / 20.0))
     pk = float(np.max(np.abs(y)))
     if pk > PEAK_CEIL and limit:
@@ -370,12 +379,26 @@ def process(one, src_dir, dry=False):
         tail = one.get('tail_ms', 0)
         seed = one.get('seed', 11)
         # spatialize 内部是纯 Python list 运算，回来要转回 ndarray
-        d = np.asarray(sp(d, sr_out, tail_ms=tail, seed=seed), dtype=np.float64)
+        # ★★ 2026-11-02：**关掉瞬态锐化**（final_sharpen / transient）。
+        #
+        #   `sharpen_transient` 是给**合成音**设计的 —— 合成音的起音天生软
+        #   （正弦渐入），需要人为加一层高频脉冲才"扎"。
+        #
+        #   而真实录音的起音本来就是锐的。再锐化一次的结果，实测在 `cup-slam` 上：
+        #     低频占比 80.4% → **68.8%**，>6kHz 0% → **5.8%**
+        #   也就是把"一个金属盅砸在桌上的闷响"，改成了"啪"的一声脆响 ——
+        #   **方向正好相反**。扣盅要的是沉，不是脆。
+        d = np.asarray(
+            sp(d, sr_out, tail_ms=tail, seed=seed,
+               transient=False, final_sharpen=False),
+            dtype=np.float64)
 
     if one.get('rms') is not None:
-        d = normalize(d, sr_out, one['rms'], mode='rms')
+        d = normalize(d, sr_out, one['rms'], mode='rms',
+                      allow_down_db=one.get('allow_down_db', 0.0))
     else:
-        d = normalize(d, sr_out, one['fifty'], mode='fifty')
+        d = normalize(d, sr_out, one['fifty'], mode='fifty',
+                      allow_down_db=one.get('allow_down_db', 0.0))
 
     # 去直流（int16 前必须做，理由见 gen-audio.py 的 quantize 注释）
     d = d - float(np.mean(d))
