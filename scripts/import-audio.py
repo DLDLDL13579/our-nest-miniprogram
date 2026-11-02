@@ -103,41 +103,57 @@ MAP = [
     # ★ 这三个是**持续音**（1 秒的摇动），不能用"前 50ms"衡量 ——
     #   真实录音的摇盅在头 50ms 还在起势，硬把开头推响等于把包络压平。
     #   持续音用整体 RMS 定标（rms 字段）。
-    dict(dst='cup-shake',        src='dice-shake-3.ogg', seconds=1.05, sr=44100, rms=-22.0,
+    dict(dst='cup-shake',        src='dieShuffle3.ogg', seconds=1.05, sr=44100, rms=-22.0,
          note='摇盅 1 秒（feedback.cupShake 的 animMs=1050）'),
-    dict(dst='shaker-metal',     src='dice-shake-3.ogg', seconds=0.90, sr=44100, rms=-24.0,
+    dict(dst='shaker-metal',     src='dieShuffle3.ogg', seconds=0.90, sr=44100, rms=-24.0,
          note='金属盅摇动（大话骰开局那一下）'),
-    dict(dst='dice-tumble-wood', src='dice-shake-3.ogg', seconds=1.00, sr=22050, rms=-21.0,
+    dict(dst='dice-tumble-wood', src='dieShuffle3.ogg', seconds=1.00, sr=22050, rms=-21.0,
          note='骰子翻滚（比大小用）'),
-    dict(dst='dice-into-cup',    src='dice-throw-1.ogg', seconds=0.45, sr=44100, fifty=-20.0,
+    dict(dst='dice-into-cup',    src='diceThrow1.ogg', seconds=0.45, sr=44100, fifty=-20.0,
          note='骰子入盅（起音 24ms）'),
     # ★ 骰子落定的多采样变体（2026-10-30）：一局要响十几次，
     #   只靠 playbackRate ±4% 变调是"同一个声音变声"，而这是三份不同录音。
     #   参数与主文件保持一致（同样的裁切长度/响度目标），只换素材。
-    dict(dst='dice-settle-2',    src='die-throw-2.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+    dict(dst='dice-settle-2',    src='dieThrow2.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
          note='逐颗落定（起音 3ms，一局十几下必须克制）'),
-    dict(dst='dice-settle-3',    src='die-throw-3.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
+    dict(dst='dice-settle-3',    src='dieThrow3.ogg',  seconds=0.30, sr=44100, fifty=-15.5,
          note='逐颗落定 · 变体 3'),
-    dict(dst='dice-on-table',    src='dice-throw-3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
+    dict(dst='dice-on-table',    src='diceThrow3.ogg', seconds=0.42, sr=44100, fifty=-18.0,
          note='揭盅后骰子在桌上滚两下（起音 12ms）'),
+    # ---------- 高频 UI：用 Kenney Interface Sounds 的真实录音（2026-11-02）----------
+    # ★★ 为什么这几个必须换：tap / tap-soft / tick 是**一局点几十次**的声音。
+    #    合成版是短促的噪声脉冲，单听还行，连点十几下就是"电子滴滴声"。
+    dict(dst='tap',        src='click_001.ogg', seconds=0.10, sr=44100, fifty=-13.0,
+         note='点击反馈（起音 1ms，一局几十次）'),
+    # ★ 2026-11-02：原来用 click_004（10ms）—— 太短了，量化误差占比过大，
+    #   实测 DC 偏置 278（判据 50），开局会"噗"一声。
+    #   换成 click_001（100ms）并压低 5dB：同样是真实的点击声，但能量铺得更开。
+    dict(dst='tap-soft',   src='click_001.ogg', seconds=0.10, sr=44100, fifty=-18.0,
+         note='轻点击（选牌/换牌）'),
+    dict(dst='tick',       src='click_003.ogg', seconds=0.07, sr=44100, fifty=-14.0,
+         note='转盘咔哒（一局几十次，间隔 34ms 起）'),
+    dict(dst='toggle-on',  src='switch_002.ogg', seconds=0.30, sr=44100, fifty=-15.0,
+         note='开关打开（起音 1ms）'),
+    dict(dst='cup-slam',   src='impactMetal_heavy_000.ogg', seconds=0.55, sr=44100, fifty=-11.0,
+         note='扣盅：金属盅砸在桌上（低频 85%，全场最重的一下）'),
+    # ★ 2026-11-02：fifty 从 -12.5 调到 -15.0。
+    #   换成真实录音之后，`bong_001` 的前 50ms 能量天然比合成版高，
+    #   实测 -12.78 —— **比扣盅（-13.81）还响**，层级反了。
+    #   而「扣盅是全场最重的一下」是这个游戏的声音骨架，不能让揭盅压过去。
+    dict(dst='reveal-hit', src='bong_001.ogg', seconds=0.70, sr=44100, fifty=-15.0,
+         note='揭盅：一声真实的「当」（起音 1ms）'),
+    dict(dst='glass-clink', src='impactGlass_heavy_001.ogg', seconds=0.55, sr=44100, fifty=-13.0,
+         note='碰杯（罚酒/干杯那一刻）'),
     # ---------- 纸牌 ----------
-    dict(dst='card-deal',        src='card-place-1.ogg', seconds=0.32, sr=44100, fifty=-20.0,
+    dict(dst='card-deal',        src='cardPlace1.ogg', seconds=0.32, sr=44100, fifty=-20.0,
          note='发牌（起音 31ms、前 50ms −16.6，整包里最跟手的一张）'),
-    dict(dst='card-flip',        src='card-slide-2.ogg', seconds=0.28, sr=44100, fifty=-21.0,
+    dict(dst='card-flip',        src='cardSlide2.ogg', seconds=0.28, sr=44100, fifty=-21.0,
          note='翻牌（起音 9ms，按住看牌那一刻）'),
-    dict(dst='card-spread',      src='card-shove-4.ogg', seconds=0.55, sr=44100, fifty=-18.0,
+    dict(dst='card-spread',      src='cardShove4.ogg', seconds=0.55, sr=44100, fifty=-18.0,
          note='摊牌：几张牌一起拍在桌上（起音 22ms）'),
     # ---------- 筹码 ----------
-    dict(dst='chip-bet',         src='chips-stack-4.ogg', seconds=0.30, sr=44100, fifty=-18.0,
+    dict(dst='chip-bet',         src='chipsStack4.ogg', seconds=0.30, sr=44100, fifty=-18.0,
          note='投票落定（一颗子放进碗里，起音 5ms）'),
-    # ---------- 酒桌本体：碰杯 ----------
-    # ★ 来自另一个包：Kenney Impact Sounds（同样是 CC0）。
-    #   Casino Audio 里没有玻璃，而"碰杯"是酒桌味儿最重的一声 ——
-    #   35 个音效里原来一个杯子都没有，只有"咽酒"（gulp）。
-    #   实测 impactGlass_light_002 起音 0ms、前 50ms −13.8，是这组里最跟手的一下。
-    dict(dst='glass-clink',      src='/tmp/k-imp/Audio/impactGlass_light_002.ogg',
-         seconds=0.22, sr=44100, fifty=-14.0,
-         note='碰杯（罚酒/干杯那一刻；起音 0ms）'),
 ]
 
 

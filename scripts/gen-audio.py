@@ -1071,7 +1071,6 @@ ALL = [
     # 骰子
     ('dice-settle',  _sp(dice_settle, tail_ms=180, seed=45), SR_MID),
     # 转盘
-    ('tick',         lambda: tick(),          SR_HI),  # 机械咔哒，极高频
     ('wheel-start',  wheel_start,             SR_LO),  # 扫频 180→420Hz
     # wheel-slow 从 SR_HI 降到 SR_MID：实测高频能量比只有 0.563（tick 才有 0.509 但它只有 18ms），
     # 这一串咔哒的本体是中频撞击，降采样率听感无损、体积减半（原 68.9 KB → 约 34 KB）
@@ -1089,11 +1088,8 @@ ALL = [
     #
     # 提到 22050Hz 后 Nyquist = 11kHz，2~6kHz 的脆响频段完全够。
     # 代价：文件从 0.5KB 涨到约 2KB —— 这两个加起来不到 5KB，可以忽略。
-    ('tap',          tap,                     SR_HI),
-    ('tap-soft',     tap_soft,                SR_HI),
     # ★ toggle 也走 22050：它的"咔"主体是宽带瞬态，11025 的 Nyquist(5.5k)
     #   会把最脆的那一段切掉。
-    ('toggle-on',    toggle_on,               SR_HI),
     ('toggle-off',   toggle_off,              SR_HI),
     ('countdown',    countdown,               SR_MID),
     ('countdown-go', countdown_go,            SR_MID),
@@ -1613,7 +1609,13 @@ LOUDNESS_FIX = {
     #   而扣盅 −10.9、揭晓 −12.1）。听感是"输了很响、扣盅很轻"，因果反了。
     #   数字是按「100ms 窗口最大 RMS」这个口径给的（本函数用 short_term_db），
     #   与前 50ms RMS 差 −1 ~ −2 dB。
-    'fail-drop':  -13.2,   # 惩罚下坠：结果的情绪音，不该压过动作重击
+    # ★★ 2026-11-02 重定标：-13.2 → -16.5。
+    #   cup-slam 换成 Kenney 真实录音后实测 -13.8（峰值已满，提不上去），
+    #   而 fail-drop 原来是 -12.5 —— **结果音压过了动作重击**，层级反了。
+    #   「扣盅是全场最重的一下」是骨架，所以让结果音退下来。
+    'fail-drop':  -16.5,
+    # 撒花同理：它是庆祝音，但也是'结果'档，不能压过扣盅（实测 -12.6 太响）
+    'confetti':   -16.0,
     'combo-1':    -14.9,   # 连击：好消息提示，同理
     'combo-2':    -14.9,
     'combo-3':    -14.9,
@@ -1954,29 +1956,18 @@ def ambient_room():
 
 ALL_V3 = [
     ('impact-low',        _sp(impact_low, tail_ms=120, seed=27), SR_LO),
-    ('shaker-metal',      _sp(shaker_metal, tail_ms=260, seed=23), SR_HI),
-    ('dice-tumble-wood',  _sp(dice_tumble_wood, tail_ms=200, seed=25), SR_HI),
     ('combo-1',           lambda: combo_up(0), SR_MID),
     ('combo-2',           lambda: combo_up(1), SR_MID),
     ('combo-3',           lambda: combo_up(2), SR_MID),
     ('combo-4',           lambda: combo_up(3), SR_MID),
     ('fail-drop',         _sp(fail_drop, tail_ms=280, seed=31), SR_HI),
     ('charge-up',         charge_up,         SR_MID),   # 2026-11-02：泛音要到 3.8kHz，8000Hz 存不下
-    ('reveal-hit',        _sp(reveal_hit, tail_ms=200, seed=21, final_sharpen=False), SR_HI),
     ('countdown-urgent',  countdown_urgent,  SR_MID),
-    ('chip-bet',          _sp(chip_bet, tail_ms=160, seed=33), SR_HI),
     ('gulp',              gulp,              SR_MID),
     ('confetti',          _sp(confetti, tail_ms=300, seed=29), SR_MID),
     # v4 骰盅组：让摇骰子像现实 —— 入盅 / 摇盅 / 扣盅 / 揭盅 / 桌上滚动
-    ('dice-into-cup',     _sp(dice_into_cup, tail_ms=160, seed=61), SR_HI),
-    ('cup-shake',         _sp(cup_shake, tail_ms=200, seed=63), SR_HI),
-    ('cup-slam',          _sp(cup_slam, tail_ms=260, seed=65, final_sharpen=False), SR_HI),
     ('cup-lift',          _sp(cup_lift, tail_ms=140, seed=67), SR_MID),
-    ('dice-on-table',     _sp(dice_on_table, tail_ms=180, seed=69), SR_HI),
     # v5 纸牌组：牌是薄片，反射比骰子短得多（tail 只要 90~140ms）
-    ('card-deal',         _sp(card_deal, tail_ms=120, seed=71), SR_HI),
-    ('card-flip',         _sp(card_flip, tail_ms=90, seed=73), SR_HI),
-    ('card-spread',       _sp(card_spread, tail_ms=140, seed=75), SR_HI),
     # v6 环境底噪（调研第 10 条）
     ('ambient-room',      ambient_room,      SR_LO),
 ]
