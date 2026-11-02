@@ -73,6 +73,10 @@ function canRaise(cur, next, playerCount) {
     return { ok: true, why: '' }
   }
 
+  /* ★ 2026-11-03：不斋时不许喊 1（喊 1 = 斋，见 options 里的说明） */
+  if (Number(next.face) === 1 && !next.zhai) {
+    return { ok: false, why: '喊 1 要先开斋（1 不再当万能）' }
+  }
   const curZhai = !!cur.zhai
   const nextZhai = !!next.zhai
 
@@ -139,6 +143,20 @@ function options(playerCount, cur, zhaiMode, max) {
   const startN = cur ? 1 : openNeed(p, zhai, 2)
   for (let n = startN; n <= total; n++) {
     for (let f = 1; f <= 6; f++) {
+      /*
+       * ★★ 2026-11-03：**不斋时不生成「N个1」**。
+       *
+       *   在酒桌上，喊「四个一」本身就意味着**把 1 从万能位上拿下来**
+       *   （喊 1 之后 1 只算自己）—— 也就是"斋"。所以「不斋 · 1 当万能」
+       *   的标签下根本不该出现「4个1」这个选项。
+       *
+       *   而原来它确实出现，且 `canRaise` 也放行了 ——
+       *   计分上它和「4个1斋」完全一样（`countActual` 里 face===1 时
+       *   不加倍、也不算万能），**只有界面标签在骗人**。
+       *
+       *   要喊 1 就先开斋开关（那个开关就在这一排按钮上面）。
+       */
+      if (f === 1 && !zhai) continue
       if (canRaise(cur, { n: n, face: f, zhai: zhai }, p).ok) {
         out.push({
           n: n,
