@@ -69,7 +69,7 @@
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .16s backwards;
 }
 .lb-t {
-  font-size: 52rpx; font-weight: 700; color: #F6E7C3;
+  font-size: 52rpx; font-weight: 700; color: var(--cream);
   margin-top: 6rpx; letter-spacing: 3rpx; line-height: 1.15;
   animation: lineRise .5s cubic-bezier(0, 0, .2, 1) .24s backwards;
 }
@@ -150,7 +150,7 @@
 .first-hint {
   width: 100%;
   margin: 0 0 12rpx 4rpx;
-  font-size: 21rpx; color: #E8B33C;
+  font-size: 21rpx; color: var(--gold);
   animation: hintIn .5s ease-out both;
 }
 @keyframes hintIn { from { opacity: 0; transform: translateY(-6rpx) } to { opacity: 1; transform: none } }
