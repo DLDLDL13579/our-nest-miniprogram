@@ -263,3 +263,47 @@ console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
     '大话骰的规则文案必须写清劈的封顶是 8 杯（代码是 min(8, mult*2)）')
   console.log('  ✓ 规则文案里的「最多 8 杯」和代码上限一致')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**四个玩法的规则文案 vs 代码**（上一轮只查了大话骰）
+ *
+ * 每条规则里的"可验证陈述"都过一遍 —— 这类检查的价值在于：
+ * 文案是给玩家看的**承诺**，而代码是**实际执行**。
+ * 两者不一致时玩家不会报 bug，只会觉得"这游戏怪怪的"。
+ * ========================================================================== */
+{
+  const g = fs.readFileSync(path.join(__dirname, '..', 'miniprogram/utils/games.js'), 'utf8')
+  const dicerank = require('../miniprogram/utils/dicerank.js')
+  const poker = require('../miniprogram/utils/poker.js')
+
+  /* ---- 比大小：牌型链 + 两对先比大对 + 散牌比最大 ---- */
+  const dice = g.slice(g.indexOf("id: 'dice'"), g.indexOf("id: 'undercover'"))
+  assert.ok(/散牌 < 一对 < 两对 < 三条 < 顺子 < 葫芦 < 四条 < 五条/.test(dice),
+    '比大小的规则必须写出完整的 8 级牌型链')
+
+  const rk = (dice) => dicerank.rankPlayers([{ seat: 1, name: 'x', dice }]).ranked[0]
+  const a2 = rk([6, 6, 2, 2, 1])   // 两对：大对 6、小对 2
+  const b2 = rk([5, 5, 4, 4, 1])   // 两对：大对 5、小对 4
+  assert.ok(a2.rankKey > b2.rankKey,
+    '规则说「两对先比大对」—— 66+22 应该赢 55+44')
+  const s1 = rk([6, 4, 2, 1, 3])   // 散牌，最大 6
+  const s2 = rk([6, 4, 2, 1, 5])   // 散牌，最大 6，第二张 5
+  assert.ok(s2.rankKey > s1.rankKey,
+    '规则说「散牌比最大的那张」—— 同最大时应该继续往下比（6,5 > 6,4）')
+
+  /* ---- 金花：牌型链 + A23 第二大 ---- */
+  const pk = g.slice(g.indexOf("id: 'poker'"), g.indexOf("id: 'wheel'"))
+  assert.ok(/豹子 > 顺金 > 金花 > 顺子 > 对子 > 单张/.test(pk),
+    '金花的规则必须写出完整的 6 级牌型链')
+  assert.ok(/A23 是第二大/.test(pk), '金花的规则必须写清 A23 是第二大顺子')
+
+  /* 实测 A23 确实第二大 */
+  const mk = (r1, r2, r3) => [{ r: r1, s: 0 }, { r: r2, s: 0 }, { r: r3, s: 0 }].map(c => Object.assign({}, c, { s: 1 }))
+  /* 用花色错开避免顺金 */
+  const a23 = poker.rank([{ r: 14, s: 0 }, { r: 2, s: 1 }, { r: 3, s: 2 }])
+  const kqj = poker.rank([{ r: 13, s: 0 }, { r: 12, s: 1 }, { r: 11, s: 2 }])
+  assert.ok(a23.name === kqj.name && a23.key > kqj.key,
+    'A23 和 KQJ 同为顺子，而 A23 应该更大')
+
+  console.log('  ✓ 比大小/金花的规则链与代码一致（含两对先比大对、散牌逐张比、A23 第二大）')
+}
