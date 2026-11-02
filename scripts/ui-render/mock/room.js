@@ -747,6 +747,17 @@ module.exports = {
     /* 卧底满员 12 人：座位条与投票列表会不会挤爆 */
     /* 我自己还没投：应显示「轮到你投了」，而不是「还差 N 人」 */
     /* 12 人房间（卧底的最大人数）：验玩家列表 + 规则 + 按钮会不会挤爆 */
+    /* 小屏（iPhone SE）：验紧凑布局 */
+    compactPk: () => {
+      const s = module.exports.states.pkMine()
+      s.compact = true
+      return s
+    },
+    compactLiar: () => {
+      const s = module.exports.states.liarPlay()
+      s.compact = true
+      return s
+    },
     lobby12: () => {
       const names = ['邓林', '倩萍', '阿杰', '老王', '小美', '大刘',
                      '阿强', '胖虎', '晓雯', '老陈', '阿凯', '小鱼']

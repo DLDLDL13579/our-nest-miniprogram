@@ -74,8 +74,15 @@ function rule(selector) {
    *   （小屏时盅按比例缩小，边界要另算）。所以这里只取基础规则。
    */
   css = css.replace(/@media[^{]*\{(?:[^{}]|\{[^}]*\})*\}/g, '')
-  /* 取最后一个匹配 —— 后面的规则会覆盖前面的 */
-  const re = new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\}', 'g')
+  /*
+   * ★ 2026-11-02：**只认顶层规则**（行首就是 `.selector {`），不认后代选择器。
+   *   加了小屏适配后有 `.gamepage.compact .cs-cup { width/height }` ——
+   *   它同样含 `.cs-cup`，取"最后一个匹配"就会拿到那份（没有 bottom），
+   *   报「盅 bottom 读不到 rpx 值」。
+   */
+  /* 取最后一个顶层匹配 —— 后面的规则会覆盖前面的 */
+  const re = new RegExp(
+    '(?:^|\\n)' + selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g')
   let m, last = null
   while ((m = re.exec(css))) last = m[1]
   assert.ok(last, 'wxss 里找不到规则 ' + selector)

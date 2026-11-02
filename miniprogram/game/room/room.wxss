@@ -2995,9 +2995,30 @@
 
    1200rpx ≈ 600px：比 iPhone 8 矮的都算小屏。
    ============================================================ */
-@media (max-height: 1200rpx) {
-  .cupscene { height: 430rpx; margin-bottom: 16rpx }
-  .cs-cup { width: 277rpx; height: 430rpx }
-  /* 场景里的骰子（左右两颗装饰）跟着缩小 */
-  .cs-die-scene { width: 52rpx; height: 52rpx }
-}
+/* ============================================================
+   小屏（iPhone SE 这类 568pt 屏）—— **用 class，不用 @media**
+   ------------------------------------------------------------
+   ⚠️ 为什么不用媒体查询（2026-11-02 踩到两次）：
+     ① `@media (max-height: 1200rpx)` —— **rpx 在媒体查询里不被解析**，整块静默失效
+     ② 改成 `600px` 后仍然**无法确认**：离线渲染器根本不处理 @media
+        （它不知道"屏幕高度"这个条件）
+     → 媒体查询这条路没法验证，只能赌真机。
+
+   现在的做法：`onLoad` 里读 `windowHeight`，≤600 时给 `.gamepage.compact`。
+   渲染器读 mock 的 data 就能验（mock 里给 `compact: true`）。
+   ============================================================ */
+.gamepage.compact .cupscene { height: 430rpx; margin-bottom: 16rpx }
+.gamepage.compact .cs-cup { width: 277rpx; height: 430rpx }
+.gamepage.compact .cs-die-scene { width: 52rpx; height: 52rpx }
+
+/* 金花操作页：小屏上「换底牌/换手牌/弃牌」会被挤出屏幕，牌区收 13% */
+.gamepage.compact .pk-flip { width: 118rpx; height: 167rpx }
+.gamepage.compact .pk-side { width: 118rpx; height: 167rpx }
+/* 说明行直接隐藏：「轮到你了」+ 下面两个带「比」的按钮已经把动作说完了 */
+.gamepage.compact .pk-note { display: none }
+
+/* 大房间号卡片收一半：顶部栏已经写着房间号，大卡片是「念给旁边的人」用的 */
+.gamepage.compact .codecard { padding: 18rpx 24rpx; margin-bottom: 14rpx }
+.gamepage.compact .cc-code { font-size: 76rpx; letter-spacing: 6rpx }   /* 76 是已有字号档，不新增 */
+.gamepage.compact .cc-hint { display: none }
+

@@ -207,6 +207,7 @@ Page({
   data: {
     ic: _IC,
     loading: true,
+    compact: false,   /* 小屏标记：onLoad 里按 windowHeight 算 */
     /* loading 超过 5 秒 → 换一句更诚实的提示（见 room.wxml） */
     loadingSlow: false,
     /* 阶段：entry（选建/加入）→ lobby（等人齐）→ playing → over */
@@ -343,6 +344,29 @@ Page({
   },
 
   onLoad(q0) {
+    /*
+     * ★★ 2026-11-02：**小屏标记**（iPhone SE 这类 568pt 高的屏）。
+     *
+     *   为什么不用 `@media`：
+     *     · 写了 `@media (max-height: 1200rpx)` —— **rpx 在媒体查询里不被解析**，
+     *       整块静默失效
+     *     · 改成 `600px` 后仍然无法确认，因为**离线渲染器根本不处理 @media**
+     *       （它不知道屏幕高度这个条件）
+     *     → 也就是说，媒体查询这条路**没法验证**，只能赌真机。
+     *
+     *   改成在 js 里判断 `windowHeight`，加一个 class —— 这样
+     *   **渲染器读 mock 的 data 就能验证**（mock 里给 `compact: true` 即可）。
+     *
+     *   600px 的门槛：iPhone SE 内容区约 504、iPhone 8 约 553、
+     *   iPhone 13 约 753 —— 只有前两个算小屏。
+     */
+    let compact = false
+    try {
+      const info = wx.getSystemInfoSync()
+      compact = (info.windowHeight || 800) <= 600
+    } catch (e) { /* 拿不到就当大屏 */ }
+    this.setData({ compact })
+
     /*
      * 预加载几个"第一下不能慢"的音效（摇盅、扣盅、翻牌…）。
      * ⚠️ 这里原来是 `sfx.init && sfx.init()` —— 而 sfx 从来没导出过 init，

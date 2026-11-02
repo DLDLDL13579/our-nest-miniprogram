@@ -285,6 +285,21 @@ function renderPage(key, { state = 'default', outDir = OUT, width = 0, height = 
   execFileSync(CHROME, [
     '--headless=new', '--disable-gpu', '--no-sandbox', '--hide-scrollbars',
     '--force-device-scale-factor=2',
+    /*
+     * ★★★ 2026-11-02 补上 `--virtual-time-budget`。
+     *
+     *   没有它时，Chrome 会在**样式还没完全应用**时就截图 ——
+     *   而这件事**极其难以发现**：
+     *     · 图片能正常出（不是空白）
+     *     · 大部分样式是对的（所以看不出问题）
+     *     · 只有"靠后声明的规则 / 需要重新计算布局的规则"被漏掉
+     *
+     *   实测：`.gamepage.compact .pk-note { display: none }` 在
+     *   `--dump-dom` + `getComputedStyle` 里返回 `none`（规则没错），
+     *   而同一份 HTML 的截图里那行文字**还在**。
+     *   加了 800ms 虚拟时间后一致。
+     */
+    '--virtual-time-budget=800',
     '--screenshot=' + pngFile,
     '--window-size=' + w + ',' + h,
     'file://' + htmlFile

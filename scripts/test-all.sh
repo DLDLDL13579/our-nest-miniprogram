@@ -85,6 +85,15 @@ python3 scripts/audio-levels.py
 echo "═══ 9/9 完整流程（五个玩法各跑一局到结算）═══"
 node scripts/test-flows.js
 
+# ★ 小屏紧凑布局（2026-11-02）：**先渲染一次，再直接问浏览器**
+#   为什么不在截图上看：截图对"靠后声明/需要重新布局的规则"不可信
+#   （同一份 HTML，getComputedStyle 说 none/59px，截图里却还是原样）。
+if [ -f outputs/ui/room-compactPk.html ]; then
+  node scripts/verify-compact.js
+else
+  echo "  （跳过 compact 验证：还没渲染过 compactPk）"
+fi
+
 # ★ 显式汇总（2026-10-30）。
 #   起因：有两次 test-all 以 exit=1 结束却只有一行 SyntaxError，重跑又过。
 #   `set -e` 理论上该让脚本中途退出，但它对**管道/子 shell/命令替换**有已知盲区，

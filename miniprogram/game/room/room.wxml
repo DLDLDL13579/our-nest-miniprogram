@@ -34,7 +34,7 @@
   </view>
 
   <!-- ============ 入口：建房 / 加入 ============ -->
-<view class="gamepage {{reduceMotion ? 'reduce-motion' : ''}} {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
+<view class="gamepage {{compact ? 'compact' : ''}} {{reduceMotion ? 'reduce-motion' : ''}} {{rolling ? 'rolling' : ''}} {{suspense ? 'suspense' : ''}} {{impact ? 'impact' : ''}} {{freeze ? 'freeze' : ''}}">
     <!--
       ★ 错误提示放在**所有阶段之外**（2026-10-29）。
       原来它只在 stage==='entry' 块里 —— 如果错误发生在别的阶段
