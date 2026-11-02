@@ -3973,8 +3973,9 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const cloud = fs.readFileSync(
     path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
   /* 加题的地方必须把空白折成一个空格 */
-  assert.ok(/const text = String\(event\.text \|\| ''\)\s*\.replace\(\/\\s\+\/g, ' '\)/.test(cloud),
-    '加题时必须把换行/连续空白折成一个空格（否则会把界面撑乱）')
+  /* ★ 2026-11-03：实现从链式调用改成了 `clip(...)` 一行，正则也跟着变 */
+  assert.ok(/const text = clip\(String\(event\.text \|\| ''\)\.replace\(\/\\s\+\/g, ' '\)\.trim\(\), MAX_CARD\)/.test(cloud),
+    '加题时必须把换行/连续空白折成一个空格，并按码点截断到 MAX_CARD')
   ok('★ 自定义题卡会折成单行（换行不撑爆界面）')
 }
 
@@ -4018,4 +4019,27 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '（这个用例应该能复现 slice 切出半个 emoji 的现象）')
 
   ok('★ 昵称按码点切（emoji 不会被切成半个）')
+}
+
+/* ============================================================================
+ * 2026-11-03 追加：**所有"按长度截断用户输入"的地方都必须按码点**
+ *
+ * `slice(0, n)` 按 UTF-16 码元切，emoji 占 2 个 —— 会切出半个 emoji。
+ * 昵称 12 字、题卡 60 字，两个都可能撞上。
+ *
+ * 判据：云端源码里出现 `event.name/text ... .slice(0, N)` 就是错的。
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+  const bad = []
+  /* 找 event.xxx 出现在 trim/slice 链里的地方 */
+  ;[...cloud.matchAll(/event\.(name|text)[^;\n]{0,80}?\.slice\(0,\s*\w+\)/g)].forEach(m => {
+    bad.push(m[0].slice(0, 60))
+  })
+  assert.deepStrictEqual(bad, [],
+    '这些地方按码元截断用户输入（emoji 会被切成半个）：\n    ' + bad.join('\n    '))
+  ok('★ 用户输入的截断全部按码点（nick 12 / 题卡 60）')
 }

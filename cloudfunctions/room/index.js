@@ -2449,10 +2449,7 @@ exports.main = async (event) => {
        *
        *   题库里 200 条内置题全是单行，自定义题也该是。
        */
-      const text = String(event.text || '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, MAX_CARD)
+      const text = clip(String(event.text || '').replace(/\s+/g, ' ').trim(), MAX_CARD)
       if (!text) return { ok: false, msg: '题目不能是空的' }
 
       /*
