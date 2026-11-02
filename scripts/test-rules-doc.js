@@ -150,9 +150,23 @@ console.log('\n【规则文案】')
     (liar.how || []).filter(h => /个/.test(h)).join(' | '))
   ok('大话骰规则文案：全围 7 个 / 围骰 6 个（与 dicerank 实现一致）')
 
-  /* 起叫 1.5 倍的规则要在文案里出现（这是玩家最容易记错的） */
-  const bidText = (GAMES.filter(g => g.id === 'liar')[0].how || []).join('')
-  assert.ok(/斋|1\.5|一半/.test(bidText) || true, '')   /* 起叫目前不在 how 里，跳过 */
+  /*
+   * 比大小的文案必须说「牌型」，不能说「点数最大」——
+   * 牌型系统上线后，"总点数最大的赢"是**错的**
+   * （11 点的葫芦赢 26 点的两对）。
+   * 这条也是我重写规则时漏掉的地方：代码改了，给玩家看的话没改。
+   */
+  const dice = GAMES.filter(g => g.id === 'dice')[0]
+  const diceText = (dice.how || []).join('\n')
+  assert.ok(/牌型/.test(diceText),
+    '比大小的规则文案必须说明「比的是牌型」，实际：' + diceText)
+  assert.ok(/散牌|一对|葫芦/.test(diceText),
+    '比大小的规则文案应列出牌型顺序，实际：' + diceText)
+  assert.ok(!/点数最大的赢/.test(diceText),
+    '「点数最大的赢」在牌型系统下是错的，文案不能这么写')
+  assert.ok(/单骰|重摇/.test(diceText),
+    '比大小的规则文案应提到「单骰可以重摇」')
+  ok('比大小规则文案：比牌型（不是比总点数）、含单骰重摇')
 }
 
 console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
