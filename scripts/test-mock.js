@@ -430,3 +430,34 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   assert.deepStrictEqual(bad, [], '金花状态自相矛盾：\n    ' + bad.join('\n    '))
   console.log('  ✓ 金花的 aliveCount / winner / out 三处一致')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**大厅那句「200 道题 · 120 对词」必须和实际内容对得上**
+ *
+ * 它**是现算的**（`lobby.js` 的 `refreshContentStat`），所以正常情况下不会错。
+ * 但有两个风险：
+ *   · 有人改成硬编码（那就再也不会更新）
+ *   · 数据结构改了（`truth`/`dare` 或 `pairs` 改名），算出来变 0 而不报错
+ *
+ * 判据：直接从真实数据算出两个数字，和"应该显示的值"比对。
+ * ========================================================================== */
+{
+  const decks = require('../miniprogram/utils/decks.js')
+  const words = require('../miniprogram/utils/words.js')
+
+  let cards = 0
+  decks.DECKS.forEach(d => { cards += (d.truth || []).length + (d.dare || []).length })
+  let pairs = 0
+  words.DECKS.forEach(d => { pairs += (d.pairs || []).length })
+
+  assert.ok(cards >= 100, '题卡只算出 ' + cards + ' 条 —— 字段名可能改了（truth/dare）')
+  assert.ok(pairs >= 50, '卧底词只算出 ' + pairs + ' 对 —— 字段名可能改了（pairs）')
+
+  /* 每种场合都该有 truth 和 dare（各 25 条） */
+  const badDeck = decks.DECKS.filter(d =>
+    (d.truth || []).length === 0 || (d.dare || []).length === 0).map(d => d.k)
+  assert.deepStrictEqual(badDeck, [],
+    '这些场合缺 truth 或 dare：' + badDeck.join(' '))
+
+  console.log('  ✓ 内容量真实：' + cards + ' 道题 / ' + pairs + ' 对词（' + words.DECKS.length + ' 个词库）')
+}
