@@ -341,3 +341,38 @@ console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
 
   console.log('  ✓ 叫骰选项的第一个是"最自然的下一步"（切斋保留点数 / 上叫点数+1 / 首叫从合法值起）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**牌型名不依赖云端部署**（前端能自己算）
+ *
+ * `dicerank` 原来是**只有云端用**的模块，于是"牌型名"必须部署云函数才显示。
+ * 而它是纯函数，前端有同一份 —— 云端没给时自己算，结果完全一致。
+ *
+ * 判据：装饰器里必须有"云端没给就前端补"的逻辑，且**不覆盖云端给的**。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(path.join(__dirname, '..', 'miniprogram/game/room/room.js'), 'utf8')
+
+  assert.ok(/const dicerank = require\('\.\.\/\.\.\/utils\/dicerank\.js'\)/.test(src),
+    '房间页必须引入 dicerank（否则牌型名要等云端部署）')
+  assert.ok(/if \(p\.handName \|\| !Array\.isArray\(p\.dice\)/.test(src),
+    '补算前必须判"云端有没有给"（不能覆盖云端的值）')
+  assert.ok(/dicerank\.evaluate\(p\.dice\)/.test(src),
+    '补算要用 dicerank.evaluate')
+
+  /* 实测：补算结果和云端同一套逻辑 */
+  const dicerank = require('../miniprogram/utils/dicerank.js')
+  const cases = [
+    [[3, 3, 3, 3, 3], '五条'],
+    [[6, 5, 4, 3, 2], '顺子'],
+    [[2, 2, 5, 6, 1], '一对'],
+    [[1, 3, 5, 2, 6], '散牌']
+  ]
+  cases.forEach(([dice, want]) => {
+    const rk = dicerank.evaluate(dice)
+    assert.strictEqual(rk.name, want,
+      'evaluate(' + JSON.stringify(dice) + ') 应为 ' + want + '，实际 ' + rk.name)
+  })
+
+  console.log('  ✓ 牌型名前端能自己算（不依赖云端部署），且不覆盖云端的值')
+}

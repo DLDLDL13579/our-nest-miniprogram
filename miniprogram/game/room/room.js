@@ -37,6 +37,16 @@ const HINT_ROLL_NOW = '该你了，摇盅'
 const CFG = require('../../config.js')
 const sfx = require('../sfx.js')
 const settleFoot = require('../../game/settle.js')
+/*
+ * ★★ 2026-11-03：`dicerank` 原来是**只有云端用**的模块 ——
+ *   于是"牌型名"必须部署云函数才会显示。
+ *
+ *   而它是纯函数（无副作用、只吃骰子数组），前端完全可以用同一份：
+ *   云端没部署时，前端从 `ranked[].dice` 自己算 handName。
+ *
+ *   ⚠️ 只在云端**没给**的时候补 —— 一旦部署了，以云端的为准。
+ */
+const dicerank = require('../../utils/dicerank.js')
 const liarRules = require('../../utils/liarRules.js')
 const feedback = require('../feedback.js')
 const trace = require('../../utils/trace.js')
@@ -2049,6 +2059,25 @@ Page({
        *   但那个"恰好"依赖两个不住在代码里的前提（top 是赢家点数 + ranked 已排序）。
        *   既然结论一样，就用不需要推理的那一种写法。
        */
+      /*
+       * ★★ 2026-11-03：**云端没给牌型名时，前端自己算**。
+       *
+       *   `handName` 是随牌型系统加进云端的字段 —— 云函数没部署时它不存在，
+       *   于是结算页那一列（`{{item.handName}}`）永远是空的。
+       *
+       *   而 `dicerank.evaluate(dice)` 是纯函数、前端有同一份，
+       *   结果和云端**同一套逻辑**算出来的，不会不一致。
+       *
+       *   ⚠️ 只在云端**没给**的时候补：一旦部署了，以云端的为准（不覆盖）。
+       */
+      lr.ranked.forEach(p => {
+        if (p.handName || !Array.isArray(p.dice) || !p.dice.length) return
+        try {
+          const rk = dicerank.evaluate(p.dice)
+          if (rk && rk.name) p.handName = rk.name
+        } catch (e) { /* 算不出来就不显示，不影响其它 */ }
+      })
+
       const hero = lr.ranked[0]
       lr.topDice = (hero && hero.dice) ? hero.dice : []
       /*
