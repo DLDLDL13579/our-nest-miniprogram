@@ -83,7 +83,30 @@ const PATHS = {
   /* ---------- 游戏 ---------- */
   dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.4"/><circle cx="8.3" cy="8.3" r="1.35" fill="currentColor" stroke="none"/><circle cx="15.7" cy="8.3" r="1.35" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.35" fill="currentColor" stroke="none"/><circle cx="8.3" cy="15.7" r="1.35" fill="currentColor" stroke="none"/><circle cx="15.7" cy="15.7" r="1.35" fill="currentColor" stroke="none"/>',
   cup: '<path d="M6 9h12l-1.3 10.2a2 2 0 0 1-2 1.8H9.3a2 2 0 0 1-2-1.8z"/><path d="M5 9h14"/><path d="M8.5 6.2a3.5 3.5 0 0 1 7 0"/>',
-  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.8"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
+  /*
+   * ★★ 2026-11-03：`target` 原来是**三个同心圆** —— 大厅上看起来像"靶心"或"广播"，
+   *   而不像骰盅。而它是「大话骰」的图标，那个玩法最核心的道具就是**骰盅**。
+   *
+   *   新图标：一个倒扣的盅（梯形 + 顶面椭圆）+ 从盅底露出的一颗骰子的两点。
+   *   线宽和其他图标一致（stroke，不是实心），所以放在一起不会突兀。
+   */
+  /*
+   * ★ 2026-11-03 第二版：第一版（梯形 + 椭圆 + 两个小骰点）在 48px 下糊成一个"冰淇淋"。
+   *
+   *   **小尺寸图标只能表达 2~3 个元素** —— 所以去掉 ellipse（盅口），
+   *   把骰子放大成一个圆 + 两点，让"盅在扣着什么"一眼能看出来。
+   */
+  /*
+   * ★ 2026-11-03 第三版：前两版都失败了 ——
+   *   ① 梯形 + 椭圆 + 两点  → 48px 下糊成"冰淇淋"
+   *   ② 梯形 + 大圆 + 两点  → 看起来像"杯子里有个笑脸"
+   *
+   *   根本问题：**24×24 的线性图标表达不了"3D 的骰盅"**。
+   *
+   *   换思路 —— 表达"这个玩法玩的是**一堆骰子**"（而「比大小」是一颗）：
+   *   三颗错落的小骰子，每颗带一两个点。
+   */
+  target: '<rect x="3.2" y="6.5" width="8" height="8" rx="1.8" transform="rotate(-12 7.2 10.5)"/><rect x="12.8" y="3.6" width="8" height="8" rx="1.8" transform="rotate(9 16.8 7.6)"/><rect x="9.2" y="13.4" width="8" height="8" rx="1.8"/><circle cx="12.2" cy="16.4" r="0.85" fill="currentColor" stroke="none"/><circle cx="14.2" cy="18.4" r="0.85" fill="currentColor" stroke="none"/>',
   wheel: '<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>',
   signal: '<path d="M4.5 9.5a11 11 0 0 1 0 5"/><path d="M8 12.5a6.6 6.6 0 0 1 0-1"/><path d="M11.6 15.2a2.4 2.4 0 0 1 0-6.4"/><path d="M18.5 6a15.5 15.5 0 0 1 0 12"/>',
   /* 竖起的手指 = 「我有你没有」的"我有" */
