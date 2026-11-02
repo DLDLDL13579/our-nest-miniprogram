@@ -3390,3 +3390,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   console.error('\n  ✗ 失败：', e.message, '\n')
   process.exit(1)
 })
+
+/* ============================================================================
+ * 2026-11-02 追加：**大厅玩法卡的排版不许改**（用户明确要求过）
+ *
+ * 原话：「大厅游戏排版不要改」——
+ * 当时我擅自把第 5 张卡从"占左半"改成了"独占一行"，被要求撤销。
+ *
+ * 现在的排版是 `flex-wrap` + 每张 `flex: 0 0 48.5%` 的**自然结果**：
+ * 5 张卡 → 3 行（2 + 2 + 1），第 5 张自然落在左半边。
+ *
+ * 锁两条，任何一条变了排版就不是现在这个样子：
+ *   · 容器必须是 flex-wrap（不是 grid、不是单列）
+ *   · 卡片宽度必须是 48.5%（两列，且留出 gap）
+ * ========================================================================== */
+{
+  const css = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxss'), 'utf8')
+
+  const gridRule = /\.ggrid\s*\{([^}]*)\}/.exec(css)
+  assert.ok(gridRule, '找不到 .ggrid 规则')
+  assert.ok(/display:\s*flex/.test(gridRule[1]) && /flex-wrap:\s*wrap/.test(gridRule[1]),
+    '★ 大厅的玩法卡容器必须保持 flex-wrap（用户要求过排版不要改）')
+
+  const cardRule = /\.gcard\s*\{([^}]*)\}/.exec(css)
+  assert.ok(cardRule, '找不到 .gcard 规则')
+  assert.ok(/flex:\s*0\s+0\s+48\.5%/.test(cardRule[1]),
+    '★ 玩法卡宽度必须是 48.5%（两列布局）—— 改了就不是用户要的排版了')
+  ok('★ 大厅玩法卡排版锁住：flex-wrap + 每张 48.5%（5 张 = 2+2+1）')
+}
