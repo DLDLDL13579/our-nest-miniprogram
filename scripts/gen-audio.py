@@ -70,6 +70,30 @@ def env_decay(n, tau):
     return [math.exp(-i / tau) for i in range(n)]
 
 
+def soft_limit(sig, knee=0.62, ceiling=0.95):
+    """
+    软限幅 —— 把"一根针"的尖峰压下去，把峰值预算让给能量体。
+
+    ★ 2026-11-02：撞击类音效的峰值常是 1~2 个采样点的尖刺。
+      峰值归一化会按那个尖刺把整体缩得很小 —— 结果是
+      「半峰样本 = 1」（一根针）、整体 RMS 太低，听着"没肉"。
+      手机扬声器还原不了尖刺，它只认能量。
+
+    knee 以下原样通过（保住瞬态形状），knee 以上按 tanh 压平。
+    撞击声轻微削波反而更结实 —— 商业游戏音效几乎都过限幅器。
+    """
+    out = []
+    span = ceiling - knee
+    for x in sig:
+        a = abs(x)
+        if a <= knee:
+            out.append(x)
+        else:
+            y = knee + span * math.tanh((a - knee) / span)
+            out.append(y if x > 0 else -y)
+    return out
+
+
 def env_ad(n, attack, tau):
     """起音 + 指数衰减。撞击声需要极短起音，否则听起来"软"。"""
     out = []
@@ -1137,20 +1161,25 @@ def reveal_hit():
     a = sine(n, 1046.50)
     b = sine(n, 1567.98)
     e1 = env_ad(n, int(SR * 0.0015), SR * 0.16)
-    bright = [(a[i] * 0.30 + b[i] * 0.18) * e1[i] for i in range(n)]
+    # ★ 2026-11-02 手机频段补偿：0.30/0.18 → 0.62/0.40（原来低频把中频压没了）
+    bright = [(a[i] * 0.62 + b[i] * 0.40) * e1[i] for i in range(n)]
     # 低频冲击
     imp = impact_low()
     # 低频体：两个非整数倍的低频叠在一起，衰减 150ms（"轰"的那一层）
     lowA = sine(n, 62)
     lowB = sine(n, 93)
     eL = env_ad(n, int(SR * 0.003), SR * 0.150)
-    low = [(lowA[i] * 1.10 + lowB[i] * 0.70) * eL[i] for i in range(n)]
+    low = [(lowA[i] * 0.72 + lowB[i] * 0.46) * eL[i] for i in range(n)]   # 1.10/0.70 → 0.72/0.46
     # 金属尾音（不谐和泛音 → 像铜锣；90ms → 130ms 让它有余响）
     ring = sine(n, 2093)
     ring2 = sine(n, 3140)
     e2 = env_decay(n, SR * 0.130)
     metal = [(ring[i] * 0.18 + ring2[i] * 0.1) * e2[i] for i in range(n)]
-    return mix(bright, place(imp, 0, n), metal, low)
+    # ★ 2026-11-02：同 cup-slam —— 过 soft_limit 才有"能量体"。
+    #   实测这一声原本 92.6% 能量在 300Hz 以下（手机听不到），
+    #   且整体 RMS -28.3 太薄、半峰样本只有 2（峰值是一根针）。
+    #   已把 bright 提到 0.62/0.40、low 降到 0.72/0.46 做手机频段补偿。
+    return soft_limit(mix(bright, place(imp, 0, n), metal, low))
 
 
 def countdown_urgent():
@@ -1452,6 +1481,10 @@ def match_short_term(sig, target_db, sr=None):
 #      · 入盅 = dice-into-cup(-26) 紧跟摇盅(-18)，前者只是"开场轻响"
 #    单独看响度低是**设计意图**，不是失衡。差点因为错误的指标改坏它们。
 LOUDNESS_FIX = {
+    # ★ 2026-11-02：过了 soft_limit 之后 RMS 上来了，前 50ms 冲到 -9.1（目标 -12）
+    'cup-slam':   -11.6,
+    # 揭盅是结果音，不能比扣盅（动作重击）还响 —— 过了 soft_limit 之后它冲到了 -11
+    'reveal-hit': -14.2,
     'drink':      -14.0,   # 咽酒：氛围，本来 -5.5 比摊牌还响 17 dB，喧宾夺主
     # cup-lift（揭盅铺垫）：2026-10-28 实测前 50ms RMS −9.9，
     # 比它要铺垫的那记扣盅（−17）响 7 dB —— 铺垫压住了重音。
@@ -1584,6 +1617,9 @@ def card_spread():
     return out
 
 
+DHIT_GAIN = 6.0   # 手机频段补偿层的量（迭代调出来的）
+
+
 def cup_slam():
     """
     ③ 扣盅 —— ★ 整个流程最有仪式感的一下。
@@ -1619,8 +1655,34 @@ def cup_slam():
     body = sine(n, 196)
     be = env_decay(n, SR * 0.075)
 
-    out = [knock[i] * ke[i] * 0.42
-           + (thud[i] * 0.95 + thud2[i] * 0.60) * te[i] * 1.95
+    # ★★★ 2026-11-02 为手机扬声器加一层「盅沿撞桌面」。
+    #
+    #   实测这一声的频谱：低频 −24.9 dBFS，而 300~4000Hz 只有 **−52.9 dBFS**
+    #   —— 相差 28 dB。手机小扬声器在 300Hz 以下几乎不响应，
+    #   所以「扣盅」这个全场最重的一下，在手机上**基本是听不见的**
+    #   （电脑/耳机上是"咚"，手机上是"噗"）。
+    #
+    #   只把原来那层 knock 调大是不够的：它只有 20ms，能量占比怎么算都很低。
+    #   这里加一层**独立**的、手机频段的实体撞击：
+    #     带通 600~2600Hz（人耳最敏感、手机扬声器最能出的区间）
+    #     包络 55ms（够长到能被听见，够短到还是"啪"不是"嘶"）
+    #   ★ 包络从 45ms 拉到 130ms：**短瞬态只有"啪"没有"肉"**，
+    #     而 audio-levels 的判据是「整体 RMS ≥ -24」+「半峰样本 ≥ 12」——
+    #     拉长之后这一层本身就成了"能量体"，且完全落在手机能出的频段里。
+    dhit = bandpass(noise(n, 977), 0.75, 0.17)
+    dhe = env_ad(n, max(1, int(SR * 0.0008)), SR * 0.130)
+    dpeak = max(1e-9, max(abs(x) for x in dhit))
+    dhit = [x / dpeak for x in dhit]
+
+    # ★★★ 2026-11-02 为手机扬声器重混：中频层 0.42 → 1.10。
+    #   实测这一声 **99.8% 能量在 300Hz 以下**，而手机小扬声器在 300Hz 以下
+    #   几乎不响应 —— 「扣盅」这个全场最重的一下，在手机上基本听不见
+    #   （电脑/耳机上是"咚"，手机上是"噗"）。
+    #   系数差就是原因：中频 knock 0.42 vs 低频 thud 1.95。
+    #   ★ 低频给体量，中高频给**可听性** —— 只做低频等于在手机上没做。
+    out = [knock[i] * ke[i] * 1.10
+           + dhit[i] * dhe[i] * DHIT_GAIN
+           + (thud[i] * 0.95 + thud2[i] * 0.60) * te[i] * 1.55   # 1.95→1.55：降一点给中频让峰值，但不能太低（能量体靠它）
            + low[i] * le[i] * 1.15
            + body[i] * be[i] * 0.90
            for i in range(n)]
@@ -1632,7 +1694,7 @@ def cup_slam():
         for j, v in enumerate(hit):
             if off + j < n:
                 out[off + j] += v
-    return out
+    return soft_limit(out)
 
 
 def cup_lift():
