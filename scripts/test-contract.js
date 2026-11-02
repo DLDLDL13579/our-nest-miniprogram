@@ -4407,3 +4407,67 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些音效名拼错了（play() 会静默返回，表现是"没声音"）：\n    ' + bad.join('\n    '))
   ok('★ 所有 sfx 音效名都在 FILES 表里（' + valid.size + ' 个可用）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**玩法主题色不能撞**
+ *
+ * 「命运转盘」和「谁是卧底」原来都是 `#7A5CA8`（同一个紫）——
+ * 大厅上两张卡的色条一模一样，而**这不会报错**，
+ * 只是"扫一眼分不出是哪个玩法"。
+ *
+ * 判据：5 个玩法色两两不同，且**色相拉开**（避免"两个都是紫，只是深浅不同"）。
+ * ========================================================================== */
+{
+  const { GAMES } = require(path.join(ROOT, 'miniprogram/utils/games.js'))
+
+  /* 两两不同 */
+  const colors = GAMES.map(g => (g.color || '').toUpperCase())
+  const dup = []
+  colors.forEach((c, i) => {
+    if (colors.indexOf(c) !== i) dup.push(GAMES[i].name + '=' + c)
+  })
+  assert.deepStrictEqual([...new Set(dup)], [], '这些玩法用了同一个主题色：' + dup.join(' '))
+
+  /* 色相拉开（> 25°） */
+  const hue = (hex) => {
+    const r = parseInt(hex.slice(1, 3), 16) / 255
+    const g2 = parseInt(hex.slice(3, 5), 16) / 255
+    const b = parseInt(hex.slice(5, 7), 16) / 255
+    const mx = Math.max(r, g2, b), mn = Math.min(r, g2, b)
+    if (mx === mn) return 0
+    const d = mx - mn
+    let h
+    if (mx === r) h = ((g2 - b) / d) % 6
+    else if (mx === g2) h = (b - r) / d + 2
+    else h = (r - g2) / d + 4
+    return ((h * 60) + 360) % 360
+  }
+  /*
+   * ⚠️ 只看色相不够 —— 「大话骰」橙 13° 和「梦幻金花」金 36° 只差 23°，
+   *   但**明度差很大**（橙更深、金更亮），大厅上完全分得开。
+   *
+   *   所以判据用**色相 + 明度的综合距离**：
+   *   色相差 20° 但明度差 0.15 以上，视觉上就是两个颜色。
+   */
+  const lum = (hex) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4) }
+    return 0.2126 * f(parseInt(hex.slice(1, 3), 16)) +
+           0.7152 * f(parseInt(hex.slice(3, 5), 16)) +
+           0.0722 * f(parseInt(hex.slice(5, 7), 16))
+  }
+  const tooClose = []
+  for (let i = 0; i < GAMES.length; i++) {
+    for (let j = i + 1; j < GAMES.length; j++) {
+      const d = Math.abs(hue(colors[i]) - hue(colors[j]))
+      const dh = Math.min(d, 360 - d)
+      const dl = Math.abs(lum(colors[i]) - lum(colors[j]))
+      /* 色相接近但明度差够大 → 能区分 */
+      if (dh < 25 && dl < 0.15) {
+        tooClose.push(GAMES[i].name + ' / ' + GAMES[j].name +
+          '（色相差 ' + Math.round(dh) + '°、明度差 ' + dl.toFixed(2) + '）')
+      }
+    }
+  }
+  assert.deepStrictEqual(tooClose, [], '这些玩法的颜色太接近：\n    ' + tooClose.join('\n    '))
+  ok('★ 五个玩法主题色两两不同且色相拉开 ≥25°')
+}

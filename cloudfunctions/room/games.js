@@ -123,7 +123,7 @@ const GAMES = [
     id: 'poker',
     name: '梦幻金花',
     icon: 'cards',
-    color: '#B8863C',
+    color: '#D4A03C',
     min: 2, max: 6,
     /*
      * ★ 这段曾是**炸金花**的描述（"三张牌，不看也能比"）。
@@ -158,7 +158,7 @@ const GAMES = [
     id: 'wheel',
     name: '命运转盘',
     icon: 'wheel',
-    color: '#7A5CA8',
+    color: '#3E9187',
     min: 1, max: 8,
     desc: '转一下，真心话还是喝 1 杯',
     how: [
