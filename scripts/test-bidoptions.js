@@ -84,3 +84,31 @@ console.log('='.repeat(50) + '\n')
   assert.deepStrictEqual(bad, [], '起叫数量不符调研规则：\n    ' + bad.join('\n    '))
   console.log('  ✓ 起叫数量：不斋=1.5倍 / 斋=人头数 / 叫1=人头数（2~8 人逐个核对）')
 }
+
+/* ============================================================================
+ * ★ 斋 → 不斋（飞斋）必须加倍（2026-11-02 补）
+ *
+ * 这条规则一直在 `canRaise` 里，但**没有任何测试覆盖** ——
+ * 用 verify-assert.py 把 `next.n >= cur.n * 2` 改成恒真，测试照样通过。
+ *
+ * 规则来源：百度百科「大话骰」
+ *   「下家想破斋，需要叫双倍或者以上的骰子数」
+ * ========================================================================== */
+{
+  const { canRaise } = require('../miniprogram/utils/liarRules.js')
+  const cur = { n: 3, face: 4, zhai: true }     // 上家叫「3个4斋」
+
+  assert.strictEqual(canRaise(cur, { n: 6, face: 2, zhai: false }, 3).ok, true,
+    '3个斋 → 6个（加倍）应该允许')
+  assert.strictEqual(canRaise(cur, { n: 7, face: 2, zhai: false }, 3).ok, true,
+    '3个斋 → 7个（超过加倍）应该允许')
+  assert.strictEqual(canRaise(cur, { n: 5, face: 2, zhai: false }, 3).ok, false,
+    '3个斋 → 5个（没加倍）必须拒绝')
+  assert.strictEqual(canRaise(cur, { n: 4, face: 5, zhai: false }, 3).ok, false,
+    '3个斋 → 4个（没加倍）必须拒绝')
+  /* 斋 → 斋：正常往上加就行，不需要翻倍 */
+  assert.strictEqual(canRaise(cur, { n: 4, face: 5, zhai: true }, 3).ok, true,
+    '斋 → 斋 只需数量/点数往上，不要求翻倍')
+
+  console.log('  ✓ 飞斋：从斋改回不斋必须加倍（3个斋 → 6个可，5个不可）')
+}
