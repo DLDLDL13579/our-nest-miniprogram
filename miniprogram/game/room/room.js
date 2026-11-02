@@ -240,7 +240,12 @@ Page({
     /* 减少动效（「我的」里可切）—— 房间页根容器据此挂 class */
     reduceMotion: false,
     pickGame: 'liar',
-    pickGameName: '大话骰',
+    /*
+     * ★ 2026-11-03：名字从注册表取，不硬编码。
+     *   原来写死 `'大话骰'` —— 而注册表是"玩法名"的唯一事实源，
+     *   改名字不会提醒你改这里（页面上会闪一下旧名字）。
+     */
+    pickGameName: (gameOf('liar') || {}).name || '',
     /* 题卡场合（只有命运转盘用得到）—— pickDeck 是建房时选的， */
     decks: decks.DECKS,
     pickDeck: 'friends',

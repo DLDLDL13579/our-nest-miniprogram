@@ -4733,3 +4733,45 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 「重摇」：按钮和规则一起按云端能力降级（不会一边有一边没有）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**玩法名不许在别处硬编码**
+ *
+ * `games.js` 是"玩法叫什么"的唯一事实源。而 `room.js` 的 data 里曾经写着
+ * `pickGameName: '大话骰'` —— 改注册表里的名字时不会提醒你改这里，
+ * 页面上会闪一下旧名字（然后被云端返回的真名覆盖）。
+ *
+ * 判据：注册表里每个玩法的**名字**，不该以字符串字面量形式出现在别处
+ * （注释、文档不算 —— 先剥注释）。
+ * ========================================================================== */
+{
+  const games = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+  const names = [...games.matchAll(/^\s{4}name: '([^']+)'/gm)].map(m => m[1])
+  assert.ok(names.length >= 5, '只认出 ' + names.length + ' 个玩法名')
+
+  const bad = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!/\.(js|wxml)$/.test(f)) return
+      /* 注册表自己当然有 */
+      if (p.endsWith('games.js')) return
+      let src = fs.readFileSync(p, 'utf8')
+      src = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+      names.forEach(n => {
+        if (src.includes("'" + n + "'") || src.includes('"' + n + '"')) {
+          bad.push(path.relative(ROOT, p) + '：硬编码了「' + n + '」')
+        }
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual(bad, [],
+    '玩法名硬编码在别处（改注册表时不会跟着变）：\n    ' + bad.join('\n    '))
+  ok('★ ' + names.length + ' 个玩法名都只来自注册表（没有硬编码）')
+}
