@@ -3568,3 +3568,54 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些音效注册了但从没被播放（白占包体积）：\n    ' + dead.join('\n    '))
   ok('★ ' + keys.length + ' 个音效都有调用点（没有白占体积的）')
 }
+
+/* ============================================================================
+ * 2026-11-02 追加：**按模运算取样式时，样式数量必须 ≥ 模数**
+ *
+ * 这轮抓到：头像用 `pav s{{seat % 4}}` 而只有 4 种颜色，
+ * 但大话骰/比大小支持 **8 人** —— 座位 1 和 5 同色，桌上认不出谁是谁。
+ * 它在 3 人局里看起来完全正常，**只在第 5 个人进来时才坏**。
+ *
+ * ⚠️ 通用正则对付不了这里的所有写法：
+ *    · `cf cf-{{item % 5}}`            前缀后面是连字符
+ *    · `pav s{{seat % 8}}`             前缀**紧贴** {{，且真名是组合选择器 `.pav.s0`
+ *    · `{{cdTick % 2 ? 'a' : 'b'}}`    类名在**插值内部**，前缀和它无关
+ *   第一版想用一条正则吃下三种，结果三种都判错（反向验证 exit=0）。
+ *   **所以这里写成三条精确检查** —— 写死了，但每条都对得上一种真实写法。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const css = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+  const bad = []
+
+  /* ① 头像：pav s{{item.seat % N}} —— 真名是组合选择器 .pav.sN */
+  const av = /pav s\{\{item\.seat % (\d+)\}\}/.exec(wxml)
+  if (av) {
+    const n = Number(av[1])
+    const cnt = new Set(css.match(/\.pav\.s\d+/g) || []).size
+    if (cnt < n) bad.push('.pav.sN：模板 % ' + n + ' 但只有 ' + cnt + ' 种颜色')
+  }
+
+  /* ② 撒花：cf cf-{{item % N}} */
+  const cf = /cf cf-\{\{item % (\d+)\}\}/.exec(wxml)
+  if (cf) {
+    const n = Number(cf[1])
+    const cnt = new Set(css.match(/\.cf-\d+/g) || []).size
+    if (cnt < n) bad.push('.cf-N：模板 % ' + n + ' 但只有 ' + cnt + ' 种样式')
+  }
+
+  /* ③ 倒计时数字：{{cdTick % 2 ? 'pop-a' : 'pop-b'}} —— 类名在插值里 */
+  const cd = /cdTick % 2 \? '([\w-]+)' : '([\w-]+)'/.exec(wxml)
+  if (cd) {
+    ;[cd[1], cd[2]].forEach(c => {
+      if (!new RegExp('\\.' + c + '\\b').test(css)) bad.push('.' + c + ' 在模板里用了但没样式')
+    })
+  }
+
+  assert.deepStrictEqual(bad, [],
+    '按模数取样式的地方，样式数量不够：\n    ' + bad.join('\n    '))
+  ok('★ 按模数取样式：头像 8 色 / 撒花 5 式 / 倒计时 2 态 —— 都对得上')
+}
