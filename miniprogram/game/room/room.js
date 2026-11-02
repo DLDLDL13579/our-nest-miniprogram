@@ -488,7 +488,15 @@ Page({
           app.globalData.pendingCreate = null
         }
       } catch (e) { /* 拿不到就当没有预取 */ }
-      setTimeout(() => { if (!this._dead) this.doCreate() }, 80)
+      /*
+       * ★ 2026-11-02：有预取时**不必等这 80ms**。
+       *
+       *   这个延迟的作用是"等首屏画完再发请求"，否则加载态会落在没渲染完的页面上。
+       *   而预取意味着请求**在大厅就已经发出去了** —— 这里只是等一个已有的 Promise，
+       *   不会造成那个问题，所以立刻开始反而更快。
+       */
+      const delay = this._prefetchResult ? 0 : 80
+      setTimeout(() => { if (!this._dead) this.doCreate() }, delay)
     }
   },
 
