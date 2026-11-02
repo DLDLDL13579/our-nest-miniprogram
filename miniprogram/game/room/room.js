@@ -2896,11 +2896,20 @@ Page({
     const room = this.data.room || {}
     const enough = !(room.shortBy > 0)
     if (room.host && enough && this.data.stage === 'lobby') {
-      /* 稍微等一帧，让"回大厅"的界面先落定，否则会被倒计时直接盖掉 */
+      /*
+       * ★ 2026-11-02：这个等待从 260ms 缩到 120ms。
+       *
+       * 260ms 时，玩家会**看清**一次"等人界面闪过去" ——
+       * 结算页的英雄区刚消失、玩家列表刚冒出来，就被倒计时盖掉了，
+       * 观感是"闪了一下"。
+       *
+       * 120ms 仍在两帧以上（setData 早已完成，这里只是给渲染留一帧），
+       * 但已经低于"能看清内容"的阈值 —— 观感从"闪一下"变成"直接进下一局"。
+       */
       this._againTimer = setTimeout(() => {
         if (this._dead) return
         if (this.data.stage === 'lobby') this.doStart()
-      }, 260)
+      }, 120)
     }
     return r
   },
