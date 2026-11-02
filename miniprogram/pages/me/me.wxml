@@ -84,18 +84,18 @@
       <view class="ab-line errline" bindtap="copyDiag">错误记录也一起显示（点这里看全部诊断）</view>
     </block>
     <view class="ab-line diagline" bindtap="copyDiag">查看诊断信息（含最近的错误）</view>
-    <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误。</view>
+    <view class="ab-line">粘到聊天窗口就行，里面有版本、机型、启动耗时和最近的错误</view>
   </view>
 
   <!-- ⑤ 关于 -->
   <view class="card flat">
     <view class="lbl">关于</view>
     <view class="about">
-      <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩。</view>
+      <view class="ab-line">酒桌 · 各自用自己手机，输房间号进来一起玩</view>
       <view class="ab-line">理性饮酒 · 未成年人禁止饮酒 · 酒后不驾车</view>
-      <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理。</view>
+      <view class="ab-line">房间 2 小时没用自动过期，玩完不用清理</view>
 
-      <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份。</view>
+      <view class="ab-line">点数、牌、词、题卡都由服务端出，别人看不到你的那一份</view>
       <view class="ab-ver">v{{version}}</view>
     </view>
   </view>

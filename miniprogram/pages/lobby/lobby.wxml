@@ -97,7 +97,7 @@
   -->
 
   <view class="lb-tip">
-    <view class="tip-line">房间 2 小时后自动过期，玩完不用清理。</view>
-    <view class="tip-line">点数、题卡都由服务器出 —— 别人的牌在你手机上根本拿不到。</view>
+    <view class="tip-line">房间 2 小时后自动过期，玩完不用清理</view>
+    <view class="tip-line">点数、题卡都由服务器出 —— 别人的牌在你手机上根本拿不到</view>
   </view>
 </view>
