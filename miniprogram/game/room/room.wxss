@@ -1744,9 +1744,27 @@
 /* ---------- 「改」名字的小提示（自己那行才有） ---------- */
 .pitem.canedit:active { background: rgba(255,255,255,.1) }
 .pedit {
+  position: relative;
   font-size: 18rpx; padding: 2rpx 10rpx; border-radius: 6rpx;
   background: rgba(232,179,60,.2); color: var(--gold);
+  /*
+   * ★★★ 2026-11-02 可用性：这个小标签的**实际高度只有约 11rpx（5.5px）** ——
+   *   字体 18rpx + 上下 padding 各 2rpx。而 Apple HIG 的最小触控是 44×44pt。
+   *
+   *   也就是说：它看起来是个"改名字"的按钮，但**几乎点不中**。
+   *   酒桌上有酒、手不稳，这种尺寸基本等于没有。
+   *
+   *   修法不是把它做大（它视觉上就该是小标签），而是**用伪元素扩热区**：
+   *   视觉不变，可点范围扩到约 88rpx × 88rpx。
+   */
 }
+.pedit::after {
+  content: '';
+  position: absolute;
+  /* 向四周各扩 38rpx → 热区约 88rpx 见方 */
+  top: -38rpx; bottom: -38rpx; left: -20rpx; right: -20rpx;
+}
+.pedit:active { filter: brightness(1.2) }
 
 /* ---------- 金花：换牌（有代价的两个动作） ---------- */
 .pk-acts {
