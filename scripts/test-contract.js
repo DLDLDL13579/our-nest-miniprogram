@@ -4287,3 +4287,31 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些状态的规则列表和注册表对不上（弹层会是空的或残缺的）：\n    ' + bad.join('\n    '))
   ok('★ 所有状态的规则列表都和注册表一致（弹层不会空）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**赢了就要庆祝**（三个玩法都要有）
+ *
+ * `celebrate()` 现只在三处调用：金花比牌、卧底结算、比大小结算。
+ * 而我一度以为"比大小没有撒花"—— 因为第 3328 行的 `celebrate()`
+ * 藏在 `setTimeout(..., 820)` 里（等骰子落定动画走完）。
+ *
+ * 这条断言锁的是"三个玩法都有"，而不是"有几处调用"——
+ * 因为调用点和玩法不是一一对应的（有的在一个 setTimeout 里）。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  /* 有胜负概念的三个玩法：比大小 / 金花 / 卧底 */
+  const hasCelebrate = /if \(iWon\) this\.celebrate\(\)/g
+  const count = (src.match(hasCelebrate) || []).length
+  assert.ok(count >= 3,
+    '有胜负的三个玩法（比大小/金花/卧底）都应该在赢的时候 celebrate()，实际只有 ' + count + ' 处')
+
+  /* 而且要和 win 音效配对着出现（不能只放音效不撒花） */
+  const winFire = (src.match(/feedback\.fire\(iWon \? 'win' : 'penalized'\)/g) || []).length
+  assert.ok(winFire === count,
+    'win 音效有 ' + winFire + ' 处、celebrate 有 ' + count + ' 处 —— 两者应该成对')
+
+  ok('★ 三个玩法赢了都有撒花 + 胜利音（' + count + ' 处配对）')
+}
