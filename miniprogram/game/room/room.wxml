@@ -378,9 +378,15 @@
     <view class="cdbox">
       <view class="cd-glow"></view>
       <view class="cd-in">
-        <view class="cd-lbl">游戏要开始了</view>
+        <!--
+          ★ 2026-11-02 用户反馈「准备画面 4 秒太长」——时长已从 3200 降到 2000。
+          同时把文案收掉一半：2 秒内**读不完两行字**。
+          原来「游戏要开始了」+「把手机拿好，别错过第一轮」共 20 个字，
+          用户眼睛刚扫到第一行就进游戏了，反而像"闪了一下"。
+          现在只留一句短的，让最后一个大字成为唯一的焦点。
+        -->
+        <view class="cd-lbl">准备开始</view>
         <view class="cd-num {{cdTick % 2 ? 'pop-a' : 'pop-b'}} {{cdText === '开始' ? 'go' : ''}}">{{cdText}}</view>
-        <view class="cd-sub">把手机拿好，别错过第一轮</view>
       </view>
     </view>
     <!--
