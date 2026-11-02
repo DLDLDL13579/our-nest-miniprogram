@@ -134,8 +134,12 @@ MAP = [
     # ★ 2026-11-02：原来用 click_004（10ms）—— 太短了，量化误差占比过大，
     #   实测 DC 偏置 278（判据 50），开局会"噗"一声。
     #   换成 click_001（100ms）并压低 5dB：同样是真实的点击声，但能量铺得更开。
+    # ★ 2026-11-02：`tap-soft` 和 `tap` 原来**是同一个源文件、只改音量目标** ——
+    #   而 normalize 提不上去（峰值已满），实测只差 1.5 dB，**听感几乎一样**。
+    #   改成**低通滤波**（3kHz）：不靠"小声"来区分，而是让音色真的"软"下去
+    #   （高频被削 → 听起来闷、远、不抢戏）。
     dict(dst='tap-soft',   src='click_001.ogg', seconds=0.10, sr=44100, fifty=-18.0,
-         note='轻点击（选牌/换牌）'),
+         lowpass=3000, note='轻点击（选牌/换牌）—— 3kHz 低通，音色比 tap 软'),
     dict(dst='tick',       src='click_003.ogg', seconds=0.07, sr=44100, fifty=-14.0,
          note='转盘咔哒（一局几十次，间隔 34ms 起）'),
     dict(dst='toggle-on',  src='switch_002.ogg', seconds=0.30, sr=44100, fifty=-15.0,
@@ -392,6 +396,14 @@ def process(one, src_dir, dry=False):
             sp(d, sr_out, tail_ms=tail, seed=seed,
                transient=False, final_sharpen=False),
             dtype=np.float64)
+
+    # 低通（2026-11-02）：把音色变"软"，而不是靠压低音量。
+    # 二阶 Butterworth，12dB/oct —— 够削掉"硬"的高频，又不会闷成一团。
+    if one.get('lowpass'):
+        from scipy.signal import butter, sosfilt
+        cutoff = min(one['lowpass'], sr_out * 0.45)
+        sos = butter(2, cutoff, 'low', fs=sr_out, output='sos')
+        d = sosfilt(sos, d)
 
     if one.get('rms') is not None:
         d = normalize(d, sr_out, one['rms'], mode='rms',
