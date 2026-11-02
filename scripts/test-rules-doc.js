@@ -199,3 +199,49 @@ console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
 
   console.log('  ✓ 转盘抽题优先新鲜（usedCards 读写 + 上限都在）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**洗牌必须无偏**
+ *
+ * 酒桌游戏的"可信度"全押在随机上 —— 玩家不会觉得是 bug，会觉得 App 在作弊。
+ * 而 `sort(() => Math.random() - 0.5)` 这个流传极广的写法**分布不均匀**。
+ * ========================================================================== */
+{
+  /* 先剥注释 —— 文件里第 47 行的注释正是在说「不用 sort(random)」 */
+  const pokerSrc = fs.readFileSync(
+    path.join(__dirname, '..', 'miniprogram/utils/poker.js'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/[^\n]*/g, '')
+
+  assert.ok(/for \(let i = a\.length - 1; i > 0; i--\)/.test(pokerSrc),
+    'shuffle 必须是 Fisher-Yates（从后往前）')
+  assert.ok(/Math\.floor\(r\(\) \* \(i \+ 1\)\)/.test(pokerSrc),
+    'shuffle 必须用 floor(r() * (i+1)) —— 用 round 时首尾只有一半概率')
+  assert.ok(!/sort\(\(\)\s*=>\s*Math\.random\(\)\s*-\s*0\.5\)/.test(pokerSrc),
+    '不许用 sort(random-0.5) 洗牌（分布不均匀）')
+
+  /* 实测：洗 3 元素 6000 次，6 种排列的频次应该接近 */
+  const dist = {}
+  const small = [{ id: 1 }, { id: 2 }, { id: 3 }]
+  const shuffleFn = new Function('deck', `
+    const a = (deck || []).slice()
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const t = a[i]; a[i] = a[j]; a[j] = t
+    }
+    return a
+  `)
+  for (let i = 0; i < 6000; i++) {
+    const k = shuffleFn(small).map(x => x.id).join('')
+    dist[k] = (dist[k] || 0) + 1
+  }
+  const counts = Object.values(dist)
+  assert.strictEqual(counts.length, 6, '3 个元素应该有 6 种排列，实际 ' + counts.length)
+  const avg = 6000 / 6
+  const worst = Math.max(...counts.map(c => Math.abs(c - avg) / avg))
+  assert.ok(worst < 0.12,
+    '洗牌分布偏差 ' + (worst * 100).toFixed(1) + '% 超过 12%（可能是偏的）')
+
+  console.log('  ✓ 洗牌是 Fisher-Yates 且分布均匀（6 种排列偏差 ' +
+    (worst * 100).toFixed(1) + '%）')
+}
