@@ -4097,3 +4097,34 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 切后台停掉轮询/音效/定时器，切回来立即拉一次')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**卧底的身份和词绝不能下发**（双盲）
+ *
+ * 这是"谁是卧底"能成立的前提：**连自己都不知道自己是不是卧底**。
+ * 而 `shape()` 是玩家能看到的一切 —— 它里面一旦出现 `uwRole` / `uwWord`，
+ * 抓个包就穿了（老手会开抓包工具看）。
+ *
+ * ⚠️ 写这条时我先误判了一次：扫 mock 状态发现"卧底 0 个"，
+ *   以为 mock 造假；其实那是**设计正确** —— 客户端根本不该有这个字段。
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+
+  /* 抽 shape() 里 players 的映射块 */
+  const i = cloud.indexOf('function shape(room, openid)')
+  assert.ok(i > 0, '找不到 shape()')
+  const seg = cloud.slice(i, i + 4000)
+  const mapStart = seg.indexOf('const players = (room.players || []).map(p => ({')
+  assert.ok(mapStart > 0, 'shape() 里找不到 players 映射')
+  const mapEnd = seg.indexOf('}))', mapStart)
+  const mapBlock = seg.slice(mapStart, mapEnd)
+
+  assert.ok(!/uwRole/.test(mapBlock),
+    '★ shape() 的 players 映射里不能有 uwRole —— 那会让抓包的人直接看出谁是卧底')
+  assert.ok(!/uwWord/.test(mapBlock),
+    '★ shape() 的 players 映射里不能有 uwWord —— 那会让抓包的人看到别人的词')
+
+  ok('★ 卧底身份与词不下发（shape 的 players 映射里没有 uwRole / uwWord）')
+}
