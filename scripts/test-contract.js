@@ -4918,3 +4918,39 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   ok('★ 紧凑模式的规则真的生效（骰盅 ' + baseCup + '→' + compactCup +
      'px，标题 ' + baseT + '→' + compactT + 'px）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**四条"改了才修好"的规则，必须持续生效**
+ *
+ * 这四条都是踩坑之后加的，而**它们失效时不会报错**：
+ *   · `.loserbox` 没有 flex-wrap → 12 字名字把「杯」拆到单独一行
+ *   · `.ht-t` 不是 block         → 规则弹层的长句被右侧裁掉
+ *   · `.lb-what` 没有 nowrap     → 「喝 1 杯」内部被拆开
+ *   · `.plist` 没有 max-height   → 12 人局的「开始」被推到屏幕外
+ *
+ * 用 `check-css-applied.js`（getComputedStyle）问浏览器 —— 比看代码可靠。
+ * ========================================================================== */
+{
+  const { execFileSync } = require('child_process')
+  const probe = (sel, prop) => {
+    try {
+      const out = execFileSync('node',
+        [path.join(ROOT, 'scripts/check-css-applied.js'), sel, prop],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      return (/=\s*(.+)$/.exec(out.trim()) || [])[1] || ''
+    } catch (e) { return '' }
+  }
+
+  assert.strictEqual(probe('.loserbox', 'flex-wrap'), 'wrap',
+    '★ .loserbox 必须 flex-wrap: wrap（长名字时「喝 1 杯」整体换行）')
+  assert.strictEqual(probe('.ht-t', 'display'), 'block',
+    '★ .ht-t 必须 display: block（否则规则弹层的长句被裁）')
+  assert.strictEqual(probe('.lb-what', 'white-space'), 'nowrap',
+    '★ .lb-what 必须 white-space: nowrap（「喝 1 杯」内部不许断）')
+
+  const maxH = parseFloat(probe('.plist', 'max-height'))
+  assert.ok(maxH > 0 && maxH < 1000,
+    '★ .plist 必须有 max-height（12 人局的「开始」才不会被推到屏幕外），实际 ' + maxH)
+
+  ok('★ 四条修复规则持续生效（换行 / 弹层 / 不拆词 / 列表可滚）')
+}
