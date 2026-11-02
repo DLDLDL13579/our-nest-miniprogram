@@ -259,10 +259,25 @@ module.exports = {
         wheelDur: 2700,
         wheelSpinning: false,
         wheelText: '大冒险',
-        /* 60 字上限的极端值 —— 验证不会把转盘和「转！」挤出屏幕 */
+        /*
+         * ★★★ 2026-11-02：这里原来手写了一条 60 字的**假题**
+         *   「用一句话形容在场每个人今天的状态不能重复形容词说完之后…」
+         *   —— 渲染图上它是一整段没有标点的长句，我差点去改题卡的折行样式。
+         *
+         *   而真实题卡库里**最长只有 28 字**，全是带标点的正常中文。
+         *   也就是说：这条"极端值"造的极限，**产品里根本不存在**，
+         *   它唯一的作用是让我对着一个假问题改真代码。
+         *
+         *   现在取真实题卡库里最长的那一条 —— 既仍然是"最长"这个边界条件，
+         *   又是真实会出现的字符串。
+         */
         card: {
           type: 'dare', deck: 'friends', deckName: '朋友聚会',
-          text: '用一句话形容在场每个人今天的状态不能重复形容词说完之后自罚一杯然后让左边的人接着说到所有人都说完为止再来一轮'
+          text: decks.DECKS
+            .filter(d => d.k === 'friends')
+            .map(d => [].concat(d.truth || [], d.dare || []))
+            .reduce((a, b) => a.concat(b), [])
+            .sort((a, b) => b.length - a.length)[0]
         },
         decks: decks.DECKS,
         room: pkRoom({ game: 'wheel', phase: 'playing', host: true, count: 3, gameName: '命运转盘' })
