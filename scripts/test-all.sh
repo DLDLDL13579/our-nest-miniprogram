@@ -90,9 +90,15 @@ node scripts/test-flows.js
 #   （同一份 HTML，getComputedStyle 说 none/59px，截图里却还是原样）。
 if [ -f outputs/ui/room-compactPk.html ]; then
   node scripts/verify-compact.js
+
 else
   echo "  （跳过 compact 验证：还没渲染过 compactPk）"
+
 fi
+
+# ★ 2026-11-03：长文本会不会溢出容器（用 getComputedStyle，不信截图）
+#   截图对 display / 重排类的规则不可信 —— 见 verify-compact.js 顶部长注释。
+node scripts/check-text-overflow.js 2>/dev/null
 
 # ★ 显式汇总（2026-10-30）。
 #   起因：有两次 test-all 以 exit=1 结束却只有一行 SyntaxError，重跑又过。
