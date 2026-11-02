@@ -58,3 +58,29 @@ ok('所有选项都能被 doBid 的正则解析（格式与点数范围都对）
 console.log('\n' + '='.repeat(50))
 console.log(`  叫骰规则：全部 ${n} 项通过`)
 console.log('='.repeat(50) + '\n')
+
+/* ============================================================================
+ * ★ 起叫数量：按调研的公式校验（2026-11-02）
+ *
+ * 原来 `openNeed` 是一张**硬编码表**：
+ *     p=3 斋4 / p=4 斋5 / p=5 斋6 / p≥6 斋 p+1、不斋 p+2
+ * 而调研（百度百科「大话骰」）说的是：
+ *     不斋 = 总人数的 **1.5 倍**；斋 = **人头数**
+ * 那张表里"斋"每个都多 1，6 人不斋少 1 —— 是凭感觉填的。
+ *
+ * 这条断言把它锁死成公式，以后不能再凭感觉改。
+ * ========================================================================== */
+{
+  const { openNeed } = require('../miniprogram/utils/liarRules.js')
+  let bad = []
+  for (let p = 2; p <= 8; p++) {
+    const day = openNeed(p, false, 2)
+    const zhai = openNeed(p, true, 2)   /* ⚠️ 必须是非 1 的点数，否则 face===1 会提前返回人数 */
+    const ones = openNeed(p, false, 1)
+    if (day !== Math.ceil(p * 1.5)) bad.push(p + '人不斋应' + Math.ceil(p * 1.5) + '实得' + day)
+    if (zhai !== p) bad.push(p + '人斋应' + p + '实得' + zhai)
+    if (ones !== p) bad.push(p + '人叫1应' + p + '实得' + ones)
+  }
+  assert.deepStrictEqual(bad, [], '起叫数量不符调研规则：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 起叫数量：不斋=1.5倍 / 斋=人头数 / 叫1=人头数（2~8 人逐个核对）')
+}
