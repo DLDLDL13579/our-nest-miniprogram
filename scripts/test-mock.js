@@ -461,3 +461,38 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
 
   console.log('  ✓ 内容量真实：' + cards + ' 道题 / ' + pairs + ' 对词（' + words.DECKS.length + ' 个词库）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**题卡库不许有重复**（decks.js 的注释说这是"最容易违反的一条"）
+ *
+ * 而**全仓没有任何去重断言** —— 注释声称"收录标准里最容易违反的一条"，
+ * 却没有人检查它。
+ *
+ * 重复的后果：换场合的人会觉得"怎么还是这些"（这正是注释里写的原话）。
+ * ========================================================================== */
+{
+  const decks = require('../miniprogram/utils/decks.js')
+  const seen = new Map()
+  const dup = []
+  let total = 0
+
+  decks.DECKS.forEach(d => {
+    ;['truth', 'dare'].forEach(kind => {
+      (d[kind] || []).forEach(t => {
+        total++
+        const key = String(t).trim()
+        if (seen.has(key)) {
+          dup.push(seen.get(key) + ' 与 ' + d.k + '：' + key.slice(0, 22))
+        } else {
+          seen.set(key, d.k)
+        }
+      })
+    })
+  })
+
+  assert.deepStrictEqual([...new Set(dup)], [],
+    '这些题在两副牌里重复了：\n    ' + dup.slice(0, 8).join('\n    '))
+  assert.strictEqual(seen.size, total, '去重后 ' + seen.size + ' 条，实际 ' + total + ' 条')
+
+  console.log('  ✓ 题卡库无重复（' + total + ' 条全部唯一）')
+}
