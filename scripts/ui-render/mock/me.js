@@ -11,13 +11,20 @@ module.exports = {
     muted: false,
     hapticOn: true,
     gameCount: GAMES.length,
-    gameRows: [
-      { id: 'poker', name: '梦幻金花', color: '#B8863C', count: 7 },
-      { id: 'liar', name: '大话骰', color: '#C4573A', count: 4 },
-      { id: 'undercover', name: '谁是卧底', color: '#7A5CA8', count: 2 },
-      { id: 'dice', name: '比大小', color: '#5E7FA6', count: 0 },
-      { id: 'wheel', name: '命运转盘', color: '#7A5CA8', count: 0 }
-    ],
+    /*
+     * ★★ 2026-11-03：**颜色从注册表取，不硬编码**。
+     *
+     *   原来这里写死了五个 hex —— 而注册表后来改过两次配色
+     *   （金花 `#B8863C`→`#D4A03C`、转盘 `#7A5CA8`→`#3E9187`），
+     *   mock 没跟着改 → 截图里「我的」页的圆点是**旧颜色**，
+     *   和「大厅」页的玩法卡对不上。
+     *
+     *   真实代码 `me.js` 一直是 `color: g.color`（从注册表取），只有 mock 落后。
+     */
+    gameRows: GAMES.map(function (g) {
+      const counts = { poker: 7, liar: 4, undercover: 2, dice: 0, wheel: 0 }
+      return { id: g.id, name: g.name, color: g.color, count: counts[g.id] || 0 }
+    }).sort(function (a, b) { return b.count - a.count }),   /* ⚠️ 真实代码按次数降序排 */
     /*
      * ⚠️ 版本号从 config 读，别再硬编码 —— 这里原来写着 '3.7.4'，
      *    而实际早就是 3.10.x 了。真实的 me.js 早改成从 config 读了，

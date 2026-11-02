@@ -496,3 +496,41 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
 
   console.log('  ✓ 题卡库无重复（' + total + ' 条全部唯一）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**「我的」页的玩法统计，颜色和顺序都要和真实代码一致**
+ *
+ * 原来 mock 里五个玩法色是**写死的 hex** —— 而注册表后来改过两次配色
+ * （金花 `#B8863C`→`#D4A03C`、转盘 `#7A5CA8`→`#3E9187`），mock 没跟着改。
+ *
+ * 表现：「我的」页的圆点是旧颜色，和「大厅」的玩法卡对不上 —— 而两页都是同一份数据。
+ *
+ * 判据：颜色必须等于注册表里的 `color`；顺序必须是按次数降序（真实代码如此）。
+ * ========================================================================== */
+{
+  const meMock = require('./ui-render/mock/me.js')
+  const { GAMES } = require('../miniprogram/utils/games.js')
+
+  const rows = (typeof meMock.data === 'function' ? meMock.data() : meMock.data).gameRows || []
+  assert.ok(rows.length >= 5, '「我的」页的玩法行只有 ' + rows.length + ' 行')
+
+  /* ① 颜色必须和注册表一致 */
+  const wrongColor = []
+  rows.forEach(r => {
+    const g = GAMES.filter(x => x.id === r.id)[0]
+    if (!g) return
+    if (String(r.color).toUpperCase() !== String(g.color).toUpperCase()) {
+      wrongColor.push(r.name + '：mock ' + r.color + ' / 注册表 ' + g.color)
+    }
+  })
+  assert.deepStrictEqual(wrongColor, [],
+    '这些玩法色和注册表对不上（截图里会显示旧颜色）：\n    ' + wrongColor.join('\n    '))
+
+  /* ② 顺序必须是按次数降序 */
+  const counts = rows.map(r => r.count)
+  const sorted = counts.slice().sort((a, b) => b - a)
+  assert.deepStrictEqual(counts, sorted,
+    '「我的」页的玩法行没有按次数降序排（真实代码是 sort((a,b)=>b.count-a.count)）')
+
+  console.log('  ✓ 「我的」页的玩法统计与真实代码一致（颜色 ' + rows.length + ' 项 / 按次数降序）')
+}
