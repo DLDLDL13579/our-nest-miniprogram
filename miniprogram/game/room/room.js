@@ -82,13 +82,13 @@ const GAMES = GAME_LIST.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g
 /* 转盘扇区。权重决定扇区角度 —— 概率和视觉必须一致，
    否则玩家会感觉"明明指着喝一杯却判成真心话"（这类 bug 最伤信任）。 */
 const SECTORS = [
-  { k: 'truth', t: '真心话', weight: 22, color: '#9E4029' },
-  { k: 'dare',  t: '大冒险', weight: 20, color: '#3F5A7A' },
-  { k: 'drink', t: '喝一杯', weight: 18, color: '#573E7A' },
-  { k: 'you',   t: '你喝',   weight: 14, color: '#36654C' },
-  { k: 'me',    t: '我喝',   weight: 12, color: '#8C6226' },
-  { k: 'both',  t: '一起喝', weight: 8,  color: '#7D3549' },
-  { k: 'pass',  t: '免罚一次', weight: 6, color: '#3F6579' }
+  { k: 'truth', t: '真心话', weight: 22, color: '#9F4028' },
+  { k: 'dare',  t: '大冒险', weight: 20, color: '#2E538A' },
+  { k: 'drink', t: '喝一杯', weight: 18, color: '#593384' },
+  { k: 'you',   t: '你喝',   weight: 14, color: '#34762D' },
+  { k: 'me',    t: '我喝',   weight: 12, color: '#888E29' },
+  { k: 'both',  t: '一起喝', weight: 8,  color: '#862D68' },
+  { k: 'pass',  t: '免罚一次', weight: 6, color: '#388A79' }
 ]
 
 /**

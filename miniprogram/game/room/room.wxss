@@ -2836,7 +2836,15 @@
     rgba(255, 248, 224, .55) 50%,
     rgba(255, 248, 224, 0) 100%);
   transform: skewX(-18deg);
-  animation: nameShine 2.6s ease-in-out 1.2s infinite;
+  /*
+   * ★ 2026-11-02：原来写 `infinite`，但 `nameShine` 的 55%~100% 都停在
+   *   `left: 115%`（框外）—— 视觉上就是"扫一次就停了"。
+   *
+   *   而 `infinite` 让合成器每 2.6 秒重新跑一遍完整的 keyframes（虽然看不见），
+   *   在一屏已经有 2 个真循环（光晕呼吸 + 输家脉冲）的情况下，**这是纯浪费**。
+   *   改成只跑一次，扫完就彻底没了。
+   */
+  animation: nameShine 2.6s ease-in-out 1.2s 1 backwards;
   pointer-events: none;
 }
 @keyframes nameShine {
