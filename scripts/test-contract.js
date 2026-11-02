@@ -4591,3 +4591,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些地方绕过了 feedback 直接震（「减少动效」开关会失效）：\n    ' + bad.join('\n    '))
   ok('★ 震动只从 feedback 出口（「减少动效」开关才能真正生效）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**模板引用的字段必须真的有人产出**（幽灵字段）
+ *
+ * `result.topHand` 一直出现在模板里（英雄区的牌型名），
+ * 而**云端 `calcDiceResult` 从来没返回过它** ——
+ * 于是"赢家"那块永远只有名字 + 点数，**没有牌型名**；
+ * 而下面列表里每个人都有（四条 / 顺子 / 三条）。
+ *
+ * 同一屏里一处有一处没有，看起来像"英雄区没做完"。
+ * 这类"模板读了、但没人写"的字段，小程序**完全不报错**（求值成 undefined）。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const pageSrc = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const cloudSrc = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+
+  /* 只查比大小结算区里那几个"本该有值"的字段 */
+  const mustHave = ['topHand', 'topDice', 'restRanked']
+  const bad = []
+  mustHave.forEach(f => {
+    const inTpl = new RegExp('result\\.' + f + '\\b').test(wxml)
+    if (!inTpl) return
+    /* 谁给它赋值？（前端 decorate 或云端 result） */
+    const inPage = new RegExp('(\\.|\\s)' + f + '\\s*[=:]').test(pageSrc)
+    const inCloud = new RegExp(f + '\\s*:').test(cloudSrc)
+    if (!inPage && !inCloud) {
+      bad.push(f + '：模板在用，但既不是 decorate 赋的、也不是云函数返回的')
+    }
+  })
+  assert.deepStrictEqual(bad, [],
+    '这些是幽灵字段（模板读了但没人写）：\n    ' + bad.join('\n    '))
+  ok('★ 结算区引用的字段都有人产出（topHand / topDice / restRanked）')
+}

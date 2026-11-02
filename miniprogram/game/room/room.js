@@ -2083,6 +2083,18 @@ Page({
       const hero = lr.ranked[0]
       lr.topDice = (hero && hero.dice) ? hero.dice : []
       /*
+       * ★★★ 2026-11-03：**`result.topHand` 是个幽灵字段**。
+       *
+       *   模板里有 `{{result.topHand}}`（英雄区的牌型名），
+       *   而**云端 `calcDiceResult` 从来没返回过 `topHand`** ——
+       *   于是"赢家"那块永远只有名字 + 点球，**没有牌型名**；
+       *   而下面列表里每个人都有（四条 / 顺子 / 三条）。
+       *
+       *   同一屏里一处有一处没有，看起来像"英雄区没做完"。
+       *   现在从 `ranked[0]`（已按牌型排好序）取。
+       */
+      if (!lr.topHand && hero && hero.handName) lr.topHand = hero.handName
+      /*
        * 列表里**去掉赢家**：他已经在大图里了，再列一遍既是重复、又白占一行 ——
        * 8 人局那一行正好把底部的「再来一局」挤下屏。
        */

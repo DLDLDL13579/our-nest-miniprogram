@@ -787,8 +787,14 @@ module.exports = {
          */
         result: {
           ranked: ranked, winners: [ranked[0].name], top: ranked[0].total,
-          /* 英雄区用（decorate 里算，mock 要手工给） */
+          /*
+           * 英雄区用（decorate 里算，mock 要手工给）。
+           * ★ 2026-11-03：`topHand` 也要给 —— 原来漏了，
+           *   于是截图里英雄区只有「大刘 + 15 点」，**没有"五条"**，
+           *   而下面列表里每个人都有牌型名，同一屏一处有一处没有。
+           */
           topDice: ranked[0].dice,
+          topHand: ranked[0].handName,
           restRanked: ranked.slice(1)
         },
         room: pkRoom({
