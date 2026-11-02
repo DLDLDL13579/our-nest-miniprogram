@@ -2902,3 +2902,32 @@
 
 /* 转盘中心的「转」可点（2026-11-02）—— 它看起来就是按钮，不能是死的 */
 .ws-hub:active { transform: scale(.94); filter: brightness(1.06) }
+
+/* ============================================================
+   两处偏小的触控目标（2026-11-02）
+   ------------------------------------------------------------
+   量下来：
+     .gbar-r  喇叭按钮     约 54rpx（27px）
+     .ht-fold 规则折叠文字  约 31rpx（15px）← 几乎没有 padding
+
+   都在 Apple HIG 的 44pt（88rpx）下方。喇叭点不中只是烦，
+   「展开规则」点不中就等于**新玩家看不到怎么玩**。
+
+   同样用伪元素扩热区，视觉不变。
+   ============================================================ */
+.gbar-r { position: relative }
+.gbar-r::after {
+  content: '';
+  position: absolute;
+  top: -18rpx; bottom: -18rpx; left: -14rpx; right: -14rpx;
+}
+
+.ht-fold { position: relative }
+.ht-fold::after {
+  content: '';
+  position: absolute;
+  /* 这一行在规则列表底部，向上下各扩 28rpx 就能到 88rpx 上下 */
+  top: -28rpx; bottom: -12rpx; left: -8rpx; right: -8rpx;
+}
+.gbar-r:active { opacity: .7 }
+.ht-fold:active { opacity: .72 }
