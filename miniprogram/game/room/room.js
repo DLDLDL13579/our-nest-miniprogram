@@ -58,6 +58,7 @@ const trace = require('../../utils/trace.js')
 const decks = require('../../utils/decks.js')
 /* 牌面文字由共享模块生成 —— 和服务端算牌型的必须是同一份代码 */
 const poker = require('../../utils/poker.js')
+const betweenRules = require('../../utils/betweenRules.js')
 
 const POLL_MS = 1500
 
@@ -355,7 +356,11 @@ Page({
     zhaiMode: false,
 
     /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
-    pkAsk: null
+    pkAsk: null,
+    /* 射龙门：认低威的二次确认（代价固定，但押注额会作废） */
+    btAskBail: false,
+    /* 押注档位（从 betweenRules 自动生成，不手写） */
+    betChips: []
   },
 
   onLoad(q0) {
@@ -433,6 +438,11 @@ Page({
     } catch (e) { /* 拿不到就按"有上一页"处理，少显示一个按钮比多一个好 */ }
 
     this._cupTimers = []
+    /*
+     * 射龙门的押注档位：从 betweenRules 的区间**自动生成**。
+     * 放在 onLoad 一次性算好 —— 每轮轮询都重算就是白算 100 次。
+     */
+    this.setData({ betChips: this._betChips() })
     const w = buildSectors()
 
     /*
@@ -2612,6 +2622,115 @@ Page({
       })
     this.data._pkBusy = false
     if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  /* ================= 射龙门（2026-11-03） ================= */
+
+  /*
+   * 押注选项：从 betweenRules 的区间**自动生成**，不在这里手写 0.5/1/1.5…
+   * 两处手写必然不同步（项目里"派生字段 7 个出口"就是这个病）。
+   */
+  _betChips() {
+    const out = []
+    for (let v = betweenRules.MIN_BET; v <= betweenRules.MAX_BET + 1e-9; v += 0.5) {
+      out.push({ v: v, t: (v % 1 === 0 ? v : String(v)) + ' 杯' })
+    }
+    return out
+  },
+
+  /* 选押注额（只改本地状态，不发请求 —— 点"开牌"才发） */
+  btPickBet(e) {
+    const v = Number(e.currentTarget.dataset.bet)
+    if (!isFinite(v)) return
+    sfx.play('tapSoft')
+    const room = this.data.room
+    if (!room || !room.bt) return
+    /*
+     * 本地只改 `room.bt.bet` —— 服务端那份还是 0（还没发请求）。
+     * 这样"选金额"不产生任何网络往返，符合铁律①（少点、少等）。
+     */
+    room.bt.bet = v
+    room.bt.betText = v + ' 杯'
+    this.setData({ room: room })
+  },
+
+  /* 押注 —— **这一步之后就没有回头路**，所以直接发请求，不做二次确认 */
+  async btBet() {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.bt || this._btBusy) return
+    const bet = Number(room.bt.bet) || 0
+    if (!bet) {
+      /* 取不到就**说话**，不能静默返回（项目里修过 13 处这类） */
+      wx.showToast({ title: '先选押多少', icon: 'none' })
+      return
+    }
+    this._btBusy = true
+    sfx.play('chipBet')
+    const r = await call('room', { action: 'btAct', act: 'bet', bet: bet, id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没押上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._btBusy = false
+    if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  /* 翻第三张 —— 这是全场焦点，走 feedback 的揭晓反馈 */
+  async btDraw() {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.bt || this._btBusy) return
+    this._btBusy = true
+    feedback.fire('pkFlip')
+    const r = await call('room', { action: 'btAct', act: 'draw', id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没翻成，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._btBusy = false
+    if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  /* 认低威 —— 代价固定半杯，但**押注额会作废**，所以给二次确认 */
+  btBail() {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.bt || this._btBusy) return
+    sfx.play('tapSoft')
+    this.setData({ btAskBail: true })
+  },
+
+  async btDoBail() {
+    /*
+     * ★ 观战守卫（断言 ⑥ 抓到的一次遗漏）。
+     *
+     *   认低威卡是页面级的（`wx:if="{{btAskBail}}"`），
+     *   中途进来的人**点不到按钮但可能带着这张卡**（上一帧的残留），
+     *   于是能直接发请求 —— 服务端会拒，但用户看到的是"点了没反应"。
+     *   项目里 13 处"点了没反应"有一半是这类：**入口判过、二次确认没判。**
+     */
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.bt || this._btBusy) return
+    this._btBusy = true
+    sfx.play('gulp')
+    const r = await call('room', { action: 'btAct', act: 'bail', id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._btBusy = false
+    this.setData({ btAskBail: false })
+    if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  btCancelBail() {
+    sfx.play('tapSoft')
+    this.setData({ btAskBail: false })
   },
 
   /* ================= 自定义题 ================= */

@@ -18,8 +18,42 @@ const fs = require('fs')
 const path = require('path')
 
 const ROOT = path.join(__dirname, '..')
-/* 这些是"前端写一份、云端复制一份"的纯数据模块 */
-const MODS = ['games.js', 'decks.js', 'words.js', 'poker.js', 'dicerank.js']
+
+/*
+ * ★★ 2026-11-03：清单从**硬编码**改成**自动扫描**。
+ *
+ *   原来是 `const MODS = ['games.js', ...]` —— 而它漏了两个：
+ *     · `liarRules.js`（2019…不，2026-10 加的起叫公式）
+ *     · `betweenRules.js`（今天加的射龙门判定器）
+ *   漏掉的表现是**这条断言对它们是绿的，只是从来没比过** ——
+ *   和 `deploy.sh` 曾经硬编码函数清单、`sync-derive.sh` 曾经硬编码路径
+ *   是同一个病：**清单是手写的，就会有人忘记加。**
+ *
+ *   现在的判据是**结构性的**：
+ *     云函数目录里存在的 .js 文件，如果 `miniprogram/utils/` 里有同名文件，
+ *     它就是"共享模块"，必须逐字节一致。
+ *   加新的共享模块 → 只要 sync-derive 复制过去，这条断言自动覆盖它。
+ *
+ *   ⚠️ 反过来也要防：如果哪天有人把**云端独有**的文件（如 index.js）误判成共享模块，
+ *      这里会报"源文件不存在"。当前 `miniprogram/utils/` 下没有 index.js，
+ *      所以不会误报；规则写在下面那句 continue 里。
+ */
+function discoverMods() {
+  const utilsDir = path.join(ROOT, 'miniprogram', 'utils')
+  const seen = new Set()
+  for (const fn of fs.readdirSync(path.join(ROOT, 'cloudfunctions'))) {
+    const dir = path.join(ROOT, 'cloudfunctions', fn)
+    if (!fs.existsSync(path.join(dir, 'index.js'))) continue
+    for (const f of fs.readdirSync(dir)) {
+      if (!f.endsWith('.js')) continue
+      if (f === 'index.js') continue                       /* 云函数入口，不是共享模块 */
+      if (!fs.existsSync(path.join(utilsDir, f))) continue  /* 云端独有，没有前端源 */
+      seen.add(f)
+    }
+  }
+  return Array.from(seen).sort()
+}
+const MODS = discoverMods()
 
 const bad = []
 let checked = 0

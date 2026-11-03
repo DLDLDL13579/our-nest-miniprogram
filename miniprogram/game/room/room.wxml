@@ -1197,6 +1197,100 @@
       </view>
     </block>
 
+    <!-- ============ 射龙门（2026-11-03，第 7 个玩法） ============
+      ★ 这个界面的信息结构和其他玩法都不一样：
+        **押注时屏幕上什么都没有**（连龙门都没开），
+        这正是玩法本身 —— 你在盲押。所以「押注阶段」要刻意留白 + 一句话说明，
+        不要为了好看先画两张牌背（那会误导成"已经发牌了"）。
+      必须写在 wx:if / wx:elif 链上，不能落进 wx:else 兜底。
+    -->
+    <block wx:elif="{{room.game === 'between'}}">
+      <view class="bt-stage">
+
+        <!-- ① 押注阶段：屏幕上刻意什么都不画 -->
+        <block wx:if="{{room.bt.step === 'bet'}}">
+          <view class="bt-blind">
+            <view class="bt-blind-t">还没开牌</view>
+            <view class="bt-blind-s">先押 —— 押完才发牌，说了不许改</view>
+          </view>
+
+          <block wx:if="{{room.bt.myTurn}}">
+            <view class="bt-bets">
+              <view wx:for="{{betChips}}" wx:key="v"
+                    class="bt-chip {{item.v === room.bt.bet ? 'on' : ''}}"
+                    bindtap="btPickBet" data-bet="{{item.v}}">
+                <text class="bt-chip-v">{{item.t}}</text>
+              </view>
+            </view>
+            <view class="btn main bigbtn {{room.bt.bet ? '' : 'disabled'}}"
+                  bindtap="btBet">{{room.bt.bet ? '押 ' + room.bt.betText + '，开牌' : '先选押多少'}}</view>
+          </block>
+          <view wx:else class="pk-wait">
+            <text class="pw-t waitpulse">等 {{room.bt.turnName}} 押注</text>
+            <text class="pw-s">他押完才发牌 —— 谁也不知道会开出什么</text>
+          </view>
+        </block>
+
+        <!-- ② 龙门已开：两张牌 + 一个「翻」或「认低威」 -->
+        <block wx:elif="{{room.bt.step === 'gate'}}">
+          <view class="bt-cmd">押了 {{room.bt.betText}} · {{room.bt.widthHint}}</view>
+          <!--
+            ⚠️ 2026-11-03：这里原来写了**两个 wx:for 都遍历 room.bt.gate** ——
+               渲染出 4 张牌（龙门只有 2 张）。离线截图一眼就看出来，
+               而静态读代码很容易读成"两个一组"。
+               现在按下标直接取 gate[0] / gate[1]，一个循环都不用。
+          -->
+          <view class="bt-gate">
+            <image wx:if="{{room.bt.gate.length > 1}}"
+                   class="bt-gcard" src="/game/images/card/c{{room.bt.gate[0].s}}-{{room.bt.gate[0].r}}.png" mode="scaleToFill" />
+            <view class="bt-gap">?</view>
+            <image wx:if="{{room.bt.gate.length > 1}}"
+                   class="bt-gcard" src="/game/images/card/c{{room.bt.gate[1].s}}-{{room.bt.gate[1].r}}.png" mode="scaleToFill" />
+          </view>
+          <block wx:if="{{room.bt.myTurn}}">
+            <view class="bt-acts">
+              <view class="btn main bigbtn" bindtap="btDraw">翻第三张</view>
+              <view class="btn ghost" bindtap="btBail">认低威 · 喝半杯</view>
+            </view>
+          </block>
+          <view wx:else class="pk-wait">
+            <text class="pw-t waitpulse">等 {{room.bt.turnName}} 决定</text>
+            <text class="pw-s">翻第三张，或者认低威喝半杯收工</text>
+          </view>
+        </block>
+
+        <!-- ③ 刚射完：把这一把的牌和结果摊开 -->
+        <block wx:else>
+          <view wx:if="{{room.bt.last}}" class="bt-result {{room.bt.last.cups > 0 ? 'bad' : 'good'}}">
+            <view class="bt-r-title">{{room.bt.last.title}}</view>
+            <view class="bt-r-detail">{{room.bt.last.detail}}</view>
+            <view wx:if="{{room.bt.last.gate.length}}" class="bt-gate small">
+              <image class="bt-gcard" src="/game/images/card/c{{room.bt.last.gate[0].s}}-{{room.bt.last.gate[0].r}}.png" mode="scaleToFill" />
+              <image wx:if="{{room.bt.last.third}}" class="bt-gcard mid"
+                     src="/game/images/card/c{{room.bt.last.third.s}}-{{room.bt.last.third.r}}.png" mode="scaleToFill" />
+              <image class="bt-gcard" src="/game/images/card/c{{room.bt.last.gate[1].s}}-{{room.bt.last.gate[1].r}}.png" mode="scaleToFill" />
+            </view>
+          </view>
+          <view class="pk-wait">
+            <text class="pw-t waitpulse">{{room.bt.myTurn ? '轮到你了' : '等 ' + room.bt.turnName + ' 押注'}}</text>
+            <text class="pw-s">下一位直接押注，不用点「下一轮」</text>
+          </view>
+        </block>
+
+        <!-- 所有人的累计：公开信息，桌上都看见谁在喝 -->
+        <view wx:if="{{room.bt.drinks.length}}" class="pk-seats">
+          <view wx:for="{{room.bt.drinks}}" wx:key="name"
+                class="pk-seat {{item.isMe ? 'me' : ''}}">
+            <text class="pk-seat-n">{{item.name}}</text>
+            <text wx:if="{{item.cups > 0}}" class="pk-seat-s drank">{{item.cups}} 杯</text>
+            <text wx:else class="pk-seat-s">还没喝</text>
+          </view>
+        </view>
+
+        <view wx:if="{{room.bt.drinkText}}" class="bt-mine">你今晚在射龙门喝了 {{room.bt.drinkText}}</view>
+      </view>
+    </block>
+
     <!-- 命运转盘（联机） -->
     <!--
       ★★ 这里原来写的是 `<block wx:else>` —— 立刻改掉的真实原因：
@@ -1596,6 +1690,24 @@
       <view class="pkask-row">
         <view class="pkask-btn no" bindtap="pkAskNo">再想想</view>
         <view class="pkask-btn yes" bindtap="pkAskYes">{{pkAsk.kind === 'fold' ? '弃牌' : '换'}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!--
+    射龙门：认低威的确认卡（2026-11-03）。
+    ★ 为什么这一条要二次确认而「押注」不要：
+      押注是**开始**（还能反悔，只是不许改金额），认低威是**放弃**——
+      它把已经押下的金额作废、改成固定半杯。点错了就等于白押一把。
+      代价越"不可逆"，越该确认；这条和弃牌卡是同一条判据。
+  -->
+  <view wx:if="{{btAskBail}}" class="mask" bindtap="btCancelBail">
+    <view class="sheet pkask" catchtap="noop">
+      <view class="sheet-t">认低威？</view>
+      <view class="sheet-s">不翻第三张，直接喝 0.5 杯收工。押的 {{room.bt.betText}} 作废。</view>
+      <view class="pkask-row">
+        <view class="pkask-btn no" bindtap="btCancelBail">再想想</view>
+        <view class="pkask-btn yes" bindtap="btDoBail">认了</view>
       </view>
     </view>
   </view>

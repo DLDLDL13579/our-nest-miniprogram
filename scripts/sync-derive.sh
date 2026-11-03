@@ -67,3 +67,6 @@ sync_one miniprogram/utils/poker.js "poker.js" cloudfunctions/*/poker.js
 sync_one miniprogram/utils/dicerank.js "dicerank.js" cloudfunctions/*/dicerank.js
 # 2026-10-30：大话骰叫骰规则（斋/起叫档/破斋）—— 前端生成选项、服务端校验，必须同一份
 sync_one miniprogram/utils/liarRules.js "liarRules.js" cloudfunctions/room/liarRules.js
+# ★ 2026-11-03：射龙门的判定器（第 7 个玩法）。它同样是"纯函数 + 云端要一份拷贝"，
+#   不加进来就会变成：前端按新规则判、云端按旧规则判 —— 而**两边都不报错**。
+sync_one miniprogram/utils/betweenRules.js "betweenRules.js" cloudfunctions/room/betweenRules.js

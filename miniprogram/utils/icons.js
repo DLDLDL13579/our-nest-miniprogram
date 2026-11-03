@@ -140,6 +140,13 @@ const PATHS = {
    * 而不是拿在手里（那是所有其它牌类的样子）。
    */
   forehead: '<rect x="6.5" y="2.9" width="11" height="6.2" rx="1.3"/><path d="M6.5 12.3h11"/><circle cx="9.3" cy="15.9" r="0.95" fill="currentColor" stroke="none"/><circle cx="14.7" cy="15.9" r="0.95" fill="currentColor" stroke="none"/><path d="M9.1 19.3a4.5 4.5 0 0 1 5.8 0"/>',
+  /*
+   * 射龙门（2026-11-03，第 7 个玩法）。
+   * 两根门柱 + 一颗从中间穿过去的球 —— 这个玩法的判定就是
+   * **「第三张牌落不落在这两根柱子之间」**，图标直接画这件事。
+   * 球偏左一点，暗示"有可能打偏"（那正是要赌的部分）。
+   */
+  gate: '<path d="M5.2 3.6v17"/><path d="M18.8 3.6v17"/><path d="M5.2 6.4h13.6"/><circle cx="10.4" cy="12.6" r="2.5" fill="currentColor" stroke="none"/>',
 
   /* ---------- 情绪 ---------- */
   moodHappy: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/><circle cx="9.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.6" r="1" fill="currentColor" stroke="none"/>',

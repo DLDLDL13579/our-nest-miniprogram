@@ -1233,6 +1233,86 @@ module.exports = {
      *   中心按钮像圆片）我在本地一次都看不到。
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
+    /* ============ 射龙门（2026-11-03）============ */
+    /* 轮到我押注：屏幕上刻意什么都没有 */
+    btBet: () => ({
+      stage: 'playing',
+      betChips: [
+        { v: 0.5, t: '0.5 杯' }, { v: 1, t: '1 杯' }, { v: 1.5, t: '1.5 杯' },
+        { v: 2, t: '2 杯' }, { v: 2.5, t: '2.5 杯' }, { v: 3, t: '3 杯' }
+      ],
+      btAskBail: false,
+      room: pkRoom({
+        game: 'between', phase: 'playing', host: true, count: 3,
+        gameName: '射龙门', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        bt: {
+          step: 'bet', bet: 1, betText: '1 杯', gate: [], third: null, last: null,
+          widthHint: '', round: 1, turnName: '邓林', myTurn: true,
+          myDrink: 1.5, drinkText: '1 杯半',
+          drinks: [
+            { name: '邓林', cups: 1.5, isMe: true },
+            { name: '倩萍', cups: 0, isMe: false },
+            { name: '阿杰', cups: 2, isMe: false }
+          ],
+          waitingNames: ['倩萍', '阿杰'],
+          minBet: 0.5, maxBet: 3, bailCost: 0.5
+        }
+      })
+    }),
+    /* 龙门已开，等我决定翻不翻 */
+    btGate: () => ({
+      stage: 'playing',
+      betChips: [],
+      btAskBail: false,
+      room: pkRoom({
+        game: 'between', phase: 'playing', host: true, count: 3,
+        gameName: '射龙门', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        bt: {
+          step: 'gate', bet: 1.5, betText: '1.5 杯',
+          gate: [{ r: 5, s: 0, t: '\u26605' }, { r: 11, s: 1, t: '\u2665J' }],
+          third: null, last: null, widthHint: '还行', round: 1,
+          turnName: '邓林', myTurn: true,
+          myDrink: 1.5, drinkText: '1 杯半',
+          drinks: [
+            { name: '邓林', cups: 1.5, isMe: true },
+            { name: '倩萍', cups: 0, isMe: false }
+          ],
+          waitingNames: ['倩萍'], minBet: 0.5, maxBet: 3, bailCost: 0.5
+        }
+      })
+    }),
+    /*
+     * 射完一把：撞柱双倍。
+     * ⚠️ 名字不能叫 `btOver` —— 射龙门是**回合制**，一把结束仍在 playing，
+     *    整局的 <code>over</code> 阶段只在房主「再来一局」时出现。
+     *    有断言查"名字像结算但 stage 不是 over"，这条改了名才不会假报。
+     */
+    btShot: () => ({
+      stage: 'playing',
+      betChips: [],
+      btAskBail: false,
+      room: pkRoom({
+        game: 'between', phase: 'playing', host: true, count: 3,
+        gameName: '射龙门', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        bt: {
+          step: 'done', bet: 1.5, betText: '1.5 杯',
+          gate: [{ r: 5, s: 0, t: '\u26605' }, { r: 11, s: 1, t: '\u2665J' }],
+          third: { r: 11, s: 2, t: '\u2663J' },
+          last: {
+            bet: 1.5, gate: [{ r: 5, s: 0, t: '\u26605' }, { r: 11, s: 1, t: '\u2665J' }],
+            third: { r: 11, s: 2, t: '\u2663J' },
+            outcome: 'post', cups: 3, title: '撞柱',
+            detail: '第三张也是 11 点 —— 双倍，喝 3 杯',
+            widthHint: '还行', byName: '邓林'
+          },
+          widthHint: '还行', round: 2, turnName: '倩萍', myTurn: false,
+          myDrink: 3, drinkText: '3 杯',
+          drinks: [{ name: '邓林', cups: 3, isMe: true }, { name: '倩萍', cups: 0, isMe: false }],
+          waitingNames: [], minBet: 0.5, maxBet: 3, bailCost: 0.5
+        }
+      })
+    }),
+
     /* ============ 额头牌（2026-11-03）============ */
     /* 轮到我表态：全屏最该看懂的一件事是"别人的牌看得见，我的看不见" */
     fhAct: () => ({

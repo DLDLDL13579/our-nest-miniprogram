@@ -70,6 +70,7 @@ const liarCount = require('./liarCount.js')
 /* 规则在 miniprogram/utils/liarRules.js（前后端共享，sync-derive 同步过来）——
    两边各写一份必然不一致：会出现"按钮亮了但服务端说不行"，而且不报错。 */
 const liarRules = require('./liarRules.js')
+const betweenRules = require('./betweenRules.js')
 
 /**
  * 比大小的结算（2026-10-30 抽出来）。
@@ -923,6 +924,65 @@ function shape(room, openid) {
         mySwitches: Number(me.fhSwitch) || 0,
         /* 结算结果 */
         result: reveal ? (room.fhLast || null) : null
+      }
+    })(),
+    /*
+     * ============ 射龙门（2026-11-03）============
+     *
+     * ★ 这个玩法**没有秘密信息** —— 牌全公开、押注全公开。
+     *   它用手机的理由不是"藏"，而是三件现实里做不到的事：
+     *     ① 押注**先落库再发牌**（口头承诺酒后必反悔）
+     *     ② 三档判定 + 撞柱双倍由服务端一处算（桌上四个人会算出三个答案）
+     *     ③ 每人累计喝了多少跨轮记住（"我不是只喝了两杯吗"）
+     *
+     *   所以这里不像骰子/金花那样按 openid 过滤 —— 全给。
+     *   **别照抄 below 的 poker 那段**（它有 `myKnown` 这类私密字段）。
+     */
+    bt: (function () {
+      if (room.game !== 'between') return null
+      const live = (room.players || []).filter(p => p.inRound !== false)
+      const me = live.filter(p => p.openid === openid)[0] || null
+      if (!me) return null
+      const queue = room.btQueue || []
+      const turnP = live.filter(p => p.openid === queue[0])[0] || null
+      const drinks = room.btDrink || {}
+      const gate = (room.btGate || []).map(c => ({ r: c.r, s: c.s, t: poker.cardText(c) }))
+      const third = room.btThird ? { r: room.btThird.r, s: room.btThird.s, t: poker.cardText(room.btThird) } : null
+      return {
+        step: room.btStep || 'bet',
+        bet: Number(room.btBet) || 0,
+        betText: (Number(room.btBet) || 0) ? (Number(room.btBet)) + ' 杯' : '',
+        gate: gate,
+        third: third,
+        /* 龙门宽度提示：只给文案，不参与判定（见 betweenRules.widthHint） */
+        widthHint: gate.length === 2 ? betweenRules.widthHint({ r: gate[0].r }, { r: gate[1].r }) : '',
+        last: room.btLast || null,
+        round: Number(room.btRound) || 0,
+        /* 轮到谁 */
+        turnName: turnP ? turnP.name : '',
+        myTurn: !!turnP && turnP.openid === openid,
+        /* 我这一把的累计杯数 */
+        myDrink: Number(drinks[openid]) || 0,
+        drinkText: (function () {
+          const c = Number(drinks[openid]) || 0
+          if (!c) return ''
+          return (c % 1 === 0 ? c + ' 杯' : Math.floor(c) + ' 杯半')
+        })(),
+        /* 所有人的累计 —— 公开信息（桌上都看见谁在喝） */
+        drinks: live.map(p => ({
+          name: p.name,
+          cups: Number(drinks[p.openid]) || 0,
+          isMe: p.openid === openid
+        })),
+        /* 还要等几个人才轮到下一把 */
+        waitingNames: queue.slice(1).map(oid => {
+          const p = live.filter(x => x.openid === oid)[0]
+          return p ? p.name : ''
+        }).filter(Boolean),
+        /* 押注的合法区间（前端渲染按钮用，避免两处写死） */
+        minBet: betweenRules.MIN_BET,
+        maxBet: betweenRules.MAX_BET,
+        bailCost: betweenRules.BAIL_COST
       }
     })(),
     uw: (function () {
@@ -2006,7 +2066,7 @@ exports.main = async (event) => {
         if (!inRound) return Object.assign({}, p, { dice: [] })
         /* 转盘 / 比大小 / 谁是卧底 / 金花 / 额头牌 都不需要开局发骰子 */
         if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover' ||
-            room.game === 'poker' || room.game === 'forehead') {
+            room.game === 'poker' || room.game === 'forehead' || room.game === 'between') {
           return Object.assign({}, p, { dice: [] })
         }
         const n = room.game === 'liar' ? 5 : 2
@@ -2144,6 +2204,33 @@ exports.main = async (event) => {
           fhRest: room._fhRest || [],
           fhActs: 0,
           fhLast: null,
+          /* ---------- 射龙门 ----------
+             btStep   bet（等押注）/ gate（已开龙门，等翻牌）/ done
+             btBet    本把押注额（0 表示还没押）
+             btGate   龙门两张牌 [a, b]
+             btThird  第三张（翻完才写）
+             btLast   本把结果
+             btDrink  { openid: 累计杯数 }
+             btQueue  这一局还没射的人（按座位顺序）
+             btRound  第几把（每人各射一次算一把） */
+          btStep: room.game === 'between' ? 'bet' : null,
+          btBet: 0,
+          btGate: [],
+          btThird: null,
+          btLast: null,
+          btDrink: {},
+          /*
+           * ★ 队列在 start 时就要排好 —— 不能留空等第一次操作再补。
+           *   留空的话 `shape()` 算不出"轮到谁"，界面进 playing 时
+           *   `turnName` 是空串、`myTurn` 恒 false，所有人都在等一个不存在的人。
+           *   （测试第一次跑就撞在这里：`raw.btQueue[0]` 是 undefined。）
+           */
+          btQueue: room.game === 'between'
+            ? players.filter(p => p.inRound !== false)
+                .sort((a, b) => a.seat - b.seat)
+                .map(p => p.openid)
+            : [],
+          btRound: 1,
           votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
@@ -3437,6 +3524,155 @@ exports.main = async (event) => {
       /* 兜底：动作太多强制结算（只看 pass 分支没用上，所以放在写库前统一判） */
       if (acts + 1 >= 60 && patch.phase !== 'over') {
         doSettle('表态次数到上限，直接开牌')
+      }
+
+      await rooms.doc(room._id).update({ data: patch })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 射龙门：押注 / 翻牌 / 认低威 ================= */
+    /*
+     * 一个玩法一个服务端入口（和 fhAct / pkAct 同一思路）：
+     * 拆成三个 action 就要维护三份"轮到我没"的校验，漏一份不报错。
+     *
+     * ★★ 这里的命门和别的玩法不同：**押注必须在下发龙门牌之前落库**。
+     *    现实中靠"你刚才说了半杯"这句口头承诺，酒后最容易反悔；
+     *    服务端先存 `btBet` 再发牌，客端拿不到"先看牌再改口"的机会。
+     *    所以 act=bet 与 act=draw 是**两个独立请求**，绝不是一次。
+     */
+    if (action === 'btAct') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'between') return { ok: false, msg: '这个房间不是射龙门' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
+
+      const players = (room.players || []).map(p => Object.assign({}, p))
+      const live = players.filter(p => p.inRound !== false)
+      const mine = live.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '这一局你只观战' }
+
+      /* 轮流射：只有队首的人能操作 */
+      const queue = (room.btQueue || []).slice()
+      if (!queue.length) {
+        /* 新的一把：按座位顺序排队（只在开局 / 全员射完后补） */
+        live.slice().sort((a, b) => a.seat - b.seat).forEach(p => queue.push(p.openid))
+      }
+      if (queue[0] !== OPENID) {
+        const cur = live.filter(p => p.openid === queue[0])[0]
+        return { ok: false, msg: '还没轮到你，等 ' + ((cur && cur.name) || '下一位') }
+      }
+
+      const act = String(event.act || '')
+      const tsN = now()
+      const patch = { updatedAt: tsN }
+      const drinks = Object.assign({}, room.btDrink || {})
+
+      /* ---------- ① 押注 ---------- */
+      if (act === 'bet') {
+        if (room.btStep !== 'bet') return { ok: false, msg: '这一把已经押过了' }
+        const chk = betweenRules.checkBet(event.bet)
+        if (!chk.ok) return { ok: false, msg: chk.why }
+        patch.btBet = chk.bet
+        patch.btStep = 'gate'
+        patch.btGate = []
+        patch.btThird = null
+        patch.btLast = null
+        /*
+         * ★ 押注落库之后就**没有回头路** —— 这是这个玩法的核心。
+         *   前端此刻还没有龙门牌（下一次 draw 才发），所以抓包也改不了口。
+         */
+      } else if (act === 'draw') {
+        /* ---------- ② 翻牌 ---------- */
+        if (room.btStep !== 'gate') return { ok: false, msg: '先押注再看牌' }
+        const bet = Number(room.btBet) || 0
+        if (!bet) return { ok: false, msg: '先押注再看牌' }
+
+        /*
+         * 龙门两张 + 第三张，**同一副不放回**的牌。
+         * 用 poker.shuffle 而不是 sort(random) —— 后者分布不均（项目里记过）。
+         */
+        const deck = poker.shuffle(poker.newDeck())
+        const gain = [deck[0], deck[1]]
+        const third = deck[2]
+        const r = betweenRules.settle({
+          bet: bet, gateA: gain[0], gateB: gain[1],
+          third: betweenRules.isClosed(gain[0], gain[1]) ? null : third,
+          bailed: false
+        })
+        patch.btGate = gain
+        patch.btThird = betweenRules.isClosed(gain[0], gain[1]) ? null : third
+        patch.btStep = 'done'
+        patch.btLast = {
+          bet: bet,
+          gate: gain.map(c => ({ r: c.r, s: c.s, t: poker.cardText(c) })),
+          third: patch.btThird ? { r: patch.btThird.r, s: patch.btThird.s, t: poker.cardText(patch.btThird) } : null,
+          outcome: r.outcome, cups: r.cups, title: r.title, detail: r.detail,
+          widthHint: betweenRules.widthHint(gain[0], gain[1]),
+          byName: mine.name
+        }
+        drinks[OPENID] = (Number(drinks[OPENID]) || 0) + r.cups
+        patch.btDrink = drinks
+      } else if (act === 'bail') {
+        /* ---------- ③ 认低威 ---------- */
+        if (room.btStep !== 'gate') return { ok: false, msg: '先押注再看牌' }
+        const bet = Number(room.btBet) || 0
+        const r = betweenRules.settle({ bet: bet, bailed: true })
+        patch.btStep = 'done'
+        patch.btThird = null
+        patch.btLast = {
+          bet: bet, gate: [], third: null,
+          outcome: r.outcome, cups: r.cups, title: r.title, detail: r.detail,
+          widthHint: '', byName: mine.name
+        }
+        drinks[OPENID] = (Number(drinks[OPENID]) || 0) + r.cups
+        patch.btDrink = drinks
+      } else {
+        return { ok: false, msg: '不认识的操作：' + act }
+      }
+
+      /*
+       * ★★ 只有**射完**（draw / bail）才出队 —— 押注不出队。
+       *
+       *   第一版把 `queue.shift()` 放在所有分支之后，于是押注刚写完
+       *   就立刻被后面那句 `patch.btBet = 0` 重置成 0：
+       *   玩家的押注额是**永久 0**，而 `draw` 又要求 bet 非零 → 死循环。
+       *   测试第一次跑到"押注额要落库"就红了（0 !== 1.5）。
+       *
+       *   判据：**同一个请求里，先写进去的值不能被后面的"推进"覆盖。**
+       *   一个玩家的一把是「押注 → 翻牌」两步，三步之间只有最后一步该出队。
+       *
+       * ⚠️ 回合推进仍在**服务端**做 —— 项目铁律①：不能让前端点"下一轮"。
+       */
+      if (act === 'bet') {
+        /* 押注：只推进 btStep，队首不动 */
+        patch.btQueue = queue
+      } else {
+        /*
+         * ★★ 射完了：把这一把的牌和结果**留在屏幕上**给全场看，
+         *    再把人交给下一位。
+         *
+         *    ⚠️ 第一版在这里 `patch.btGate = []` —— 把刚发出来的两张牌
+         *       又清掉了，界面永远看不到龙门（测试报 "0 !== 2"）。
+         *       根因和押注被重置是同一个：**"清理上一把"与"展示这一把"
+         *       写在了同一段里，清理把展示盖掉了。**
+         *
+         *    正确做法：这一把的牌和结果放在 `btLast` 里**长期保留**
+         *    （btLast 才是展示源），btGate / btThird 只作"当前是否已发"的标记。
+         *    下一把押注时（act=bet）才把 btGate 清空重新开始。
+         */
+        queue.shift()
+        if (!queue.length) {
+          live.slice().sort((a, b) => a.seat - b.seat).forEach(p => queue.push(p.openid))
+          patch.btRound = (Number(room.btRound) || 0) + 1
+        }
+        /*
+         * 下一棒：btStep 回到 bet，但 **btGate / btThird / btLast 都留着** ——
+         * 界面靠 btStep==='bet' 判断"该押注了"，靠 btLast 显示上一把的结果。
+         * 清空发生在下一次 bet 里（那里显式设置 btGate: []）。
+         */
+        patch.btStep = 'bet'
+        patch.btQueue = queue
       }
 
       await rooms.doc(room._id).update({ data: patch })

@@ -3441,3 +3441,103 @@
 }
 /* 减少动效：只留亮度那一下（它表达"停了"，不是装饰性的运动） */
 .reduce-motion .wheelscene.settle .ws-pointer { animation: none !important }
+
+/* ============================================================
+   射龙门（2026-11-03）
+   ------------------------------------------------------------
+   这个界面和别处最大的不同：**押注阶段刻意留白**。
+   屏幕上什么都不画，只有一句话 —— 因为玩法本身就是"盲押"，
+   先画两张牌背会误导成"已经发牌了"。
+   留白在这里是**信息**，不是没做完。
+   ============================================================ */
+.bt-stage { display: flex; flex-direction: column; }
+
+/* ---------- 押注阶段：一片空白 + 一句说明 ---------- */
+.bt-blind {
+  margin: 60rpx auto 40rpx;
+  text-align: center;
+  /* 虚线框表达"这里还没东西"，比画个假牌背诚实 */
+  border: 2rpx dashed rgba(232, 179, 60, .28);
+  border-radius: 20rpx;
+  padding: 56rpx 48rpx;
+  background: rgba(232, 179, 60, .04);
+}
+.bt-blind-t { font-size: 34rpx; font-weight: 700; color: var(--cream); letter-spacing: 2rpx }
+.bt-blind-s { margin-top: 12rpx; font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+
+.bt-bets {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 12rpx; margin-bottom: 24rpx;
+}
+.bt-chip {
+  min-width: 108rpx;
+  padding: 18rpx 10rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, .07);
+  border: 2rpx solid rgba(255, 255, 255, .12);
+  transition: background .16s ease-out, border-color .16s ease-out;
+}
+.bt-chip.on {
+  background: rgba(232, 179, 60, .20);
+  border-color: rgba(232, 179, 60, .68);
+}
+.bt-chip-v { font-size: 26rpx; font-weight: 700; color: var(--cream) }
+
+/* ---------- 龙门已开 ---------- */
+.bt-cmd {
+  text-align: center; font-size: 26rpx; color: var(--gold);
+  letter-spacing: 1rpx; margin-bottom: 18rpx;
+}
+.bt-gate {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16rpx; margin: 10rpx 0 26rpx;
+}
+.bt-gate.small { margin: 16rpx 0 0; gap: 10rpx }
+.bt-gcard {
+  width: 116rpx; height: 158rpx;
+  border-radius: 10rpx;
+  box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, .42);
+}
+.bt-gate.small .bt-gcard { width: 84rpx; height: 115rpx }
+/* 第三张在中间：它才是被判的那一张，所以给它一圈高亮 */
+.bt-gcard.mid {
+  box-shadow: 0 0 0 3rpx rgba(232, 179, 60, .62), 0 8rpx 18rpx rgba(0, 0, 0, .45);
+}
+.bt-gap {
+  width: 72rpx; height: 158rpx;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 44rpx; font-weight: 800;
+  color: rgba(232, 179, 60, .48);
+  border: 2rpx dashed rgba(232, 179, 60, .28);
+  border-radius: 10rpx;
+}
+.bt-acts { display: flex; flex-direction: column; gap: 14rpx }
+.bt-acts .btn.ghost {
+  background: rgba(255, 255, 255, .07);
+  border: 2rpx solid rgba(255, 255, 255, .13);
+  color: rgba(255, 255, 255, .86);
+}
+
+/* ---------- 结果卡 ---------- */
+.bt-result {
+  margin: 18rpx auto 6rpx;
+  padding: 28rpx 24rpx;
+  border-radius: 20rpx;
+  text-align: center;
+  border: 2rpx solid transparent;
+}
+.bt-result.bad {
+  background: rgba(224, 113, 79, .14);
+  border-color: rgba(224, 113, 79, .42);
+}
+.bt-result.good {
+  background: rgba(109, 158, 106, .14);
+  border-color: rgba(109, 158, 106, .42);
+}
+.bt-r-title { font-size: 44rpx; font-weight: 800; color: var(--cream); letter-spacing: 3rpx }
+.bt-r-detail { margin-top: 10rpx; font-size: 26rpx; color: rgba(255, 255, 255, .78) }
+
+.bt-mine {
+  margin-top: 20rpx; text-align: center;
+  font-size: 26rpx; color: var(--gold);
+}

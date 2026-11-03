@@ -23,6 +23,8 @@ fi
 
 echo "═══ 1/9 牌型算法（穷举 22100 手，对组合数学）═══"
 node scripts/test-poker.js
+# ★ 2026-11-03：射龙门的判定器（穷举 2028 种牌面组合）
+node scripts/test-between.js
 node scripts/test-dicerank.js
 node scripts/test-rules-doc.js
 node scripts/test-reroll.js

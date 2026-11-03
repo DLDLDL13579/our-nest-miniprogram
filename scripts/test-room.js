@@ -3350,6 +3350,127 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============================================================================
+   * ㉕ 射龙门（2026-11-03，第 7 个玩法）
+   *
+   * 这个玩法的命门和其它所有玩法不同：**押注必须先于发牌落库**。
+   * 现实中靠"你刚才说了半杯"的口头承诺，酒后最容易反悔；
+   * 所以测试要证明：押注之后 btGate 是空的，必须再发一次 draw 才看得到牌。
+   * ========================================================================== */
+  console.log('\n=== ㉕ 射龙门：先押注、后看牌 ===')
+  {
+    const B1 = 'oid_bt_1', B2 = 'oid_bt_2'
+    OPENID = B1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'between' })
+    assert.ok(cr.ok, '射龙门建房应成功：' + (cr.msg || ''))
+    const bid = cr.room.id
+    OPENID = B2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+
+    OPENID = B1
+    await room.main({ action: 'start', id: bid })
+    store.rooms.filter(x => x._id === bid)[0].countdownEnd = Date.now() - 100
+    const st = await room.main({ action: 'status', id: bid })
+    assert.strictEqual(st.room.phase, 'playing', '开局后应进入 playing')
+    assert.ok(st.room.bt, '★ 响应里必须有 bt 块')
+    assert.strictEqual(st.room.bt.step, 'bet', '第一步必须是「押注」')
+    assert.strictEqual(st.room.bt.gate.length, 0, '★★ 押注前绝不能有龙门牌')
+    ok('★★ 押注阶段响应里没有任何牌（先押注、后看牌）')
+
+    /* ---- 没押注不能翻牌 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      const head = (raw.players || []).filter(p => p.openid === raw.btQueue[0])[0]
+      OPENID = head.openid
+      const bad = await room.main({ action: 'btAct', act: 'draw', id: bid })
+      assert.ok(!bad.ok, '★ 没押注就翻牌必须被拒（否则可以"先看牌再押注"）')
+      assert.ok(/押注/.test(bad.msg || ''), '拒绝理由要说得清是"先押注"：' + bad.msg)
+      ok('★★ 没押注不能翻牌（服务端强制顺序）')
+    }
+
+    /* ---- 非法押注被拒 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      const head = (raw.players || []).filter(p => p.openid === raw.btQueue[0])[0]
+      OPENID = head.openid
+      for (const bad of [0, 0.3, 5, -1]) {
+        const r = await room.main({ action: 'btAct', act: 'bet', bet: bad, id: bid })
+        assert.ok(!r.ok, '押 ' + bad + ' 杯应被拒')
+      }
+      ok('非法押注被拒（0 / 0.3 / 5 / -1）')
+    }
+
+    /* ---- 正常押注 → 龙门仍为空 → 翻牌 → 有结果 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      const head = (raw.players || []).filter(p => p.openid === raw.btQueue[0])[0]
+      OPENID = head.openid
+      const betR = await room.main({ action: 'btAct', act: 'bet', bet: 1.5, id: bid })
+      assert.ok(betR.ok, '押 1.5 杯应成功：' + (betR.msg || ''))
+      const afterBet = store.rooms.filter(x => x._id === bid)[0]
+      assert.strictEqual(afterBet.btBet, 1.5, '押注额要落库')
+      assert.strictEqual((afterBet.btGate || []).length, 0,
+        '★★ 押注后龙门仍必须为空 —— 发牌是下一个请求')
+
+      const drawR = await room.main({ action: 'btAct', act: 'draw', id: bid })
+      assert.ok(drawR.ok, '翻牌应成功：' + (drawR.msg || ''))
+      const afterDraw = store.rooms.filter(x => x._id === bid)[0]
+      assert.strictEqual((afterDraw.btGate || []).length, 2, '★ 翻牌后应有两张龙门牌')
+      assert.ok(afterDraw.btLast, '★ 必须有本把结果')
+      assert.strictEqual(afterDraw.btLast.bet, 1.5, '结果里的押注额要和押的一致')
+      /*
+       * 杯数必须和规则一致：按 outcome 反推
+       *   in → 0 / out → bet / post → bet*2 / closed|bail → 0.5
+       */
+      const L = afterDraw.btLast
+      const expect = L.outcome === 'in' ? 0
+        : L.outcome === 'out' ? 1.5
+          : L.outcome === 'post' ? 3
+            : 0.5
+      assert.strictEqual(L.cups, expect,
+        '★ 结算杯数必须符合档位（outcome=' + L.outcome + '，期望 ' + expect + '，实际 ' + L.cups + '）')
+      ok('★★ 押 1.5 → 龙门为空 → 翻牌 → 杯数符合档位（' + L.outcome + ' / ' + L.cups + ' 杯）')
+    }
+
+    /* ---- 队列推进：下一个人自动接上，且回到"押注"档 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      assert.strictEqual(raw.btStep, 'bet', '★ 上一个人射完，下一个人应从「押注」开始')
+      const next = (raw.players || []).filter(p => p.openid === raw.btQueue[0])[0]
+      assert.ok(next, '队首应该还有人')
+      OPENID = next.openid
+      const leak = await room.main({ action: 'btAct', act: 'bet', bet: 1, id: bid })
+      assert.ok(leak.ok, '下一个人押注应成功')
+      ok('★ 队列自动推进（射完一个，下一个从押注开始，服务端推进）')
+    }
+
+    /* ---- 认低威：押 3 杯也只喝半杯 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      const head = (raw.players || []).filter(p => p.openid === raw.btQueue[0])[0]
+      OPENID = head.openid
+      await room.main({ action: 'btAct', act: 'bet', bet: 3, id: bid })
+      const bailR = await room.main({ action: 'btAct', act: 'bail', id: bid })
+      assert.ok(bailR.ok, '认低威应成功：' + (bailR.msg || ''))
+      const after = store.rooms.filter(x => x._id === bid)[0]
+      assert.strictEqual(after.btLast.outcome, 'bail', '结果应是 bail')
+      assert.strictEqual(after.btLast.cups, 0.5,
+        '★★ 认低威只喝半杯 —— 押了 3 杯也不能按 3 杯算')
+      assert.strictEqual((after.btThird || null), null, '认低威不翻第三张')
+      ok('★★ 认低威：押 3 杯也只喝半杯，且不翻第三张')
+    }
+
+    /* ---- 不是队首的人不能操作 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === bid)[0]
+      const notHead = (raw.players || []).filter(p => p.openid !== raw.btQueue[0])[0]
+      OPENID = notHead.openid
+      const bad = await room.main({ action: 'btAct', act: 'bet', bet: 1, id: bid })
+      assert.ok(!bad.ok, '★ 不是队首的人押注必须被拒')
+      ok('★ 排队制：不是队首不能押注（服务端拦，前端藏按钮不算）')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
