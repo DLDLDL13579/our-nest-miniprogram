@@ -634,6 +634,11 @@ Page({
     /* ★ `_bumpTimer` 原来不在任何清理函数里 —— 屏幕震动后 320ms 内离开页面，
        它仍会对已卸载的页面 setData({impact:false})。 */
     if (this._bumpTimer) { clearTimeout(this._bumpTimer); this._bumpTimer = null }
+    /* ★ 2026-11-03：顿帧的定时器。和 _bumpTimer 是同一个坑的第二次 ——
+       加了 hit-stop 就多了一个 setTimeout，而清理函数里只有 _bumpTimer。
+       漏掉的表现：扣盅后 60ms 内退出房间，它对已卸载页面 setData({freeze:false})。
+       （**加定时器的同时就要进清理清单**，这条已经在项目里栽过三次。） */
+    if (this._stopTimer) { clearTimeout(this._stopTimer); this._stopTimer = null }
     /* ★ 2026-11-02：`_againTimer`（再来一局后 260ms 自动开下一局）也在这里清。
        不清的话，点完再来一局马上退出房间，260ms 后它会对已卸载的页面调 doStart()。 */
     if (this._againTimer) { clearTimeout(this._againTimer); this._againTimer = null }
@@ -3371,7 +3376,8 @@ Page({
        盅砸在桌上，整屏震一下，骰子在盅里被震得跳一下（音效里带了）。 */
     this.setData({ cupSrc: 'cup-down', cupCls: 'slam', cupHint: '扣盅…' },
       () => { if (!this._dead) feedback.fire('cupSlam') })
-    this._cupTimers.push(setTimeout(() => this.bump(), 70))
+    /* 扣盅：60ms 顿帧（重击第一）—— 盅砸住的瞬间画面定住，之后再震 */
+    this._cupTimers.push(setTimeout(() => this.bump(60), 70))
     this._cupTimers.push(setTimeout(() => {
       this.setData({ cupCls: '' })
     }, 400))
@@ -3455,7 +3461,14 @@ Page({
             { sfxDelay: 0, hapticDelay: 0 })
         }, DIE_DROP_MS * k))
       }
-      this.bump()
+      /*
+       * ⚠️ 显式传 0：这里**不要顿帧**。
+       * 这是"骰子逐颗落定完"的那一下，前面已经有 5 次 light 震动，
+       * 再加 60ms 定住会让整段揭盅变成"一格一格地卡"。
+       * 顿帧只留给真正的重击（扣盅 / 揭盅 / 结算），
+       * 和"逐颗落定只给 light 震动"是同一条分级原则。
+       */
+      this.bump(0)
     }, 180))
     /* 盅提走之后留在画面外 */
     this._cupTimers.push(setTimeout(() => {
@@ -3484,7 +3497,9 @@ Page({
     this._cupTimers.push(setTimeout(() => {
       if (this._dead) return
       sfx.play('impactLow', { volume: 0.5 })
-      this.bump()
+      /* 揭盅：这是"露出结果"的一下，给 70ms 顿帧（比扣盅略长 —— 
+         玩家要在这几十毫秒里读懂"骰子出来了"） */
+      this.bump(70)
     }, 440))
     this._cupTimers.push(setTimeout(() => sfx.play('revealHit'), 640))
 
@@ -3571,15 +3586,57 @@ Page({
     })
   },
 
-  /** 屏幕震一下（关键结果时的打击感） */
-  bump() {
+  /**
+   * 屏幕震一下（关键结果时的打击感）
+   *
+   * ★★ 2026-11-03 加了「顿帧」（hit-stop）。
+   *
+   * 调研结论（egmatic / Jan Willem Nijman《The Art of Screenshake》/ 网易雷火 UX）：
+   * **顿帧是打击感的第一原则，不是屏幕震动。**
+   * 原文：「freeze the game for a few frames on a heavy impact.
+   *         That micro-pause, often as short as 40 to 80 milliseconds,
+   *         sells weight better than any animation.」
+   *
+   * 原理：画面在冲击那一刻**完全静止** 60ms，大脑才有时间"读完"这一下；
+   * 直接抖动到底，感知上是一团糊的运动，重量感反而更轻。
+   * 真实类比：锤子砸下去，手腕会先顿一下再回弹。
+   *
+   * 顺序必须是 **先定住 → 再震**（不是同时）：
+   *   同时的话，定住的 60ms 会把震动第一下（幅度最大的那一下）吃掉，等于白做。
+   *
+   * ⚠️ 顿帧只给**重击**用（扣盅 / 开盅 / 结算 / 比牌摊开）。
+   *    逐颗骰子落定这类高频动作不顿 —— 一局十几次，顿帧会变成卡顿。
+   *    这和"逐颗落定只给 light 震动"是同一条分级原则。
+   */
+  bump(hitStopMs) {
     if (this._dead) return
-    this.setData({ impact: true })
+    const stop = typeof hitStopMs === 'number' ? hitStopMs : 60
     if (this._bumpTimer) clearTimeout(this._bumpTimer)
-    this._bumpTimer = setTimeout(() => {
-      if (this._dead) return
-      this.setData({ impact: false })
-    }, 320)
+    if (this._stopTimer) clearTimeout(this._stopTimer)
+
+    if (stop > 0) {
+      /*
+       * 顿帧：`.freeze` = 提亮 + 不吃点击 + 不动任何 transform。
+       * ⚠️ 不用 `animation-play-state: paused` —— 它在小程序各基础库上
+       *    支持面不确定（Skyline 尤其），而要的本来也不是"暂停某个动画"，
+       *    而是"整个画面别动"。用已经验证过的 .freeze 最稳。
+       */
+      this.setData({ freeze: true })
+      this._stopTimer = setTimeout(() => {
+        if (this._dead) return
+        this.setData({ freeze: false, impact: true })
+        this._bumpTimer = setTimeout(() => {
+          if (this._dead) return
+          this.setData({ impact: false })
+        }, 320)
+      }, stop)
+    } else {
+      this.setData({ impact: true })
+      this._bumpTimer = setTimeout(() => {
+        if (this._dead) return
+        this.setData({ impact: false })
+      }, 320)
+    }
   },
 
   /* ================= 大话骰：扣盅与偷看 ================= */
@@ -4019,7 +4076,9 @@ Page({
       this.setData({ room: this.safeDecorate(r.room), result: r.result, stage: 'over' }, () => {
         if (this._dead) return
         sfx.play('revealHit')
-        this.bump()
+        /* 结算：全套重击里最重的一次 —— 80ms 顿帧（研究表明 40~80ms 是上限，
+           再长就从"有分量"变成"卡了一下"） */
+        this.bump(80)
         feedback.vibrate('heavy')
       })
       /* 两处都走 _cupTimers：裸 setTimeout 清不掉 ——

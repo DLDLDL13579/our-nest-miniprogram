@@ -619,6 +619,48 @@ function extractBuildSectors(src) {
   ok('题卡库两份完全一致（改完记得跑 sync-derive.sh）')
 
   console.log('\n========================================================')
+  /* ============================================================================
+   * ★★ 顿帧（hit-stop）只能给重击（2026-11-03）
+   *
+   * 调研结论（egmatic / Nijman《The Art of Screenshake》/ 网易雷火 UX）：
+   * **顿帧是打击感的第一原则，不是屏幕震动。**
+   * 冲击那一刻画面完全静止 40~80ms，大脑才有时间"读完"这一下；
+   * 直接抖到底，感知上是一团糊的运动，重量感反而更轻。
+   *
+   * 但顿帧用错地方就变成"卡"：
+   *   · 高频动作（骰子逐颗落定、翻牌）不能顿 —— 一局十几次，会像掉帧
+   *   · 时长必须 ≤80ms —— 再长就从"有分量"变成"卡了一下"
+   *
+   * 判据（语义判，不猜代码长相）：
+   *   ① 每个 `this.bump(N)` 的 N 必须在 [0, 80]
+   *   ② 允许 0 —— 但必须是**显式写的** 0，不是"忘了传参吃默认值"
+   *      （默认 60ms 是好用的默认，但高频动作必须显式关掉，
+   *        否则将来有人往逐颗落定里加一次 bump 就悄悄多了顿帧）
+   * ========================================================================== */
+  {
+    const roomSrc = fs.readFileSync(
+      path.join(__dirname, '..', 'miniprogram/game/room/room.js'), 'utf8')
+    const calls = [...roomSrc.matchAll(/this\.bump\((\d*)\)/g)]
+    assert.ok(calls.length >= 3, '应该至少有扣盅/揭盅/结算三处重击（实际 ' + calls.length + '）')
+
+    const tooLong = []
+    const implicitDefault = []
+    calls.forEach((m, i) => {
+      const raw = m[1]
+      if (raw === '') { implicitDefault.push(i + 1); return }
+      const ms = Number(raw)
+      if (ms > 80) tooLong.push('第 ' + (i + 1) + ' 处 ' + ms + 'ms')
+    })
+    assert.deepStrictEqual(tooLong, [],
+      '顿帧超过 80ms 就变成"卡了一下"而不是"有分量"：\n    ' + tooLong.join('\n    '))
+    assert.deepStrictEqual(implicitDefault, [],
+      '这些 bump() 没显式传时长（会吃默认 60ms）：第 ' + implicitDefault.join('/') + ' 处\n' +
+      '    高频动作（逐颗落定）必须显式 this.bump(0)，重击必须显式写毫秒数 ——\n' +
+      '    "忘了传参"和"故意不要顿帧"在代码上一模一样，只能靠显式区分。')
+
+    ok('★ 顿帧只给重击且 ≤80ms（' + calls.length + ' 处全部显式声明时长）')
+  }
+
   console.log('  游戏逻辑：全部 ' + n + ' 项断言通过')
   console.log('========================================================')
 })().catch((e) => {
