@@ -660,3 +660,31 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   console.log('  ✓ 12 人局投票页：' + ps.length + ' 人 / ' + votable + ' 个可投目标 / 已投 ' +
     ((r.uw && r.uw.voteCount != null) ? r.uw.voteCount : '?') + '/' + alive.length)
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**mock 里的版本号必须从 config 读，不能硬编码**
+ *
+ * 「我的 → 关于」页显示 `v{{version}}`，而 mock 里这一栏如果写死，
+ * 版本一升，截图上的版本号就和真实的不一样 —— 而**截图是给人看"当前长什么样"的**。
+ *
+ * ⚠️ 而这条在本仓库有先例：AGENTS.md 里记着
+ *    「原来硬编码在 me.js 里，写着 version: '3.7.4' —— 而实际早就是 3.9.x 了」。
+ *    同一个坑，这次要防在 mock 侧。
+ * ========================================================================== */
+{
+  const src = require('fs').readFileSync(
+    require('path').join(__dirname, 'ui-render', 'mock', 'me.js'), 'utf8')
+
+  assert.ok(/version:\s*require\('.+config\.js'\)\.version/.test(src),
+    '★ mock 的 version 必须从 config.js 读（硬编码会在版本升级后过时）')
+  assert.ok(!/version:\s*['"]\d+\.\d+\.\d+['"]/.test(src),
+    '★ mock 里不许出现写死的版本号')
+
+  /* 顺带：读出来的值必须和 config 一致 */
+  const mock = require('./ui-render/mock/me.js')
+  const got = (typeof mock.data === 'function' ? mock.data() : mock.data).version
+  const want = require('../miniprogram/config.js').version
+  assert.strictEqual(got, want, 'mock 读到的版本（' + got + '）和 config（' + want + '）不一致')
+
+  console.log('  ✓ mock 的版本号来自 config（当前 v' + got + '）')
+}
