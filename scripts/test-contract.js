@@ -5374,3 +5374,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些测试脚本缺基础能力（复制断言过来会崩）：\n    ' + bad.join('\n    '))
   ok('★ 四个测试脚本都能用 assert 和 ok()（复制断言不会崩）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**分享链路要完整**（这是多人游戏唯一的拉人方式）
+ *
+ * 一个多人游戏不能转发，等于每次开局都要教一遍"怎么把号发出去"。
+ * 三件事必须都在：① onShareAppMessage  ② path 带房间号  ③ 封面图 5:4
+ * ========================================================================== */
+{
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+
+  assert.ok(/onShareAppMessage\s*\(/.test(page),
+    '★ 房间页必须有 onShareAppMessage（否则右上角「转发」是灰的）')
+  assert.ok(/path:\s*'\/game\/room\/room\?code='\s*\+\s*r\.code/.test(page),
+    '★ 分享的 path 必须带房间号（对方点开直接进房，不用手输）')
+  assert.ok(/open-type="share"/.test(wxml),
+    '★ 房间里要有 <button open-type="share">（view 绑 bindtap 不行）')
+
+  /* 封面图：微信推荐 5:4 */
+  const cover = path.join(ROOT, 'miniprogram/images/share-cover.png')
+  assert.ok(fs.existsSync(cover), '★ 分享封面图不存在：miniprogram/images/share-cover.png')
+  const size = fs.statSync(cover).size
+  assert.ok(size > 5000 && size < 200000,
+    '★ 分享封面 ' + Math.round(size / 1024) + ' KB —— 太小可能空白，太大会拖慢分享')
+
+  ok('★ 分享链路完整（按钮 + 带码 path + 封面图 ' + Math.round(size / 1024) + ' KB）')
+}
