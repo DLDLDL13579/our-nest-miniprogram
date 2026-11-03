@@ -2707,6 +2707,13 @@ Page({
     const room = this.data.room
     if (!room || !room.bt || this._btBusy) return
     this._btBusy = true
+    /*
+     * ★ 2026-11-03：翻牌先给"翻"的手感；**结果音效等返回后再按档位给**。
+     *
+     *   原来只有这一个 pkFlip，三种结果（穿过 / 打偏 / 撞柱）听起来一模一样 ——
+     *   而它们的后果差 2~3 倍。酒桌上这一下是全场焦点，
+     *   必须让"过了"和"撞柱了"一听就分得出。
+     */
     feedback.fire('pkFlip')
     const r = await call('room', { action: 'btAct', act: 'draw', id: room.id }, { silent: true })
       .catch((err) => {
@@ -2715,7 +2722,32 @@ Page({
         return null
       })
     this._btBusy = false
-    if (this.okOrSay(r)) this.applyRoom(r.room)
+    if (this.okOrSay(r)) {
+      this.applyRoom(r.room)
+      this.btResultCue(r.room)
+    }
+  },
+
+  /*
+   * 射龙门的结果音效：**按"要不要喝"分两极**（2026-11-03）。
+   *
+   *   穿过去（不用喝） → btThrough：纸牌落定的轻响 + 轻震，收工
+   *   打偏 / 撞柱      → btPost：下坠声 + 长震，和"被罚酒"同一层
+   *
+   * ★ 为什么只分两极、不按三档各给一个：
+   *   打偏和撞柱**只差杯数**，都是"你摊上事了"；真正截然相反的是
+   *   "过了"和"要喝"。三档各配一个音反而是噪音 —— 桌上真正需要
+   *   一眼/一听分辨的是"我这一把躲过去没有"。杯数的细节
+   *   由结算卡上的大字（喝 1.5 杯 / 双倍 3 杯）补足。
+   *
+   * ★ 撞柱刻意复用 `penalized` 的音频：撞柱和"被罚酒"在语义上完全同一件事，
+   *   共用一个音色反而让玩家学得快。
+   */
+  btResultCue(room) {
+    const L = room && room.bt && room.bt.last
+    if (!L) return
+    if (L.outcome === 'in') feedback.fire('btThrough')
+    else if (L.cups > 0) feedback.fire('btPost')
   },
 
   /* 认低威 —— 代价固定半杯，但**押注额会作废**，所以给二次确认 */
