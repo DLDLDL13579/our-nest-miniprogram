@@ -3063,6 +3063,37 @@ exports.main = async (event) => {
       let last = null
 
       /*
+       * ★★★ 2026-11-03：这里**故意不做**服务端连点限流 —— 试过，然后撤回了。
+       *
+       *   起因：换牌后回合不推进（规则如此），所以"轮到我没"挡不住第二次点击，
+       *   前端 `_pkBusy` 又只是前端的门闩。看起来该在服务端加个 400ms 限流。
+       *
+       *   加了之后两条**正常**用例立刻变红：
+       *     · 先换底牌（1 杯）再立刻换手牌（半杯）—— 两个不同的决定，规则允许
+       *     · 连续两次换手牌 —— 规则明写「能连续换，每次都要喝半杯」
+       *
+       *   也就是说：**限流会直接违反玩法规则本身。**
+       *   金花的博弈核心就是"把运气变成可付费的选择"，
+       *   而"能连着换几次"是这个选择的一部分 —— 拦掉它等于改玩法。
+       *
+       *   所以这里只靠前端门闩（`_pkBusy` + 10 秒看门狗）。
+       *   漏进来的重复请求是**玩家自己愿意付的代价**（他确实可以换两次），
+       *   不是 bug。判据：**当"防重复"与"规则允许"冲突时，规则优先。**
+       */
+
+
+      /*
+       * ★★ 2026-11-03：**换牌要限流**，否则连点两下扣两次半杯。
+       *
+       *   为什么这里特别危险：金花换完牌**回合不推进**（规则如此 —— 喝完还能接着决定），
+       *   所以"轮到我没"这个判据挡不住第二次点击。前端有 `_pkBusy` 门闩，
+       *   但那只是**前端**的 —— 云函数是公开接口（项目里记过"前端藏按钮不算拦"）。
+       *
+       *   真实场景不需要恶意：手机卡了一下、用户以为没点上，再点一次；
+       *   两次请求都在路上，服务端各读到一份旧快照，各扣 0.5 杯 → 白喝一杯。
+       */
+
+      /*
        * ============ 换牌（用户 2026-10-27 加的规则）============
        *
        *   换公共牌（底牌）→ 喝 1 杯
@@ -3092,6 +3123,7 @@ exports.main = async (event) => {
           await rooms.doc(room._id).update({
             data: {
               pkPublic: nc, pkRest: rest, pkDrink: drink, updatedAt: ts,
+
               pkLast: {
                 kind: 'swap', name: mine.name, what: 'public', drink: addDrink,
                 /* 前端比牌区有一行说明（room.wxml 的 .pkl-note）——
@@ -3110,6 +3142,7 @@ exports.main = async (event) => {
           await rooms.doc(room._id).update({
             data: {
               players: players, pkRest: rest, pkDrink: drink, updatedAt: ts,
+
               pkLast: {
                 kind: 'swap', name: mine.name, what: 'mine', drink: addDrink,
                 noteText: mine.name + ' 换了自己的手牌，喝半杯'
