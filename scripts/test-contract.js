@@ -5277,3 +5277,30 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 溢出检查在真实 375px 宽度下测（不依赖无效的 --window-size）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**包体积要用实际文件大小，不能用 du**
+ *
+ * `du -sk` 报的是磁盘占用（按块对齐），小文件多的目录会显著偏大：
+ *     du → 1932 KB     实际 → 1694 KB     差 238 KB
+ *
+ * 而那 238 KB 会让人误判"快到 2048 上限了"，去做不必要的瘦身。
+ * ========================================================================== */
+{
+  const { execFileSync } = require('child_process')
+  let out = ''
+  try {
+    out = execFileSync('python3', [path.join(ROOT, 'scripts/size.py')],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+  } catch (e) {
+    out = (e && e.stdout) || ''
+  }
+  const m = /分包\s+(\d+) KB/.exec(out)
+  assert.ok(m, 'size.py 没报出分包体积')
+
+  const sub = Number(m[1])
+  assert.ok(sub < 2048, '★ 分包 ' + sub + ' KB 超过 2048 上限')
+  assert.ok(sub < 2048 * 0.95, '★ 分包已用 ' + (sub / 2048 * 100).toFixed(0) + '%（>95%），加东西会超')
+
+  ok('★ 分包 ' + sub + ' KB / 2048（' + (sub / 2048 * 100).toFixed(0) + '%，用实际文件大小算）')
+}
