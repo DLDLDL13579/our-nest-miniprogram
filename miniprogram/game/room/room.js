@@ -2790,7 +2790,16 @@ Page({
     const room = this.data.room
     if (!room || !room.sv || this._svBusy) return
     const rule = e.currentTarget.dataset.rule
-    if (!rule) return
+    /*
+     * ★ 2026-11-03：原来取不到 rule 就**裸 return** ——
+     *   虽然正常情况不会发生（模板里 data-rule 一定在），
+     *   但项目里"取不到就静默返回"这个形态修过很多次，
+     *   而且每次的表现都是"点了没反应"。
+     */
+    if (!rule) {
+      wx.showToast({ title: '这条规则没读出来，再点一次', icon: 'none', duration: 2200 })
+      return
+    }
     /* 不可用的规则点了要说清为什么，不能静默忽略 */
     const def = (room.sv.rules || []).filter(r => r.k === rule)[0]
     if (def && !def.usable) {
@@ -3064,7 +3073,14 @@ Page({
     /* 观战守卫：虽然是房主操作、房主不可能是观战者，但统一加更可靠
        （断言也要求所有写操作入口都有它） */
     if (!this.specGuard()) return
-    if (!this.data.room || !this.data.room.host) return
+    /* ★ 2026-11-03：原来是裸 return —— 非房主点「锁房」完全没反应。
+       （和 doSpin 同一类，被"裸 return"断言抓到。） */
+    if (!this.data.room) return
+    if (!this.data.room.host) {
+      sfx.play('tapSoft')
+      wx.showToast({ title: '只有房主能锁房', icon: 'none', duration: 1800 })
+      return
+    }
     const want = !this.data.room.locked
     sfx.play('toggleOn')
     const r = await call('room', { action: 'lock', id: this.data.room.id, locked: want }, { silent: true })
@@ -4176,7 +4192,15 @@ Page({
     const room = this.data.room
     if (!room) return
     const cur = (room.me && room.me.name) || ''
-    if (typeof wx.showModal !== 'function') return
+    /*
+   * ★ 2026-11-03：老基础库上 `showModal` 的 `editable` 不支持 / 方法不存在时，
+   *   原来这里是**裸 return** —— 用户点「改名字」完全没反应，也不会知道为什么。
+   *   （断言"裸 return"抓到。）
+   */
+  if (typeof wx.showModal !== 'function') {
+    wx.showToast({ title: '这个版本不支持改名，换个手机试试', icon: 'none', duration: 2400 })
+    return
+  }
     wx.showModal({
       title: '你叫什么',
       editable: true,
@@ -4543,7 +4567,27 @@ Page({
   async doSpin() {
     if (!this.specGuard()) return
     if (this.data.wheelSpinning) return
-    if (!this.data.room || !this.data.room.host) return
+    /*
+     * ★★ 2026-11-03：这里原来是**裸 return** ——
+     *   而「转」按钮（`.ws-hub`）对**所有人**可见，不只房主。
+     *   于是非房主点「转」：完全没有反应，没有提示、没有音效。
+     *
+     *   项目里"点了没反应"这类修过 13 处，这是第 14 处 ——
+     *   而且它躲过了原有断言（那条只查"方法体内有没有反馈"，
+     *   而这个方法开头就有 setData + sfx.play）。
+     *
+     *   现在有更精确的判据（test-contract.js 的「裸 return 静默分支」那一项）：
+     *   **单行条件守卫 return 也必须说话**。
+     */
+    if (!this.data.room) {
+      wx.showToast({ title: '房间还没加载好，等一下', icon: 'none', duration: 1800 })
+      return
+    }
+    if (!this.data.room.host) {
+      sfx.play('tapSoft')
+      wx.showToast({ title: '只有房主能转，等他点', icon: 'none', duration: 2000 })
+      return
+    }
 
     /*
      * ★ 和 doBid 同样的坑：`call()` 业务失败时 throw，
@@ -4576,6 +4620,15 @@ Page({
       })
     if (!r || !r.ok) {
       if (!this._dead) this.setData({ wheelSpinning: false })
+      /*
+       * ★ 2026-11-03：`r` 为 null 时 catch 已经弹过提示，不用重复；
+       *   但 `r.ok === false`（云函数正常返回业务错误，比如"这局还没开始"）
+       *   原来**什么都不做** —— 玩家点了「转」，转盘回弹一下就没下文。
+       *   这正是项目里修过 13 次的「业务错误被静默吞掉」。
+       */
+      if (r && r.msg && !this._dead) {
+        wx.showToast({ title: r.msg, icon: 'none', duration: 2200 })
+      }
       return
     }
     this.playWheel(r.spin)

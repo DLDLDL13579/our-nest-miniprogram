@@ -4238,6 +4238,85 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   assert.deepStrictEqual(silent, [],
     '这些触点点了不会有任何反馈（音效/提示/状态变化都没有）：\n    ' + silent.join('\n    '))
   ok('★ ' + taps.length + ' 个触点都有反馈（音效 / 提示 / 状态变化）')
+
+  /*
+   * ★★★ 2026-11-03：上面的判据有个**漏网类型** ——
+   *   "方法开头有反馈，但中间的守卫静默返回"。
+   *
+   *   实例：`doSpin()` 开头有 setData + sfx.play（所以上面那条通过），
+   *   但第 4 行是 `if (!this.data.room.host) return` ——
+   *   非房主点「转」**完全没有反应**，而那个按钮对所有人可见。
+   *   后来发现 `toggleLock()` 也是这样。
+   *
+   *   ⚠️ 这个断言的**写法改了两次都失败**，值得记下来：
+   *      v1 用 `case` 找缩进 n 空格 + `case(`   → 被"缩进 n 空格 + 等号 + 冒号"截断
+   *      v2 用 `case` 找缩进 n 空格 + `}` 加逗号    → 被方法体内的回调结尾提前截断
+   *      两次都是"看起来抓到了"，而实际上 doSpin 那几行根本没进被检查的范围。
+   *   v3（本版）用**括号配平**确定方法体边界 —— 结构化的东西只能按语法单元切。
+   */
+  {
+    /** 从 `start` 处的 `{` 开始，配平到对应的 `}`，返回方法体文本 */
+    const bodyOf = (src, start) => {
+      let i = src.indexOf('{', start)
+      if (i < 0) return ''
+      let depth = 0
+      for (let k = i; k < src.length; k++) {
+        if (src[k] === '{') depth++
+        else if (src[k] === '}') { depth--; if (!depth) return src.slice(i + 1, k) }
+      }
+      return ''
+    }
+
+    const bare = []
+    taps.forEach((t) => {
+      const m = new RegExp('\\n  (?:async )?' + t + '\\([^)]*\\)\\s*\\{').exec(js)
+      if (!m) return
+      const body = bodyOf(js, m.index + m[0].length - 1)
+      const lines = body.split('\n')
+      lines.forEach((line, i) => {
+        const bareReturn = /^\s*return;?\s*$/.test(line)
+        const guardReturn = /^\s*if\s*\(.*\)\s*return;?\s*$/.test(line)
+        if (!bareReturn && !guardReturn) return
+        const ctx = lines.slice(Math.max(0, i - 6), i + 1).join('\n')
+        if (/showToast|okOrSay|vibrate|sfx\.play|feedback\.fire|setData\(\{\s*err/.test(ctx)) return
+        /*
+         * ⚠️ specGuard 只放行**它自己那一行**，不能放行整个窗口。
+         *   第一版写成「窗口里有 specGuard 就跳过」——
+         *   而 doSpin / toggleLock 开头恰好都是 `if (!this.specGuard()) return`，
+         *   于是窗口里永远有 specGuard，**后面那条 `!room.host` 的裸 return
+         *   被一起放行了**（反向验证抓不到）。
+         *   这是项目里记过的"例外条件不能跨范围传播"的又一例。
+         */
+        if (/specGuard\(\)/.test(line)) return
+        /*
+         * 合理的静默：无变化 / 节流 / 用户取消 / 内部防御 / 页面已卸载。
+         * 区分标准不是"代码长什么样"，而是**玩家有没有做一次主动操作**。
+         */
+        const legits = [
+          /=== this\.data\.(room\.)?\w+/,       /* 选了同一个值 = 无变化 */
+          /_(bid|again|tap)At/,                    /* 节流 */
+          /!r\.confirm/,                           /* 用户主动取消 */
+          /what !== 'public'/,                     /* 内部参数防御 */
+          /!this\.data\.howOpen/,                 /* 面板已关 */
+          /!c\b/, /!isFinite/, /!name\b/, /name === cur/,
+          /* 页面卸载 / 防重入：这些条件下重复点击本来就不该有反馈 */
+          /_dead|_busy|_Busy|_spinning|_Spinning|wheelSpinning|rerolling|creating|joining/,
+          /*
+           * `!room || _xxxBusy` 这种组合守卫：含防重入就是"重复点击"，合法。
+           * `!target` 是内部参数防御（前端不该传空），也不该打扰玩家。
+           */
+          /_uwBusy|_pkBusy|_fhBusy|_btBusy|_svBusy|_csBusy/,
+          /!target\b/,
+          /^\s*if \(!\s*(this\.data\.)?room\s*\)/  /* 整个 room 为空（异常态）*/
+        ]
+        if (legits.some(re => re.test(line))) return
+        bare.push(t + '：' + line.trim())
+      })
+    })
+    assert.deepStrictEqual(bare, [],
+      '这些触点在某个分支上会**静默返回**（点了完全没反应）：\n    ' + bare.join('\n    '))
+    ok('★ 没有"裸 return" 的静默分支（' + taps.length + ' 个触点全查过）')
+  }
 }
 
 /* ============================================================================
