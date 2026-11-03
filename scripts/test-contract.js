@@ -5517,3 +5517,41 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     [...new Set(bad)].join('\n    '))
   ok('★ 动画缓动：linear 只用在两个快速循环动画上（其余都有缓动曲线）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**转盘的 CSS 时长必须和 `wheelDur` 一致**
+ *
+ * 转盘转多久由**两个地方**决定：
+ *   · CSS：`transition: transform 2.7s ...`（视觉）
+ *   · JS：`wheelDur: 2700`（tick 排期 + 停下来判结果）
+ *
+ * **而它们各写各的。** 不同步的话：
+ *   · CSS 短了 → 转盘早停了，但结果还没出（旋转完后有一段静止）
+ *   · CSS 长了 → 结果出来了，转盘还在转（更糟：看到结果还在转）
+ *
+ * ⚠️ 本项目已有先例：`2600` 与 `2700` 差 100ms，注释里记着"最后一声提前没了"。
+ * ========================================================================== */
+{
+  const wxss = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  const m = /\.ws-disc\s*\{[\s\S]{0,900}?transition:\s*transform\s+([\d.]+)s/.exec(wxss)
+  assert.ok(m, '找不到 .ws-disc 的 transition')
+  const cssMs = Number(m[1]) * 1000
+
+  const jm = /wheelDur:\s*(\d+)/.exec(page)
+  assert.ok(jm, '找不到 wheelDur')
+  const jsMs = Number(jm[1])
+
+  assert.strictEqual(cssMs, jsMs,
+    '★ 转盘的 CSS 时长（' + cssMs + 'ms）和 wheelDur（' + jsMs + 'ms）必须一致 —— ' +
+    '不一致的话"转盘停了但结果没出"或"结果出了还在转"')
+
+  /* 缓动必须是"终点完全停下"的（cubic-bezier 的终点切角为 0） */
+  assert.ok(/transition:\s*transform\s+[\d.]+s\s+cubic-bezier/.test(wxss),
+    '★ 转盘要用 cubic-bezier（linear 会让它匀速转然后"啪"一下停）')
+
+  ok('★ 转盘时长两处一致（CSS ' + cssMs + 'ms = wheelDur ' + jsMs + 'ms），且用缓动曲线')
+}
