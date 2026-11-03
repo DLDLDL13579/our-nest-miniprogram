@@ -1631,6 +1631,55 @@
       <view wx:if="{{room.fh.result.why}}" class="fhr-why">{{room.fh.result.why}}</view>
     </view>
 
+    <!--
+      ★★★ 2026-11-03：**四个玩法的结算页原来完全空白**。
+        补 mock 状态时才发现：`sieve` / `between` / `wheel` / `consensus`
+        在模板里只有 playing 阶段的分支，结算页一个都没有。
+        表现是：打完一局，屏幕上只剩「再来一局」按钮，
+        **谁赢了、谁喝了、为什么** 一个字都没有。
+
+        这类"整块缺失"只有**覆盖性断言**能防 —— 所以同时在 test-room-ui 里
+        加了一条：注册表里每个玩法都必须在结算页出现。
+    -->
+
+    <!-- 红黑单双大小：谁把骰子拿光了 -->
+    <view wx:if="{{room.game === 'sieve' && result}}" class="center-box">
+      <view class="over-tag no">{{result.winText}}</view>
+      <view wx:if="{{result.ruleText}}" class="over-need">
+        最后一轮规则：{{result.ruleText}}（{{result.byName}} 喊的）
+      </view>
+    </view>
+
+    <!-- 射龙门：撞柱 / 打偏 / 穿过去 -->
+    <view wx:if="{{room.game === 'between' && room.bt && room.bt.last}}" class="center-box">
+      <view class="over-tag {{room.bt.last.cups > 0 ? 'no' : 'ok'}}">{{room.bt.last.title}}</view>
+      <view class="over-need">{{room.bt.last.detail}}</view>
+      <view wx:if="{{room.bt.last.gate.length}}" class="bt-gate small">
+        <image class="bt-gcard" src="/game/images/card/c{{room.bt.last.gate[0].s}}-{{room.bt.last.gate[0].r}}.png" mode="scaleToFill" />
+        <image wx:if="{{room.bt.last.third}}" class="bt-gcard mid"
+               src="/game/images/card/c{{room.bt.last.third.s}}-{{room.bt.last.third.r}}.png" mode="scaleToFill" />
+        <image class="bt-gcard" src="/game/images/card/c{{room.bt.last.gate[1].s}}-{{room.bt.last.gate[1].r}}.png" mode="scaleToFill" />
+      </view>
+    </view>
+
+    <!-- 命运转盘：转到什么就说什么 -->
+    <view wx:if="{{room.game === 'wheel' && result}}" class="center-box">
+      <view class="over-tag ok">{{result.winText}}</view>
+      <view wx:if="{{result.card && result.card.q}}" class="over-need">{{result.card.q}}</view>
+    </view>
+
+    <!-- 众口一致：全场通过，或者谁最离谱 -->
+    <view wx:if="{{room.game === 'consensus' && room.cs && room.cs.last}}" class="center-box">
+      <view class="over-tag {{room.cs.last.pass ? 'ok' : 'no'}}">{{room.cs.last.detail}}</view>
+      <view class="cs-answers">
+        <view wx:for="{{room.cs.last.answers}}" wx:key="seat"
+              class="cs-ans {{item.seat === room.cs.last.outlierSeat ? 'out' : ''}}">
+          <text class="cs-ans-n">{{item.name}}</text>
+          <text class="cs-ans-v">{{item.value}}</text>
+        </view>
+      </view>
+    </view>
+
     <view wx:if="{{room.game === 'liar' && result}}" class="center-box">
       <view class="over-tag {{result.bidderWins ? 'ok' : 'no'}}">
         {{result.bidderName ? result.bidderName + ' ' : ''}}{{result.bidderWins ? '叫骰成立' : '吹牛被抓'}}

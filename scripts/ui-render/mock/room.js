@@ -1233,6 +1233,93 @@ module.exports = {
      *   中心按钮像圆片）我在本地一次都看不到。
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
+    /*
+     * ============ 四个玩法的「结算页」（2026-11-03 补）============
+     *
+     * 起因：查 mock 覆盖时发现 9 个玩法里有 **4 个从没渲染过结算页**
+     * （转盘 / 射龙门 / 红黑单双 / 众口一致）。
+     * 它们的结算分支在模板里都存在，但没有一个状态能把它们渲染出来 ——
+     * 也就是说"结算页长什么样"这四个玩法从来没被验证过。
+     */
+    wheelOver: () => ({
+      stage: 'over',
+      result: { kind: 'wheel', winner: '', winText: '转到「喝 1 杯」', card: null, sectorText: '喝 1 杯' },
+      room: pkRoom({
+        game: 'wheel', phase: 'over', host: true, count: 3,
+        gameName: '命运转盘', myCards: [], minPlayers: 1, maxPlayers: 8, shortBy: 0,
+        streakText: '', nightDrinkList: []
+      })
+    }),
+
+    btOver: () => ({
+      stage: 'over',
+      result: { kind: 'between', winText: '撞柱' },
+      room: pkRoom({
+        game: 'between', phase: 'over', host: true, count: 3,
+        gameName: '射龙门', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        streakText: '', nightDrinkList: [],
+        bt: {
+          step: 'done', bet: 1.5, betText: '1.5 杯', gate: [], third: null,
+          last: {
+            bet: 1.5,
+            gate: [{ r: 5, s: 0, t: '\u26605' }, { r: 11, s: 1, t: '\u2665J' }],
+            third: { r: 11, s: 2, t: '\u2663J' },
+            outcome: 'post', cups: 3, title: '撞柱',
+            detail: '第三张也是 11 点 —— 双倍，喝 3 杯',
+            widthHint: '还行', byName: '邓林'
+          },
+          widthHint: '', round: 1, turnName: '', myTurn: false,
+          myDrink: 3, drinkText: '3 杯',
+          drinks: [{ name: '邓林', cups: 3, isMe: true }, { name: '倩萍', cups: 0, isMe: false }],
+          waitingNames: [], minBet: 0.5, maxBet: 3, bailCost: 0.5
+        }
+      })
+    }),
+
+    svOver: () => ({
+      stage: 'over',
+      result: {
+        kind: 'sieve', winner: '',
+        winText: '倩萍 的骰子拿光了', loserName: '倩萍', loserSeat: 2,
+        ruleText: '大的留下', byName: '邓林'
+      },
+      room: pkRoom({
+        game: 'sieve', phase: 'over', host: true, count: 3,
+        gameName: '红黑单双大小', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        streakText: '', nightDrinkList: [],
+        sv: {
+          round: 5, turnSeat: 0, turnName: '', myTurn: false,
+          iAmDead: false, canAct: false, usableCount: 0,
+          seats: [
+            { seat: 1, name: '邓林', isMe: true, dead: false, left: 2,
+              dice: [{ face: 2, color: 'red', src: '/game/images/dice-red/dice-2.png' },
+                     { face: 5, color: 'ivory', src: '/game/images/dice/dice-5.png' }] },
+            { seat: 2, name: '倩萍', isMe: false, dead: true, left: 0, dice: [] }
+          ],
+          rules: [],
+          last: { rule: 'big', byName: '邓林', round: 5, losers: [2], loserName: '倩萍' },
+          lastRuleText: '大的留下', myLeft: 2
+        }
+      })
+    }),
+
+    csOver: () => {
+      const base = module.exports.states.csReveal()
+      base.stage = 'over'
+      base.room.phase = 'over'
+      /* 结算页读的是顶层 result，这里把 reveal 的结论搬过去 */
+      base.room.cs.last = base.room.cs.reveal
+      base.result = {
+        kind: 'consensus', winner: '',
+        winText: '阿杰 离得最远，喝 1 杯',
+        loserName: '阿杰', loserSeat: 3,
+        detail: base.room.cs.reveal.detail
+      }
+      base.room.streakText = ''
+      base.room.nightDrinkList = []
+      return base
+    },
+
     /* ============ 众口一致（2026-11-03）============ */
     csInput: () => ({
       stage: 'playing', csInput: '65',

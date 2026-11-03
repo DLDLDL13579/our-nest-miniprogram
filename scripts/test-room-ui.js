@@ -1366,6 +1366,39 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
       assert.ok(/list\.length - \d+/.test(lobbyWxml),
         '★ 提示里的 N 必须是**算出来的**（list.length - 首屏容量），不能手写死')
     }
+    /*
+     * ★★★ 2026-11-03：**每个玩法都必须有结算页渲染块**。
+     *
+     *   起因：查 mock 覆盖时发现 4 个玩法（转盘/射龙门/红黑单双/众口一致）
+     *   在模板里只有 playing 分支，**结算页一个都没有** ——
+     *   打完一局屏幕上只剩「再来一局」按钮，谁赢谁喝一个字都没有。
+     *
+     *   这类"整块缺失"靠人眼看代码发现不了（少一块看起来和原来一样），
+     *   只能靠覆盖性判据。
+     *
+     *   判据：结算区（`stage === 'over'` 之后那段）里，
+     *   必须能找到 `room.game === 'x'` 的分支，对每个注册玩法都成立。
+     */
+    const lobbyW = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxml'), 'utf8')
+    const roomWxml = fs.readFileSync(WXML, 'utf8')
+    const overStart = roomWxml.indexOf("stage === 'over'")
+    assert.ok(overStart > 0, '找不到结算区')
+    const overBlock = roomWxml.slice(overStart)
+
+    const idRe2 = /(?:^|\n)\s*id:\s*'([a-z]+)'/g
+    const allIds = []
+    const gj2 = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    let im2
+    while ((im2 = idRe2.exec(gj2))) allIds.push(im2[1])
+
+    const noOverBlock = allIds.filter((id) => overBlock.indexOf("room.game === '" + id + "'") < 0)
+    assert.deepStrictEqual(noOverBlock, [],
+      '★ 这些玩法在结算页没有任何渲染块 —— 打完一局屏幕上只剩按钮：\n    ' +
+      noOverBlock.join('\n    '))
+    ok('★ 全部 ' + allIds.length + ' 个玩法都有结算页渲染块（不会白屏）')
+
+    void lobbyW
     ok('★ 玩法 ' + total + ' 个（首屏容量 ' + PER_SCREEN + '）—— ' +
        (total > PER_SCREEN ? '已给出「下面还有 N 个」提示' : '全部可见'))
 
