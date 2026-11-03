@@ -5253,3 +5253,27 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 「揭晓进度」在正确的玩法分支里（比大小，不是大话骰）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**溢出检查工具必须真的在 375px 下测**
+ *
+ * `check-text-overflow.js` 原来用 `--dump-dom` 模式，而 **`--window-size`
+ * 在这个模式下不生效** —— 它一直量的是 500px 视口下的元素宽度，
+ * 而真机是 375px。**这条断言因此在一个比真机宽 33% 的屏上测"溢不溢出"。**
+ *
+ * 修法：不靠浏览器视口，在 HTML 里用 CSS 钉死 375px。
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'scripts/check-text-overflow.js'), 'utf8')
+
+  assert.ok(/html,\s*body\s*\{[^}]*width:\s*375px/.test(src),
+    '★ 溢出检查必须在 375px 宽度下测（用 CSS 钉死，因为 --dump-dom 忽略 --window-size）')
+
+  /* 顺带：不许再依赖 --window-size（在这个模式下无效） */
+  const hasWindowSize = /--window-size=/.test(src)
+  assert.ok(!hasWindowSize,
+    '★ 不该依赖 --window-size —— `--dump-dom` 模式下它不生效（实测：设 375 仍得到 461）')
+
+  ok('★ 溢出检查在真实 375px 宽度下测（不依赖无效的 --window-size）')
+}

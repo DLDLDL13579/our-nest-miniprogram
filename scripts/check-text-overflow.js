@@ -29,7 +29,15 @@ let css = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'u
 css = css.replace(/\/\*[\s\S]*?\*\//g, '');
 css = css.replace(/(\d+(?:\.\d+)?)rpx/g, (_, n) => (Number(n) / 2) + 'px');
 
-const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head>
+/*
+ * ⚠️ `--window-size` 在 `--dump-dom` 模式下**不生效**（实测：设了 375 仍然 width=461）。
+ *
+ *   所以不能靠浏览器视口来模拟 375px —— 改成**在 HTML 里用 CSS 把宽度钉死 375px**：
+ *   这样元素的可用宽度就是真机宽度，和视口多宽无关。
+ */
+const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}
+html, body { width: 375px !important; margin: 0 }
+</style></head>
 <body><div class="ht-list"><div class="ht-item"><span class="ht-n">3</span><span class="ht-t">往上叫 = 数量加一，或者数量不变、点数更大（三个四 → 四个四 或 三个五）</span></div></div>
 <script>
 const el = document.querySelector('.ht-t');
@@ -39,6 +47,18 @@ document.title = 'display=' + cs.display + ' minWidth=' + cs.minWidth + ' wordBr
 
 const tmp = path.join(os.tmpdir(), 'ht-check.html');
 fs.writeFileSync(tmp, html);
+/*
+ * ★★ 2026-11-03：**必须显式给 --window-size**。
+ *
+ *   不加时 headless Chrome 的默认视口是 **500px**，而真机是 **375px**
+ *   （本项目 rpx 按 1rpx = 0.5px 换算，750rpx = 375px）。
+ *
+ *   于是在 500px 视口下"没溢出"的元素，**在 375px 真机上可能溢出** ——
+ *   而这条断言一直是绿的，因为它测的是一个比真机宽 33% 的屏。
+ *
+ *   这也解释了另一件事：`render-ui.js` 拍出来的图里某些长句"看起来被裁"，
+ *   而本工具说"没溢出" —— **两者测的根本不是同一个宽度**。
+ */
 const dom = execFileSync(CHROME, ['--headless=new', '--disable-gpu', '--no-sandbox',
   '--virtual-time-budget=1500', '--dump-dom', 'file://' + tmp], { encoding: 'utf8' });
 const m = /<title>([^<]*)<\/title>/.exec(dom);
