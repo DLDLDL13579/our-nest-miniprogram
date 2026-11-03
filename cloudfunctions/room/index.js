@@ -1909,6 +1909,56 @@ exports.main = async (event) => {
         }
       }
 
+      /*
+       * ★★ 射龙门：队首掉线必须自动跳过（2026-11-03）。
+       *
+       *   这是项目里的**第四条**同类死路（比大小不摇 / 卧底不投 / 额头牌不表态）。
+       *   而射龙门更狠一点：它是**排队制** —— 队首不操作，后面的人全部干等，
+       *   连房主都没有"跳过"按钮可以做任何事。
+       *
+       *   判据和前面三处完全一样：本局参与、还没完成、心跳 > 30 秒 → 视为掉线，
+       *   从队列里摘掉。**摘到最后一个人也掉线时**，把队列按当前在局的人重建 ——
+       *   否则队列会空掉，`btQueue[0]` 是 undefined，谁都不能操作。
+       */
+      if (room.game === 'between' && room.phase === 'playing' &&
+          room.btStep && (room.btQueue || []).length) {
+        const liveB = (room.players || []).filter(p => p.inRound !== false)
+        const q = (room.btQueue || []).slice()
+        const gone = q.filter(oid => {
+          const p = liveB.filter(x => x.openid === oid)[0]
+          /* 人已经不在了（退出/被剔除）or 心跳太旧 */
+          return !p || ts - (p.lastSeen || 0) > 30000
+        })
+        if (gone.length && gone.length < q.length) {
+          /* 还有人在 —— 只摘掉掉线的，队首自然前移 */
+          const kept = q.filter(oid => gone.indexOf(oid) < 0)
+          await dbCall('status.btGhost', () => rooms.doc(room._id).update({
+            data: { btQueue: kept, updatedAt: ts }
+          }))
+          const rrb = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rrb.data, OPENID) }
+        }
+        if (gone.length === q.length) {
+          /*
+           * ★ 整条队列都掉线了：按当前用户重建（不再拉掉线的人进来）。
+           *   这种情况只在"全员锁屏"时出现，但必须处理 ——
+           *   否则一次全员掉线会让这个房间永久报废。
+           */
+          const rebuilt = liveB
+            .filter(p => ts - (p.lastSeen || 0) <= 30000)
+            .sort((a, b) => a.seat - b.seat)
+            .map(p => p.openid)
+          if (rebuilt.length) {
+            await dbCall('status.btGhostAll', () => rooms.doc(room._id).update({
+              data: { btQueue: rebuilt, btStep: 'bet', btBet: 0, btGate: [], btThird: null, updatedAt: ts }
+            }))
+            const rrb2 = await rooms.doc(room._id).get()
+            return { ok: true, room: shape(rrb2.data, OPENID) }
+          }
+          /* 一个人都不在线：什么都不做，等他们回来 */
+        }
+      }
+
       if (room.game === 'liar' && room.phase === 'playing' && room.bid &&
           room.turnAt && ts - room.turnAt > 45000) {
         const idleSeat = room.turn

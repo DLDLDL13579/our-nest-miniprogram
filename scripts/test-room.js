@@ -3471,6 +3471,55 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============================================================================
+   * ㉖ 射龙门掉线兜底（2026-11-03）
+   *
+   * 这是项目被咬过三次的**同一类死路**（比大小不摇 / 卧底不投 / 额头牌不表态）：
+   * 判据是"等某个人完成"，而"某个人不在了"是必然会发生的事。
+   *
+   * 射龙门更严重一点：它是**排队制** —— 队首不操作，后面的人全部干等，
+   * 而且没有任何人能做任何事（连房主也没有"跳过"按钮）。
+   * ========================================================================== */
+  console.log('\n=== ㉖ 射龙门：队首掉线不能卡死全桌 ===')
+  {
+    const C1 = 'oid_bt_c1', C2 = 'oid_bt_c2', C3 = 'oid_bt_c3'
+    OPENID = C1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'between' })
+    const cid = cr.room.id
+    OPENID = C2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+    OPENID = C3
+    await room.main({ action: 'join', code: cr.room.code, name: '丙' })
+    OPENID = C1
+    await room.main({ action: 'start', id: cid })
+    store.rooms.filter(x => x._id === cid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: cid })
+
+    /* 把队首那个人心跳拨旧（模拟锁屏去接电话） */
+    const raw = store.rooms.filter(x => x._id === cid)[0]
+    const headOid = raw.btQueue[0]
+    raw.players.forEach(p => {
+      if (p.openid === headOid) p.lastSeen = Date.now() - 60000
+    })
+
+    /* 任何人点一下 status（轮询会做），队列必须自动跳过掉线的人 */
+    OPENID = (raw.players || []).filter(p => p.openid !== headOid)[0].openid
+    await room.main({ action: 'status', id: cid })
+
+    const after = store.rooms.filter(x => x._id === cid)[0]
+    assert.notStrictEqual(after.btQueue[0], headOid,
+      '★★ 队首掉线超过 30 秒，队列必须自动跳过他 —— 否则全桌永远卡住')
+    assert.ok(after.btQueue.length > 0, '★ 跳过之后队列不能空')
+
+    /* 而且跳过之后，新队首必须真的能操作 */
+    const newHead = (after.players || []).filter(p => p.openid === after.btQueue[0])[0]
+    assert.ok(newHead, '新队首必须是在局的人')
+    OPENID = newHead.openid
+    const act = await room.main({ action: 'btAct', act: 'bet', bet: 1, id: cid })
+    assert.ok(act.ok, '★ 跳过之后新队首必须能押注：' + (act.msg || ''))
+    ok('★★ 射龙门：队首掉线自动跳过，剩下的人能继续玩')
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
