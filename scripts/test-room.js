@@ -3021,8 +3021,254 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 金花：连续两次换手牌都成功，喝量累计（1 杯）')
   }
 
-  console.log(`\n${'='.repeat(58)}`)
-  console.log(`  多人房间：全部 ${n} 项断言通过`)
+  /* ============================================================================
+   * ㉓ 额头牌（2026-11-03，第 6 个玩法）
+   *
+   * 这一组的**命门和其它所有玩法相反**：
+   *   大话骰 / 金花 / 卧底都是"藏住我的、只给我看"，
+   *   额头牌是"我的牌发给**别人**、唯独不给我自己"。
+   *   所以第一组断言测的方向和别处正好相反 —— 写成一样的就等于没测。
+   * ========================================================================== */
+  console.log('\n=== ㉓ 额头牌：反向信息 + 换牌改指令 ===')
+  {
+    const F1 = 'oid_fh_1', F2 = 'oid_fh_2', F3 = 'oid_fh_3'
+    OPENID = F1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'forehead' })
+    assert.ok(cr.ok, '额头牌建房应成功：' + (cr.msg || ''))
+    const fid = cr.room.id
+
+    OPENID = F2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+    OPENID = F3
+    await room.main({ action: 'join', code: cr.room.code, name: '丙' })
+
+    /* ---- 单人不能开（soloMin: 2）---- */
+    {
+      OPENID = 'oid_fh_solo'
+      const solo = await room.main({ action: 'create', name: '独', game: 'forehead' })
+      const soloId = solo.room.id
+      const soloStart = await room.main({ action: 'start', id: soloId })
+      assert.ok(!soloStart.ok, '★ 额头牌 1 人不能开局（玩法本身不成立）：' + (soloStart.msg || ''))
+      ok('★ 额头牌 soloMin = 2：一个人开不了局（玩法不成立，不是技术限制）')
+    }
+
+    /* ---- 开局 ---- */
+    OPENID = F1
+    const st0 = await room.main({ action: 'start', id: fid })
+    assert.ok(st0.ok, '3 人开局应成功：' + (st0.msg || ''))
+    /* 开局先进 3.2 秒倒计时 —— 把时间拨过去，让 status 推进到 playing */
+    store.rooms.filter(x => x._id === fid)[0].countdownEnd = Date.now() - 100
+    const st = await room.main({ action: 'status', id: fid })
+    assert.strictEqual(st.room.phase, 'playing', '倒计时到点后应进入 playing')
+    assert.ok(st.room.fh, '★ 响应里必须有 fh 块')
+    assert.ok(st.room.fh.cmd === 'max' || st.room.fh.cmd === 'min',
+      '指令必须是 max 或 min')
+    assert.strictEqual(st.room.fh.myCard, null,
+      '★★ 表态阶段「我的牌」必须是 null —— 这是玩法本体，不是漏字段')
+    assert.strictEqual(st.room.fh.others.length, 2,
+      '★★ 别人两个人的牌都要给我（反向过滤）')
+    st.room.fh.others.forEach(o => {
+      assert.ok(o.card && o.card.r >= 2 && o.card.r <= 14,
+        '★★ 别人的牌必须真实可读（' + o.name + '）')
+      assert.ok(o.text, '别人的牌要有牌面文字')
+    })
+    ok('★★ 额头牌：我的牌不给我，别人的牌全给我（反向过滤）')
+
+    /* ---- 换个身份看：别人拿到的「我的牌」和我不一样 ---- */
+    {
+      OPENID = F2
+      const stB = await room.main({ action: 'status', id: fid })
+      const meInB = stB.room.fh.others.filter(o => o.name === '甲')[0]
+      assert.ok(meInB && meInB.card, '★ 乙必须看得见甲的牌（这就是这个玩法）')
+      /* 甲自己看不到自己的牌，但乙看得到 —— 两者拼起来才是完整信息 */
+      assert.strictEqual(st.room.fh.myCard, null, '甲永远看不到自己的牌')
+      ok('★ 乙看得见甲的牌，而甲自己看不见 —— 信息方向确实是反的')
+    }
+
+    /* ---- 只能轮到自己 ---- */
+    {
+      const rawF = store.rooms.filter(x => x._id === fid)[0]
+      const turnSeat = rawF.turn
+      const turnP = (rawF.players || []).filter(p => p.seat === turnSeat)[0]
+      const otherOpenid = (rawF.players || []).filter(p => p.seat !== turnSeat)[0].openid
+      OPENID = otherOpenid
+      const bad = await room.main({ action: 'fhAct', act: 'pass', id: fid })
+      assert.ok(!bad.ok, '★ 没轮到的人表态必须被拒（云函数是公开接口，前端藏按钮不算拦）')
+      OPENID = turnP.openid
+      ok('★ 不是自己的回合，服务端明确拒绝')
+    }
+
+    /* ---- switch：喝 0.5 杯 + 换牌 + 指令翻转 + agreed 清空 ----
+     *
+     * ★★ 顺序很关键：必须**先让一个人同意、再让下一个人换牌**。
+     *   如果一上来就是第一个人换牌，那时 agreed 本来就是空的 ——
+     *   "清空"这个动作做没做，断言都看不出区别（反向验证时确实抓不到，
+     *   这就是 AGENTS.md 说的"断言看着对，其实测的是别的东西"）。
+     */
+    {
+      /* ① 先让当前轮的人同意，制造出非空的 agreed */
+      const b0 = store.rooms.filter(x => x._id === fid)[0]
+      const firstOid = (b0.players || []).filter(p => p.seat === b0.turn)[0].openid
+      OPENID = firstOid
+      const p0 = await room.main({ action: 'fhAct', act: 'pass', id: fid })
+      assert.ok(p0.ok, '第一个人同意应成功：' + (p0.msg || ''))
+      const b1 = store.rooms.filter(x => x._id === fid)[0]
+      assert.strictEqual((b1.fhAgreed || []).length, 1,
+        '有人同意后 agreed 里应该有一条记录（不然后面测不到"清空"）')
+
+      /* ② 现在换下一个人换牌 */
+      const before = store.rooms.filter(x => x._id === fid)[0]
+      const cmdBefore = before.fhCmd
+      const myCardBefore = JSON.stringify(
+        (before.players || []).filter(p => p.seat === before.turn)[0].fhCard)
+      const meOid = (before.players || []).filter(p => p.seat === before.turn)[0].openid
+      assert.notStrictEqual(meOid, firstOid, '换牌的人应该是另一个人')
+      OPENID = meOid
+      const sw = await room.main({ action: 'fhAct', act: 'switch', id: fid })
+      assert.ok(sw.ok, '换牌应成功：' + (sw.msg || ''))
+      const after = store.rooms.filter(x => x._id === fid)[0]
+      assert.strictEqual(Number((after.fhDrinks || {})[meOid]) || 0, 0.5,
+        '★ 换一张牌要喝 0.5 杯')
+      assert.notStrictEqual(cmdBefore, after.fhCmd,
+        '★★ 换牌必须把指令翻转到另一个（改的是判定标准，不是我的牌）')
+      assert.deepStrictEqual(after.fhAgreed, [],
+        '★★ 指令变了，前面同意过的人必须作废重来（不清空会对新标准误结算）')
+      const myCardAfter = JSON.stringify(
+        (after.players || []).filter(p => p.openid === meOid)[0].fhCard)
+      assert.notStrictEqual(myCardBefore, myCardAfter, '换牌后牌应该真的变了')
+      ok('★★ 换牌：喝 0.5 杯 · 指令翻转 · 前面的同意作废 · 牌真的换了')
+    }
+
+    /* ---- 全员同意 → 结算，且结算页把所有人的牌摊开 ---- */
+    {
+      let guard = 0
+      let cur = store.rooms.filter(x => x._id === fid)[0]
+      while (cur.phase === 'playing' && guard++ < 30) {
+        const tp = (cur.players || []).filter(p => p.seat === cur.turn && p.inRound !== false)[0]
+        assert.ok(tp, '必须有轮到的人')
+        OPENID = tp.openid
+        const r2 = await room.main({ action: 'fhAct', act: 'pass', id: fid })
+        assert.ok(r2.ok, '同意应成功：' + (r2.msg || ''))
+        cur = store.rooms.filter(x => x._id === fid)[0]
+      }
+      assert.strictEqual(cur.phase, 'over', '★ 所有人同意后必须结算（不能卡在表态页）')
+      assert.strictEqual(cur.fhStep, 'reveal', '结算后进入 reveal')
+      const last = cur.fhLast
+      assert.ok(last && last.all && last.all.length === 3, '★ 结算页要摊开所有人的牌')
+      assert.ok(last.losers.length >= 1, '★ 必须判出至少一个输家')
+      /* 判据：输家的点数确实是指令要求的那个极值 */
+      const rs = last.all.map(x => x.r)
+      const want = last.cmd === 'max' ? Math.max.apply(null, rs) : Math.min.apply(null, rs)
+      assert.strictEqual(last.face, want, '★ 被判喝的点数必须是真极值（判错会直接判错输赢）')
+      last.losers.forEach(x => {
+        assert.strictEqual(x.r, want, '输家必须都是那个极值点数')
+      })
+      ok('★★ 全员同意即结算，且极值判定与牌面一致')
+    }
+
+    /* ---- 同点：两个一样大时都要喝 ---- */
+    {
+      /*
+       * 直接调 settleFh 的等价路径 —— 这里用"人为把两个人的牌改成同点"的方式
+       * 复现（服务端没有测试后门，改 store 是最接近的做法）。
+       */
+      const F4 = 'oid_fh_4', F5 = 'oid_fh_5'
+      OPENID = F4
+      const cr2 = await room.main({ action: 'create', name: '丁', game: 'forehead' })
+      const fid2 = cr2.room.id
+      OPENID = F5
+      await room.main({ action: 'join', code: cr2.room.code, name: '戊' })
+      OPENID = F4
+      await room.main({ action: 'start', id: fid2 })
+      store.rooms.filter(x => x._id === fid2)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: fid2 })
+      const raw2 = store.rooms.filter(x => x._id === fid2)[0]
+      raw2.fhCmd = 'max'
+      raw2.players.forEach(p => { p.fhCard = { r: 13, s: p.seat } })
+      let g2 = 0
+      let cur2 = raw2
+      while (cur2.phase === 'playing' && g2++ < 20) {
+        const tp = (cur2.players || []).filter(p => p.seat === cur2.turn && p.inRound !== false)[0]
+        OPENID = tp.openid
+        await room.main({ action: 'fhAct', act: 'pass', id: fid2 })
+        cur2 = store.rooms.filter(x => x._id === fid2)[0]
+      }
+      assert.strictEqual(cur2.phase, 'over', '同点局也要能结算')
+      assert.strictEqual(cur2.fhLast.losers.length, 2,
+        '★★ 两个人都是最大点数时，**两个人一起喝**（规则里写死的一条，不写就会吵）')
+      ok('★★ 同点全算被喊中（不判花色，两个 K 都喝）')
+    }
+
+    /* ---- 掉线兜底：有人不表态时全桌不能永远卡在表态页 ----
+     *
+     * 这是项目被咬过三次的同一类死路（比大小不摇 / 卧底不投 / 现在这个）：
+     * 判据是"所有人都同意了"，而**某个人不在了是必然会发生的事**。
+     */
+    {
+      const G1 = 'oid_fh_g1', G2 = 'oid_fh_g2', G3 = 'oid_fh_g3'
+      OPENID = G1
+      const cr3 = await room.main({ action: 'create', name: '己', game: 'forehead' })
+      const fid3 = cr3.room.id
+      OPENID = G2
+      await room.main({ action: 'join', code: cr3.room.code, name: '庚' })
+      OPENID = G3
+      await room.main({ action: 'join', code: cr3.room.code, name: '辛' })
+      OPENID = G1
+      await room.main({ action: 'start', id: fid3 })
+      store.rooms.filter(x => x._id === fid3)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: fid3 })
+
+      /* 己（座位 1）同意 → 回合交给庚 */
+      const raw3 = store.rooms.filter(x => x._id === fid3)[0]
+      const seat1 = (raw3.players || []).filter(p => p.seat === 1)[0].openid
+      OPENID = seat1
+      const p1 = await room.main({ action: 'fhAct', act: 'pass', id: fid3 })
+      assert.ok(p1.ok, '第一个人同意应成功：' + (p1.msg || ''))
+
+      /* 让庚、辛的心跳变旧（模拟锁屏去接电话） */
+      const raw4 = store.rooms.filter(x => x._id === fid3)[0]
+      raw4.players.forEach(p => {
+        if (p.openid !== seat1) p.lastSeen = Date.now() - 60000
+      })
+
+      /* ★ 当前轮正好轮到一个掉线的人 —— 不能因此永远没人可操作 */
+      const adv = await room.main({ action: 'status', id: fid3 })
+      const raw5 = store.rooms.filter(x => x._id === fid3)[0]
+      assert.strictEqual(raw5.phase, 'over',
+        '★★ 另外两个人掉线，剩的人已同意 → 必须直接开牌，不能卡死')
+      assert.ok(raw5.fhLast && raw5.fhLast.all.length === 1,
+        '★ 结算只算还在的人（掉线的不进结果）')
+      assert.ok(raw5.fhLast.why, '★ 提前开牌要说清原因（"有人掉线了"），否则像是 bug')
+      ok('★★ 额头牌掉线兜底：剩下的人都同意了就开牌，并说明原因')
+
+      /* ---- 掉线的人正好是当前 turn 时，回合要往后推 ---- */
+      const H1 = 'oid_fh_h1', H2 = 'oid_fh_h2'
+      OPENID = H1
+      const cr4 = await room.main({ action: 'create', name: '壬', game: 'forehead' })
+      const fid4 = cr4.room.id
+      OPENID = H2
+      await room.main({ action: 'join', code: cr4.room.code, name: '癸' })
+      OPENID = H1
+      await room.main({ action: 'start', id: fid4 })
+      store.rooms.filter(x => x._id === fid4)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: fid4 })
+      /* 把当前轮的人心跳拨旧，但**另一个人还活着且还没同意** */
+      const raw6 = store.rooms.filter(x => x._id === fid4)[0]
+      const turnOid = (raw6.players || []).filter(p => p.seat === raw6.turn)[0].openid
+      raw6.players.forEach(p => {
+        if (p.openid === turnOid) p.lastSeen = Date.now() - 60000
+      })
+      await room.main({ action: 'status', id: fid4 })
+      const raw7 = store.rooms.filter(x => x._id === fid4)[0]
+      assert.strictEqual(raw7.phase, 'playing',
+        '还有一个人在局时不能提前结算（他还没表态）')
+      const turnNow = (raw7.players || []).filter(p => p.seat === raw7.turn && p.inRound !== false)[0]
+      assert.ok(turnNow, '★★ 回合必须指向一个还在局里的人（指向掉线的人 = 永远没人能操作）')
+      ok('★★ 掉线的人正好是当前回合 → 回合自动交给下一个在局的人')
+    }
+  }
+
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
