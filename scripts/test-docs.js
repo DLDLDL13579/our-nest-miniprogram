@@ -50,3 +50,39 @@ if (bad.length) {
   process.exit(1)
 }
 console.log(`✓ ${sources.length} 份文档里的 .md 引用都有效（docs/ 与根目录两个位置都认）`)
+
+/* ============================================================================
+ * 2026-11-03 追加：**文档里提到的文件必须真的存在**
+ *
+ * 文档写 `docs/待部署清单.md` 或 `scripts/size.py` 时，读者会去点它。
+ * 而**文件被删/改名后，文档里的路径会变成一个死链接** —— 不报错，只是找不到。
+ *
+ * 判据：只查反引号包起来的路径（那是"这是文件"的明确信号），不查正文里的随口提及。
+ * ========================================================================== */
+{
+  const missing = []
+  const files = [...require('fs').readdirSync(path.join(ROOT, 'docs'))
+    .filter(f => f.endsWith('.md')).map(f => path.join(ROOT, 'docs', f)),
+    path.join(ROOT, 'AGENTS.md')]
+
+  files.forEach(f => {
+    if (!fs.existsSync(f)) return
+    const src = fs.readFileSync(f, 'utf8')
+    const rel = path.relative(ROOT, f)
+    ;[...src.matchAll(/`(docs\/[\w\u4e00-\u9fa5./-]+\.md|scripts\/[\w.-]+\.(?:js|py|sh))`/g)]
+      .forEach(m => {
+        if (!fs.existsSync(path.join(ROOT, m[1]))) {
+          missing.push(rel + ' → ' + m[1])
+        }
+      })
+  })
+
+  const uniq = [...new Set(missing)]
+  if (uniq.length) {
+    console.log('  ✗ 这些文档引用的文件不存在（死链接）：')
+    uniq.forEach(x => console.log('    ' + x))
+    process.exitCode = 1
+  } else {
+    console.log('  ✓ 文档里提到的 docs/*.md 和 scripts/* 都存在（没有死链接）')
+  }
+}
