@@ -2576,8 +2576,24 @@ Page({
     const target = String(e.currentTarget.dataset.oid || '')
     if (!target) return
     this.data._pkBusy = true
-    /* 摊牌：三张牌拍在桌上 + 160ms 后一下揭示重击 —— 两层音在表里定义 */
+    /*
+     * 摊牌：三张牌拍在桌上 + 270ms 后一下揭示重击 —— 两层音在表里定义。
+     *
+     * ★ 2026-11-03 接上顿帧（调研结论：顿帧是打击感第一原则）。
+     *   摊牌是金花里**唯一一次"双方牌一起翻开"**的时刻 ——
+     *   这一局谁出局、谁喝，全在接下来这一秒里被读出来，
+     *   所以它完全符合"重击"的定义，该顿。
+     *
+     *   60ms 而不是 80ms：`pkSpread.impactAt` 是 80ms（牌拍下去的那一刻），
+     *   而牌面的揭示还要再等 270ms 的 sfx2。顿 60ms 后立刻就震，
+     *   震动落在"牌刚拍住"的窗口里；80ms 会顶到揭示音的边缘。
+     */
     feedback.fire('pkSpread')
+    /* 80ms 后顿帧 —— 对齐 pkSpread.impactAt（牌拍下去的那一刻） */
+    this._cupTimers.push(setTimeout(() => {
+      if (this._dead) return
+      this.bump(60)
+    }, 80))
     const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => {
         wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' })
