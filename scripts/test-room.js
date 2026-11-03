@@ -1609,37 +1609,28 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★ 单人大话骰：叫自己再开自己，能走完一局')
   }
 
-  /* ============ ⑪f 单人金花：没有可比的人，能不能走完 ============ */
+  /* ============ ⑪f 单人金花：**应该被拦住**（2026-11-03 改） ============ */
   /*
-   * 同 ⑪e 的思路：soloTest 下一个人也要能把一局走完，否则就是"能开但卡住"。
-   * 金花的单人路径只有一条：**弃牌**（没有别人可以比）。
-   * 所以判据是：单人局点弃牌必须能结算，而不是回到"轮到你了"。
+   * 这一段原来验证的是"单人金花能开局，然后弃牌能走完"。
+   *
+   * ★★ 2026-11-03 改了结论：**金花单人局根本不该开局**。
+   *
+   *   金花的核心动作是「挑一个人比牌」—— 1 人局里"能比的人"是**空列表**，
+   *   界面只剩「换牌（白喝半杯）」和「弃牌（没人赢）」，**那不是一局游戏**。
+   *   这和卧底单人局（唯一的人被选成卧底、投票页为空）是同一类死路。
+   *
+   *   所以给金花加了 `soloMin: 2`，于是 `solo: true` 也会被拦 ——
+   *   而**"拦住"比"能开局但只能弃牌"好得多**：前者说实话，后者骗玩家点进去。
    */
   {
     OPENID = A
     const pr = await room.main({ action: 'create', name: 'K1', game: 'poker' })
     const prId = pr.room.id
     const pStart = await room.main({ action: 'start', id: prId, solo: true })
-    assert.ok(pStart.ok, '单人金花应能开局：' + (pStart.msg || ''))
-    store.rooms.filter(x => x._id === prId)[0].countdownEnd = Date.now() - 100
-    await room.main({ action: 'status', id: prId })
-
-    /* 单人时"能比的人"列表应为空 —— 界面据此只给弃牌 */
-    const pSt = await room.main({ action: 'status', id: prId })
-    const others = (pSt.room.players || []).filter(x => !x.isMe && !x.out)
-    assert.strictEqual(others.length, 0, '单人局不该有可以比的人')
-
-    /* 弃牌必须能推进（而不是回到"轮到你了"） */
-    const folded = await room.main({ action: 'pkAct', act: 'fold', id: prId })
-    assert.ok(folded.ok, '★ 单人金花弃牌应成功：' + (folded.msg || ''))
-    /*
-     * ⚠️ 这里原来写成 `folded || phase === 'over'` —— 太松。
-     *    "folded 了但没结算"同样会让单人局停在废弃界面，
-     *    没有别人能推进，和卡死没区别。所以必须是 over。
-     */
-    assert.strictEqual(folded.room.phase, 'over',
-      '★ 单人弃牌后必须结算（只置 folded 不结算 = 一样卡住），实际 phase=' + folded.room.phase)
-    ok('★ 单人金花：没有可比的人，弃牌能走完')
+    assert.ok(!pStart.ok, '★ 单人金花应该被拦住（1 人局没有对手可比，进去只能弃牌）')
+    assert.ok(/要 2 个人/.test(pStart.msg || ''),
+      '★ 拒绝的理由要说清"要几个人"，实际：' + (pStart.msg || ''))
+    ok('★ 单人金花被拦住（要 2 个人），而不是"能开局但只能弃牌" -- 后者是骗玩家点进去')
   }
 
   /* ============ ⑪h 单人比大小：摇完就能出结果 ============ */

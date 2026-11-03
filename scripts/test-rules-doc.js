@@ -468,3 +468,55 @@ console.log('\n规则文档一致性：全部 ' + pass + ' 项通过')
 
   console.log('  ✓ 30+ 条规则的长度都在 8~60 字（一条只讲一件事）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**必须有对手的玩法，必须声明 `soloMin: 2`**
+ *
+ * `soloMin` 的默认值是 **1**（`gmeta.soloMin ? gmeta.soloMin : 1`），
+ * 所以**不写就放行单人开局**。
+ *
+ * 而有些玩法 1 人局会**卡死**：
+ *   · 卧底：唯一的人被选成卧底，投票页列表为空、服务端又拦"不能投自己"
+ *   · 金花：核心动作是「挑一个人比牌」，而 1 人局**没有任何人可比** ——
+ *     只剩「换牌（白喝半杯）」和「弃牌（没人赢）」
+ *
+ * 而另一些玩法 1 人能走完：
+ *   · 大话骰：自己摇、自己叫、自己开
+ *   · 比大小：自己摇、自己结算
+ *   · 转盘：自己转
+ *
+ * 判据：**需要"另一个人"才能推进的玩法，必须 soloMin ≥ 2。**
+ * ========================================================================== */
+{
+  const g = require('../miniprogram/utils/games.js')
+
+  /* 明确需要对手的（它们的核心动作是"对某人做某事"） */
+  const NEEDS_OPPONENT = ['undercover', 'poker']
+  const bad = []
+
+  NEEDS_OPPONENT.forEach(id => {
+    const x = g.GAMES.filter(y => y.id === id)[0]
+    if (!x) { bad.push(id + '：注册表里没有这个玩法'); return }
+    if (!x.soloMin || x.soloMin < 2) {
+      bad.push(x.name + '：soloMin=' + (x.soloMin === undefined ? '（未设，默认 1）' : x.soloMin) +
+        ' —— 1 人局会卡死（没有对手可比/可投）')
+    }
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '这些玩法 1 人局会卡住，必须声明 soloMin ≥ 2：\n    ' + bad.join('\n    '))
+
+  /* 反向：不需要对手的玩法，soloMin 不该 ≥2（否则单人测试开关会误拦） */
+  const soloOk = ['liar', 'dice', 'wheel']
+  const tooStrict = soloOk.filter(id => {
+    const x = g.GAMES.filter(y => y.id === id)[0]
+    return x && x.soloMin && x.soloMin > 1
+  }).map(id => {
+    const x = g.GAMES.filter(y => y.id === id)[0]
+    return x.name + '（soloMin=' + x.soloMin + '）'
+  })
+  assert.deepStrictEqual(tooStrict, [],
+    '这些玩法 1 人能走完，soloMin 不该 > 1（会误拦单人测试）：\n    ' + tooStrict.join('\n    '))
+
+  console.log('  ✓ 需要对手的玩法都声明了 soloMin ≥ 2，1 人能走完的保持默认')
+}
