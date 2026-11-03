@@ -616,6 +616,36 @@ module.exports = {
     /* ===== 骰盅类：这两个核心界面此前**从没被预览过** ===== */
 
     /* 大话骰：扣盅后轮到我叫骰 */
+    /*
+     * ★★ 2026-11-03：**大话骰满员（8 人）进行中**。
+     *
+     *   之前 8 人局只有「比大小的结算」（dice8）—— 而大话骰的满员
+     *   进行中界面从没被渲染过。那里要同时容纳：8 人的骰子数、
+     *   叫骰选项（6 个按钮）、开/劈，以及当前叫法。
+     */
+    liar8: () => {
+      const base = module.exports.states.liarPlay()
+      const names = ['邓林','倩萍','阿杰','老王','小美','大刘','阿强','胖虎']
+      const ps = names.map(function (n, i) {
+        return {
+          seat: i + 1, name: n, initial: String(n).charAt(0),
+          isMe: i === 0, isHost: i === 0, online: true, inRound: true, out: false,
+          diceCount: 5, score: 0
+        }
+      })
+      if (base.room) {
+        base.room.players = ps
+        base.room.count = 8
+        base.room.turn = 3
+        base.room.turnName = '老王'
+        base.room.myTurn = false
+        /* 8 人已摇完的进度条（revealprog 只在 myRolled 时显示） */
+        base.myRolled = true
+        base.room.rolledCount = 5
+        base.room.waitingCount = 3
+      }
+      return base
+    },
     liarPlay: () => ({
       stage: 'playing',
       /* 事件流：别人刚做了什么（2026-10-28 加，见 room.wxss 的 .evstrip） */
