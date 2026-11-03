@@ -419,6 +419,23 @@ module.exports = {
         shortBy: 0, soloOk: true })
     }),
 
+    /*
+     * ★ 2026-11-03：**规则弹层在最短的那个玩法上**。
+     *
+     *   `howOpen` 是大话骰（9 条），会撑出滚动；而命运转盘只有 **4 条** ——
+     *   弹层会很空。而那个弹层是按内容自适应还是固定高度？只有渲染出来才知道。
+     */
+    howOpenWheel: () => {
+      const base = module.exports.states.howOpen()
+      const g = require('../../../miniprogram/utils/games.js')
+      const meta = g.GAMES.filter(function (x) { return x.id === 'wheel' })[0]
+      if (base.room) {
+        base.room.game = 'wheel'
+        base.room.howList = (meta && meta.how) || []
+        base.room.gameName = (meta && meta.name) || ''
+      }
+      return base
+    },
     howOpen: () => ({
       stage: 'lobby', howOpen: true,
       /*
