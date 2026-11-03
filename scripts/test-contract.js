@@ -5145,3 +5145,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* 反过来说：不能所有结算状态的 loser 都是别人 */
   ok('★ 结算页的两种视角都有 mock（我输 / 别人输）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**出局的人不该看到操作按钮**
+ *
+ * 金花的操作区判据原来是 `room.myTurn && !room.poker.folded` ——
+ * **没排除"已出局"**。于是出局的人照样看到「比 / 换 / 弃」三排按钮，
+ * 而服务端每次回「你已经出局了，这局在旁边看」。
+ *
+ * 而"出局"这件事在七个 pk* mock 状态里**一次都没出现过**（全是 out:false）——
+ * 所以这个缺口在渲染上从来没人看见。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  /* 金花操作区必须排除出局 */
+  assert.ok(/room\.myTurn && !room\.poker\.folded && !room\.myOut/.test(wxml),
+    '★ 金花操作区必须排除已出局（否则出局后还能点「比/换/弃」）')
+
+  /* myOut 必须由 decorate 产出 */
+  assert.ok(/room\.myOut = !!\(room\.me && room\.me\.out\)/.test(page),
+    '★ myOut 要在 decorate 里算（模板不能自己算）')
+
+  /* 大话骰的 turnbar 也要区分出局 */
+  assert.ok(/wx:elif="\{\{room\.myOut\}\}"/.test(wxml),
+    '★ 轮次提示要说清"你已出局"（而不是"轮到你叫了"）')
+
+  /* mock 必须有出局状态 */
+  const mock = fs.readFileSync(
+    path.join(ROOT, 'scripts/ui-render/mock/room.js'), 'utf8')
+  assert.ok(/pkOut: \(\) =>/.test(mock),
+    '★ mock 要有「金花里我出局」的状态')
+
+  ok('★ 出局的人看不到操作按钮（三处判据 + mock 覆盖）')
+}

@@ -466,8 +466,15 @@
         没有它，玩家只能靠"点一下看看会不会被拒"来猜轮没轮到自己 ——
         体感就是"这游戏不智能"。服务端本来就返回了 turn，比一下就有。
       -->
-      <view class="turnbar {{room.myTurn ? 'mine' : ''}}">
-        <text wx:if="{{room.myTurn}}">轮到你叫了</text>
+      <!--
+        ★★ 2026-11-03：**出局的人不该看到"轮到你叫了"**。
+          之前没有这个判断 —— 出局后界面完全不变，玩家会一直点
+          「比 / 换 / 弃」，而服务端每次都回「你已经出局了」。
+      -->
+      <view class="turnbar {{room.myTurn && !room.myOut ? 'mine' : ''}}">
+        <text wx:if="{{room.spectating}}">你在旁边看 · 下一局自动参与</text>
+        <text wx:elif="{{room.myOut}}">你已出局 · 这局在旁边看</text>
+        <text wx:elif="{{room.myTurn}}">轮到你叫了</text>
         <text wx:else>等 {{room.turnName || '别人'}} 叫</text>
       </view>
 
@@ -1043,8 +1050,13 @@
         </block>
       </view>
 
-      <!-- 轮到我：弃牌 或 挑一个人比 -->
-      <block wx:if="{{room.myTurn && !room.poker.folded}}">
+      <!--
+        轮到我：弃牌 或 挑一个人比
+        ★★ 2026-11-03：**必须排除已出局**。之前只判 `myTurn && !folded` ——
+          而出局的人 myTurn 可能还是 true（他曾经轮到过），于是界面上
+          照样显示「比/换/弃」三排按钮，点了服务端每次回「你已经出局了」。
+      -->
+      <block wx:if="{{room.myTurn && !room.poker.folded && !room.myOut}}">
         <view class="pk-now">轮到你了</view>
         <!--
           ★ 2026-11-02 真机审核：单人房时下面**一个可选的人都没有**，

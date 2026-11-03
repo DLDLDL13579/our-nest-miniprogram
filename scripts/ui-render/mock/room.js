@@ -1079,6 +1079,30 @@ module.exports = {
         }
       })
     }),
+    /*
+     * ★★ 2026-11-03：**我在金花里出局了**。
+     *
+     *   七个 pk* 状态全是 me.out=false —— 「我出局」的界面从没被渲染验证过。
+     *   而那时我不能比/不能换/不能弃，界面上该明确说「你在旁边看」，
+     *   否则玩家会一直点那三个按钮（点了也没用）。
+     */
+    pkOut: () => {
+      const base = module.exports.states.pkMine()
+      const ps = (base.room && base.room.players) || []
+      const me = ps.filter(function (p) { return p.isMe })[0]
+      if (me) me.out = true
+      /* ⚠️ `myOut` 读的是 `room.me.out`（不是 players 里那份）—— mock 两处都要给 */
+      if (base.room && base.room.me) base.room.me.out = true
+      if (base.room) {
+        base.room.myOut = true
+        /* 出局的人不该还有"轮到我了" —— 那和 myOut 是矛盾的 */
+        base.room.myTurn = false
+      }
+      if (base.room && base.room.poker) {
+        base.room.poker.aliveCount = Math.max(1, ps.filter(function (p) { return !p.out }).length)
+      }
+      return base
+    },
     pkOver: () => ({
       stage: 'over',
       showCards: false,

@@ -1873,6 +1873,14 @@ Page({
      */
     room.pkTargetCount = (room.players || []).filter(p =>
       !p.isMe && !p.out && p.inRound !== false).length
+    /*
+     * ★★★ 2026-11-03：**我出局了没有** —— 这个字段之前不存在，于是
+     *   「出局」的玩家看到的还是"轮到你叫了 + 比/换/弃"三排按钮。
+     *
+     *   点了服务端会拒绝（"你已经出局了，这局在旁边看"），
+     *   而**界面上没有任何提示** —— 玩家会一直点。
+     */
+    room.myOut = !!(room.me && room.me.out)
     } catch (e) { room.openNeedN = 1 }
 
     /* 轮次提示：服务端已给 turn（座位号）和 me.seat，比一下就有 */
