@@ -140,3 +140,69 @@ if (unused.length) {
   process.exit(1)
 }
 console.log(`✓ ${images.length} 张图片全部有引用（含插值拼路径）`)
+
+/* ============================================================================
+ * ★★ 图片清晰度：实际像素必须够 3 倍屏（2026-11-03）
+ *
+ * 起因：把 9 个玩法的 playing 主界面拼成一张对比图，肉眼一看
+ * 「比大小」的骰盅明显糊 —— 而单看那一张不觉得（模糊是渐变的，没有参照）。
+ *
+ * 一量：
+ *   骰盅图 312x485，显示 360x560rpx = 180x280 逻辑像素
+ *     → @3x 需要 540 宽，实际 312，**差 42%**
+ *   骰子图 164x186，显示 266rpx = 133 逻辑像素
+ *     → @3x 需要 399 宽，实际 164，**差 59%**
+ *
+ * 这两个是全场最显眼的美术资源（骰盅占半屏），模糊直接等于「廉价感」。
+ *
+ * ⚠️ 为什么之前没发现：项目里有「图片必须被引用」「必须有宽高」的断言，
+ *    但**没有一条查"像素够不够"** —— 图能用、不报错、只是糊。
+ *
+ * 判据：图片宽度 ≥ 显示逻辑宽度 x 3 x 0.9（留 10% 容差）。
+ * ========================================================================== */
+{
+  /*
+   * 显示尺寸来自 wxss（rpx），这里写死会过时 —— 所以从 wxss 里读。
+   */
+  const wxss = fs.readFileSync(path.join(MP, 'game/room/room.wxss'), 'utf8')
+  const sizeOf = (selector) => {
+    const m = new RegExp('\\' + selector + '\\s*\\{[^}]*width:\\s*(\\d+)rpx[^}]*height:\\s*(\\d+)rpx').exec(wxss)
+    return m ? { w: parseInt(m[1], 10) / 2, h: parseInt(m[2], 10) / 2 } : null
+  }
+
+  const checks = []
+  const cup = sizeOf('.cs-cup')
+  if (cup) {
+    checks.push({ name: '骰盅', file: 'game/images/cup/cup-down.png', dispW: cup.w })
+  }
+  const die = sizeOf('.cs-die')
+  if (die) {
+    checks.push({ name: '骰子', file: 'game/images/dice/dice-1.png', dispW: die.w })
+  }
+
+  const thin = []
+  checks.forEach((c) => {
+    const p = path.join(MP, c.file)
+    if (!fs.existsSync(p)) { thin.push(c.name + '：找不到 ' + c.file); return }
+    const w = sizePng(p)
+    const need = c.dispW * 3 * 0.9
+    if (w < need) {
+      thin.push(c.name + '：图 ' + w + 'px，显示 ' + c.dispW.toFixed(0) +
+        ' 逻辑像素，@3x 需要 ' + need.toFixed(0) + 'px（差 ' +
+        Math.round((1 - w / need) * 100) + '%）')
+    }
+  })
+  if (thin.length) {
+    console.log('✗ 这些美术资源像素不够 3 倍屏，会明显发糊：')
+    thin.forEach((x) => console.log('    ' + x))
+    process.exitCode = 1
+  } else {
+    console.log('  ✓ 核心美术资源像素够 3 倍屏（' + checks.length + ' 项）')
+  }
+}
+
+/** 读 PNG 的宽（只解析 IHDR，不加载整图） */
+function sizePng(file) {
+  const b = fs.readFileSync(file)
+  return b.readUInt32BE(16)
+}
