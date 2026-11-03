@@ -3134,7 +3134,7 @@
 .waiting-sub {
   text-align: center;
   margin-top: 10rpx;
-  font-size: 22rpx;
+  font-size: 20rpx;
   line-height: 1.6;
   color: rgba(255, 255, 255, .52);
 }

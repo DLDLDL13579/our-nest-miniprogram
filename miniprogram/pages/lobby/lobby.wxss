@@ -347,8 +347,8 @@
   padding: 22rpx 26rpx 18rpx;
   margin-bottom: 14rpx;
 }
-.page.compact .lb-lbl { font-size: 24rpx }
-.page.compact .lb-t { font-size: 46rpx }
+.page.compact .lb-lbl { font-size: 26rpx }
+.page.compact .lb-t { font-size: 44rpx }
 .page.compact .lb-s { margin-top: 8rpx }
 .page.compact .lb-stats { margin-top: 10rpx }
 /* 「理性饮酒」那行在小屏上收起来 —— 它是法律提示，真机上首屏看不到也在「关于」里 */

@@ -5304,3 +5304,47 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 分包 ' + sub + ' KB / 2048（' + (sub / 2048 * 100).toFixed(0) + '%，用实际文件大小算）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**字号只许用那 10 档**
+ *
+ * 全仓字号此前收敛到 10 档（20 26 34 44 54 64 76 96 150 200）。
+ * 而这一轮连续两次冒出散值：
+ *   · 我加的 compact 规则写了 `font-size: 46rpx`（该是 44）
+ *   · 另一处说明文字写了 `22rpx`（该是 20）
+ *   · 还有一处 `24rpx`（该是 26）
+ *
+ * 三个散值就让档数从 10 涨到 13，**质量分的「字号收敛」项从 4/4 掉到 2/4**。
+ *
+ * ⚠️ 散值不会报错，只会让"字号系统"慢慢变成"每个地方各写一个数" ——
+ *    而那时再收敛就要逐个看语境，代价大得多。
+ * ========================================================================== */
+{
+  const LADDER = [20, 26, 34, 44, 54, 64, 76, 96, 150, 200]
+  const seen = new Map()
+
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!f.endsWith('.wxss')) return
+      const src = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      ;[...src.matchAll(/font-size:\s*(\d+)rpx/g)].forEach(m => {
+        const v = Number(m[1])
+        if (LADDER.indexOf(v) < 0) {
+          const key = v + 'rpx'
+          if (!seen.has(key)) seen.set(key, [])
+          seen.get(key).push(path.relative(ROOT, p))
+        }
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  const bad = [...seen.entries()].map(([v, files]) => v + '（' + files.length + ' 处：' + files.slice(0, 2).join(', ') + '）')
+
+  assert.deepStrictEqual(bad, [],
+    '这些字号不在 10 档阶梯里（' + LADDER.join(' ') + '）：\n    ' + bad.join('\n    '))
+  ok('★ 字号只用 10 档（' + LADDER.length + ' 个值，没有散落）')
+}
