@@ -1124,6 +1124,79 @@
       </block>
     </block>
 
+    <!-- ============ 额头牌（2026-11-03） ============
+      ★ 这个界面的视觉重心只有一个：**我的牌是牌背，别人的牌是牌面**。
+        别的所有装饰都在服务这一条 —— 因为「我看得见所有人的牌、唯独看不见自己的」
+        就是这个玩法的全部。第一眼没看懂这件事，后面全是懵的。
+      注意它必须写在 wx:if / wx:elif 链上，不能落到 wx:else 兜底里
+      （2026-10-27 卧底局被渲染成转盘就是这么来的）。
+    -->
+    <block wx:elif="{{room.game === 'forehead'}}">
+      <!--
+        ★ 外层容器（2026-11-03）：`min-height` + 垂直居中。
+        加之前内容只占屏幕上半 ~64%，下半是**一整片均匀的死色** ——
+        渲染图上一眼就能看出"这页没写完"。而这不是额头牌独有的问题，
+        只是别的玩法有牌桌/转盘撑场面，这里信息量少、空白就藏不住。
+      -->
+      <view class="fh-stage">
+      <!-- 指令：这一局谁喝。全场共享，所以放最上面，字号最大 -->
+      <view class="fh-cmd">
+        <text class="fh-cmd-k">这一圈</text>
+        <text class="fh-cmd-t">{{room.fh.cmdText}}</text>
+      </view>
+
+      <!-- 别人的牌：全部看得见。这就是你的全部信息 -->
+      <view class="fh-others">
+        <view wx:for="{{room.fh.others}}" wx:key="seat"
+              class="fh-oc {{item.agreed ? 'ok' : ''}} {{room.fh.turnSeat === item.seat ? 'now' : ''}}">
+          <view class="fh-ocard">
+            <image wx:if="{{item.card}}" class="fh-face"
+                   src="/game/images/card/c{{item.card.s}}-{{item.card.r}}.png" mode="scaleToFill" />
+            <view wx:else class="fh-nocard">?</view>
+          </view>
+          <text class="fh-oname">{{item.name}}</text>
+          <text class="fh-ostate">{{item.agreed ? '同意' : '还没表态'}}</text>
+        </view>
+      </view>
+
+      <!-- 我的牌：牌背。点它也不会翻开 —— 这一局谁也看不到 -->
+      <view class="fh-mine {{room.fh.myTurn ? 'now' : ''}}">
+        <view class="fh-mwrap">
+          <image class="fh-mback" src="/game/images/card/back.png" mode="scaleToFill" />
+          <view class="fh-mlock">?</view>
+        </view>
+        <view class="fh-mtext">
+          <text class="fh-mt">你的牌</text>
+          <text class="fh-ms">只有别人看得见 · 这一圈你看不到</text>
+        </view>
+      </view>
+
+      <!-- 进度：谁同意了 -->
+      <view wx:if="{{room.fh.waitText}}" class="fh-wait">{{room.fh.waitText}}</view>
+
+      <!-- 操作 -->
+      <block wx:if="{{room.fh.myTurn}}">
+        <view class="fh-actions">
+          <view class="btn fh-pass" bindtap="fhAct" data-act="pass">
+            <text class="fh-bt">同意</text>
+            <text class="fh-bs">不改，交给下一位</text>
+          </view>
+          <view class="btn fh-switch" bindtap="fhAct" data-act="switch">
+            <text class="fh-bt">换一张 · 喝半杯</text>
+            <text class="fh-bs">指令改成「{{room.fh.cmd === 'max' ? '最小的喝' : '最大的喝'}}」</text>
+          </view>
+        </view>
+        <view class="fh-tip">你换牌后，前面同意过的人要重新表态 —— 标准变了</view>
+      </block>
+      <view wx:else class="pk-wait">
+        <text class="pw-t waitpulse">等 {{room.fh.turnName}} 表态</text>
+        <text class="pw-s">轮到你时可以：同意 · 或者喝半杯换一张牌并改指令</text>
+      </view>
+
+      <view wx:if="{{room.fh.myDrinkText}}" class="fh-drink">你已经为换牌喝了 {{room.fh.myDrinkText}}</view>
+      </view>
+    </block>
+
     <!-- 命运转盘（联机） -->
     <!--
       ★★ 这里原来写的是 `<block wx:else>` —— 立刻改掉的真实原因：
@@ -1138,6 +1211,19 @@
         <view class="ws-pointer"></view>
         <view class="ws-disc"
               style="background: {{wheelGradient}}; transform: rotate({{wheelDeg}}deg); transition-duration: {{wheelDur}}ms;">
+          <!--
+            ★ 2026-11-03 盘面质感层。
+            原来 `.ws-disc` 的背景就是一条 conic-gradient —— 七个平涂色块拼成的圆，
+            加再多外圈阴影也还是"平的"。真实赌盘上有三样东西是纯色块给不了的：
+              ① 曲面受光（中心亮、边缘暗）—— 让盘看起来是**凸起的**，不是印刷的
+              ② 金属拉丝（极细的同心放射纹）—— 静态时几乎看不见，一转起来就有了材质
+              ③ 边缘内阴影 —— 盘沿"压"进桌面
+
+            叠在这一层而不是直接写进 background，因为 background 被 inline style
+            占着（js 生成的扇区色），多值合并会让 js 那边越来越难维护。
+            这一层是纯装饰，`pointer-events:none` 不吃点击。
+          -->
+          <view class="ws-sheen"></view>
           <view wx:for="{{wheelSectors}}" wx:key="k"
                 class="ws-lbl {{item.small ? 'small' : ''}}"
                 style="left:{{item.lx}}%; top:{{item.ly}}%;">{{item.t}}</view>
@@ -1264,6 +1350,41 @@
                  src="/game/images/card/c{{item.s}}-{{item.r}}.png" mode="scaleToFill" />
         </view>
       </block>
+    </view>
+
+    <!-- ============ 额头牌：全员摊开（2026-11-03） ============
+      ★ 结算页这张表比任何玩法都重要：**玩家从头到尾没看见过自己的牌**，
+        这一屏是他第一次看到。所以"你的牌"必须在最显眼的位置，
+        而不是混在名单里。
+    -->
+    <view wx:if="{{room.game === 'forehead' && room.fh.result}}" class="fh-reveal">
+      <view class="fhr-cmd">{{room.fh.result.cmdText}}</view>
+
+      <!-- 你的牌：这一局到现在第一次看到 -->
+      <view class="fhr-mine">
+        <text class="fhr-ml">你的牌</text>
+        <image wx:if="{{room.fh.myCard}}"
+               class="fhr-mface"
+               src="/game/images/card/c{{room.fh.myCard.s}}-{{room.fh.myCard.r}}.png" mode="scaleToFill" />
+      </view>
+
+      <!-- 所有人：谁是那个最大（最小）的点数 -->
+      <view class="fhr-grid">
+        <view wx:for="{{room.fh.result.all}}" wx:key="seat"
+              class="fhr-row {{item.lose ? 'lose' : ''}} {{item.isMe ? 'me' : ''}}">
+          <image class="fhr-face" src="/game/images/card/c{{item.s}}-{{item.r}}.png" mode="scaleToFill" />
+          <text class="fhr-name">{{item.isMe ? '你' : item.name}}</text>
+          <text wx:if="{{item.lose}}" class="fhr-tag">喝 1 杯</text>
+        </view>
+      </view>
+
+      <view class="fhr-verdict">
+        <text class="fhr-vn">{{room.fh.result.loserNames}}</text>
+        <text class="fhr-vw">喝一杯</text>
+      </view>
+
+      <!-- 掉线兜底提前开牌：说清楚为什么现在就结算了 -->
+      <view wx:if="{{room.fh.result.why}}" class="fhr-why">{{room.fh.result.why}}</view>
     </view>
 
     <view wx:if="{{room.game === 'liar' && result}}" class="center-box">

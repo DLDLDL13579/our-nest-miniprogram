@@ -1233,6 +1233,90 @@ module.exports = {
      *   中心按钮像圆片）我在本地一次都看不到。
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
+    /* ============ 额头牌（2026-11-03）============ */
+    /* 轮到我表态：全屏最该看懂的一件事是"别人的牌看得见，我的看不见" */
+    fhAct: () => ({
+      stage: 'playing',
+      room: pkRoom({
+        game: 'forehead', phase: 'playing', host: true, count: 3,
+        gameName: '额头牌', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        turn: 1,
+        fh: {
+          step: 'act', cmd: 'max', cmdText: '最大的喝',
+          myCard: null, myCardText: '', mySeat: 1,
+          others: [
+            { seat: 2, name: '倩萍', online: true, card: { r: 13, s: 0 }, text: '\u2660K', agreed: true },
+            { seat: 3, name: '阿杰', online: true, card: { r: 7, s: 1 }, text: '\u26657', agreed: false }
+          ],
+          turnSeat: 1, turnName: '邓林', myTurn: true,
+          iAgreed: false, agreedNames: ['倩萍'], waitingNames: ['阿杰'],
+          agreedCount: 1, needCount: 3,
+          myDrink: 0.5, myDrinkText: '半杯',
+          drinks: [{ name: '邓林', cups: 0.5 }, { name: '倩萍', cups: 0 }, { name: '阿杰', cups: 0 }],
+          mySwitches: 1, result: null, waitText: '还差 阿杰'
+        }
+      })
+    }),
+
+    /* 等别人表态 */
+    fhWait: () => ({
+      stage: 'playing',
+      room: pkRoom({
+        game: 'forehead', phase: 'playing', host: true, count: 3,
+        gameName: '额头牌', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        turn: 3,
+        fh: {
+          step: 'act', cmd: 'min', cmdText: '最小的喝',
+          myCard: null, myCardText: '', mySeat: 1,
+          others: [
+            { seat: 2, name: '倩萍', online: true, card: { r: 9, s: 2 }, text: '\u26639', agreed: false },
+            { seat: 3, name: '阿杰', online: true, card: { r: 14, s: 3 }, text: '\u2666A', agreed: false }
+          ],
+          turnSeat: 3, turnName: '阿杰', myTurn: false,
+          iAgreed: true, agreedNames: ['邓林'], waitingNames: ['倩萍', '阿杰'],
+          agreedCount: 1, needCount: 3,
+          myDrink: 0, myDrinkText: '',
+          drinks: [{ name: '邓林', cups: 0 }, { name: '倩萍', cups: 0.5 }, { name: '阿杰', cups: 0 }],
+          mySwitches: 0, result: null, waitText: '还差 倩萍 和 阿杰'
+        }
+      })
+    }),
+
+    /* 结算：全员摊开 —— 玩家第一次看到自己的牌 */
+    fhOver: () => ({
+      stage: 'over',
+      room: pkRoom({
+        game: 'forehead', phase: 'over', host: true, count: 3,
+        gameName: '额头牌', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        turn: 1,
+        fh: {
+          step: 'reveal', cmd: 'max', cmdText: '最大的喝',
+          myCard: { r: 5, s: 2 }, myCardText: '\u26635', mySeat: 1,
+          others: [
+            { seat: 2, name: '倩萍', online: true, card: { r: 13, s: 0 }, text: '\u2660K', agreed: true },
+            { seat: 3, name: '阿杰', online: true, card: { r: 7, s: 1 }, text: '\u26657', agreed: true }
+          ],
+          turnSeat: 1, turnName: '邓林', myTurn: false,
+          iAgreed: true, agreedNames: ['邓林', '倩萍', '阿杰'], waitingNames: [],
+          agreedCount: 3, needCount: 3,
+          myDrink: 0.5, myDrinkText: '半杯',
+          drinks: [{ name: '邓林', cups: 0.5 }, { name: '倩萍', cups: 0 }, { name: '阿杰', cups: 0 }],
+          mySwitches: 1, waitText: '',
+          result: {
+            cmd: 'max', cmdText: '最大的喝', face: 13, faceText: 'K',
+            losers: [{ seat: 2, name: '倩萍', text: '\u2660K' }],
+            loserNames: '倩萍',
+            all: [
+              { seat: 1, name: '邓林', text: '\u26635', r: 5, s: 2, lose: false, isMe: true },
+              { seat: 2, name: '倩萍', text: '\u2660K', r: 13, s: 0, lose: true, isMe: false },
+              { seat: 3, name: '阿杰', text: '\u26657', r: 7, s: 1, lose: false, isMe: false }
+            ],
+            why: ''
+          }
+        }
+      })
+    }),
+
     wheel: () => {
       const w = buildWheel()
       return {

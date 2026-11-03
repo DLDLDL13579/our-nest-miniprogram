@@ -786,6 +786,53 @@
      background 由 js 生成单条 conic-gradient（见 buildSectors 的说明）。 */
   transition: transform 2.7s cubic-bezier(.4, 0, .2, 1);
 }
+
+/* ============================================================
+   盘面质感层（2026-11-03）
+   ------------------------------------------------------------
+   原来 `.ws-disc` 的背景就是一条 conic-gradient —— 七个平涂色块拼成的圆，
+   外圈阴影加得再厚，盘面本身还是"印刷品"。真实赌盘上有三样东西是纯色块给不了的：
+
+     ① 曲面受光 —— 中心偏上亮、下沿暗。这一层是"印刷圆盘 → 凸起实体"的关键：
+        平涂色块每个像素亮度相同，而真实圆盘受光沿半径变化。
+     ② 金属拉丝 —— 144 条极细放射纹。静态几乎看不见，**一转起来才有材质**，
+        这正是真实赌盘旋转时的样子。
+     ③ 边缘内阴影 —— 盘沿向下卷进去，压住最外圈颜色。
+
+   ⚠️ 不用 `mix-blend-mode`：小程序各基础库支持不一致，
+      一旦不生效会静默变成一层灰雾（比不加更糟）。全部用普通 rgba 叠加。
+   ============================================================ */
+.ws-sheen {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    /* ① 曲面受光：中心偏上的一团暖光 */
+    radial-gradient(circle at 50% 34%,
+      rgba(255, 238, 198, .20) 0%,
+      rgba(255, 238, 198, .07) 30%,
+      rgba(255, 238, 198, 0) 58%),
+    /* ① 下沿背光 */
+    radial-gradient(circle at 50% 96%,
+      rgba(0, 0, 0, .30) 0%,
+      rgba(0, 0, 0, .10) 42%,
+      rgba(0, 0, 0, 0) 66%),
+    /* ② 金属拉丝：144 条放射细纹 */
+    repeating-conic-gradient(from 0deg,
+      rgba(255, 255, 255, .022) 0deg 1.25deg,
+      rgba(0, 0, 0, .022) 1.25deg 2.5deg),
+    /* ③ 边缘内阴影 */
+    radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0) 66%,
+      rgba(0, 0, 0, .16) 88%,
+      rgba(0, 0, 0, .40) 100%);
+  /* 拉丝纹从中心往外辐射：中心必须淡出，否则中心一圈糊成灰饼 */
+  -webkit-mask-image: radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 22%, #000 34%, #000 100%);
+  mask-image: radial-gradient(circle at 50% 50%,
+      rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 22%, #000 34%, #000 100%);
+}
 .ws-lbl {
   position: absolute;
   transform: translate(-50%, -50%);
@@ -3138,3 +3185,229 @@
   line-height: 1.6;
   color: rgba(255, 255, 255, .52);
 }
+
+/* ============================================================
+   额头牌（2026-11-03）
+   ------------------------------------------------------------
+   整屏的视觉重心只有一条：**我的牌是牌背，别人的牌是牌面**。
+   所有装饰都在服务这一条 —— 第一眼没看懂"唯独我看不见自己的"，
+   后面就全是懵的。
+
+   配色沿用暗金主题：
+     · 金色 = 指令 / 轮到你（信息或行动）
+     · 陶土红 = 要付出代价的动作（喝半杯换牌）
+     · 绿色 = 已同意（状态推进）
+   ============================================================ */
+
+/* ---------- 指令：这一圈谁喝 ---------- */
+.fh-cmd {
+  display: flex; align-items: baseline; justify-content: center;
+  margin: 10rpx 0 24rpx;
+}
+.fh-cmd-k {
+  font-size: 20rpx; color: rgba(255, 255, 255, .55);
+  letter-spacing: 1rpx; margin-right: 14rpx;
+}
+.fh-cmd-t {
+  font-size: 44rpx; font-weight: 800; color: var(--gold);
+  letter-spacing: 4rpx;
+  /* 双层光晕：让"最大的喝"这四个字像被灯照着，而不是印在背景上 */
+  text-shadow: 0 2rpx 0 rgba(0, 0, 0, .45), 0 6rpx 20rpx rgba(232, 179, 60, .34);
+}
+
+/* ---------- 别人的牌 ---------- */
+.fh-others {
+  display: flex; flex-wrap: wrap;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 0 6rpx;
+}
+.fh-oc {
+  width: 156rpx;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12rpx 6rpx 10rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, .045);
+  border: 2rpx solid rgba(255, 255, 255, .07);
+  transition: background .2s ease-out, border-color .2s ease-out, box-shadow .2s ease-out;
+}
+.fh-oc.ok { background: rgba(109, 158, 106, .13); border-color: rgba(109, 158, 106, .5) }
+.fh-oc.now {
+  border-color: rgba(232, 179, 60, .62);
+  background: rgba(232, 179, 60, .10);
+  box-shadow: 0 0 0 3rpx rgba(232, 179, 60, .14), 0 8rpx 18rpx rgba(0, 0, 0, .34);
+}
+.fh-ocard {
+  width: 108rpx; height: 152rpx;
+  border-radius: 10rpx;
+  overflow: hidden;
+  box-shadow: 0 6rpx 14rpx rgba(0, 0, 0, .42);
+}
+.fh-face { width: 100%; height: 100%; display: block }
+.fh-nocard {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .06);
+  /* ★ 0.42 → 0.52：暗光 + 斜放桌上的场景下，0.42 的对比度只有 4.03，
+     低于 WCAG AA 的 4.5（④h 断言抓到的）。这一格是"没发到牌"的兜底显示，
+     虽然少见，但它正是"看不清就以为界面坏了"的那类元素。 */
+  color: rgba(255, 255, 255, .52);
+  font-size: 34rpx;
+}
+.fh-oname {
+  margin-top: 8rpx;
+  max-width: 118rpx; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  font-size: 20rpx; color: rgba(255, 255, 255, .80);
+}
+.fh-ostate { margin-top: 2rpx; font-size: 20rpx; color: rgba(255, 255, 255, .52) }
+.fh-oc.ok .fh-ostate { color: #9BC798 }
+
+/* ---------- 我的牌：牌背 ---------- */
+.fh-mine {
+  display: flex; flex-direction: column; align-items: center;
+  width: fit-content;
+  margin: 40rpx auto 0;
+  padding: 26rpx 44rpx 22rpx;
+  border-radius: 22rpx;
+  /* 三层叠出"卡座"感：暖色底光 + 内暗 + 描边 —— 让"你的牌"成为场景主体，
+     而不是一块信息条。这页只有这一个东西是**玩家自己的**，必须最重。 */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(232, 179, 60, .10) 0%, rgba(232, 179, 60, 0) 62%),
+    rgba(0, 0, 0, .26);
+  border: 2rpx solid rgba(255, 255, 255, .085);
+  transition: border-color .2s ease-out, box-shadow .2s ease-out;
+}
+.fh-mine.now {
+  border-color: rgba(232, 179, 60, .55);
+  box-shadow: 0 0 0 3rpx rgba(232, 179, 60, .13);
+}
+.fh-mwrap { position: relative; width: 150rpx; height: 211rpx; flex: none }
+.fh-mback {
+  width: 100%; height: 100%;
+  border-radius: 10rpx;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, .45);
+}
+/*
+ * 牌正中的大问号（2026-11-03）。
+ *
+ * 原来是右下角一枚 36rpx 的小圆点 —— 牌放大到 150×211 之后，
+ * 它在角落显得孤立，像"贴纸没贴正"，而且第一眼不一定看得到。
+ * 挪到正中放大成 84rpx：它要回答的问题是"这张牌是什么"，
+ * 答案就写在牌的正中间 —— "不知道"。
+ */
+.fh-mlock {
+  position: absolute; left: 50%; top: 50%;
+  width: 84rpx; height: 84rpx;
+  margin: -42rpx 0 0 -42rpx;
+  border-radius: 50%;
+  background: rgba(18, 9, 7, .62);
+  border: 2rpx solid rgba(232, 179, 60, .58);
+  box-shadow: 0 4rpx 14rpx rgba(0, 0, 0, .5);
+  color: var(--gold);
+  font-size: 44rpx; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.fh-mtext { display: flex; flex-direction: column; align-items: center; margin-top: 18rpx }
+.fh-mt { font-size: 34rpx; font-weight: 700; color: var(--cream); letter-spacing: 1rpx }
+.fh-ms { margin-top: 8rpx; font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+
+/* ---------- 进度 / 操作 ---------- */
+.fh-wait {
+  margin-top: 22rpx; text-align: center;
+  font-size: 26rpx; color: rgba(255, 255, 255, .62);
+}
+/* ★ 操作区推到舞台底部：这是移动端游戏的标准布局（信息在上、拇指在最下），
+   顺带让"下半屏一片死色"的问题消失 —— 空白落在牌和按钮之间，
+   读起来就是"版面"，而不是"没写完"。 */
+.fh-actions { display: flex; gap: 16rpx; margin-top: auto; padding-top: 40rpx }
+.fh-pass, .fh-switch {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20rpx 12rpx;
+  border-radius: 18rpx;
+}
+.fh-pass {
+  background: rgba(255, 255, 255, .085);
+  border: 2rpx solid rgba(255, 255, 255, .13);
+}
+.fh-switch {
+  background: linear-gradient(160deg, rgba(224, 113, 79, .92), rgba(196, 87, 58, .92));
+  border: 2rpx solid rgba(224, 113, 79, .55);
+  box-shadow: 0 8rpx 20rpx rgba(196, 87, 58, .26);
+}
+.fh-bt { font-size: 34rpx; font-weight: 700; color: #fff; letter-spacing: 1rpx }
+.fh-bs { margin-top: 6rpx; font-size: 20rpx; color: rgba(255, 255, 255, .74) }
+.fh-tip {
+  margin-top: 14rpx; text-align: center;
+  font-size: 20rpx; color: rgba(255, 255, 255, .55);
+}
+.fh-drink {
+  margin-top: 16rpx; text-align: center;
+  font-size: 20rpx; color: var(--gold);
+}
+
+/* ---------- 结算：全员摊开 ---------- */
+.fh-reveal { padding: 6rpx 8rpx 18rpx }
+.fhr-cmd {
+  text-align: center;
+  font-size: 34rpx; color: var(--gold); letter-spacing: 3rpx;
+  margin-bottom: 22rpx;
+}
+.fhr-mine {
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 28rpx;
+}
+.fhr-ml { font-size: 26rpx; color: rgba(255, 255, 255, .72); margin-right: 18rpx }
+.fhr-mface {
+  width: 96rpx; height: 134rpx;
+  border-radius: 10rpx;
+  box-shadow: 0 0 0 3rpx rgba(232, 179, 60, .42), 0 10rpx 24rpx rgba(0, 0, 0, .48);
+}
+.fhr-grid {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 12rpx;
+}
+.fhr-row {
+  width: 138rpx;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12rpx 6rpx 10rpx;
+  border-radius: 14rpx;
+  background: rgba(255, 255, 255, .04);
+  border: 2rpx solid transparent;
+}
+.fhr-row.lose {
+  background: rgba(224, 113, 79, .20);
+  border-color: rgba(224, 113, 79, .58);
+}
+.fhr-row.me { border-color: rgba(232, 179, 60, .40) }
+.fhr-face { width: 78rpx; height: 109rpx; border-radius: 8rpx }
+.fhr-name {
+  margin-top: 8rpx;
+  max-width: 124rpx; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+  font-size: 20rpx; color: rgba(255, 255, 255, .80);
+}
+.fhr-tag { margin-top: 2rpx; font-size: 20rpx; font-weight: 700; color: #F0A38C }
+.fhr-verdict { margin-top: 28rpx; text-align: center }
+.fhr-vn { font-size: 34rpx; font-weight: 800; color: var(--cream) }
+.fhr-vw { margin-left: 12rpx; font-size: 26rpx; color: rgba(255, 255, 255, .72) }
+.fhr-why {
+  margin-top: 14rpx; text-align: center;
+  font-size: 20rpx; color: rgba(255, 255, 255, .55);
+}
+
+/*
+ * 额头牌的外层舞台（2026-11-03）。
+ *
+ * 1180rpx ≈ iPhone 13 内容区（753px）减去顶部房间号条之后的高度。
+ * 小屏（iPhone SE，内容区约 1120rpx）时会略微超出一屏 ——
+ * 那比"下半屏一片死色"好：**宁可多滑一点点，也不要看起来没做完**。
+ */
+.fh-stage {
+  min-height: 1180rpx;
+  display: flex;
+  flex-direction: column;
+}
+/* 小屏紧凑模式：不强制撑满（否则一屏放不下，按钮被挤出屏幕外） */
+.gamepage.compact .fh-stage { min-height: 0 }

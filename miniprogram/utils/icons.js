@@ -133,6 +133,13 @@ const PATHS = {
   eye: '<path d="M2.5 12S6 5.6 12 5.6 21.5 12 21.5 12 18 18.4 12 18.4 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3.1"/>',
   /* 投票箱 */
   vote: '<path d="M5 11.5h14v8H5z"/><path d="M8.6 11.5V6.6a3.4 3.4 0 0 1 6.8 0v4.9"/><path d="M9.9 8.9l2.1 2.1 2.1-2.1"/>',
+  /*
+   * 额头牌（2026-11-03）。
+   * 一张脸 + 额头上贴着一张牌 —— 这个玩法的全部意思都在这张图里：
+   * **别人看得见、唯独本人看不见**。所以牌必须画在脸的**上面**（额头位置），
+   * 而不是拿在手里（那是所有其它牌类的样子）。
+   */
+  forehead: '<rect x="6.5" y="2.9" width="11" height="6.2" rx="1.3"/><path d="M6.5 12.3h11"/><circle cx="9.3" cy="15.9" r="0.95" fill="currentColor" stroke="none"/><circle cx="14.7" cy="15.9" r="0.95" fill="currentColor" stroke="none"/><path d="M9.1 19.3a4.5 4.5 0 0 1 5.8 0"/>',
 
   /* ---------- 情绪 ---------- */
   moodHappy: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/><circle cx="9.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.6" r="1" fill="currentColor" stroke="none"/>',

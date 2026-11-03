@@ -92,13 +92,13 @@ const GAMES = GAME_LIST.map(g => ({ k: g.id, name: g.name, icon: g.icon, desc: g
 /* 转盘扇区。权重决定扇区角度 —— 概率和视觉必须一致，
    否则玩家会感觉"明明指着喝一杯却判成真心话"（这类 bug 最伤信任）。 */
 const SECTORS = [
-  { k: 'truth', t: '真心话', weight: 22, color: '#9F4028' },
-  { k: 'dare',  t: '大冒险', weight: 20, color: '#2E538A' },
-  { k: 'drink', t: '喝一杯', weight: 18, color: '#593384' },
-  { k: 'you',   t: '你喝',   weight: 14, color: '#34762D' },
-  { k: 'me',    t: '我喝',   weight: 12, color: '#888E29' },
-  { k: 'both',  t: '一起喝', weight: 8,  color: '#862D68' },
-  { k: 'pass',  t: '免罚一次', weight: 6, color: '#388A79' }
+  { k: 'truth', t: '真心话', weight: 22, color: '#7E3222' },
+  { k: 'dare',  t: '大冒险', weight: 20, color: '#274264' },
+  { k: 'drink', t: '喝一杯', weight: 18, color: '#452A5E' },
+  { k: 'you',   t: '你喝',   weight: 14, color: '#2A5429' },
+  { k: 'me',    t: '我喝',   weight: 12, color: '#656A20' },
+  { k: 'both',  t: '一起喝', weight: 8,  color: '#68224C' },
+  { k: 'pass',  t: '免罚一次', weight: 6, color: '#28604F' }
 ]
 
 /**
@@ -1966,6 +1966,47 @@ Page({
     }
 
     /*
+     * 额头牌：派生字段（2026-11-03）。
+     *
+     * ★ wxml 的表达式**不支持函数调用**（项目在这里翻过车：
+     *   `item.indexOf('♥')` 让整个文件编译失败，而本地渲染和全部断言都看不见）。
+     *   所以凡是"要算一下才能得到"的文案，都在这里算好。
+     *
+     * ⚠️ 牌面用图片渲染（c{s}-{r}.png），所以**不需要**判红黑 ——
+     *   这正是"能画图就别算文本"的例子：金花那边要算是因为那里是纯文字牌。
+     */
+    if (room.game === 'forehead' && room.fh) {
+      /*
+       * 「还差几个人同意」—— 比列一长串名字省地方，人少时还是说清楚是谁。
+       * 口径和卧底那边一致：waitingNames **不含自己**（自己同意没同意，自己知道）。
+       */
+      const waitN = (room.fh.waitingNames || []).length
+      if (room.fh.step === 'reveal') room.fh.waitText = ''
+      else if (!waitN) room.fh.waitText = room.fh.iAgreed ? '其他人都同意了，等开牌' : ''
+      else if (waitN <= 2) room.fh.waitText = '还差 ' + room.fh.waitingNames.join(' 和 ')
+      else room.fh.waitText = '还差 ' + waitN + ' 个人'
+      /*
+       * 喝了几杯的文案：换牌每次半杯，累计会是 0.5 / 1 / 1.5…
+       * 直接显示「0.5 杯」很别扭，说「半杯」「一杯半」才像人话。
+       */
+      room.fh.myDrinkText = room.fh.myDrink > 0
+        ? (room.fh.myDrink % 1 === 0
+            ? room.fh.myDrink + ' 杯'
+            : Math.floor(room.fh.myDrink) + ' 杯半')
+        : ''
+      /* 结算页：所有人的牌都要标红黑（模板里不能现算），输家名单拼好 */
+      if (room.fh.result && room.fh.result.all) {
+        const loseSeats = {}
+        ;(room.fh.result.losers || []).forEach(x => { loseSeats[x.seat] = true })
+        room.fh.result.all.forEach(c => {
+          c.lose = !!loseSeats[c.seat]
+          /* 标出"我自己那张" —— 结算页第一眼看的就是它 */
+          c.isMe = c.seat === room.fh.mySeat
+        })
+      }
+    }
+
+    /*
      * 玩法名与规则 —— 从注册表取，不在这里重写一遍文案。
      * ★ 注册表里每个玩法都有 `how: [4 条规则]`，但这一版之前**从来没被渲染过**
      *   （grep `.how` 全仓为 0）—— 16 条文案白写在数据里。
@@ -2471,6 +2512,54 @@ Page({
         return null
       })
     this.data._pkBusy = false
+    if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  /* ================= 额头牌（2026-11-03） ================= */
+
+  /*
+   * 表态：同意（pass）/ 不同意（switch）。
+   *
+   * ★ 一个入口两个动作，和云函数的 `fhAct` 一一对应 ——
+   *   拆成两个方法就要维护两份"轮到我没"的校验，漏一份不报错。
+   *
+   * ★ `_fhBusy` 放实例属性不放 data：它不需要渲染，
+   *   进 data 会让每次点击多一次 setData（跨线程拷贝）。
+   *   防的是连点 —— 连点两次「不同意」会喝两杯半，而用户以为只喝了一杯。
+   */
+  async fhAct(e) {
+    if (!this.specGuard()) return
+    if (!this.data.room || this._fhBusy) return
+    const act = e.currentTarget.dataset.act === 'switch' ? 'switch' : 'pass'
+    this._fhBusy = true
+    sfx.play('tapSoft')
+    /*
+     * 换牌的音画顺序（按真实动作）：
+     *   ㊀ 牌面翻走（cardFlip）
+     *   ㊁ 90ms 后新牌落桌（cardDeal）
+     *   ㊂ 320ms 后咽一口（gulp）—— 因为这一下要喝半杯
+     * 三个时间点都落在动画之内，不会拖到结算之后。
+     */
+    if (act === 'switch') {
+      feedback.fire('pkFlip')
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        sfx.play('cardDeal')
+      }, 90))
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        sfx.play('gulp')
+      }, 320))
+    }
+    const r = await call('room',
+      { action: 'fhAct', act: act, id: this.data.room.id },
+      { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._fhBusy = false
     if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 

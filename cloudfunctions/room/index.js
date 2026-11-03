@@ -261,6 +261,61 @@ function calcDiceResult(players, prevStreaks) {
   }
 }
 
+/**
+ * 额头牌结算（2026-11-03）。
+ *
+ * 抽成纯函数的原因和 settleUwVote / calcDiceResult 一样：
+ * **同一个判定有两个调用方**（fhAct 里"所有人都同意了"要结算 +
+ * status 里"有人掉线、剩下的人都同意了"也要结算），
+ * 复制一份必然有一份漏改，而且不报错。
+ *
+ * 直接返回写库用的 fhLast 整个对象（不是中间结构）—— 两个调用方
+ * 拿到的结算页连字段顺序都一样，前端只需要渲染一种。
+ *
+ * @param live   参与本局的人（已过滤 inRound）
+ * @param cmd    'max' | 'min'
+ * @param why    为什么提前结算（掉线兜底时会写一句话，正常结算传空串）
+ */
+function settleFh(live, cmd, why) {
+  const isMax = cmd !== 'min'
+  const rows = live
+    .filter(p => p.fhCard)
+    .map(p => ({
+      seat: p.seat, name: p.name, card: p.fhCard, text: poker.cardText(p.fhCard),
+      r: p.fhCard.r, s: p.fhCard.s
+    }))
+  const base = {
+    cmd: isMax ? 'max' : 'min',
+    cmdText: isMax ? '最大的喝' : '最小的喝',
+    why: why || ''
+  }
+  if (!rows.length) {
+    return Object.assign(base, { face: 0, faceText: '', losers: [], loserNames: '', all: [] })
+  }
+  /* 只比点数，不比花色 —— 花色在这个玩法里不参与判定（规则页也这么写） */
+  let face = rows[0].card.r
+  rows.forEach(r => {
+    if (isMax ? r.card.r > face : r.card.r < face) face = r.card.r
+  })
+  /*
+   * ★ 同点**全部**算被喊中（规则里写死的一条）。
+   *   不这么定，桌上一定会为"两个 A 谁喝"吵起来 —— 而 App 沉默更糟。
+   */
+  const losers = rows.filter(r => r.card.r === face)
+  return Object.assign(base, {
+    face: face,
+    faceText: poker.RANKS[face] || String(face),
+    /* r / s 也要给：结算页要画真牌面，测试要断言"输家确实是最值那个点数" */
+    losers: losers.map(x => ({ seat: x.seat, name: x.name, text: x.text, r: x.r, s: x.s })),
+    loserNames: losers.map(x => x.name).join('、'),
+    /*
+     * 结算页要摊开所有人的牌 —— 包括自己那张。
+     * 这一局到现在，玩家第一次看到自己的牌。
+     */
+    all: rows.map(x => ({ seat: x.seat, name: x.name, text: x.text, r: x.r, s: x.s }))
+  })
+}
+
 const canRaise = liarRules.canRaise
 const GAME_IDS = GAMES.map(g => g.id)
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
@@ -774,6 +829,81 @@ function shape(room, openid) {
         /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
         last: room.pkLast || null,
         winner: room.pkWinner || null
+      }
+    })(),
+    /*
+     * ============ 额头牌（2026-11-03）============
+     *
+     * ★★★ **这是全项目唯一一处反向过滤**，写之前先读三遍：
+     *
+     *   大话骰：`dice: p.openid === openid ? p.dice : undefined`
+     *           —— 我的给我，别人的丢掉
+     *   金花：  `myKnown: myHand[0]`、暗牌根本不返回
+     *           —— 我的给我，别人的丢掉
+     *   额头牌：**别人的全部给我，我自己的丢掉**
+     *
+     *   照抄上面任何一段，做出来的都是另一个游戏（而且完全不会报错）。
+     */
+    fh: (function () {
+      if (room.game !== 'forehead') return null
+      const list = room.players || []
+      const me = list.filter(p => p.openid === openid)[0] || null
+      if (!me) return null
+      const live = list.filter(p => p.inRound !== false)
+      const reveal = room.fhStep === 'reveal'
+      const agreed = room.fhAgreed || []
+      const drinks = room.fhDrinks || {}
+      const cmd = room.fhCmd === 'min' ? 'min' : 'max'
+
+      /* 轮到谁：按座位序，在局的人里找 turn 之后的第一个 */
+      const turnSeat = room.turn || 0
+      const turnP = live.filter(p => p.seat === turnSeat)[0] || null
+
+      return {
+        step: reveal ? 'reveal' : 'act',
+        cmd: cmd,
+        cmdText: cmd === 'max' ? '最大的喝' : '最小的喝',
+        /*
+         * ★ 我的牌：**表态阶段恒为 null** —— 这是玩法本体，不是遗漏。
+         *   结算（reveal）之后才揭晓，那一刻是整局最想看的东西。
+         */
+        myCard: reveal && me.fhCard ? me.fhCard : null,
+        myCardText: reveal && me.fhCard ? poker.cardText(me.fhCard) : '',
+        mySeat: me.seat,
+        /*
+         * ★ 别人的牌：**全部可见**，一个都不藏。
+         *   注意过滤条件写的是 `p.openid !== openid`（!= = 排除我自己），
+         *   和别处那堆 `=== openid` 正好相反 —— 改这段时不要"统一风格"。
+         */
+        others: live
+          .filter(p => p.openid !== openid)
+          .map(p => ({
+            seat: p.seat,
+            name: p.name,
+            online: now() - (p.lastSeen || 0) < 20000,
+            card: p.fhCard || null,
+            text: p.fhCard ? poker.cardText(p.fhCard) : '—',
+            /* 已经同意的人标一下 —— 表态进度是全场共享信息 */
+            agreed: agreed.indexOf(p.openid) >= 0
+          })),
+        turnSeat: turnP ? turnP.seat : 0,
+        turnName: turnP ? turnP.name : '',
+        myTurn: !reveal && !!turnP && turnP.openid === openid,
+        iAgreed: agreed.indexOf(openid) >= 0,
+        /* 已同意 / 还没表态的人名 —— 桌上要能一眼看出卡在谁身上 */
+        agreedNames: live.filter(p => agreed.indexOf(p.openid) >= 0).map(p => p.name),
+        waitingNames: live.filter(p => agreed.indexOf(p.openid) < 0 && p.openid !== openid).map(p => p.name),
+        /* 我已经同意了几个 —— 界面用「还差几个人」比列名字更省地方 */
+        agreedCount: live.filter(p => agreed.indexOf(p.openid) >= 0).length,
+        needCount: live.length,
+        /* 我为了换牌喝掉的量（半杯 = 0.5） */
+        myDrink: Number(drinks[openid]) || 0,
+        /* 所有人的换牌量 —— 公开信息（桌上都看见了谁在猛换） */
+        drinks: live.map(p => ({ name: p.name, cups: Number(drinks[p.openid]) || 0 })),
+        /* 我把指令改过几次 —— 用来给"改规则"这个动作一点分量 */
+        mySwitches: Number(me.fhSwitch) || 0,
+        /* 结算结果 */
+        result: reveal ? (room.fhLast || null) : null
       }
     })(),
     uw: (function () {
@@ -1652,6 +1782,54 @@ exports.main = async (event) => {
         }
       }
 
+      /*
+       * ★★ 额头牌：掉线不表态的人也要放行（2026-11-03）。
+       *
+       * 判据和 dice / undercover 那两处**一模一样**：
+       *   "所有人都同意" 是等一个必然会发生但可能永远不来的事件 ——
+       *   有一个人锁屏去接电话，全桌就永远停在表态页，而且一句提示都没有。
+       *
+       * 判据：本局参与、还没同意、心跳超过 30 秒 → 视为掉线，踢出本局；
+       *      剩下的人如果已经全部同意，就直接开牌。
+       */
+      if (room.game === 'forehead' && room.fhStep === 'act' && room.phase === 'playing') {
+        const playersF = room.players || []
+        const agreedF = room.fhAgreed || []
+        const ghostsF = playersF.filter(p =>
+          p.inRound !== false &&
+          agreedF.indexOf(p.openid) < 0 &&
+          ts - (p.lastSeen || 0) > 30000)
+        if (ghostsF.length) {
+          const markedF = playersF.map(p =>
+            ghostsF.some(g => g.openid === p.openid) ? Object.assign({}, p, { inRound: false }) : p)
+          const aliveF = markedF.filter(p => p.inRound !== false)
+          const allAgreedF = aliveF.length > 0 && aliveF.every(p => agreedF.indexOf(p.openid) >= 0)
+          const patchF = { players: markedF, updatedAt: ts }
+          if (allAgreedF) {
+            patchF.phase = 'over'
+            patchF.fhStep = 'reveal'
+            patchF.fhAgreed = aliveF.map(p => p.openid)
+            patchF.fhLast = settleFh(aliveF, room.fhCmd === 'min' ? 'min' : 'max',
+              '有人掉线了，剩下的人直接开牌')
+          } else {
+            /*
+             * 掉线的人如果正好是当前轮的，turn 必须往后推 ——
+             * 否则会指向一个 inRound=false 的人，**永远没人能操作**。
+             * （这就是 AGENTS.md 记过的"回合序号因退人而越界"同一类死路。）
+             */
+            const curF = aliveF.filter(p => p.seat === (room.turn || 0))[0]
+            if (!curF && aliveF.length) {
+              const ordered = aliveF.slice().sort((a, b) => a.seat - b.seat)
+              const after = ordered.filter(p => p.seat > (room.turn || 0))[0]
+              patchF.turn = (after || ordered[0]).seat
+            }
+          }
+          await dbCall('status.fhGhost', () => rooms.doc(room._id).update({ data: patchF }))
+          const rrf = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rrf.data, OPENID) }
+        }
+      }
+
       if (room.game === 'liar' && room.phase === 'playing' && room.bid &&
           room.turnAt && ts - room.turnAt > 45000) {
         const idleSeat = room.turn
@@ -1807,8 +1985,9 @@ exports.main = async (event) => {
          */
         const inRound = p.inRound !== false
         if (!inRound) return Object.assign({}, p, { dice: [] })
-        /* 转盘 / 比大小 / 谁是卧底 都不需要开局发骰子 */
-        if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover' || room.game === 'poker') {
+        /* 转盘 / 比大小 / 谁是卧底 / 金花 / 额头牌 都不需要开局发骰子 */
+        if (room.game === 'wheel' || room.game === 'dice' || room.game === 'undercover' ||
+            room.game === 'poker' || room.game === 'forehead') {
           return Object.assign({}, p, { dice: [] })
         }
         const n = room.game === 'liar' ? 5 : 2
@@ -1879,6 +2058,37 @@ exports.main = async (event) => {
         room._pkRest = dealt.rest
       }
 
+      /*
+       * ============ 额头牌：发牌 ============
+       *
+       * ★★★ 这里是**整个项目唯一一处"反向过滤"**（2026-11-03）。
+       *
+       *   其它所有玩法都是"藏住我的、只给我看"：
+       *     大话骰 shape 里把别人的 dice 丢掉
+       *     金花 shape 里只给自己的 cards
+       *     卧底 shape 里只给自己的 word
+       *   额头牌**恰好相反**：我的牌要发给**别人**，唯独不给我自己。
+       *   → 照抄上面任何一段，做出来的都是另一个游戏。写的时候务必按这个方向想。
+       *
+       * 牌本身照常存在每个人身上（p.fhCard），过滤发生在 shape() 里 ——
+       * 存的时候不区分方向，只在**发给谁**的时候区分，这样重发/换牌只有一处逻辑。
+       */
+      if (room.game === 'forehead') {
+        const inRoundN = players.filter(p => p.inRound !== false).length
+        const deck = poker.shuffle(poker.newDeck())
+        let k = 0
+        players.forEach(p => {
+          if (p.inRound === false) { p.fhCard = null; return }
+          p.fhCard = deck[k++]
+        })
+        room._fhRest = deck.slice(k)
+        /*
+         * 开局指令随机定（max / min 各半）。
+         * 不能让玩家自己选 —— 这是这个玩法的"发牌"，也是它唯一的运气成分之一。
+         */
+        room._fhCmd = Math.random() < 0.5 ? 'max' : 'min'
+      }
+
       await rooms.doc(room._id).update({
         data: {
           players: players,
@@ -1898,6 +2108,20 @@ exports.main = async (event) => {
           uwReveal: null,
           uwTieBreak: false,
           uwTieNames: '',
+          /* ---------- 额头牌 ----------
+             fhStep   act（轮流表态）/ reveal（已结算）
+             fhCmd    'max' 最大的喝 | 'min' 最小的喝
+             fhAgreed 本轮已同意的人的 openid（改指令时清空，见 fhAct）
+             fhDrinks { openid: 杯数 }，换一次半杯记 0.5
+             fhRest   没发出去的牌 —— 换牌只能从这里抽（放回的不算，见 fhAct）
+             fhActs   累计表态次数，只用于防死循环兜底  */
+          fhStep: room.game === 'forehead' ? 'act' : null,
+          fhCmd: room.game === 'forehead' ? (room._fhCmd || 'max') : null,
+          fhAgreed: [],
+          fhDrinks: {},
+          fhRest: room._fhRest || [],
+          fhActs: 0,
+          fhLast: null,
           votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
@@ -3039,6 +3263,115 @@ exports.main = async (event) => {
           if (cand) { next = cand; break }
         }
         patch.turn = next ? next.seat : (room.turn || 0)
+      }
+
+      await rooms.doc(room._id).update({ data: patch })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 额头牌：表态（同意 / 喝半杯换牌改指令）================= */
+    /*
+     * 一个玩法只有**一个**服务端入口，靠 event.act 区分 ——
+     * 和 uwSay/uwVote 合成两个 action、again/game 合成一个入口是同一条思路：
+     * 拆成两个入口就要维护两份"轮到谁了"的校验，而漏一份不报错。
+     */
+    if (action === 'fhAct') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'forehead') return { ok: false, msg: '这个房间不是额头牌' }
+      if (room.fhStep === 'reveal') return { ok: false, msg: '这局已经结算了' }
+      if (room.phase !== 'playing') return { ok: false, msg: '这局还没开始' }
+
+      const players = room.players || []
+      const live = players.filter(p => p.inRound !== false)
+      const mine = live.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '这一局你只观战' }
+      const turnP = live.filter(p => p.seat === (room.turn || 0))[0]
+      /*
+       * ★ 前端藏按钮不算拦（项目里栽过：只拦 playing 不拦 countdown）。
+       *   云函数是公开接口，直接调用可达 —— 没轮到你必须明确拒绝。
+       */
+      if (!turnP || turnP.openid !== OPENID) return { ok: false, msg: '还没轮到你' }
+
+      const tsN = now()
+      const cmd = room.fhCmd === 'min' ? 'min' : 'max'
+      const act = event.act === 'switch' ? 'switch' : 'pass'
+      const agreed0 = (room.fhAgreed || []).slice()
+      /*
+       * ★ 防死循环兜底：理论上每人每次换牌都要喝半杯，会自然收敛；
+       *   但恶意客户端可以无限调 pass/switch（反正 pass 不要钱）。
+       *   累计 60 次表态后强制结算 —— 宁可提前开牌，也不能让全桌干等。
+       */
+      const acts = Number(room.fhActs) || 0
+      const patch = { turnAt: tsN, updatedAt: tsN, fhActs: acts + 1 }
+
+      /* 按座位往后找下一个在局的人（跳掉已出局/离场/中途进来的） */
+      const nextOf = (seat) => {
+        for (let k = 1; k <= players.length; k++) {
+          const s = ((seat - 1 + k) % players.length) + 1
+          const cand = live.filter(p => p.seat === s)[0]
+          if (cand) return cand
+        }
+        return null
+      }
+      /* 结算：写结果 + 进 over（和大话骰/金花同一个出口，前端只需渲染一个结算页） */
+      const doSettle = (why) => {
+        patch.phase = 'over'
+        patch.fhStep = 'reveal'
+        patch.fhAgreed = live.map(p => p.openid)
+        patch.fhLast = settleFh(live, cmd, why)
+      }
+
+      if (act === 'pass') {
+        /* ── 同意 ── */
+        if (agreed0.indexOf(OPENID) < 0) agreed0.push(OPENID)
+        if (live.every(p => agreed0.indexOf(p.openid) >= 0)) {
+          doSettle('')
+        } else {
+          patch.fhAgreed = agreed0
+          const nx = nextOf(mine.seat)
+          patch.turn = nx ? nx.seat : mine.seat
+        }
+      } else {
+        /* ── 不同意：喝半杯 + 换一张牌 + 把指令改成另一个 ── */
+        const drinks = Object.assign({}, room.fhDrinks || {})
+        drinks[OPENID] = (Number(drinks[OPENID]) || 0) + 0.5
+        patch.fhDrinks = drinks
+
+        /*
+         * 换牌从**没发出去的牌**里抽（rest），抽出来的旧牌放到牌堆末尾。
+         * ★ 不放回的话牌会越换越少：8 人局 44 张，每人换 6 次就见底，
+         *   之后换牌会换不到 —— 而且那时候没人会发现（新牌和旧牌长得一样）。
+         */
+        const rest = (room.fhRest || []).slice()
+        const old = mine.fhCard
+        let newCard = old
+        if (rest.length) {
+          newCard = rest.shift()
+          if (old) rest.push(old)
+        }
+        patch.fhRest = rest
+        patch.players = players.map(p => (p.openid === OPENID
+          ? Object.assign({}, p, { fhCard: newCard, fhSwitch: (Number(p.fhSwitch) || 0) + 1 })
+          : p))
+
+        /*
+         * 指令翻转。
+         * ★★ 同时**清空 agreed** —— 这是这个玩法最有张力的一条：
+         *    标准变了，前面同意过的人等于同意了一个不存在的规则，
+         *    必须重新表态。不清空的话会立刻出现"所有人都同意了"的假结算，
+         *    而结算用的是新指令 —— 玩家会觉得 App 在耍他。
+         */
+        patch.fhCmd = cmd === 'max' ? 'min' : 'max'
+        patch.fhAgreed = []
+        const nx = nextOf(mine.seat)
+        patch.turn = nx ? nx.seat : mine.seat
+      }
+
+      /* 兜底：动作太多强制结算（只看 pass 分支没用上，所以放在写库前统一判） */
+      if (acts + 1 >= 60 && patch.phase !== 'over') {
+        doSettle('表态次数到上限，直接开牌')
       }
 
       await rooms.doc(room._id).update({ data: patch })
