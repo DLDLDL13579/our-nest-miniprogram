@@ -5224,3 +5224,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '同一个动作在不同地方用了不同名字（玩家会以为是两个功能）：\n    ' + bad.join('\n    '))
   ok('★ 同一个动作在各阶段的按钮文案一致（离开/换玩法/催一下/再来一局）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**「揭晓进度」只在比大小里**（大话骰不该有）
+ *
+ * 上一轮我在 `liar8`（大话骰 8 人）上看到"揭晓进度条"没显示，
+ * 一度以为条件写错了 —— 而实际它**在 `<block wx:elif="dice">` 分支里**。
+ *
+ * 而这是对的：**比大小要等所有人摇完才揭盅**（有"还差几人"的意义），
+ * 而大话骰是各自摇各自的（`cupShake` → `cupSlam`），**没有"等齐"这件事**。
+ *
+ * 判据：`revealprog` 必须出现在 dice 分支内，不能跑到 liar 分支里。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+
+  const i = wxml.indexOf('revealprog')
+  assert.ok(i > 0, '找不到 revealprog')
+
+  const before = wxml.slice(0, i)
+  const blocks = [...before.matchAll(/<block wx:(?:if|elif)="\{\{room\.game === '(\w+)'\}\}">/g)]
+  assert.ok(blocks.length > 0, '找不到玩法分支')
+  const owner = blocks[blocks.length - 1][1]
+
+  assert.strictEqual(owner, 'dice',
+    '「揭晓进度」是"等所有人摇完"的提示，只该出现在比大小里（实际在 ' + owner + ' 分支）')
+
+  ok('★ 「揭晓进度」在正确的玩法分支里（比大小，不是大话骰）')
+}
