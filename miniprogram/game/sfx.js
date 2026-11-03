@@ -148,6 +148,50 @@ const POOL_SIZE = {
 }
 const poolIdx = {}
 
+/*
+ * ★★★ 2026-11-03：**音频实例数上限保护（LRU 淘汰）**
+ *
+ * 微信对同时存在的 `InnerAudioContext` 有硬限制（iOS 经验值 10~20，
+ * 随基础库版本浮动）。超了之后 `createInnerAudioContext()` 返回的实例
+ * **静默不播** —— 不报错、不抛异常，只是"某几个音突然没声了"，
+ * 而且往往在玩了一会儿之后才出现，最难查。
+ *
+ * 本项目的 `pool` 是「每个键常驻一个实例」，而 FILES 有 33 个键、
+ * 有的还带多个池槽 —— **理论上限 45 个**，远超红线。
+ * 一直没炸，是因为一局游戏碰不到全部 33 个键 ——
+ * 但「换玩法」正是这个 App 支持的：一晚上从大话骰玩到转盘再玩到金花，
+ * pool 只增不减，最后必然撞线。
+ *
+ * 为什么是 LRU 而不是"启动时只建前 N 个"：后者会让冷门音效每次播都现场加载
+ * （几十~几百 ms），而它们往往正好贴着动画冲击帧 —— 音画又错位了。
+ * 淘汰最久没播的、保住热门的，是这两者之间唯一合理的折中。
+ */
+const MAX_AUDIO_INSTANCES = 20
+/** slot → 最后一次播放的序号（越大越新） */
+const lastUsed = {}
+let useSeq = 0
+
+function poolSize() { return Object.keys(pool).length }
+
+/** 池满时淘汰最久未使用的一个 */
+function evictIfNeeded() {
+  if (poolSize() < MAX_AUDIO_INSTANCES) return
+  let oldestSlot = null
+  let oldestSeq = Infinity
+  Object.keys(pool).forEach((slot) => {
+    const seq = lastUsed[slot] || 0
+    if (seq < oldestSeq) { oldestSeq = seq; oldestSlot = slot }
+  })
+  if (!oldestSlot) return
+  try { pool[oldestSlot].destroy() } catch (e) {}
+  delete pool[oldestSlot]
+  delete lastUsed[oldestSlot]
+  /* 被淘汰的键从 poolIdx 的轮转里也清掉，避免下次算出一个已不存在的 slot */
+  const base = oldestSlot.split('#')[0]
+  delete poolIdx[base]
+}
+
+
 /**
  * 播放。
  * @param {string} key   FILES 里的键
@@ -178,6 +222,7 @@ function play(key, opt) {
   try {
     const size = variants ? variants.length : (POOL_SIZE[key] || 1)
     let a
+    let _usedSlot = ''
 
     if (size > 1) {
       /* 有变体时**随机**选一个（轮转会听出"一二三一二三"的规律）；
@@ -185,8 +230,10 @@ function play(key, opt) {
       const i = variants ? Math.floor(Math.random() * size) : ((poolIdx[key] || 0) % size)
       if (!variants) poolIdx[key] = i + 1
       const slot = key + '#' + i
+      _usedSlot = slot
       a = pool[slot]
       if (!a) {
+        evictIfNeeded()
         a = wx.createInnerAudioContext()
         watchAudioError(a, key)
         a.src = variants ? variants[i] : srcOrList
@@ -194,8 +241,10 @@ function play(key, opt) {
         pool[slot] = a
       }
     } else {
+      _usedSlot = key
       a = pool[key]
       if (!a) {
+        evictIfNeeded()
         a = wx.createInnerAudioContext()
         watchAudioError(a, key)
         a.src = srcOrList
@@ -207,6 +256,13 @@ function play(key, opt) {
       }
     }
 
+    /*
+     * 记一次使用（LRU 淘汰依据）。
+     * ★ 必须记在**真实用到的那个 slot** 上 —— 多槽音效（diceSettle#0/#1/#2）
+     *   是各自独立的实例，记错槽会让淘汰逻辑把"其实很热"的那个当成冷的。
+     *   所以 slot 名在建实例那两段里就算好并复用，不在这里重算。
+     */
+    lastUsed[_usedSlot || key] = ++useSeq
     a.loop = !!opt.loop
     a.volume = typeof opt.volume === 'number' ? opt.volume : 1
 

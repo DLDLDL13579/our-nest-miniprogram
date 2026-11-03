@@ -307,6 +307,72 @@ function extractBuildSectors(src) {
     assert.deepStrictEqual(longOnes, [],
       '这些是持续 600ms+ 的过程型动作，不该震（整局会嗡嗡响）：\n    ' + longOnes.join('\n    '))
     ok('★ 所有过程型动作（animMs≥600 且无冲击帧）都不震 —— 不只是 cupShake')
+
+  /* ============================================================================
+   * ★★ 音频实例必须有硬上限（2026-11-03）
+   *
+   * 微信对**同时存在的 InnerAudioContext** 有硬限制（iOS 经验值 10~20）。
+   * 超了之后 createInnerAudioContext 返回的实例**静默不播** —— 不报错，
+   * 只是"某几个音突然没声了"，且往往玩了一会儿之后才出现。
+   *
+   * 本项目 FILES 有 33 个键、有的还带多池槽 → **理论上限 45 个**。
+   * 一直没炸是因为一局碰不到全部；但"换玩法"会让 pool 只增不减。
+   *
+   * 修法是 LRU 淘汰（`evictIfNeeded`），所以断言要点是：
+   *   **runtime 实例数受 MAX_AUDIO_INSTANCES 约束，而不是受 FILES 键数约束。**
+   * ========================================================================== */
+  {
+    const sfxJs = fs.readFileSync(path.join(ROOT, 'miniprogram/game/sfx.js'), 'utf8')
+    const stripC = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    const clean = stripC(sfxJs)
+
+    /* ① 必须有上限常量，且足够保守 */
+    const capM = clean.match(/const MAX_AUDIO_INSTANCES = (\d+)/)
+    assert.ok(capM, '★ sfx.js 必须有 MAX_AUDIO_INSTANCES 上限常量')
+    const cap = parseInt(capM[1], 10)
+    assert.ok(cap <= 24,
+      '音频实例上限 ' + cap + ' 太激进 —— iOS 经验上限 10~20，取 ' + cap + ' 有风险')
+
+    /* 切成函数体（比数行号可靠 —— 剥注释后行号会错位） */
+    function bodyOf(sig) {
+      const i = clean.indexOf(sig)
+      if (i < 0) return ''
+      const j = clean.indexOf('{', i)
+      let depth = 0
+      for (let k = j; k < clean.length; k++) {
+        if (clean[k] === '{') depth++
+        else if (clean[k] === '}') { depth--; if (!depth) return clean.slice(j, k + 1) }
+      }
+      return ''
+    }
+
+    /*
+     * ② `play()` 里**每个** createInnerAudioContext 前面都要有 evictIfNeeded。
+     *    `preload()` 不用 —— 它只建"预先声明的池槽"，数量由 POOL_SIZE/PRELOAD_KEYS
+     *    决定、本身就有限，而且建在 play 之前。两者必须分开判。
+     */
+    const playBody = bodyOf('function play(')
+    assert.ok(playBody.length > 0, '找不到 play() 函数体')
+    const playCreates = (playBody.match(/wx\.createInnerAudioContext\(\)/g) || []).length
+    const playEvicts = (playBody.match(/evictIfNeeded\(\)/g) || []).length
+    assert.strictEqual(playEvicts, playCreates,
+      '★ play() 里 ' + playCreates + ' 处建实例，但只有 ' + playEvicts +
+      ' 处调了 evictIfNeeded —— 漏一处就会突破实例上限')
+
+    /*
+     * ③ 淘汰必须"销毁 + 摘除"两步都做。
+     *    ⚠️ 不能只测整个文件里有没有 `.destroy()` —— `stopAll` 里也有，
+     *       把淘汰里的那句删掉照样匹配 → 假阳性。只看 evictIfNeeded 函数体。
+     */
+    const evictBody = bodyOf('function evictIfNeeded()')
+    assert.ok(evictBody.length > 0, '找不到 evictIfNeeded 函数体')
+    assert.ok(/\.destroy\(\)/.test(evictBody),
+      '★ evictIfNeeded 里必须真的 destroy（只 delete 不 destroy，实例本身还在，照样撞上限）')
+    assert.ok(/delete pool\[/.test(evictBody),
+      '★ evictIfNeeded 里必须 delete pool[slot]，否则下次还会拿到那个已销毁的实例')
+
+    ok('★ 音频实例有硬上限 ' + cap + '（play() 里 ' + playEvicts + ' 处建实例全部守着 LRU）')
+  }
   }
 
   console.log('\n=== ⑧ 音效三通道错开：震动必须晚于音效 ===')
