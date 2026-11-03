@@ -356,6 +356,80 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   ok('★ 高频提示音（yourTurn）是单音层，不抢动作音效的焦点')
 }
 
+/* ============================================================================
+ * ★★ 「同一个时长」只能有一处来源（2026-11-03）
+ *
+ * 摇盅流程的 1050ms 原来有**三份副本**：
+ *   ① feedback.js 的 cupShake.animMs
+ *   ② room.js autoShake() 里裸写的 1050
+ *   ③ room.js doRoll() 里 await this.wait(1050)
+ *
+ * 三份恰好相等，所以从来没出过事 —— 而**"恰好相等"就是最危险的耦合**。
+ * 这跟 AGENTS.md 记过的 1080 / 1750 是同一类：它们看起来像业务常量，
+ * 实际是某个素材/动画时长的副本，改了一处另两处静默用旧值。
+ *
+ * 判据：房间页里不许再出现裸写的摇盅时长，必须读 CUP_SHAKE_MS。
+ * ⚠️ 这条刻意**不去判 wxss 的 340ms 等不等** ——
+ *    340 是"一次晃动"的周期，1050 是"整段摇盅"的长度，本来不是同一个量。
+ *    用"时长必须相等"去判会把两个不同的东西绑在一起，反而制造新耦合。
+ * ========================================================================== */
+{
+  const roomSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const norm = roomSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+
+  assert.strictEqual(feedback.CUP_SHAKE_MS, 1050,
+    '摇盅流程时长应导出为常量（其他模块要读它）')
+  assert.ok(!/\b1050\b/.test(norm),
+    '★ room.js 里还有裸写的 1050（摇盅时长副本）—— 改成 feedback.CUP_SHAKE_MS，' +
+    '否则改了 feedback 那边的时长，这边会静默用旧值')
+
+  /*
+   * ★★ 关于「animMs 要不要等于 wxss 里的动画时长」—— 这条判据我写错过一版。
+   *
+   * v1（废）：从 wxss 里找**同名 keyframes**，找不到就 `return`（跳过）。
+   *   反向验证：把 cupOpen.animMs 从 340 改成 999，测试**照样通过**。
+   *   原因：wxss 里根本没有叫 `cupOpen` 的 keyframes —— 它的视觉是
+   *   "结算页出现"，用的是 slamIn / heroWin 那些名字不同的动画。
+   *   **"找不到就跳过"等于把最常见的情况排除在检查之外**，
+   *   这和 AGENTS.md 里记过的"类没定义就 continue"是同一个错。
+   *
+   * v2：改成显式声明。哪些动作有**同名的** wxss 动画，在这里列出来，
+   *   列进来的必须数值相等；没列的是"视觉由别的动画承担"，不参与判等。
+   *   列错（把没有的写进来）会被下面那条"声明了却找不到"抓住。
+   */
+  /* 先把 wxss 里「动画名 → 它被用什么时长播放」建表 */
+  const wxssSrc = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+  const kfDurs = {}
+  ;[...wxssSrc.matchAll(/animation:\s*([a-zA-Z][\w-]*)\s+([\d.]+)(m?s)/g)].forEach(m => {
+    const v = parseFloat(m[2])
+    const ms = m[3] === 's' ? v * 1000 : v
+    ;(kfDurs[m[1]] = kfDurs[m[1]] || []).push(Math.round(ms))
+  })
+
+  /*
+   * 只有 `penalized` 这一个动作的**名字**恰好也是 wxss 的动画名（penaltyIn 不是）。
+   * 等等 —— 名字也不一样。所以这里用「动作 → wxss 动画名」的显式映射，
+   * 而不是假设同名。这是 v2 相对 v1 真正的修正。
+   */
+  const SAME_AS_WXSS = { penalized: 'penaltyIn' }
+  const missingKf = []
+  const mismatch = []
+  Object.keys(SAME_AS_WXSS).forEach(k => {
+    if (!FEEDBACK[k]) return             // 表里删了这个动作，这条自动失效
+    const ds = kfDurs[SAME_AS_WXSS[k]]
+    if (!ds) { missingKf.push(k + '→' + SAME_AS_WXSS[k]); return }
+    if (ds.indexOf(FEEDBACK[k].animMs) < 0) {
+      mismatch.push(k + ' 时间轴 ' + FEEDBACK[k].animMs + 'ms vs wxss ' + ds.join('/') + 'ms')
+    }
+  })
+  assert.deepStrictEqual(missingKf, [],
+    '这些动作声明了"有同名 wxss 动画"，但 wxss 里找不到 —— 声明错了：' + missingKf.join(', '))
+  assert.deepStrictEqual(mismatch, [],
+    '这些动作的时间轴时长和 wxss 动画对不上（声画会错位）：\n    ' + mismatch.join('\n    '))
+
+  ok('★ 摇盅时长只有一处来源（room.js 无裸写 1050），且非持续音动作的 animMs 与 wxss 一致')
+}
+
 console.log(`\n${'='.repeat(58)}`)
   console.log(`  反馈时间轴：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

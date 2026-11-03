@@ -1192,7 +1192,7 @@ Page({
       if (this.data.stage !== 'playing') return
       /* 摇完自然扣下 —— 但玩家的骰子还没摇，所以扣的是"空盅" */
       this.setData({ cupSrc: 'cup-down', cupCls: '', cupHint: HINT_ROLL_NOW })
-    }, 1050))
+    }, feedback.CUP_SHAKE_MS))
   },
 
   /**
@@ -3364,8 +3364,8 @@ Page({
         return null
       })
 
-    await this.wait(1050)
-    if (this._dead) return          // 摇盅这 1.05 秒里可能已经离开房间
+    await this.wait(feedback.CUP_SHAKE_MS)
+    if (this._dead) return          // 摇盅这一整段里可能已经离开房间
 
     /* ② 扣盅 —— 整个流程的重音。
        盅砸在桌上，整屏震一下，骰子在盅里被震得跳一下（音效里带了）。 */
@@ -3559,7 +3559,7 @@ Page({
    *
    * ★ 页面卸载时要**立刻 resolve**：onUnload 会 clearTimeout 掉 _cupTimers 里的
    *   所有定时器，若不做处理，这个 Promise 就**永远不会 settle** ——
-   *   `await this.wait(1050)` 之后的整段流程（以及它闭包里的页面对象）
+   *   `await this.wait(feedback.CUP_SHAKE_MS)` 之后的整段流程（以及它闭包里的页面对象）
    *   会永久挂在那里。虽然不增长、量也小，但属于"该结束却没结束"。
    *   立刻 resolve 后，调用方紧接着的 `if (this._dead) return` 就会正常收尾。
    */
@@ -4211,8 +4211,27 @@ Page({
 
     this._wheelTimer = setTimeout(() => {
       if (this._dead) return
-      this.setData({ wheelSpinning: false })
+      /*
+       * ★★ 停稳的视觉反馈（2026-11-03）。
+       *
+       * 原来这里只有 `wheelSpinning: false` 和一声 wheelStop ——
+       * **声音有、画面没有**：盘停了，但屏幕上看不出"刚刚撞上了什么"。
+       * 而真实转盘停下来的那一下，指针会被最后一下顶得往上一弹，
+       * 盘面也会跟着一顿。缺这一下，整个转盘像"淡出"而不是"停住"。
+       *
+       * `wheelCls: 'settle'` 触发一次 260ms 的回弹（wxss 里 `ws-settle`），
+       * 和 `wheelStop.animMs: 280` 对齐。清 class 的定时器进 `_cupTimers`，
+       * 否则连转两次会把上一轮的定时器漏掉（项目里所有定时器都进这个数组）。
+       *
+       * ⚠️ wheelCls 这个字段之前**声明了却从没被用过**（wxml 里 grep 为 0）——
+       *    典型的"算了不渲染"，不报错、只是白算。现在接上了。
+       */
+      this.setData({ wheelSpinning: false, wheelCls: 'settle' })
       feedback.fire('wheelStop')
+      this._cupTimers.push(setTimeout(() => {
+        if (this._dead) return
+        this.setData({ wheelCls: '' })
+      }, 280))
       /*
        * ★ 题卡与结果**同一次 setData**。
        *   分两次设（先显示"真心话"，再显示题目）会有一帧只显示类别，

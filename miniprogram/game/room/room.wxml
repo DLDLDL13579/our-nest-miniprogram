@@ -1207,7 +1207,7 @@
       现在显式列出，并且有断言保证注册表里每个玩法都有分支（test-room-ui ⑨）。
     -->
     <block wx:elif="{{room.game === 'wheel'}}">
-      <view class="wheelscene">
+      <view class="wheelscene {{wheelCls}}">
         <view class="ws-pointer"></view>
         <view class="ws-disc"
               style="background: {{wheelGradient}}; transform: rotate({{wheelDeg}}deg); transition-duration: {{wheelDur}}ms;">

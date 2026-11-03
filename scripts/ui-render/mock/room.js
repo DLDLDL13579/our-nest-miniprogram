@@ -1326,6 +1326,7 @@ module.exports = {
         wheelDeg: 0,
         wheelDur: 2700,
         wheelSpinning: false,
+        wheelCls: '',
         wheelText: '转一下，看看今晚谁喝',
         decks: decks.DECKS,
         room: pkRoom({

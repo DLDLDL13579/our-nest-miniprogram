@@ -86,6 +86,24 @@ const haptic = require('../utils/haptic.js')
 const VOL_CRITICAL = 1.0
 const VOL_DECOR = 0.45
 
+/*
+ * 摇盅流程总时长（盅一直在晃的这一段）。
+ *
+ * ★ 这个数字原来有**三个副本**（2026-11-03 收成一个）：
+ *   ① feedback.js 的 `cupShake.animMs: 1050`
+ *   ② room.js `autoShake()` 里裸写的 `setTimeout(..., 1050)`（摇完扣盅）
+ *   ③ docs/音效时长对照.md 里那句「= cup-shake 时长」
+ *
+ * 它们恰好相等，所以从来没出过事 —— 而**"恰好相等"就是最危险的耦合**：
+ * 谁改了其中一个，另外两个会静默地用旧时长，症状是「盅已经扣下了，声音还在摇」
+ * 或者「摇完了但盅还悬着」。这类"看起来像业务常量"的定时器，
+ * AGENTS.md 里记过整整一类（1080 / 1750 那两个就是这么来的）。
+ *
+ * ⚠️ 它**不等于** wxss 里 `@keyframes cupShake` 的 340ms ——
+ *    那个是一次晃动的周期（infinite 循环），两者是不同的量。
+ */
+const CUP_SHAKE_MS = 1050
+
 const FEEDBACK = {
   /* ---------- 骰子逐颗落定 ---------- */
   /*
@@ -226,9 +244,19 @@ const FEEDBACK = {
   /* ② 摇盅（持续音，覆盖整个摇动过程）
      ★ 摇动本身**不震** —— 持续 1 秒的震动会让整局嗡嗡响，用户会直接关掉。
        这个决定有断言锁着（test-game.js ⑦）：摇盅的 haptic 必须是 null。
-       手感靠声音和画面给，震动留给"扣盅"那个重音。 */
+       手感靠声音和画面给，震动留给"扣盅"那个重音。
+
+     ⚠️ animMs 的语义（2026-11-03 修）：
+       这里是**摇盅流程的总时长**（盅一直在晃的这 1050ms），
+       不是 wxss 里 `@keyframes cupShake` 的时长 —— 那个是 **340ms**，
+       它是**一次晃动的周期**，用 `infinite` 循环铺满整个流程。
+
+       两者本来不是同一个量，所以不该被"时长必须相等"的断言去判等。
+       但 `autoShake()` 里曾经**裸写 1050** 来做"摇完扣盅"的定时器 ——
+       那是这个数字的第三个副本。现在统一读 `CUP_SHAKE_MS`，
+       改时长只改一处。 */
   cupShake: {
-    animMs: 1050,
+    animMs: CUP_SHAKE_MS,
     impactAt: 0,
     sfx: 'cupShake',
     haptic: null,
@@ -512,6 +540,8 @@ function clear() {
 
 module.exports = {
   FEEDBACK,
+  /* 摇盅流程时长：房间页要拿它做"摇完扣盅"的定时器，不能再裸写数字 */
+  CUP_SHAKE_MS,
   timeline,
   fire,
   clear,

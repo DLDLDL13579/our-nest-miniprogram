@@ -3411,3 +3411,33 @@
 }
 /* 小屏紧凑模式：不强制撑满（否则一屏放不下，按钮被挤出屏幕外） */
 .gamepage.compact .fh-stage { min-height: 0 }
+
+/* ============================================================
+   转盘停稳（2026-11-03）
+   ------------------------------------------------------------
+   真实转盘停下来的那一下：指针被最后一下顶得往上一弹，盘面跟着一顿。
+   原来是"盘停了 + 一声咚"，**画面看不出刚撞上什么** —— 像淡出而不是停住。
+
+   两条动画分别在指针和盘面上，错开 40ms：
+   指针先弹（它是被撞的一方），盘面后顿（惯性）。
+   ============================================================ */
+.wheelscene.settle .ws-pointer {
+  animation: wsPointerHit .26s cubic-bezier(.34, 1.56, .64, 1) both;
+}
+.wheelscene.settle .ws-disc {
+  animation: wsSettleThud .28s cubic-bezier(.34, 1.4, .64, 1) 40ms both;
+}
+
+@keyframes wsPointerHit {
+  0%   { transform: translateY(0) rotate(0deg) }
+  38%  { transform: translateY(-14rpx) rotate(-7deg) }
+  70%  { transform: translateY(3rpx) rotate(2deg) }
+  100% { transform: translateY(0) rotate(0deg) }
+}
+@keyframes wsSettleThud {
+  0%   { filter: brightness(1) }
+  35%  { filter: brightness(1.14) }
+  100% { filter: brightness(1) }
+}
+/* 减少动效：只留亮度那一下（它表达"停了"，不是装饰性的运动） */
+.reduce-motion .wheelscene.settle .ws-pointer { animation: none !important }
