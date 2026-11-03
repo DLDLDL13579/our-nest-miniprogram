@@ -427,6 +427,62 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
   assert.deepStrictEqual(mismatch, [],
     '这些动作的时间轴时长和 wxss 动画对不上（声画会错位）：\n    ' + mismatch.join('\n    '))
 
+  /* ============================================================================
+   * ★★ 每个 animMs 必须在 wxss 里**真实存在**（2026-11-03）
+   *
+   * 上面那条只盯了 4 个"同名"动作。而 21 个动作里**只有 1 个**名字和 wxss
+   * keyframes 同名（cupSlam）—— 也就是说剩下 20 个从来没被验证过。
+   *
+   * 断言的正确口径不是"名字相同"，而是：
+   *   **时间轴声明的 animMs，必须在 wxss 里真的被某个动画/过渡用到**。
+   * 因为 animMs 的语义就是"这个动作的视觉持续多久"，
+   * 它和真实动画对不上 = 音效与画面错位，而且**不报错、只能靠耳朵**。
+   *
+   * 持续音动作（摇盅 1 秒、转盘转 2.4 秒）例外 —— 它们的 animMs 是**流程时长**，
+   * 不要求等于某一次动画周期（cupShake 的 340ms 是"晃一下"的周期，是另一个量）。
+   * ========================================================================== */
+  {
+    const wxssAll = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    /** wxss 里出现过的全部动画/过渡时长（ms） */
+    const durs = new Set()
+    ;[/animation(?:-duration)?\s*:\s*([^;}]+)/g, /transition(?:-duration)?\s*:\s*([^;}]+)/g]
+      .forEach((re) => {
+        let m
+        while ((m = re.exec(wxssAll))) {
+          let mm
+          const one = /([\d.]+)(m?s)\b/g
+          while ((mm = one.exec(m[1]))) {
+            durs.add(Math.round(parseFloat(mm[1]) * (mm[2] === 's' ? 1000 : 1)))
+          }
+        }
+      })
+    assert.ok(durs.size > 10, 'wxss 时长没解析出来（' + durs.size + ' 个），解析器可能坏了')
+
+    /*
+     * 持续音 / 流程型动作：animMs 是"整段持续时间"而不是"某一次动画周期"。
+     * 白名单要**逐个说清理由**，不能整类放行。
+     */
+    const SUSTAIN = {
+      wheelStart: '转盘转 2.4 秒的过程音，不是某一次动画',
+      cupShake: '摇盅 1.05 秒的过程音；wxss 的 340ms 是"晃一下"的周期',
+      countdownTick: '读秒间隔 750ms，不是动画',
+      diceTable: '骰子在桌上滚的总时长',
+      shaker: '摇盅过程音',
+      wheelStop: '转盘停稳后的余韵'
+    }
+    const missing = []
+    Object.keys(FEEDBACK).forEach((k) => {
+      if (SUSTAIN[k]) return
+      const a = FEEDBACK[k].animMs
+      if (!a) return                       /* 纯音效动作（animMs 0）不参与 */
+      if (!durs.has(a)) missing.push(k + ' 声明 ' + a + 'ms，但 wxss 里没有这个时长')
+    })
+    assert.deepStrictEqual(missing, [],
+      '这些动作的 animMs 在 wxss 里找不到 —— 音效会和画面错位：\n    ' + missing.join('\n    '))
+    ok('★ 每个 animMs 都在 wxss 里真实存在（' + Object.keys(FEEDBACK).length +
+       ' 个动作，排除了 ' + Object.keys(SUSTAIN).length + ' 个流程型）')
+  }
+
   ok('★ 摇盅时长只有一处来源（room.js 无裸写 1050），且非持续音动作的 animMs 与 wxss 一致')
 }
 
