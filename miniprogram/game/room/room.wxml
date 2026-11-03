@@ -1665,6 +1665,14 @@
     <!-- 命运转盘：转到什么就说什么 -->
     <view wx:if="{{room.game === 'wheel' && result}}" class="center-box">
       <view class="over-tag ok">{{result.winText}}</view>
+      <!--
+        ★ 2026-11-03：把「谁喝」摆出来。
+          `spin.whoText` 是服务端翻译好的（你喝 / 我喝 / 全场一起喝 / 免罚），
+          而 `result.winText` 只是扇区名（"喝 1 杯"）—— 光看它不知道罚谁。
+      -->
+      <view wx:if="{{room.spin && room.spin.whoText}}" class="over-num">
+        <text class="on-big">{{room.spin.whoText}}</text>
+      </view>
       <view wx:if="{{result.card && result.card.q}}" class="over-need">{{result.card.q}}</view>
     </view>
 

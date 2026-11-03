@@ -2889,6 +2889,30 @@ exports.main = async (event) => {
         index: index,
         k: sec.k,
         t: sec.t,
+        /*
+         * ★★ 2026-11-03：把扇区语义翻译成**「谁喝」的人话**。
+         *
+         *   起因：把 9 个玩法的结算页拼成对比图，发现转盘只有一行
+         *   「转到「喝 1 杯」」—— **没说是谁喝**。
+         *   而扇区本身有四种语义（you 你喝 / me 我喝 / both 一起喝 / pass 免罚），
+         *   结算页只把 `t` 原样显示，那层语义全丢了。
+         *
+         *   为什么在服务端翻译而不是模板里写 if：
+         *     · 模板里 wxml 不支持函数调用，只能写三元嵌套 —— 难读且易漏
+         *     · 这个映射是**规则的一部分**（哪个扇区罚谁），该和扇区表放在一起
+         */
+        whoText: (function () {
+          switch (sec.k) {
+            case 'you': return '你喝'
+            case 'me': return '我喝'
+            case 'both': return '全场一起喝'
+            case 'pass': return '免罚，这轮不用喝'
+            case 'drink': return '喝 1 杯'
+            case 'truth': return '抽一道真心话'
+            case 'dare': return '来一个大冒险'
+            default: return ''
+          }
+        })(),
         card: card,                                 // 真心话/大冒险的题目；其余扇区为 null
         turns: 4 + Math.floor(Math.random() * 3),   // 4~6 圈，每次不一样
         jitter: (Math.random() - 0.5) * 0.6,        // 扇区内随机偏移（前端会夹紧）

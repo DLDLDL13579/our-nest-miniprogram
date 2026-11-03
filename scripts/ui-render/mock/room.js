@@ -1243,11 +1243,12 @@ module.exports = {
      */
     wheelOver: () => ({
       stage: 'over',
-      result: { kind: 'wheel', winner: '', winText: '转到「喝 1 杯」', card: null, sectorText: '喝 1 杯' },
+      result: { kind: 'wheel', winner: '', winText: '转到「一起喝」', card: null, sectorText: '喝 1 杯' },
       room: pkRoom({
         game: 'wheel', phase: 'over', host: true, count: 3,
         gameName: '命运转盘', myCards: [], minPlayers: 1, maxPlayers: 8, shortBy: 0,
-        streakText: '', nightDrinkList: []
+        streakText: '', nightDrinkList: [],
+        spin: { k: 'both', t: '一起喝', whoText: '全场一起喝', card: null, at: 0 }
       })
     }),
 

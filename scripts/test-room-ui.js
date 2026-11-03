@@ -1398,6 +1398,43 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
       noOverBlock.join('\n    '))
     ok('★ 全部 ' + allIds.length + ' 个玩法都有结算页渲染块（不会白屏）')
 
+    /*
+     * ★★ 2026-11-03：结算页必须回答「**谁喝**」。
+     *
+     *   起因：把 9 个玩法的结算页拼成对比图，发现转盘只有一行
+     *   「转到「喝 1 杯」」—— **没说是谁喝**。
+     *   而扇区本身是有语义的（`you` 你喝 / `me` 我喝 / `both` 一起喝 / `pass` 免罚），
+     *   结算页只是把 `t` 原样显示，把那层语义丢了。
+     *
+     *   判据：结算区里凡是"喝"类的文案，必须能看出**指向谁**。
+     *   做法：要求结算区出现 `whoText` 这类明确字段（由服务端翻译），
+     *   而不是只渲染扇区名。
+     */
+    /*
+     * ⚠️ 判据必须**只查转盘那一块**。
+     *   第一版写成 `/whoText|drinkWho|谁喝/.test(overBlock)` ——
+     *   而整个结算区里别处就有"谁喝"（大话骰的吐槽文案），于是
+     *   **转盘缺不缺都通过**（假阳性）。这是项目里记过的
+     *   「例外条件不能跨范围传播」的同一类：判据范围必须和目标范围一致。
+     */
+    const wheelStart = overBlock.indexOf("room.game === 'wheel'")
+    assert.ok(wheelStart >= 0, '结算区里找不到转盘块')
+    /* 转盘块到下一个玩法块为止 */
+    const wheelEnd = overBlock.indexOf("room.game === '", wheelStart + 10)
+    const wheelBlock = overBlock.slice(wheelStart, wheelEnd > 0 ? wheelEnd : wheelStart + 600)
+    /*
+     * ⚠️ 必须先**剥掉注释**再判。
+     *   第一版直接对原文正则 —— 而我在那段上面正好写了注释解释 whoText，
+     *   于是**把渲染整段删掉，注释还在，断言照样通过**（反向验证抓到的）。
+     *   这是项目里记过的「注释污染判据」，第 N 次。
+     */
+    const wheelCode = wheelBlock
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\{\{!--[\s\S]*?--\}\}/g, '')
+    assert.ok(/whoText|drinkWho/.test(wheelCode),
+      '★ 转盘结算页只说「喝 1 杯」，**没说是谁喝** —— ' +
+      '而扇区本身有 you/me/both/pass 四种语义，必须在结算页翻译成人话')
+
     void lobbyW
     ok('★ 玩法 ' + total + ' 个（首屏容量 ' + PER_SCREEN + '）—— ' +
        (total > PER_SCREEN ? '已给出「下面还有 N 个」提示' : '全部可见'))
