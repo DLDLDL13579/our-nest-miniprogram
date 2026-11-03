@@ -5839,3 +5839,40 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ghosts.join('\n    '))
   ok('★ 两个新玩法的 shape 字段都有人用（没有幽灵字段）')
 }
+
+/* ============================================================================
+ * ★★ 「当前状态」类文档里的玩法数必须和注册表一致（2026-11-03）
+ *
+ * 起因：`docs/交接文档.md` 的「当前规模」写着「5 个玩法 / 379 项检查」，
+ * 而实际已经 9 个玩法 / 605 项 —— 那是给接手人看的**当前状态**，
+ * 错了会让人对项目成熟度产生完全错误的判断。
+ *
+ * ⚠️ 但**不是所有文档都该管**：
+ *   · `docs/玩法调研-第4轮.md` 里写"现有 5 个玩法"是**历史记录**，正确
+ *   · `docs/项目体检报告.md`（带日期版本）里的数字也是历史坐标
+ *   判据只能查**声明"我现在是多少"的地方**。
+ *
+ * 所以这里只查一份：`docs/交接文档.md` 的「当前规模」那一段。
+ * ========================================================================== */
+{
+  const gamesJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+  const ids = []
+  const re = /(?:^|\n)\s*id:\s*'([a-z]+)'/g
+  const clean = gamesJs.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+  let m
+  while ((m = re.exec(clean))) ids.push(m[1])
+  const realCount = ids.length
+
+  const docPath = path.join(ROOT, 'docs/交接文档.md')
+  assert.ok(fs.existsSync(docPath), '找不到 docs/交接文档.md')
+  const doc = fs.readFileSync(docPath, 'utf8')
+
+  /* 「当前规模」代码块里的 `N 个玩法` */
+  const seg = doc.slice(doc.indexOf('当前规模'), doc.indexOf('当前规模') + 600)
+  const hit = /(\d+)\s*个玩法/.exec(seg)
+  assert.ok(hit, '交接文档的「当前规模」里找不到「N 个玩法」')
+  assert.strictEqual(parseInt(hit[1], 10), realCount,
+    '★ 交接文档说 ' + hit[1] + ' 个玩法，实际注册表里是 ' + realCount +
+    ' 个 —— 交接文档是给接手人看的当前状态，错了会严重误导')
+  ok('★ 交接文档的玩法数（' + realCount + '）与注册表一致')
+}
