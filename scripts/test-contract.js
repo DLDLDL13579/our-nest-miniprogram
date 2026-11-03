@@ -5432,3 +5432,29 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ action 契约完整（前端调 ' + called.size + ' 个 / 云函数认 ' + handled.size + ' 个）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**大厅排序：最近玩的排前面，但"上次"只标一个**
+ *
+ * `recentGames` 存的是**最近玩过的玩法 id 列表**（可能有好几个）。
+ * 排序把它们提到前面，而 `recent: i === 0` 只给**第一个**标「上次」。
+ *
+ * ⚠️ 两个边界：
+ *   · `recentGames` 里有已删除的玩法 id → 必须跳过（`.filter(Boolean)`）
+ *   · 全部 id 都失效 → 必须退回原顺序（`if (!hit.length) return list`）
+ * ========================================================================== */
+{
+  const src = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/pages/lobby/lobby.js'), 'utf8')
+
+  assert.ok(/recent: i === 0/.test(src),
+    '★ 「上次」只该标第一个（都标就分不出哪个是"上次"）')
+  assert.ok(/\.filter\(Boolean\)/.test(src),
+    '★ 已删除的玩法 id 必须被跳过（否则 hit 里会有 null）')
+  assert.ok(/if \(!hit\.length\) return list/.test(src),
+    '★ 全部 id 都失效时要退回原顺序（否则大厅会空白）')
+  assert.ok(/wx:getStorageSync\('recentGames'\)|getStorageSync\('recentGames'\)/.test(src),
+    '★ 要读 recentGames（拼错 key 会永远没有"上次"）')
+
+  ok('★ 大厅排序边界完整（只标一个 / 跳过失效 id / 全失效时退回原顺序）')
+}
