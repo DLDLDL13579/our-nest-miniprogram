@@ -3239,7 +3239,7 @@
 }
 .fh-ocard {
   width: 108rpx; height: 152rpx;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   overflow: hidden;
   box-shadow: 0 6rpx 14rpx rgba(0, 0, 0, .42);
 }
@@ -3269,7 +3269,7 @@
   width: fit-content;
   margin: 40rpx auto 0;
   padding: 26rpx 44rpx 22rpx;
-  border-radius: 22rpx;
+  border-radius: 24rpx;
   /* 三层叠出"卡座"感：暖色底光 + 内暗 + 描边 —— 让"你的牌"成为场景主体，
      而不是一块信息条。这页只有这一个东西是**玩家自己的**，必须最重。 */
   background:
@@ -3285,7 +3285,7 @@
 .fh-mwrap { position: relative; width: 150rpx; height: 211rpx; flex: none }
 .fh-mback {
   width: 100%; height: 100%;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, .45);
 }
 /*
@@ -3325,7 +3325,7 @@
   flex: 1;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 20rpx 12rpx;
-  border-radius: 18rpx;
+  border-radius: 20rpx;
 }
 .fh-pass {
   background: rgba(255, 255, 255, .085);
@@ -3361,7 +3361,7 @@
 .fhr-ml { font-size: 26rpx; color: rgba(255, 255, 255, .72); margin-right: 18rpx }
 .fhr-mface {
   width: 96rpx; height: 134rpx;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   box-shadow: 0 0 0 3rpx rgba(232, 179, 60, .42), 0 10rpx 24rpx rgba(0, 0, 0, .48);
 }
 .fhr-grid {
@@ -3372,7 +3372,7 @@
   width: 138rpx;
   display: flex; flex-direction: column; align-items: center;
   padding: 12rpx 6rpx 10rpx;
-  border-radius: 14rpx;
+  border-radius: 16rpx;
   background: rgba(255, 255, 255, .04);
   border: 2rpx solid transparent;
 }
