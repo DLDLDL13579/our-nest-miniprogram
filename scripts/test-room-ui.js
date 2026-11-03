@@ -1399,6 +1399,71 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
     ok('★ 全部 ' + allIds.length + ' 个玩法都有结算页渲染块（不会白屏）')
 
     /*
+     * ★★★ 2026-11-03：**每个玩法块里模板用到的 room 字段，该玩法块必须提供**。
+     *
+     *   实例：金花的等待文案写 `等 {{room.turnName}} 决定`，
+     *   而 `shape()` 的 poker 块里**从来没有 turnName**
+     *   → 界面显示成「等  决定」（中间空白）。
+     *
+     *   为什么一直没发现：小程序把 `{{undefined}}` 渲染成空串 ——
+     *   页面照常显示、不报错、不警告，只是少了一个词。
+     *
+     *   ⚠️ 判据必须**按玩法块**比，不能全仓比。
+     *      我第一版试过"模板要的字段全仓存在就行"，结果 `turnName`
+     *      在 fh/sv/bt 里有、金花没有 —— **照样通过**。
+     *      而且那个版本要靠一个越来越长的派生字段白名单，根本不是判据。
+     *
+     *   白名单只放**确实由 decorate() 计算**的字段（项目里"派生字段唯一出口"）。
+     */
+    {
+      const cloudSrc2 = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+      /* 前端 decorate() 算出来的字段 —— 服务端不该给 */
+      const DERIVED = new Set([
+        'howList', 'settleFoot', 'hostName', 'nightDrinkList', 'streakText',
+        'myCards', 'options', 'openNeedN', 'myOut', 'gameName',
+        'minPlayers', 'shortBy', 'spectating', 'canReroll', 'rolledCount',
+        'pkTargetCount', 'waitingText', 'uwCompare', 'me'
+      ])
+      /* 顶层通用字段（shape 的最外层，所有玩法都能用） */
+      const TOP = new Set(['game', 'phase', 'players', 'turn', 'count', 'host',
+        'locked', 'round', 'bid', 'lastResult', 'spin', 'deck', 'streakText', 'id',
+        'code', 'hostOpenid', 'away', 'nightDrinks', 'usedCards'])
+
+      const missing = []
+      allIds.forEach((gid) => {
+        /* 模板里这个玩法的块 */
+        const wi = roomWxml.indexOf("room.game === '" + gid + "'")
+        if (wi < 0) return
+        const wj = roomWxml.indexOf("room.game === '", wi + 10)
+        const blk = roomWxml.slice(wi, wj > 0 ? wj : wi + 4000)
+        const used = new Set()
+        ;(blk.match(/room\.([a-zA-Z_]\w*)/g) || []).forEach((x) => used.add(x.slice(5)))
+
+        /* 服务端这个玩法块里的字段 */
+        const ci = cloudSrc2.indexOf('\n    ' + gid + ': (function () {')
+        if (ci < 0) return
+        const cj = cloudSrc2.indexOf('\n    })(),', ci)
+        const cb = cloudSrc2.slice(ci, cj > 0 ? cj : ci + 8000)
+        const provided = new Set()
+        ;(cb.match(/^\s{6,10}(\w+):/gm) || []).forEach((x) => provided.add(x.trim().replace(':', '')))
+
+        used.forEach((k) => {
+          if (DERIVED.has(k) || TOP.has(k)) return
+          /*
+           * ⚠️ `room.poker.xxx` 会被抽成 `poker` —— 那是**玩法块名本身**，
+           *   不是字段。六个块名都要排除，否则每个玩法都报自己。
+           */
+          if (/^(uw|poker|fh|bt|sv|cs)$/.test(k)) return
+          if (!provided.has(k)) missing.push(gid + '.' + k)
+        })
+      })
+      assert.deepStrictEqual(missing, [],
+        '★ 这些字段模板在用、但服务端那个玩法块没给（界面会渲染成空白）：\n    ' +
+        missing.join('\n    '))
+      ok('★ 9 个玩法块里模板用的字段，服务端都真的给了')
+    }
+
+    /*
      * ★★ 2026-11-03：结算页必须回答「**谁喝**」。
      *
      *   起因：把 9 个玩法的结算页拼成对比图，发现转盘只有一行

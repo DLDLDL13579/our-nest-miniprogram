@@ -798,8 +798,23 @@ function shape(room, openid) {
       if (!meP) return null
       const alive = (room.players || []).filter(p => p.inRound !== false && !p.out)
       const myHand = meP.cards || []
+      /*
+       * ★★★ 2026-11-03：补 `turnName` / `myTurn`。
+       *
+       *   模板的等待文案写的是 `等 {{room.turnName}} 决定`，而这个块里
+       *   **从来没有 turnName** —— 界面上显示成「等  决定」（中间是空白）。
+       *
+       *   为什么一直没发现：小程序的 `{{undefined}}` 渲染成空串，
+       *   页面照常显示、不报错、不警告。只有盯着那一行看才觉得"少了个词"。
+       *
+       *   `turnName` 在 fh / sv / bt 三个块里都有（它们是新写的、作者记得），
+       *   金花是最早写的那个，漏了 —— 典型的"老代码没跟上后来的约定"。
+       */
+      const turnP = (room.players || []).filter(p => p.seat === room.turn)[0] || null
       return {
         step: room.pkStep || 'play',
+        turnName: turnP ? turnP.name : '',
+        myTurn: !!turnP && turnP.openid === openid,
         /* 公共牌：全场共用，本来就该看得见 */
         publicCard: room.pkPublic || null,
         publicText: room.pkPublic ? poker.cardText(room.pkPublic) : '',
