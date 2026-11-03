@@ -13,7 +13,7 @@ const LIST = GAMES.map((g, i) => ({
 }))
 
 module.exports = {
-  __height: 980,
+  __height: 1506,
   data: () => ({
     ic: IC,
     list: LIST,
@@ -57,6 +57,13 @@ module.exports = {
     /* 输错了 */
     error: () => ({ joinCode: '123', err: '房间不存在或已解散' }),
     /* 只有两个玩法（玩法还没长起来时的样子） */
-    few: () => ({ list: LIST.slice(0, 2) })
+    few: () => ({ list: LIST.slice(0, 2) }),
+    /*
+     * ★ 2026-11-03：**全部玩法**的状态（= 真实场景）。
+     *   原来只有 few（2 个）/ compact（小屏）等边界用例，
+     *   没有"当前版本到底长什么样"这个最基本的一个 ——
+     *   于是"7 个玩法首屏装不下"这件事一直没人看见。
+     */
+    all: () => ({ list: LIST })
   }
 }

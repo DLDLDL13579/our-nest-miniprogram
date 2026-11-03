@@ -1335,6 +1335,32 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
 
     ok('★ 玩法 ' + total + ' 个，未超过大厅两列布局上限（' + HARD_CAP + '）；' +
        '首屏露 ' + Math.min(total, PER_SCREEN) + ' 个，其余需下滑')
+
+    /*
+     * ★★ 玩法卡的描述必须一行放得下（2026-11-03）
+     *
+     * 卡片两列布局下内容宽约 146px、描述 20rpx（≈10px）—— 每行约 **14 个中文字**。
+     * 超一个字就折成两行，整张卡被顶高，**和旁边那张不等高**，
+     * 网格看起来就歪了。
+     *
+     * 实测「梦幻金花」原来 15 字（「一张亮着，一张自己看，一张靠猜」）
+     * 正好超 1 个字，而 `min-height` 从 272 收到 240rpx 之后不再兜住这个差异 ——
+     * 离线长图一眼就看出来了。
+     *
+     * 判据：**描述 ≤ 14 个中文字**。改文案时会被这条挡住。
+     */
+    const descM = gamesJs.match(/desc:\s*'([^']*)'/g) || []
+    const tooLong = []
+    descM.forEach((d) => {
+      const txt = d.replace(/desc:\s*'/, '').replace(/'$/, '')
+      /* 中文按 1 个宽度算，ASCII 按半个算 */
+      const w = Array.from(txt).reduce((a, ch) => a + (/[\x00-\x7F]/.test(ch) ? 0.5 : 1), 0)
+      if (w > 14) tooLong.push(txt + '（' + w + ' 字宽）')
+    })
+    assert.deepStrictEqual(tooLong, [],
+      '★ 这些描述超过 14 字宽，会在卡片里折成两行并把卡片顶高：\n    ' +
+      tooLong.join('\n    '))
+    ok('★ 全部 ' + descM.length + ' 个玩法描述都 ≤14 字宽（卡片内不折行）')
   }
 
   console.log(`\n${'='.repeat(58)}`)
