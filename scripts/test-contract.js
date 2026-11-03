@@ -5182,3 +5182,45 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 出局的人看不到操作按钮（三处判据 + mock 覆盖）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**同一个动作在不同阶段必须叫同一个名字**
+ *
+ * `room.wxml` 里 "离开房间" 出现 3 次（lobby / playing / over 各一处）、
+ * "换个玩法" 2 次、"催一下" 2 次 —— 而这些**是对的**：
+ * 同一个动作在不同阶段就该叫同一个名字。
+ *
+ * 反过来说：如果同一个动作用了两个名字（比如一处"点了就退出"、一处"离开房间"），
+ * 玩家会以为是两个功能。这条断言查的是**有没有这种分叉**。
+ * ========================================================================== */
+{
+  const wxml = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+    .replace(/<!--[\s\S]*?-->/g, '')
+
+  /* 已知的动作 → 允许的文案（唯一） */
+  const ACTIONS = {
+    leave: ['离开房间'],
+    changeGame: ['换个玩法'],
+    urge: ['催一下'],
+    again: ['再来一局']
+  }
+  const bad = []
+  Object.keys(ACTIONS).forEach(act => {
+    const allowed = ACTIONS[act]
+    /* 找所有带 bindtap="<act>" 的元素里那段文字 */
+    const re = new RegExp('bindtap="' + act + '"[^>]*>([^<>{]*)', 'g')
+    let m
+    while ((m = re.exec(wxml))) {
+      const txt = (m[1] || '').trim()
+      if (!txt) continue
+      if (allowed.indexOf(txt) < 0) {
+        bad.push(act + ' 的按钮写成了「' + txt + '」，而别处是「' + allowed[0] + '」')
+      }
+    }
+  })
+
+  assert.deepStrictEqual([...new Set(bad)], [],
+    '同一个动作在不同地方用了不同名字（玩家会以为是两个功能）：\n    ' + bad.join('\n    '))
+  ok('★ 同一个动作在各阶段的按钮文案一致（离开/换玩法/催一下/再来一局）')
+}
