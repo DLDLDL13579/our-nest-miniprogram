@@ -11,17 +11,28 @@
  */
 const sfx = require('../../utils/sfx.js')
 const haptic = require('../../utils/haptic.js')
-const iconSet = require('../../utils/iconSet.js')
 const { GAMES } = require('../../utils/games.js')
 const { call } = require('../../utils/cloud.js')
 
-const _IC = iconSet.build(['dice', 'chevronRight'], '#C4553F')
+/*
+ * ★ 2026-11-03 删掉的死代码：
+ *
+ *     const _IC = iconSet.build(['dice', 'chevronRight'], '#C4553F')
+ *     data: { ic: _IC, ... }
+ *
+ * 图标早就改成内联 SVG 的 class 写法了，`me.wxml` 里 `ic` 出现 **0 次**、
+ * `<image>` 标签 **0 个** —— 也就是说这两行构建了一个从头到尾没人读的对象，
+ * 还多 require 了一个模块（iconSet 会连带加载整个 icons.js）。
+ *
+ * 不报错、不影响功能，只是白算 + 白占首屏 require 时间。
+ * 这类"算了不渲染"在项目里记过一整类（drinks / winText / wheelCls…），
+ * 判据是：**data 里声明的字段，wxml 要么引用、要么 js 里读**，否则就是死的。
+ */
 
 const NICK_KEY = 'nick'
 
 Page({
   data: {
-    ic: _IC,
     nick: '',
     muted: false,
     hapticOn: true,

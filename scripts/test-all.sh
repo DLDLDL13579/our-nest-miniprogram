@@ -108,6 +108,10 @@ node scripts/check-text-overflow.js 2>/dev/null
 # ★ 2026-11-03：音效结尾有没有爆音（判据是"末帧"，不是"尾部能量"）
 node scripts/check-audio-tail.js 2>/dev/null || python3 scripts/check-audio-tail.py 2>/dev/null
 
+# ★ 2026-11-03：同一音效的多个变体，响度必须一致
+#   （tick 三份差过 6.4dB、dice-settle 三份差过 2.1dB —— 都是"各自定一个目标值"造成的）
+python3 scripts/check-audio-variants.py 2>/dev/null
+
 # ★ 2026-11-03：注释里说"有断言"的地方，断言是否真的存在
 python3 scripts/check-claims.py 2>/dev/null
 

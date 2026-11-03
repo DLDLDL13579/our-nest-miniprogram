@@ -29,8 +29,27 @@ import wave
 bad = []
 checked = 0
 
-for p in sorted(glob.glob(os.path.join(os.path.dirname(__file__), '..',
-                                        'miniprogram', 'game', 'audio', '*.wav'))):
+"""
+
+★ 2026-11-03 补两个漏洞（都是"断言看着在工作，其实漏了一半"）：
+
+① **原来只扫分包 `game/audio/`，漏掉主包 `audio/`。**
+   主包里躺着 `tick.wav`（「我的」页试听用的那个），它一样会在扬声器上放，
+   一样能爆音 —— 而它从来没被这条断言看过。
+
+② **5% 的阈值太宽，把真实的爆音放过去了。**
+   `tick-2` 对齐响度后末帧是 403，相对峰值 2.4% —— 低于 5%，静默通过。
+   而 403 在 16bit 下约 -38dBFS，从那里一步跳到 0 是听得见的「嗒」。
+   阈值收到 **1%**，并且报告里带绝对值和 dBFS ——
+   否则"2.4%"读起来像是无关紧要。
+"""
+
+MP = os.path.join(os.path.dirname(__file__), '..', 'miniprogram')
+AUDIO_FILES = []
+for _d in (os.path.join(MP, 'game', 'audio'), os.path.join(MP, 'audio')):
+    AUDIO_FILES.extend(glob.glob(os.path.join(_d, '*.wav')))
+
+for p in sorted(AUDIO_FILES):
     name = os.path.basename(p)[:-4]
     with wave.open(p) as w:
         n = w.getnframes()
@@ -42,8 +61,10 @@ for p in sorted(glob.glob(os.path.join(os.path.dirname(__file__), '..',
         continue
     checked += 1
     last = abs(data[-1]) / peak
-    if last > 0.05:
-        bad.append('%s：末帧 %.1f%% 峰值（结尾没淡到 0，会"咔"一声）' % (name, last * 100))
+    if last > 0.01:
+        bad.append('%s：末帧 %d / %d = %.1f%% 峰值（约 %.0f dBFS）—— 结尾没淡到 0，会"咔"一声'
+                   % (name, abs(data[-1]), peak, last * 100,
+                      20 * np.log10(max(1.0, abs(data[-1])) / 32768)))
 
 if bad:
     print('  ✗ 这些音效结尾有爆音风险：')
@@ -51,4 +72,4 @@ if bad:
         print('    ' + b)
     sys.exit(1)
 
-print('  ✓ %d 个音效的末帧都已淡到 0（没有爆音）' % checked)
+print('  ✓ %d 个音效的末帧都已淡到 0（扫了主包 + 分包全部 wav）' % checked)

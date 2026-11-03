@@ -5555,3 +5555,63 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 转盘时长两处一致（CSS ' + cssMs + 'ms = wheelDur ' + jsMs + 'ms），且用缓动曲线')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**页面 data 里声明的字段必须有人读**
+ *
+ * `me.js` 里躺着这两行：
+ *     const _IC = iconSet.build(['dice', 'chevronRight'], '#C4553F')
+ *     data: { ic: _IC, ... }
+ * 而 `me.wxml` 里 `ic` 出现 **0 次**、`<image>` 标签 **0 个** ——
+ * 图标早改成内联 SVG 的 class 写法了，这个对象从头到尾没人读过。
+ *
+ * 不报错、不影响功能，只是白算 + 多 require 一个模块（iconSet 连带整个 icons.js）。
+ * 这类"算了不渲染"在项目里记过一整类：drinks / winText / wheelCls / mineDieIn…
+ *
+ * ⚠️ 判据的坑：不能只看 wxml。`ic` 这种**图标集**在模板里写的是 `ic.xxx`，
+ *    而纯正则会把它当"没引用"。所以判据是「wxml 引用 **或** js 里 this.data 读过
+ *    **或** 它是个被 wxml 用过前缀的对象」—— 三者之一即放行。
+ *    （第一版没考虑 `ic.` 形式，把 me 页的 ic 报成死字段 —— 假阳性。）
+ * ========================================================================== */
+{
+  const pages = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
+      const p = path.join(d, e.name)
+      if (e.isDirectory()) return walk(p)
+      if (e.name.endsWith('.js')) pages.push(p)
+    })
+  }
+  /* ★ 必须同时扫主包和分包 —— 只扫 pages/ 会让这条断言在房间页上变成废纸 */
+  walk(path.join(ROOT, 'miniprogram/pages'))
+  walk(path.join(ROOT, 'miniprogram/game'))
+
+  const dead = []
+  pages.forEach((f) => {
+    const wxmlPath = f.replace(/\.js$/, '.wxml')
+    if (!fs.existsSync(wxmlPath)) return
+    const js = fs.readFileSync(f, 'utf8')
+    const wxml = fs.readFileSync(wxmlPath, 'utf8')
+    const m = /\n  data: \{([\s\S]*?)\n  \},\n/.exec(js)
+    if (!m) return
+    const keys = [...m[1].matchAll(/^\s{4}([a-zA-Z_][\w]*)\s*:/gm)].map((x) => x[1])
+    keys.forEach((k) => {
+      /* ① 模板里作为整名或前缀对象被用到 */
+      const inWxml = new RegExp('\\{\\{[^}]*\\b' + k + '\\b').test(wxml) ||
+                     new RegExp('\\{\\{[^}]*\\b' + k + '\\.').test(wxml)
+      /* ② js 里读过它 */
+      const read = new RegExp('this\\.data\\.' + k + '\\b').test(js)
+      /* ③ 被当对象展开给别处（形如 `...this.data.x`）—— 极少数情况放行 */
+      const spread = new RegExp('\\.\\.\\.\\s*this\\.data\\.' + k + '\\b').test(js)
+      if (!inWxml && !read && !spread) {
+        dead.push(path.relative(ROOT, f) + ' → ' + k)
+      }
+    })
+  })
+
+  assert.deepStrictEqual(dead, [],
+    '这些 data 字段声明了却没人读（白算 + 白占内存）：\n    ' + dead.join('\n    ') +
+    '\n    要么接到模板上，要么删掉。')
+  ok('★ 页面 data 字段全部有人读（扫了主包 + 分包 ' + pages.length + ' 个 js）')
+}
