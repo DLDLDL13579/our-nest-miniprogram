@@ -563,3 +563,24 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
 
   console.log('  ✓ 大厅每个状态都有玩法卡（' + Object.keys(mock.states || {}).length + ' 个状态）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**"8 人局挤不挤"必须用一个真能看到按钮的状态来测**
+ *
+ * 我加过 `liar8`（8 人），但它的 `myTurn` 是 false ——
+ * 于是界面显示"等老王叫完"，**根本没有叫骰选项**，测不到我想测的东西。
+ *
+ * 这是"自欺"的一种：**以为加了状态就覆盖了场景，而字段值让它走了另一条分支。**
+ * ========================================================================== */
+{
+  const mock = require('./ui-render/mock/room.js')
+  const s = typeof mock.states.liar8Mine === 'function' ? mock.states.liar8Mine() : null
+
+  assert.ok(s, '★ 需要 liar8Mine 状态（8 人 + 轮到我）—— liar8 的 myTurn 是 false，看不到叫骰区')
+  assert.strictEqual(s.room.myTurn, true,
+    '★ liar8Mine 的 myTurn 必须是 true，否则它走的是"等别人"分支')
+  assert.ok(s.room.count >= 8,
+    '★ 这个状态要是满员（8 人），否则测不到"人多时挤不挤"')
+
+  console.log('  ✓ 8 人局有"轮到我"的状态（myTurn=' + s.room.myTurn + '，' + s.room.count + ' 人）')
+}

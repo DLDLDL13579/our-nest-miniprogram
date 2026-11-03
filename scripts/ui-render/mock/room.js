@@ -640,6 +640,23 @@ module.exports = {
      *   进行中界面从没被渲染过。那里要同时容纳：8 人的骰子数、
      *   叫骰选项（6 个按钮）、开/劈，以及当前叫法。
      */
+    /*
+     * ★★ 2026-11-03：**8 人 + 轮到我**（这才是"叫骰区挤不挤"的真实场景）。
+     *
+     *   `liar8` 我设的是 `myTurn: false`，于是它显示"等老王叫完"——
+     *   **那个界面上根本没有叫骰选项**，所以它测不到我上一轮说的那件事。
+     *
+     *   ⚠️ 这是"自欺"的一种：我以为加了状态就覆盖了场景，而状态的字段值让它走了另一条分支。
+     */
+    liar8Mine: () => {
+      const base = module.exports.states.liar8()
+      if (base.room) {
+        base.room.myTurn = true
+        base.room.turnName = '邓林'
+      }
+      return base
+    },
+
     liar8: () => {
       const base = module.exports.states.liarPlay()
       const names = ['邓林','倩萍','阿杰','老王','小美','大刘','阿强','胖虎']
