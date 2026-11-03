@@ -1146,6 +1146,16 @@
       </view>
 
       <!-- 别人的牌：全部看得见。这就是你的全部信息 -->
+      <!--
+        ★ 2026-11-03：把「几个人同意了」摆出来。
+          服务端一直在给 agreedCount / needCount，但**模板从来没渲染过**
+          —— 玩家只能自己数那几个头像上的"同意"，而酒桌上是斜着看屏幕的。
+      -->
+      <view wx:if="{{room.fh.needCount}}" class="fh-tally">
+        <text class="fh-tally-n">{{room.fh.agreedCount}} / {{room.fh.needCount}}</text>
+        <text class="fh-tally-s">人同意就开牌</text>
+      </view>
+
       <view class="fh-others">
         <view wx:for="{{room.fh.others}}" wx:key="seat"
               class="fh-oc {{item.agreed ? 'ok' : ''}} {{room.fh.turnSeat === item.seat ? 'now' : ''}}">
@@ -1168,10 +1178,29 @@
         <view class="fh-mtext">
           <text class="fh-mt">你的牌</text>
           <text class="fh-ms">只有别人看得见 · 这一圈你看不到</text>
+          <!--
+            ★ 2026-11-03：换了几次牌（每次半杯，是笔真账）。
+              服务端一直算 mySwitches，模板从来没渲染。
+          -->
+          <text wx:if="{{room.fh.mySwitchText}}" class="fh-msw">{{room.fh.mySwitchText}}</text>
         </view>
       </view>
 
       <!-- 进度：谁同意了 -->
+      <!--
+        ★ 2026-11-03：今晚各人喝了几杯。
+          服务端一直算 fh.drinks，模板从没渲染 —— 而"我今晚到底喝了几杯"
+          正是酒桌上最常出现、又最难记的一句话。
+      -->
+      <view wx:if="{{room.fh.drinks.length}}" class="fh-seats">
+        <view wx:for="{{room.fh.drinks}}" wx:key="name"
+              class="fh-seat {{item.isMe ? 'me' : ''}}">
+          <text class="fh-seat-n">{{item.name}}</text>
+          <text wx:if="{{item.cups > 0}}" class="fh-seat-s drank">{{item.cups}} 杯</text>
+          <text wx:else class="fh-seat-s">还没喝</text>
+        </view>
+      </view>
+
       <view wx:if="{{room.fh.waitText}}" class="fh-wait">{{room.fh.waitText}}</view>
 
       <!-- 操作 -->
@@ -1250,7 +1279,8 @@
           <block wx:if="{{room.bt.myTurn}}">
             <view class="bt-acts">
               <view class="btn main bigbtn" bindtap="btDraw">翻第三张</view>
-              <view class="btn ghost" bindtap="btBail">认低威 · 喝半杯</view>
+              <!-- 认低威的代价来自服务端下发的 bailCost，不在模板里写死 -->
+              <view class="btn ghost" bindtap="btBail">认低威 · 喝 {{room.bt.bailCost}} 杯</view>
             </view>
           </block>
           <view wx:else class="pk-wait">
@@ -1261,6 +1291,11 @@
 
         <!-- ③ 刚射完：把这一把的牌和结果摊开 -->
         <block wx:else>
+          <!--
+            ★ 2026-11-03：服务端一直在给 round / waitingNames，模板从没渲染。
+              "第几把"是酒桌上真会问的；"还等谁"能让桌上知道该催谁。
+          -->
+          <view wx:if="{{room.bt.round}}" class="bt-round">第 {{room.bt.round}} 把</view>
           <view wx:if="{{room.bt.last}}" class="bt-result {{room.bt.last.cups > 0 ? 'bad' : 'good'}}">
             <view class="bt-r-title">{{room.bt.last.title}}</view>
             <view class="bt-r-detail">{{room.bt.last.detail}}</view>
@@ -1274,6 +1309,7 @@
           <view class="pk-wait">
             <text class="pw-t waitpulse">{{room.bt.myTurn ? '轮到你了' : '等 ' + room.bt.turnName + ' 押注'}}</text>
             <text class="pw-s">下一位直接押注，不用点「下一轮」</text>
+            <text wx:if="{{room.bt.waitingNames.length}}" class="pw-s">后面还等 {{room.bt.waitingNames.length}} 位</text>
           </view>
         </block>
 

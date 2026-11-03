@@ -3541,3 +3541,53 @@
   margin-top: 20rpx; text-align: center;
   font-size: 26rpx; color: var(--gold);
 }
+
+/* ============================================================
+   额头牌：同意计数 + 换牌代价（2026-11-03）
+   ------------------------------------------------------------
+   两个信息服务端一直在算，但模板从来没渲染过 ——
+   玩家只能自己数头像上的"同意"，或凭印象记自己换了几次牌。
+   ============================================================ */
+.fh-tally {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 8rpx; margin: 8rpx 0 18rpx;
+}
+.fh-tally-n {
+  font-size: 34rpx; font-weight: 800; color: var(--gold);
+  letter-spacing: 1rpx;
+  /* 等宽数字：变化时宽度不跳，整行不会左右抖 */
+  font-variant-numeric: tabular-nums;
+}
+.fh-tally-s { font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+
+.fh-msw {
+  display: block; margin-top: 10rpx;
+  font-size: 20rpx; color: var(--gold);
+}
+
+/* 射龙门：第几把（酒桌上真会问"咱们第几把了"） */
+.bt-round {
+  text-align: center; margin: 6rpx 0 12rpx;
+  font-size: 20rpx; color: rgba(255, 255, 255, .58);
+  letter-spacing: 1rpx;
+}
+
+/* 额头牌：今晚各人喝了几杯（复刻射龙门/金花的座位条） */
+.fh-seats {
+  display: flex; flex-wrap: wrap; justify-content: center;
+  gap: 10rpx; margin-top: 18rpx;
+}
+.fh-seat {
+  display: flex; align-items: baseline; gap: 8rpx;
+  padding: 8rpx 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, .06);
+  border: 2rpx solid rgba(255, 255, 255, .10);
+}
+.fh-seat.me {
+  background: rgba(232, 179, 60, .14);
+  border-color: rgba(232, 179, 60, .48);
+}
+.fh-seat-n { font-size: 20rpx; color: var(--cream) }
+.fh-seat-s { font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+.fh-seat-s.drank { color: rgba(224, 113, 79, .92) }

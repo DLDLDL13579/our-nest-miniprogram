@@ -888,7 +888,6 @@ function shape(room, openid) {
          *   结算（reveal）之后才揭晓，那一刻是整局最想看的东西。
          */
         myCard: reveal && me.fhCard ? me.fhCard : null,
-        myCardText: reveal && me.fhCard ? poker.cardText(me.fhCard) : '',
         mySeat: me.seat,
         /*
          * ★ 别人的牌：**全部可见**，一个都不藏。
@@ -911,7 +910,6 @@ function shape(room, openid) {
         myTurn: !reveal && !!turnP && turnP.openid === openid,
         iAgreed: agreed.indexOf(openid) >= 0,
         /* 已同意 / 还没表态的人名 —— 桌上要能一眼看出卡在谁身上 */
-        agreedNames: live.filter(p => agreed.indexOf(p.openid) >= 0).map(p => p.name),
         waitingNames: live.filter(p => agreed.indexOf(p.openid) < 0 && p.openid !== openid).map(p => p.name),
         /* 我已经同意了几个 —— 界面用「还差几个人」比列名字更省地方 */
         agreedCount: live.filter(p => agreed.indexOf(p.openid) >= 0).length,
@@ -921,7 +919,20 @@ function shape(room, openid) {
         /* 所有人的换牌量 —— 公开信息（桌上都看见了谁在猛换） */
         drinks: live.map(p => ({ name: p.name, cups: Number(drinks[p.openid]) || 0 })),
         /* 我把指令改过几次 —— 用来给"改规则"这个动作一点分量 */
-        mySwitches: Number(me.fhSwitch) || 0,
+        /*
+         * ★ 2026-11-03：换牌代价的**成品文案**在服务端拼好。
+         *
+         *   模板里写 `{{room.fh.mySwitches * 0.5}}` 也能算，但：
+         *     · 3 × 0.5 = 1.5 没问题，可一旦有人把常量改成 0.3，
+         *       就会出现 0.8999999999999999 这种浮点尾巴
+         *     · 项目一贯做法是"派生字段只在一处算"，模板不承担计算
+         */
+        mySwitchText: (function () {
+          const k = Number(me.fhSwitch) || 0
+          if (!k) return ''
+          const cups = k * 0.5
+          return '你换了 ' + k + ' 次牌 · 喝 ' + (cups % 1 === 0 ? cups : cups.toFixed(1)) + ' 杯'
+        })(),
         /* 结算结果 */
         result: reveal ? (room.fhLast || null) : null
       }
@@ -953,7 +964,6 @@ function shape(room, openid) {
         bet: Number(room.btBet) || 0,
         betText: (Number(room.btBet) || 0) ? (Number(room.btBet)) + ' 杯' : '',
         gate: gate,
-        third: third,
         /* 龙门宽度提示：只给文案，不参与判定（见 betweenRules.widthHint） */
         widthHint: gate.length === 2 ? betweenRules.widthHint({ r: gate[0].r }, { r: gate[1].r }) : '',
         last: room.btLast || null,

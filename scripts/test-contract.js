@@ -5693,3 +5693,65 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些定时器只 push 不注销，会无界堆积：\n    ' + bad.join('\n    '))
   ok('★ 定时器排期统一走自注销入口（feedback._schedule / room._after）')
 }
+
+/* ============================================================================
+ * ★★ shape() 给的字段必须有人用（2026-11-03）
+ *
+ * 幽灵字段（服务端算了、前端从不读）是项目里反复出现的一类浪费：
+ * 它不报错、不占带宽到影响性能的程度，但**意味着一个本该显示的信息没显示**。
+ *
+ * 前面已经有一条"模板引用字段必须由服务端提供"的断言（反方向）。
+ * 这一条是正向的：**服务端给的，要么被模板渲染，要么被 js 读**。
+ * 两边都不用的，就是幽灵。
+ *
+ * ⚠️ 白名单只放"确实不需要前端用"的：
+ *    · 只有服务端逻辑用、纯回显无意义的
+ *    · 给未来用但已明确记录的（要写清理由，不能整类放行）
+ * ========================================================================== */
+{
+  const cloud = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+  const wxml = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxml'), 'utf8')
+  const js = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+
+  /*
+   * 每个玩法块返回的顶层字段。用"块名 → 字段列表"的显式声明，
+   * 而不是正则去抽 return {} —— 后者的缩进一变就抽错，会让断言静默变空。
+   */
+  const BLOCKS = ['fh', 'bt']
+  const ghosts = []
+  BLOCKS.forEach((blk) => {
+    const i = cloud.indexOf('\n    ' + blk + ': (function () {')
+    if (i < 0) { ghosts.push(blk + '：shape 里找不到这个块'); return }
+    const j = cloud.indexOf('\n    })(),', i)
+    const body = cloud.slice(i, j > 0 ? j : i + 6000)
+    /* 只看 return { ... } 这一层（缩进 8 空格的键） */
+    const r0 = body.indexOf('return {')
+    const r1 = body.indexOf('\n      }', r0)
+    const ret = body.slice(r0, r1 > 0 ? r1 : undefined)
+    const keys = (ret.match(/^\s{8}(\w+):/gm) || []).map((x) => x.trim().replace(':', ''))
+    assert.ok(keys.length >= 5, blk + ' 只解析出 ' + keys.length + ' 个字段，解析器可能坏了')
+
+    /*
+     * 白名单：确实**不需要前端读**的字段，逐个说清理由。
+     * ⚠️ 不能整类放行 —— 白名单一旦宽了就退化成废断言。
+     */
+    const NO_FRONTEND_USE = {
+      /* myDrink 是 drinkText 的原始值；模板显示的是拼好的文案（避免浮点尾巴），
+         原始值只用于服务端累加，前端拿它没有意义 */
+      'bt.myDrink': 'drinkText 已经覆盖了它要表达的信息'
+    }
+    keys.forEach((k) => {
+      if (NO_FRONTEND_USE[blk + '.' + k]) return
+      /* 模板或 js 里出现过 `xxx.k` 就算用了（嵌套路径也算） */
+      const inWxml = new RegExp('\\.' + blk + '\\.' + k + '\\b').test(wxml)
+      const inJs = new RegExp('\\.' + blk + '\\.' + k + '\\b').test(js) ||
+                   new RegExp('\\b' + k + '\\b[^:]*:[^:]*' + blk).test(js)
+      if (!inWxml && !inJs) ghosts.push(blk + '.' + k)
+    })
+  })
+
+  assert.deepStrictEqual(ghosts, [],
+    '这些字段服务端算出来了，但模板和 js 都没用 —— 要么渲染它，要么别算：\n    ' +
+    ghosts.join('\n    '))
+  ok('★ 两个新玩法的 shape 字段都有人用（没有幽灵字段）')
+}

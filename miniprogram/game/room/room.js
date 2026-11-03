@@ -1732,10 +1732,21 @@ Page({
     }
 
     const prevPhase = (this.data.room && this.data.room.phase) || ''
+    const dec = this.decorate(raw)
     const patch = Object.assign({}, extra || {}, {
-      room: this.decorate(raw),
+      room: dec,
       stage: stageOf(raw.phase)
     })
+    /*
+     * ★ 2026-11-03：射龙门的押注档位要在**拿到服务端房间之后**重算。
+     *
+     *   `onLoad` 里第一次算的时候 `this.data.room` 还是 null ——
+     *   那时只能用本地常量兜底。真正的区间（minBet / maxBet）是服务端下发的，
+     *   必须等这里才有。
+     *
+     *   只在射龙门局里算，别让每个玩法每次轮询都跑一遍循环。
+     */
+    if (dec && dec.game === 'between' && dec.bt) patch.betChips = this._betChips()
     this.setData(patch)
     if (prevPhase !== raw.phase) {
       const wasLobby = prevPhase === 'lobby'
@@ -2699,9 +2710,22 @@ Page({
    * 押注选项：从 betweenRules 的区间**自动生成**，不在这里手写 0.5/1/1.5…
    * 两处手写必然不同步（项目里"派生字段 7 个出口"就是这个病）。
    */
+  /*
+   * 押注档位。
+   *
+   * ★ 2026-11-03：区间**优先读服务端下发的** minBet / maxBet。
+   *   原来这里直接读 `betweenRules.MIN_BET` —— 那是同一份规则的**第二个出口**：
+   *   云端改了押注区间（比如从 0.5~3 改成 0.5~5），前端还按旧区间渲染按钮，
+   *   两者不一致时玩家点下去会被服务端拒，而**本地看不出为什么**。
+   *
+   *   只有服务端还没下发时（首帧、或 shape 里 bt 为 null）才退回本地常量。
+   */
   _betChips() {
+    const bt = (this.data.room && this.data.room.bt) || null
+    const lo = bt && bt.minBet > 0 ? bt.minBet : betweenRules.MIN_BET
+    const hi = bt && bt.maxBet > 0 ? bt.maxBet : betweenRules.MAX_BET
     const out = []
-    for (let v = betweenRules.MIN_BET; v <= betweenRules.MAX_BET + 1e-9; v += 0.5) {
+    for (let v = lo; v <= hi + 1e-9; v += 0.5) {
       out.push({ v: v, t: (v % 1 === 0 ? v : String(v)) + ' 杯' })
     }
     return out
