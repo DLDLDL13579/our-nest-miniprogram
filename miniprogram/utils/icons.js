@@ -147,6 +147,12 @@ const PATHS = {
    * 球偏左一点，暗示"有可能打偏"（那正是要赌的部分）。
    */
   gate: '<path d="M5.2 3.6v17"/><path d="M18.8 3.6v17"/><path d="M5.2 6.4h13.6"/><circle cx="10.4" cy="12.6" r="2.5" fill="currentColor" stroke="none"/>',
+  /*
+   * 红黑单双大小（2026-11-03，第 8 个玩法）。
+   * 画的是这个玩法的核心动作：**一排骰子，其中一个被划掉**。
+   * 每轮就是在做这件事 —— 按规则筛掉一部分，剩下的重摇。
+   */
+  sieve: '<rect x="3.2" y="6.4" width="4.4" height="4.4" rx="1" fill="currentColor" stroke="none"/><rect x="9.8" y="6.4" width="4.4" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M3.2 18.2l11-11" stroke-width="2.2"/><rect x="16.4" y="13.6" width="4.4" height="4.4" rx="1"/>',
 
   /* ---------- 情绪 ---------- */
   moodHappy: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/><circle cx="9.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.6" r="1" fill="currentColor" stroke="none"/>',

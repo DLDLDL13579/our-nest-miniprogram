@@ -70,3 +70,4 @@ sync_one miniprogram/utils/liarRules.js "liarRules.js" cloudfunctions/room/liarR
 # ★ 2026-11-03：射龙门的判定器（第 7 个玩法）。它同样是"纯函数 + 云端要一份拷贝"，
 #   不加进来就会变成：前端按新规则判、云端按旧规则判 —— 而**两边都不报错**。
 sync_one miniprogram/utils/betweenRules.js "betweenRules.js" cloudfunctions/room/betweenRules.js
+sync_one miniprogram/utils/sieveRules.js "sieveRules.js" cloudfunctions/room/sieveRules.js

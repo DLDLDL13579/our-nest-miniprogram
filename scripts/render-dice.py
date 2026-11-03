@@ -221,7 +221,7 @@ def march_ortho(sdf_world, size, ss, extent=0.95, cam_z=3.0, t_max=4.5,
     return ox, oy, t, hit, W, H
 
 
-def render_dice(value, size=512, ss=2):
+def render_dice(value, size=512, ss=2, body='ivory'):
     """
     渲染骰子的一个朝向：**顶面（朝上的那面）** 是 value。
 
@@ -333,8 +333,16 @@ def render_dice(value, size=512, ss=2):
             Hv = Hv / np.linalg.norm(Hv)
             return np.maximum(n @ Hv, 0.0) ** shin
 
-        # 骨白材质（略带暖调，不是纯白）
-        base_bone = np.array([0.945, 0.915, 0.855])
+        # 骰子本体材质
+        #
+        # ★ 2026-11-03：加红色一套（「红黑单双大小」玩法要用）。
+        #   红色不是随便挑的 —— 它必须和骨白在**暗光小尺寸**下也能一眼分清，
+        #   所以饱和度给足（R 高、G/B 低），亮度和骨白接近（不改变光照层次）。
+        #   点数仍用深色，因为红底上的深点比红底上的白点更容易读。
+        if body == 'red':
+            base_bone = np.array([0.760, 0.230, 0.205])
+        else:
+            base_bone = np.array([0.945, 0.915, 0.855])
         # ---- 点数坑内填深色 ----
         #
         # 为什么必须填色：坑壁受光会在凹陷周围形成一圈亮环，坑内若与表面同色，
@@ -524,6 +532,9 @@ def main():
     ap.add_argument('--out', default='miniprogram/game/images/dice')
     ap.add_argument('--no-trim', action='store_true',
                     help='保留画布留白，不裁剪到骰子包围盒')
+    ap.add_argument('--body', default='ivory',
+                    choices=['ivory', 'red'],
+                    help='骰子本体配色：ivory=骨白（默认） red=红（红黑单双大小用）')
     ap.add_argument('--colors', type=int, default=64,
                     help='调色板颜色数（默认 64，实测色差 0.55/255；256 = 不量化）')
     args = ap.parse_args()
@@ -539,7 +550,7 @@ def main():
 
     # 先全部渲染到内存，再统一裁剪 —— 必须统一，
     # 否则每张图各自裁剪会得到不同尺寸，CSS 里没法用一个固定的宽高比。
-    imgs = {v: render_dice(v, size=args.size, ss=args.ss) for v in range(1, 7)}
+    imgs = {v: render_dice(v, size=args.size, ss=args.ss, body=args.body) for v in range(1, 7)}
 
     if not args.no_trim:
         # 六张取并集包围盒。轮廓由立方体决定、点数都在内部，
