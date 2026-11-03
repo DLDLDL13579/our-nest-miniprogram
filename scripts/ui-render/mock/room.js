@@ -1233,6 +1233,41 @@ module.exports = {
      *   中心按钮像圆片）我在本地一次都看不到。
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
+    /* ============ 众口一致（2026-11-03）============ */
+    csInput: () => ({
+      stage: 'playing', csInput: '65',
+      room: pkRoom({
+        game: 'consensus', phase: 'playing', host: true, count: 3,
+        gameName: '众口一致', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        cs: {
+          round: 1, submitted: false, submittedCount: 1, needCount: 3,
+          waitingNames: ['倩萍', '阿杰'], iAmHost: true,
+          spreadRatio: 0.3, minValue: 0, maxValue: 9999, reveal: null, last: null
+        }
+      })
+    }),
+    csReveal: () => {
+      const base = module.exports.states.csInput()
+      base.csInput = ''
+      base.room.cs = {
+        round: 1, submitted: true, submittedCount: 3, needCount: 3,
+        waitingNames: [], iAmHost: true,
+        spreadRatio: 0.3, minValue: 0, maxValue: 9999,
+        reveal: {
+          answers: [
+            { seat: 1, name: '邓林', value: 10 },
+            { seat: 2, name: '倩萍', value: 12 },
+            { seat: 3, name: '阿杰', value: 90 }
+          ],
+          pass: false, spread: 80, allowed: 27, min: 10, max: 90, median: 13,
+          outlierSeat: 3, outlierName: '阿杰',
+          detail: '最远差 80（超过 27），阿杰 离得最远', iAmOutlier: false
+        },
+        last: null
+      }
+      return base
+    },
+
     /* ============ 红黑单双大小（2026-11-03）============ */
     /* 轮到我喊规则 */
     svTurn: () => ({

@@ -3532,7 +3532,12 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   /* 已知的例外：这些是靠别的方式给反馈（动画/跳转），不是按压型按钮 */
   /* 不需要按压反馈的：输入框（有聚焦态）、遮罩（点空白关闭）、
      弹层本体（catchtap 只是为了阻止冒泡，本身不可点） */
-  const ALLOW = ['gcard', 'textbtn', 'aw-opt', 'tin', 'mask', 'diag-sheet', 'sheet', 'cardta']
+  const ALLOW = [
+    'gcard', 'textbtn', 'aw-opt', 'mask', 'diag-sheet', 'sheet', 'cardta',
+    /* 输入框：反馈是**聚焦态**（光标 + 键盘弹出），不是按压变暗。
+       2026-11-03 加 cs-input（众口一致的数值输入）—— 和 tin 同一类。 */
+    'tin', 'cs-input'
+  ]
   const real = bad.filter(x => !ALLOW.some(a => x.endsWith('.' + a)))
   assert.deepStrictEqual(real, [],
     '这些可点元素没有 :active 按下反馈（点下去像没反应）：\n    ' + real.join('\n    '))

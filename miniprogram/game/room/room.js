@@ -233,7 +233,8 @@ const HAS_SETTLE_CUE = {
   wheel: null,              /* 转盘停在扇区那一刻已经响了 */
   forehead: 'revealHit',    /* ★ 新补：开牌揭晓的重击 */
   between: 'diceSettleLast', /* ★ 新补：最后一把落定的收尾声 */
-  sieve: 'penalized'       /* ★ 第 8 个玩法：有人骰子拿光了 = 有人要喝 */
+  sieve: 'penalized',      /* ★ 第 8 个玩法：有人骰子拿光了 = 有人要喝 */
+  consensus: 'uwReveal'    /* ★ 第 9 个玩法：揭晓那一刻（可能是全场通过，也可能点名）*/
 }
 
 Page({
@@ -379,6 +380,8 @@ Page({
 
     /* 金花确认卡：null 或 { kind: 'swap'|'fold', what: 'public'|'mine' } */
     pkAsk: null,
+    /* 众口一致：输入框的本地值（不交答案时不发请求） */
+    csInput: '',
     /* 射龙门：认低威的二次确认（代价固定，但押注额会作废） */
     btAskBail: false,
     /* 押注档位（从 betweenRules 自动生成，不手写） */
@@ -2703,6 +2706,73 @@ Page({
     }, ms)
     this._cupTimers.push(id)
     return id
+  },
+
+  /* ================= 众口一致（2026-11-03） ================= */
+
+  /**
+   * 输入框变化。
+   *
+   * ★ 只做本地状态，不发请求 —— 交答案是一次显式点击（`csSubmit`）。
+   *   为什么不做"输完自动交"：这个玩法的核心是"想清楚再填"，
+   *   打错一位就交上去会让人很不爽。
+   */
+  csOnInput(e) {
+    this.setData({ csInput: String(e.detail.value || '') })
+  },
+
+  /** 交答案（一次定终身，所以给二次确认？—— 不给，见下） */
+  async csSubmit() {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.cs || this._csBusy) return
+    const raw = String(this.data.csInput || '').trim()
+    if (!raw) {
+      wx.showToast({ title: '先填一个数', icon: 'none', duration: 1600 })
+      return
+    }
+    const v = Number(raw)
+    if (!isFinite(v)) {
+      wx.showToast({ title: '要填数字', icon: 'none', duration: 1600 })
+      return
+    }
+    /*
+     * ★ 不做二次确认：这个玩法每轮都要填一次，加确认就多一次点击（铁律①）。
+     *   误填的代价也小 —— 只是这一轮的分歧算错了，不涉及喝酒的真代价。
+     *   （对比金花换牌要确认：那个是花真钱且不可逆。）
+     */
+    this._csBusy = true
+    sfx.play('tap')
+    const r = await call('room', { action: 'csAct', value: v, id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没交上，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._csBusy = false
+    if (this.okOrSay(r)) {
+      this.setData({ csInput: '' })
+      /* 收齐时服务端会直接带回 reveal —— 用轻响提示"出结果了" */
+      if (r.room && r.room.cs && r.room.cs.reveal) feedback.fire('uwReveal')
+      this.applyRoom(r.room)
+    }
+  },
+
+  /** 房主开下一轮 */
+  async csNext() {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.cs || this._csBusy) return
+    this._csBusy = true
+    sfx.play('tapSoft')
+    const r = await call('room', { action: 'csAct', act: 'next', id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没开成，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._csBusy = false
+    if (this.okOrSay(r)) this.applyRoom(r.room)
   },
 
   /* ================= 红黑单双大小（2026-11-03） ================= */

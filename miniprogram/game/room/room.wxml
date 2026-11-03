@@ -1226,6 +1226,65 @@
       </view>
     </block>
 
+    <!-- ============ 众口一致（2026-11-03，第 9 个玩法） ============
+      唯一"可能全赢"的玩法：全场把答案收进窄区间就都不喝。
+      界面必须做到两件事：
+        ① 收答案期间**看不到任何人的值**（连自己的都不回显）
+        ② 揭晓时**一次性全亮**，并直接说清是谁离得最远
+    -->
+    <block wx:elif="{{room.game === 'consensus'}}">
+      <view class="cs-stage">
+
+        <!-- 收答案阶段 -->
+        <block wx:if="{{!room.cs.reveal}}">
+          <view class="cs-cmd">房主出题，大家各自填一个数</view>
+          <view class="cs-tip">跨度不超过最大值的 30% 就全场通过</view>
+
+          <view class="cs-tally">
+            <text class="cs-tally-n">{{room.cs.submittedCount}} / {{room.cs.needCount}}</text>
+            <text class="cs-tally-s">已交</text>
+          </view>
+
+          <block wx:if="{{!room.cs.submitted}}">
+            <view class="cs-input-row">
+              <input class="cs-input" type="number" placeholder="输入一个整数"
+                     value="{{csInput}}" bindinput="csOnInput" />
+              <view class="btn main cs-submit {{csInput === '' ? 'disabled' : ''}}" bindtap="csSubmit">交</view>
+            </view>
+            <view class="cs-range">范围 {{room.cs.minValue}} ~ {{room.cs.maxValue}}</view>
+          </block>
+          <view wx:else class="cs-done">你交了，等其他人</view>
+
+          <view wx:if="{{room.cs.waitingNames.length}}" class="cs-waiting">
+            还等：<text wx:for="{{room.cs.waitingNames}}" wx:key="*this">{{index ? ' · ' : ''}}{{item}}</text>
+          </view>
+        </block>
+
+        <!-- 揭晓阶段：所有人答案一次亮出 -->
+        <block wx:else>
+          <view class="cs-result {{room.cs.reveal.pass ? 'pass' : 'fail'}}">
+            <view class="cs-rv-t">{{room.cs.reveal.pass ? '全场通过' : '没有通过'}}</view>
+            <view class="cs-rv-d">{{room.cs.reveal.detail}}</view>
+          </view>
+
+          <view class="cs-answers">
+            <view wx:for="{{room.cs.reveal.answers}}" wx:key="seat"
+                  class="cs-ans {{item.seat === room.cs.reveal.outlierSeat ? 'out' : ''}}">
+              <text class="cs-ans-n">{{item.name}}</text>
+              <text class="cs-ans-v">{{item.value}}</text>
+            </view>
+          </view>
+
+          <view class="cs-nums">最小 {{room.cs.reveal.min}} · 最大 {{room.cs.reveal.max}} · 跨度 {{room.cs.reveal.spread}} · 允许 {{room.cs.reveal.allowed}}</view>
+
+          <view wx:if="{{room.cs.iAmHost}}" class="btn main bigbtn" bindtap="csNext">下一轮</view>
+          <view wx:else class="pk-wait">
+            <text class="pw-t waitpulse">等房主开下一轮</text>
+          </view>
+        </block>
+      </view>
+    </block>
+
     <!-- ============ 红黑单双大小（2026-11-03，第 8 个玩法） ============
       这是唯一的「规则本身在变」的玩法：
       每轮由当前玩家临时指定一条筛选规则，所有人按它筛骰、重摇。

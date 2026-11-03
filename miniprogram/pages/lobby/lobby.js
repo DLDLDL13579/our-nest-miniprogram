@@ -247,6 +247,20 @@ Page({
   /* ---------- 开关 ---------- */
 
   /* 静音：酒桌上可能不方便出声，一键关掉且记得住 */
+  /**
+   * 点「下面还有 N 个」—— 滚到底部。
+   *
+   * ★ 为什么给这个方法：那行提示本身就是"引导"，点了要有反应；
+   *   只写文案不给动作，玩家会去试，试了没反应就是"点了没反应"。
+   *   （项目里这类问题修过 13 处。）
+   */
+  scrollToMore() {
+    /* 点击必须有声音 —— 断言 ⑮ 要求每个 bindtap 方法自己播 */
+    sfx.play('tapSoft')
+    if (typeof wx.pageScrollTo !== 'function') return
+    wx.pageScrollTo({ scrollTop: 99999, duration: 300 })
+  },
+
   toggleMute() {
     const m = sfx.setMuted(!this.data.muted)
     this.setData({ muted: m })

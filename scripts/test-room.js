@@ -3658,6 +3658,157 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============================================================================
+   * ㉘ 众口一致（2026-11-03，第 9 个玩法）
+   *
+   * ★★★ 命门：**收齐之前，任何人的答案值都不能下发**（包括自己的）。
+   *   这是唯一"收齐前谁也不给、收齐后全给"的玩法。
+   * ========================================================================== */
+  console.log('\n=== ㉘ 众口一致：收齐前答案绝不外泄 ===')
+  {
+    const K1 = 'oid_cs_1', K2 = 'oid_cs_2', K3 = 'oid_cs_3'
+    OPENID = K1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'consensus' })
+    assert.ok(cr.ok, '建房应成功：' + (cr.msg || ''))
+    const cid = cr.room.id
+    OPENID = K2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+    OPENID = K3
+    await room.main({ action: 'join', code: cr.room.code, name: '丙' })
+    OPENID = K1
+    await room.main({ action: 'start', id: cid })
+    store.rooms.filter(x => x._id === cid)[0].countdownEnd = Date.now() - 100
+    const st = await room.main({ action: 'status', id: cid })
+    assert.strictEqual(st.room.phase, 'playing', '开局后应进 playing')
+    assert.ok(st.room.cs, '★ 响应里必须有 cs 块')
+    assert.strictEqual(st.room.cs.needCount, 3, '三个人')
+    assert.strictEqual(st.room.cs.submittedCount, 0, '开局没人交')
+    assert.strictEqual(st.room.cs.reveal, null, '★ 还没揭晓')
+    ok('★★ 开局：cs 块在，但 reveal 为 null（没有任何答案）')
+
+    /* ---- 交一个答案，验证"别人的答案不会下发" ---- */
+    {
+      OPENID = K1
+      const r = await room.main({ action: 'csAct', value: 60, id: cid })
+      assert.ok(r.ok, '交答案应成功：' + (r.msg || ''))
+      const v = r.room.cs
+      assert.strictEqual(v.submittedCount, 1, '已交 1 个')
+      assert.strictEqual(v.reveal, null, '★★ 只有 1 个人交，不能揭晓')
+      /*
+       * ★★★ 关键断言：响应里不能出现任何 value。
+       *   用 JSON 字符串搜 "value" 太弱（字段名本身含），
+       *   改成搜**数字字面量** —— 答了 60，整包不能出现 60 这个答案值。
+       */
+      const blob = JSON.stringify(r.room.cs)
+      assert.ok(blob.indexOf('"answers"') < 0, '★★ 收齐前不能有 answers 字段')
+      assert.ok(blob.indexOf('60') < 0, '★★ 收齐前连自己的答案值都不能下发（60 没出现在包里）')
+      ok('★★ 收了 1 个答案后，响应里既没有 answers 字段，也搜不到答案值 60')
+    }
+
+    /* ---- 别人视角也看不到 ---- */
+    {
+      OPENID = K2
+      const v = (await room.main({ action: 'status', id: cid })).room.cs
+      assert.strictEqual(v.submittedCount, 1, '别人也能看到"已交 1 个"')
+      assert.strictEqual(v.reveal, null, '★★ 别人更看不到结果')
+      assert.ok(JSON.stringify(v).indexOf('60') < 0, '★★ 别人的答案不能泄漏给 K2')
+      ok('★★ 别人视角：只看到"已交 1 个"，看不到交了什么')
+    }
+
+    /* ---- 不能改答过的 ---- */
+    {
+      OPENID = K1
+      const bad = await room.main({ action: 'csAct', value: 80, id: cid })
+      assert.ok(!bad.ok, '★ 交过就不能改')
+      assert.ok(/已经交过/.test(bad.msg || ''), '理由要说清：' + bad.msg)
+      ok('★ 答案一次定终身（不能改）')
+    }
+
+    /* ---- 非法答案被拒 ---- */
+    {
+      OPENID = K2
+      for (const bad of [-1, 3.5, 10000]) {
+        const r = await room.main({ action: 'csAct', value: bad, id: cid })
+        assert.ok(!r.ok, '答案 ' + bad + ' 应被拒')
+      }
+      ok('非法答案被拒（负数 / 小数 / 超上限）')
+    }
+
+    /* ---- 收齐 → 自动揭晓，全场通过 ---- */
+    {
+      OPENID = K2
+      await room.main({ action: 'csAct', value: 65, id: cid })
+      OPENID = K3
+      const r = await room.main({ action: 'csAct', value: 70, id: cid })
+      assert.ok(r.ok, '最后一个人交应成功')
+
+      const v = r.room.cs
+      assert.ok(v.reveal, '★★ 收齐后必须自动揭晓（不让前端点"开奖"）')
+      assert.strictEqual(v.reveal.answers.length, 3, '★ 揭晓时三个人答案全给出')
+      /*
+       * 答案 60 / 65 / 70：max=70，阈值 = 70*0.3 = 21，spread = 10 → 通过
+       */
+      assert.strictEqual(v.reveal.spread, 10, 'spread 应为 10')
+      assert.strictEqual(v.reveal.allowed, 21, '阈值应为 21（70×0.3）')
+      assert.strictEqual(v.reveal.pass, true, '★★ 跨度 10 ≤ 21 → 全场通过')
+      assert.strictEqual(v.reveal.outlierSeat, 0, '★ 通过时不该点名任何人')
+      assert.ok(/一样|通过/.test(v.reveal.detail), '文案要说明通过：' + v.reveal.detail)
+      ok('★★ 收齐自动揭晓；跨度 10 ≤ 阈值 21 → 全场通过，不点名')
+    }
+
+    /* ---- 房主开下一轮 ---- */
+    {
+      OPENID = K1
+      const r = await room.main({ action: 'csAct', act: 'next', id: cid })
+      assert.ok(r.ok, '房主开下一轮应成功：' + (r.msg || ''))
+      assert.strictEqual(r.room.cs.reveal, null, '★ 新一轮 reveal 清空')
+      assert.strictEqual(r.room.cs.submittedCount, 0, '★ 答案清空')
+      assert.strictEqual(r.room.cs.round, 2, '轮次 +1')
+      ok('★ 房主开下一轮：答案清空、轮次 +1')
+    }
+
+    /* ---- 非房主不能开下一轮 ---- */
+    {
+      OPENID = K2
+      const bad = await room.main({ action: 'csAct', act: 'next', id: cid })
+      assert.ok(!bad.ok, '★ 非房主不能开下一轮')
+      assert.ok(/房主/.test(bad.msg || ''), '理由要说清：' + bad.msg)
+      ok('★ 只有房主能开下一轮')
+    }
+
+    /* ---- 不通过：点名离群者 ---- */
+    {
+      OPENID = K1
+      await room.main({ action: 'csAct', value: 10, id: cid })
+      OPENID = K2
+      await room.main({ action: 'csAct', value: 12, id: cid })
+      OPENID = K3
+      const r = await room.main({ action: 'csAct', value: 90, id: cid })
+      const v = r.room.cs.reveal
+      /*
+       * 10 / 12 / 90：max=90，阈值 27，spread=80 → 不通过
+       * 中位数 12；|10-12|=2, |12-12|=0, |90-12|=78 → 离群的是 90（丙）
+       */
+      assert.strictEqual(v.pass, false, '★★ 跨度 80 > 27 → 不通过')
+      assert.strictEqual(v.outlierSeat, 3, '★★ 离群者应是座位 3（丙，答 90）')
+      assert.strictEqual(v.outlierName, '丙', '名字要对')
+      assert.strictEqual(typeof v.iAmOutlier, 'boolean',
+        '★ iAmOutlier 必须是布尔值（不能是 undefined —— 界面拿它判高亮）')
+      ok('★★ 不通过时点名离群者（90 那条被正确挑出）')
+    }
+
+    /* ---- iAmOutlier 按人算 ---- */
+    {
+      OPENID = K3
+      const v = (await room.main({ action: 'status', id: cid })).room.cs
+      assert.strictEqual(v.reveal.iAmOutlier, true, '★ 丙看自己应该是 iAmOutlier=true')
+      OPENID = K1
+      const v2 = (await room.main({ action: 'status', id: cid })).room.cs
+      assert.strictEqual(v2.reveal.iAmOutlier, false, '★ 甲看自己应该是 false')
+      ok('★ iAmOutlier 按 openid 算（不是按座位猜）')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

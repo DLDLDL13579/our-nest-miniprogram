@@ -72,6 +72,7 @@ const liarCount = require('./liarCount.js')
 const liarRules = require('./liarRules.js')
 const betweenRules = require('./betweenRules.js')
 const sieveRules = require('./sieveRules.js')
+const consensusRules = require('./consensusRules.js')
 
 /**
  * 比大小的结算（2026-10-30 抽出来）。
@@ -959,6 +960,64 @@ function shape(room, openid) {
      *     ② 每人剩几颗骰子一直在变，喝了酒之后手数必错
      *     ③ 筛完要重摇，而"筛哪几颗、重摇成什么"必须一次算清
      */
+    /*
+     * ============ 众口一致（2026-11-03）============
+     *
+     * ★★★ 这是**唯一需要"收齐前保密"**的玩法。
+     *
+     *   其它玩法要么全公开（射龙门、红黑单双），要么按 openid 只给自己
+     *   （骰子、金花明牌）。这里是第三种情况：
+     *     **收齐之前谁也不给（包括自己的** —— 给了自己的，旁边的人就能瞟到；
+     *     **收齐之后全给**（所有人一次性看到全部）。
+     *
+     *   ⚠️ 判据：`csReveal === null` 时，只能下发"谁交了 / 还差几个"，
+     *      **绝不能下发任何 `value`**（包括自己的）。
+     *      照抄 sv/bt 的写法会直接把答案透出去，而且不报错。
+     */
+    cs: (function () {
+      if (room.game !== 'consensus') return null
+      const live = (room.players || []).filter(p => p.inRound !== false)
+      const me = live.filter(p => p.openid === openid)[0] || null
+      if (!me) return null
+      const answers = room.csAnswers || {}
+      const reveal = room.csReveal || null
+      const submitted = answers[openid] !== undefined && answers[openid] !== null
+
+      /* 还差谁没交（只给名字，不给值） */
+      const waiting = live
+        .filter(p => answers[p.openid] === undefined || answers[p.openid] === null)
+        .map(p => p.name)
+
+      return {
+        round: Number(room.csRound) || 1,
+        /* 收齐前：只告诉"还差几个"，不给任何答案值 */
+        submitted: submitted,
+        submittedCount: live.filter(p => answers[p.openid] !== undefined && answers[p.openid] !== null).length,
+        needCount: live.length,
+        waitingNames: waiting,
+        iAmHost: room.hostOpenid === openid,
+        /* 判定阈值先告诉玩家（他才知道该往哪个方向靠） */
+        spreadRatio: consensusRules.SPREAD_RATIO,
+        minValue: consensusRules.MIN_VALUE,
+        maxValue: consensusRules.MAX_VALUE,
+        /* 揭晓后：全部答案一次给出（含自己的） */
+        reveal: reveal ? {
+          answers: reveal.answers,
+          pass: !!reveal.pass,
+          spread: reveal.spread,
+          allowed: reveal.allowed,
+          min: reveal.min,
+          max: reveal.max,
+          median: reveal.median,
+          outlierSeat: reveal.outlierSeat,
+          outlierName: reveal.outlierName,
+          detail: reveal.detail,
+          iAmOutlier: reveal.outlierSeat && reveal.outlierSeat === me.seat
+        } : null,
+        /* 我上一轮交了多少（揭晓后才能回看） */
+        last: room.csLast || null
+      }
+    })(),
     sv: (function () {
       if (room.game !== 'sieve') return null
       const live = (room.players || []).filter(p => p.inRound !== false)
@@ -2457,6 +2516,15 @@ exports.main = async (event) => {
           svRound: 1,
           svRule: null,
           svLast: null,
+          /* ---------- 众口一致 ----------
+             csAnswers { openid: number } —— 各人秘密答案（每人只能看到自己的）
+             csRound   第几轮
+             csReveal  揭晓结果（null = 还在收答案）
+             csLast    上一轮结果 */
+          csAnswers: {},
+          csRound: 1,
+          csReveal: null,
+          csLast: null,
           votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
@@ -3750,6 +3818,102 @@ exports.main = async (event) => {
       /* 兜底：动作太多强制结算（只看 pass 分支没用上，所以放在写库前统一判） */
       if (acts + 1 >= 60 && patch.phase !== 'over') {
         doSettle('表态次数到上限，直接开牌')
+      }
+
+      await rooms.doc(room._id).update({ data: patch })
+      const rr = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 众口一致：交答案 / 下一轮 ================= */
+    /*
+     * ★★ 这个玩法的命门：**答案在收齐之前绝不能下发**。
+     *    口头报数会被后面的人搭便车，"判断别人"这件事就消失了。
+     *    所以 `shape()` 里别人的答案要按 openid 过滤掉（见 sv 那边的反向写法）。
+     */
+    if (action === 'csAct') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'consensus') return { ok: false, msg: '这个房间不是众口一致' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
+
+      const players = (room.players || []).map(p => Object.assign({}, p))
+      const live = players.filter(p => p.inRound !== false)
+      const mine = live.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '这一局你只观战' }
+
+      const act = String(event.act || 'submit')
+      const ts = now()
+
+      /* ---------- 房主：清空重开一轮 ---------- */
+      if (act === 'next') {
+        if (room.hostOpenid !== OPENID) return { ok: false, msg: '只有房主能开下一轮' }
+        await rooms.doc(room._id).update({
+          data: {
+            csAnswers: {}, csReveal: null,
+            csLast: room.csReveal || room.csLast || null,
+            csRound: (Number(room.csRound) || 1) + 1,
+            updatedAt: ts
+          }
+        })
+        const rr = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rr.data, OPENID) }
+      }
+
+      /* ---------- 交答案 ---------- */
+      if (room.csReveal) return { ok: false, msg: '这一轮已经揭晓了，等房主开下一轮' }
+      const chk = consensusRules.checkValue(event.value)
+      if (!chk.ok) return { ok: false, msg: chk.why }
+
+      const answers = Object.assign({}, room.csAnswers || {})
+      /*
+       * ★ 交过就不能改：改了等于"看了别人的答案再调自己的"，而答案一旦
+       *   被服务端收下，理论上就存在泄漏风险（哪怕界面不显示）。
+       *   规则口径：**一次定终身**，写死在规则页。
+       */
+      if (answers[OPENID] !== undefined && answers[OPENID] !== null) {
+        return { ok: false, msg: '你已经交过了，不能改' }
+      }
+      answers[OPENID] = chk.value
+
+      const patch = { csAnswers: answers, updatedAt: ts }
+
+      /*
+       * ★ 全部交齐 → 立刻揭晓（服务端判，不让前端点"开奖"）。
+       *   铁律①：回合推进由服务端做。
+       */
+      if (consensusRules.allIn(live, answers)) {
+        const list = consensusRules.toAnswerList(live, answers)
+        const r = consensusRules.judge(list)
+        patch.csReveal = {
+          answers: list,
+          pass: r.pass,
+          spread: r.spread,
+          allowed: Math.round(r.allowed),
+          min: r.min,
+          max: r.max,
+          median: r.median,
+          outlierSeat: r.outlierSeat,
+          outlierName: r.outlierName,
+          detail: r.detail
+        }
+        patch.csLast = patch.csReveal
+        if (!r.pass && r.outlierSeat) {
+          patch.lastResult = {
+            kind: 'consensus',
+            winner: '',
+            winText: r.outlierName + ' 离得最远，喝 1 杯',
+            loserName: r.outlierName,
+            loserSeat: r.outlierSeat,
+            detail: r.detail
+          }
+        } else {
+          patch.lastResult = {
+            kind: 'consensus', winner: 'all',
+            winText: '全场通过，都不用喝',
+            detail: r.detail
+          }
+        }
       }
 
       await rooms.doc(room._id).update({ data: patch })

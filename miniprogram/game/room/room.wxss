@@ -3495,7 +3495,7 @@
 .bt-gate.small { margin: 16rpx 0 0; gap: 10rpx }
 .bt-gcard {
   width: 116rpx; height: 158rpx;
-  border-radius: 10rpx;
+  border-radius: 12rpx;
   box-shadow: 0 8rpx 18rpx rgba(0, 0, 0, .42);
 }
 .bt-gate.small .bt-gcard { width: 84rpx; height: 115rpx }
@@ -3509,7 +3509,7 @@
   font-size: 44rpx; font-weight: 800;
   color: rgba(232, 179, 60, .48);
   border: 2rpx dashed rgba(232, 179, 60, .28);
-  border-radius: 10rpx;
+  border-radius: 12rpx;
 }
 .bt-acts { display: flex; flex-direction: column; gap: 14rpx }
 .bt-acts .btn.ghost {
@@ -3652,4 +3652,99 @@
 .sv-out {
   margin-top: 14rpx; text-align: center;
   font-size: 20rpx; color: rgba(224, 113, 79, .92);
+}
+
+/* ============================================================
+   众口一致（2026-11-03）
+   ------------------------------------------------------------
+   两个阶段长得完全不一样：
+     · 收答案：只有输入框 + "已交 N/M"，**看不到任何人的值**
+     · 揭晓：所有人答案一次亮出，离群的那个高亮
+   刻意让两阶段视觉差异大 —— 否则玩家会以为自己在旧界面里。
+   ============================================================ */
+.cs-stage { display: flex; flex-direction: column }
+
+.cs-cmd {
+  text-align: center; font-size: 26rpx; color: var(--gold);
+  letter-spacing: 1rpx;
+}
+.cs-tip {
+  text-align: center; font-size: 20rpx;
+  color: rgba(255, 255, 255, .58); margin-top: 8rpx;
+}
+
+.cs-tally {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 8rpx; margin: 26rpx 0 20rpx;
+}
+.cs-tally-n {
+  font-size: 54rpx; font-weight: 800; color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+.cs-tally-s { font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+
+.cs-input-row { display: flex; gap: 12rpx; align-items: stretch; margin-bottom: 10rpx }
+.cs-input {
+  flex: 1; box-sizing: border-box;
+  height: 96rpx; padding: 0 24rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, .08);
+  border: 2rpx solid rgba(255, 255, 255, .16);
+  color: var(--cream); font-size: 34rpx; text-align: center;
+}
+.cs-submit {
+  flex: 0 0 140rpx;
+  display: flex; align-items: center; justify-content: center;
+}
+.cs-submit.disabled { opacity: .42 }
+.cs-range {
+  text-align: center; font-size: 20rpx;
+  color: rgba(255, 255, 255, .52);
+}
+.cs-done {
+  text-align: center; padding: 26rpx 0;
+  font-size: 26rpx; color: var(--gold);
+}
+.cs-waiting {
+  margin-top: 16rpx; text-align: center;
+  font-size: 20rpx; color: rgba(255, 255, 255, .58);
+}
+
+/* ---------- 揭晓 ---------- */
+.cs-result {
+  margin: 10rpx auto 20rpx; padding: 26rpx 24rpx;
+  border-radius: 20rpx; text-align: center;
+  border: 2rpx solid transparent;
+}
+.cs-result.pass {
+  background: rgba(109, 158, 106, .16);
+  border-color: rgba(109, 158, 106, .46);
+}
+.cs-result.fail {
+  background: rgba(224, 113, 79, .14);
+  border-color: rgba(224, 113, 79, .44);
+}
+.cs-rv-t { font-size: 44rpx; font-weight: 800; color: var(--cream); letter-spacing: 3rpx }
+.cs-rv-d { margin-top: 10rpx; font-size: 26rpx; color: rgba(255, 255, 255, .78) }
+
+.cs-answers { display: flex; flex-wrap: wrap; gap: 10rpx; justify-content: center; margin-bottom: 16rpx }
+.cs-ans {
+  display: flex; flex-direction: column; align-items: center;
+  min-width: 108rpx; padding: 12rpx 10rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, .06);
+  border: 2rpx solid rgba(255, 255, 255, .10);
+}
+.cs-ans.out {
+  background: rgba(224, 113, 79, .18);
+  border-color: rgba(224, 113, 79, .56);
+}
+.cs-ans-n { font-size: 20rpx; color: rgba(255, 255, 255, .62) }
+.cs-ans-v {
+  margin-top: 4rpx; font-size: 34rpx; font-weight: 800; color: var(--cream);
+  font-variant-numeric: tabular-nums;
+}
+.cs-nums {
+  text-align: center; font-size: 20rpx;
+  color: rgba(255, 255, 255, .52); margin-bottom: 18rpx;
 }

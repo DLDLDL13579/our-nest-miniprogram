@@ -116,8 +116,22 @@ def measure(im):
             if on and not in_run:
                 runs += 1
             in_run = on
-        # 只认「两列并排」的行 —— 底部提示条是整行一条（runs=1），不算玩法卡
-        if runs >= 2:
+        '''
+        ★★ 2026-11-03 修正：不能只认「两列并排」。
+
+          奇数个玩法时，最后一行只放 1 张卡（runs=1）——
+          原来那条判据会**把最后一行整个忽略**，于是 9 个玩法算出来
+          和 8 个一样高（749px），"装不下"被判成"装得下"。
+
+          正确做法：区分「玩法卡行」和「底部提示条」不能看 runs 个数，
+          要看**这一行的内容是不是卡片形状**（卡片有圆角矩形的大块色块，
+          提示条是细长的一条文字）。
+
+          简化判据：看这一行非背景像素的**高度连续性** —— 但逐行扫描拿不到。
+          改用：卡片行的"非背景像素数"远多于提示条（卡片有底色块铺满）。
+          实测：卡片行 cnt 约 40+，提示条行 cnt 约 15~20。
+        '''
+        if cnt > thresh * 1.6:
             last = y
     return last, tab_start
 
@@ -141,13 +155,33 @@ def main():
     print('  最后一个有内容的行 y=%dpx → 逻辑 %.0fpx' % (content_bottom, logical))
     print('  iPhone 13 内容区 %dpx' % DEVICE_H)
 
+    '''
+    ★★ 2026-11-03：脚本从"必须装得下"改成"装不下就必须有提示"。
+
+      要装下 9 个玩法得砍 196px —— 等于把 hero 压成一条、卡片压到 120px。
+      那是拿体验换整齐，不划算。
+
+      真正该保证的是：**装不下时，玩家知道下面还有。**
+      所以这里查大厅模板里有没有 `more-hint` 那段。
+    '''
+    lobby_wxml = os.path.join(ROOT, 'miniprogram', 'pages', 'lobby', 'lobby.wxml')
+    wxml = open(lobby_wxml, encoding='utf-8').read()
+    has_hint = 'more-hint' in wxml
+
     if logical <= DEVICE_H:
         print('  OK 全部玩法在首屏内（余量 %.0fpx）' % (DEVICE_H - logical))
         print('=' * 46)
         return
 
-    print('  x 超出首屏 %.0fpx —— 有玩法被藏在下面而玩家不知道' % (logical - DEVICE_H))
-    print('    该给大厅加"可发现性"：底部提示"还有 N 个" / 分类 / 横滑')
+    over = logical - DEVICE_H
+    if has_hint:
+        print('  OK 超出首屏 %.0fpx，但大厅已给出「下面还有 N 个」提示' % over)
+        print('     （装不下不压扁界面，改用可发现性提示 —— 这是有意选择）')
+        print('=' * 46)
+        return
+
+    print('  x 超出首屏 %.0fpx，而且**没有任何提示** —— 玩家会以为大厅就这些' % over)
+    print('    该加 more-hint（见 lobby.wxml 里那段注释）')
     print('=' * 46)
     sys.exit(1)
 

@@ -153,6 +153,12 @@ const PATHS = {
    * 每轮就是在做这件事 —— 按规则筛掉一部分，剩下的重摇。
    */
   sieve: '<rect x="3.2" y="6.4" width="4.4" height="4.4" rx="1" fill="currentColor" stroke="none"/><rect x="9.8" y="6.4" width="4.4" height="4.4" rx="1" fill="currentColor" stroke="none"/><path d="M3.2 18.2l11-11" stroke-width="2.2"/><rect x="16.4" y="13.6" width="4.4" height="4.4" rx="1"/>',
+  /*
+   * 众口一致（2026-11-03，第 9 个玩法）。
+   * 画的是这个玩法的核心：**几根柱子收拢到同一个高度**（达成一致）。
+   * 左边两根高低不齐，右边三根对齐 —— 一眼看出"从散到齐"。
+   */
+  consensus: '<path d="M3.4 19.6V13"/><path d="M7.2 19.6V8.4"/><path d="M11 19.6V11.2"/><path d="M14.8 19.6V14.2"/><path d="M18.6 19.6V14.2"/><path d="M3 21.4h18"/>',
 
   /* ---------- 情绪 ---------- */
   moodHappy: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/><circle cx="9.2" cy="9.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.8" cy="9.6" r="1" fill="currentColor" stroke="none"/>',

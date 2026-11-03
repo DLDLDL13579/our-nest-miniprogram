@@ -71,3 +71,4 @@ sync_one miniprogram/utils/liarRules.js "liarRules.js" cloudfunctions/room/liarR
 #   不加进来就会变成：前端按新规则判、云端按旧规则判 —— 而**两边都不报错**。
 sync_one miniprogram/utils/betweenRules.js "betweenRules.js" cloudfunctions/room/betweenRules.js
 sync_one miniprogram/utils/sieveRules.js "sieveRules.js" cloudfunctions/room/sieveRules.js
+sync_one miniprogram/utils/consensusRules.js "consensusRules.js" cloudfunctions/room/consensusRules.js

@@ -1340,23 +1340,34 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
      *   推算里任何一个数过时（比如 min-height 改过），结论就会整个错，
      *   而错的结论会把后面几轮的工作方向带偏。
      */
-    const PER_SCREEN = 8
     /*
-     * 8 个是实测首屏能放下的数量（4 行 × 2 列）。
-     * 9 个就是 5 行 = 350px 卡片区 + 固定区 ≈ 770px > 753px → 需要滚动。
-     * 这不是"不能加"，而是"加到第 9 个时首屏开始藏东西"，
-     * 那时该做的是**让第 9 个及以后可发现**（比如底部一行"还有 N 个"），
-     * 而不是硬塞。
+     * ★★ 2026-11-03 再订正：光有"上限数字"不够，还要**真的能看见**。
+     *
+     *   第 9 个玩法进来后，`check-lobby-fit.py` 用像素量出卡片区到 948px，
+     *   而首屏只有 753px —— 第 7~9 个必须下滑才看得见。
+     *
+     *   这时有两条路：
+     *     A. 压扁界面塞进一屏（要砍 196px，等于把 hero 压成一条）—— 拿体验换整齐
+     *     B. **告诉玩家下面还有** —— 保住界面质量
+     *   选 B。所以这条断言从"必须装得下"改成
+     *   **"装不下时必须给出可发现性提示"**。
      */
-    const HARD_CAP = 9
-    assert.ok(total < HARD_CAP,
-      '★ 玩法已经有 ' + total + ' 个 —— 从第 ' + HARD_CAP + ' 个开始，' +
-      '首屏（753px）就装不下了，会有玩法被藏起来而玩家不知道。' +
-      '\n  该给大厅加"可发现性"了（底部提示"还有 N 个" / 分类 / 横滑），' +
-      '不要再无声地往下堆卡片。')
-
-    ok('★ 玩法 ' + total + ' 个，首屏实测能放下 ' + PER_SCREEN +
-       ' 个（4 行两列）—— 当前全部可见，未触达 ' + HARD_CAP + ' 的上限')
+    const lobbyWxml = fs.readFileSync(path.join(ROOT, 'miniprogram/pages/lobby/lobby.wxml'), 'utf8')
+    /*
+     * 首屏能放几个：由 `scripts/check-lobby-fit.py` 的像素测量给出（8 个）。
+     * 超过就必须有"下面还有"的提示，否则玩家会以为"就这些"。
+     */
+    const PER_SCREEN = 8
+    if (total > PER_SCREEN) {
+      assert.ok(/more-hint/.test(lobbyWxml),
+        '★ 玩法 ' + total + ' 个，首屏只露得下 ' + PER_SCREEN +
+        ' 个 —— 必须有「下面还有 N 个」的提示（more-hint），' +
+        '否则玩家会以为大厅就这些玩法')
+      assert.ok(/list\.length - \d+/.test(lobbyWxml),
+        '★ 提示里的 N 必须是**算出来的**（list.length - 首屏容量），不能手写死')
+    }
+    ok('★ 玩法 ' + total + ' 个（首屏容量 ' + PER_SCREEN + '）—— ' +
+       (total > PER_SCREEN ? '已给出「下面还有 N 个」提示' : '全部可见'))
 
     /*
      * ★★ 玩法卡的描述必须一行放得下（2026-11-03）
