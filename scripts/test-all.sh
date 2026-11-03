@@ -27,6 +27,8 @@ node scripts/test-poker.js
 node scripts/test-between.js
 # ★ 2026-11-03：红黑单双大小的六条筛选规则（穷举颜色×点数）
 node scripts/test-sieve.js
+# ★ 2026-11-03：众口一致的判定（通过/离群/阈值口径）
+node scripts/test-consensus.js
 # ★ 2026-11-03：大厅首屏容量（像素测量，不是推算）
 python3 scripts/check-lobby-fit.py
 node scripts/test-dicerank.js
