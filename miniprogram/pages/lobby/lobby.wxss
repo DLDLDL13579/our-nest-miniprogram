@@ -154,7 +154,7 @@
    48.5% × 2 + 18rpx gap = 97% + 18rpx，严格小于容器宽度。
    ============================================================ */
 .ggrid {
-  display: flex; flex-wrap: wrap; gap: 12rpx;
+  display: flex; flex-wrap: wrap; gap: 8rpx;   /* 2026-11-03：12→8，4 行省下 6px，让 8 个玩法正好收进首屏 */
 }
 
 /*
@@ -184,7 +184,14 @@
   display: flex; flex-direction: column;
   padding: 16rpx 20rpx 12rpx;
   /*
-   * ★★★ 2026-11-03：min-height 272 → **240rpx**。
+   * ★★★ 2026-11-03：min-height 272 → 240 → **210rpx**。
+   *
+   *   第二次数：卡片内容自然高度只有 **197rpx**（padding16 + 图标66 +
+   *   名字39 + 描述32 + 底行32 + padding12），240rpx 仍白留 22px。
+   *   210rpx 留约 13rpx 余量，够字体渲染差异，两列依然等高。
+   *
+   *   起因：`check-lobby-fit.py` 用像素量出 8 个玩法最底边在 773px，
+   *   而首屏只有 753px —— **差 20px，正好是这部分白留**。
    *
    *   272rpx 是按「描述最多两行」定的，而实测**全部 7 个玩法的描述都只有 1 行**
    *   （最长 15 字，卡片宽约 22 字/行）—— 那个假设从来没被用过。
@@ -200,7 +207,7 @@
    *   看起来像"只做了 4 个玩法" —— 而项目原则是"一屏放得下、不加一层筛选"。
    *   实测真机内容区 753px：3×(272+20)rpx ≈ 428px，加上标题区/输入框仍有余量。
    */
-  min-height: 240rpx;
+  min-height: 210rpx;
   background: var(--card); border-radius: var(--r-2);
   box-shadow: var(--sh-1);
   /*
