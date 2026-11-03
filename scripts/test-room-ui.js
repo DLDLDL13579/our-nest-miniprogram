@@ -1305,6 +1305,38 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
     ok('★ 4 个玩法状态块都参与轮询去重（uw / poker / fh / bt）')
   }
 
+  /* ============================================================================
+   * ★★ 大厅的「首屏能看见几个玩法」（2026-11-03）
+   *
+   * 玩法从 5 个长到 7 个之后，大厅**两列布局要滚 4 行** ——
+   * 按 iPhone 13 的内容区（约 753px）算，扣掉 hero / 输入框 / 底部提示 / tabBar，
+   * 留给卡片的只有约 353px，也就是**一眼只看得到 2 行 4 个**，
+   * 剩下 3 个必须往下滑才知道存在。
+   *
+   * 这本身不是 bug（页面能滚），但它是一个**会随玩法数恶化**的体验问题，
+   * 而且没有任何东西会提醒你"该重新设计大厅了"。
+   *
+   * 这条断言的作用不是阻止加玩法，而是**把那个临界点写下来**：
+   * 超过 8 个就必须改布局（比如分类 tab / 横滑），否则首屏藏的东西太多。
+   * ========================================================================== */
+  {
+    const gamesJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+    const list = (gamesJs.match(/^\s*id:\s*'[a-z]+'/gm) || [])
+    const total = list.length
+    assert.ok(total >= 7, '玩法 id 解析异常（只拿到 ' + total + ' 个）')
+
+    /* 两列布局：首屏（约 353px 可用）能放 2 行 = 4 张卡 */
+    const PER_SCREEN = 4
+    const HARD_CAP = 8   /* 超过这个数，大厅必须换布局 */
+    assert.ok(total <= HARD_CAP,
+      '★ 玩法已经有 ' + total + ' 个，超过大厅两列布局的上限 ' + HARD_CAP +
+      ' —— 首屏会有 ' + (total - PER_SCREEN) + ' 个玩法被藏起来。' +
+      '\n  该改大厅布局了（分类 tab / 横滑 / 分组），不要再往下堆卡片。')
+
+    ok('★ 玩法 ' + total + ' 个，未超过大厅两列布局上限（' + HARD_CAP + '）；' +
+       '首屏露 ' + Math.min(total, PER_SCREEN) + ' 个，其余需下滑')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)
