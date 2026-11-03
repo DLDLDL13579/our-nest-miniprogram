@@ -3591,3 +3591,65 @@
 .fh-seat-n { font-size: 20rpx; color: var(--cream) }
 .fh-seat-s { font-size: 20rpx; color: rgba(255, 255, 255, .58) }
 .fh-seat-s.drank { color: rgba(224, 113, 79, .92) }
+
+/* ============================================================
+   红黑单双大小（2026-11-03）
+   ------------------------------------------------------------
+   信息层级：上一轮规则（淡）→ 所有人骰子（主体）→ 我该做什么（亮）。
+   「上一轮规则」必须常驻可见 —— 否则玩家会按上一轮的规则去想这一轮。
+   ============================================================ */
+.sv-stage { display: flex; flex-direction: column }
+
+.sv-last {
+  display: flex; align-items: baseline; justify-content: center;
+  gap: 10rpx; margin-bottom: 14rpx;
+}
+.sv-last-k { font-size: 20rpx; color: rgba(255, 255, 255, .52) }
+.sv-last-r { font-size: 26rpx; font-weight: 700; color: var(--gold) }
+.sv-last-by { font-size: 20rpx; color: rgba(255, 255, 255, .52) }
+
+.sv-void {
+  margin: 0 auto 12rpx; padding: 10rpx 20rpx;
+  border-radius: 12rpx; text-align: center;
+  font-size: 20rpx; color: var(--cream);
+  background: rgba(232, 179, 60, .14);
+  border: 2rpx solid rgba(232, 179, 60, .38);
+}
+
+.sv-seats { display: flex; flex-direction: column; gap: 10rpx; margin-bottom: 16rpx }
+.sv-seat {
+  padding: 12rpx 16rpx; border-radius: 16rpx;
+  background: rgba(255, 255, 255, .05);
+  border: 2rpx solid rgba(255, 255, 255, .09);
+}
+.sv-seat.me { border-color: rgba(232, 179, 60, .46); background: rgba(232, 179, 60, .10) }
+.sv-seat.dead { opacity: .45 }
+.sv-seat-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8rpx }
+.sv-seat-n { font-size: 26rpx; font-weight: 700; color: var(--cream) }
+.sv-seat-c { font-size: 20rpx; color: rgba(255, 255, 255, .62) }
+.sv-seat.dead .sv-seat-c { color: rgba(224, 113, 79, .92) }
+
+.sv-dice { display: flex; flex-wrap: wrap; gap: 8rpx }
+/* ⚠️ <image> 必须显式给宽高，font-size 无效（项目里栽过：图标撑满半屏） */
+.sv-die { width: 56rpx; height: 64rpx }
+.sv-none { font-size: 26rpx; color: rgba(255, 255, 255, .52) }
+
+.sv-cmd {
+  text-align: center; font-size: 26rpx; color: var(--gold);
+  letter-spacing: 1rpx; margin-bottom: 12rpx;
+}
+.sv-rules { display: flex; flex-wrap: wrap; gap: 10rpx }
+.sv-rule {
+  flex: 0 0 48.5%; box-sizing: border-box;
+  padding: 14rpx 16rpx; border-radius: 16rpx;
+  background: rgba(255, 255, 255, .07);
+  border: 2rpx solid rgba(255, 255, 255, .12);
+}
+.sv-rule.off { opacity: .34; background: rgba(255, 255, 255, .03) }
+.sv-rule-n { display: block; font-size: 26rpx; font-weight: 700; color: var(--cream) }
+.sv-rule-d { display: block; margin-top: 4rpx; font-size: 20rpx; color: rgba(255, 255, 255, .58) }
+
+.sv-out {
+  margin-top: 14rpx; text-align: center;
+  font-size: 20rpx; color: rgba(224, 113, 79, .92);
+}

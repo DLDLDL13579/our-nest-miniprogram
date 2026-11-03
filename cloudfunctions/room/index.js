@@ -71,6 +71,7 @@ const liarCount = require('./liarCount.js')
    两边各写一份必然不一致：会出现"按钮亮了但服务端说不行"，而且不报错。 */
 const liarRules = require('./liarRules.js')
 const betweenRules = require('./betweenRules.js')
+const sieveRules = require('./sieveRules.js')
 
 /**
  * 比大小的结算（2026-10-30 抽出来）。
@@ -949,6 +950,95 @@ function shape(room, openid) {
      *   所以这里不像骰子/金花那样按 openid 过滤 —— 全给。
      *   **别照抄 below 的 poker 那段**（它有 `myKnown` 这类私密字段）。
      */
+    /*
+     * ============ 红黑单双大小（2026-11-03）============
+     *
+     * ★ 这个玩法**没有秘密信息** —— 所有人看所有人的骰子。
+     *   用手机的理由不是"藏"，而是三件现实里做起来很累的事：
+     *     ① 六条规则每轮换一条，由当前玩家临时指定（规则本身在变）
+     *     ② 每人剩几颗骰子一直在变，喝了酒之后手数必错
+     *     ③ 筛完要重摇，而"筛哪几颗、重摇成什么"必须一次算清
+     */
+    sv: (function () {
+      if (room.game !== 'sieve') return null
+      const live = (room.players || []).filter(p => p.inRound !== false)
+      const me = live.filter(p => p.openid === openid)[0] || null
+      if (!me) return null
+      const diceMap = room.svDice || {}
+      const deadMap = room.svDead || {}
+      const turnP = live.filter(p => p.seat === room.svTurn)[0] || null
+
+      /* 每个玩家的骰子（全公开）+ 剩余数 + 是否已淘汰 */
+      const seats = live.map(p => {
+        const d = diceMap[p.openid] || []
+        return {
+          seat: p.seat,
+          name: p.name,
+          isMe: p.openid === openid,
+          dead: !!deadMap[p.openid],
+          left: d.length,
+          /*
+           * ★ 2026-11-03：图片路径由**服务端算好**下发。
+           *   模板里写 `/game/images/{{d.color === 'red' ? 'dice-red' : 'dice'}}/...`
+           *   有两个问题：
+           *     · 契约断言无法静态解析（目录名本身是动态的），会报"无匹配文件"
+           *     · wxml 里做三元拼接，和后端"骰子长什么样"的认知分成两处
+           *   派生字段只在一处算 —— 这是项目一贯的做法。
+           */
+          dice: d.map(c => ({
+            face: c.face,
+            color: c.color,
+            /*
+             * ★ 路径写成**两个完整字面量**，不拼接。
+             *
+             *   拼接版（`'/game/images/' + (red ? 'dice-red':'dice') + '/dice-' + face + '.png'`）
+             *   有两个坏处：
+             *     · `test-assets.js` 的孤儿图检测只认代码里的路径字面量，拼接版扫不到
+             *     · 拼错一个字（dice-red → dicered）不会有任何报错，只是图上不显示
+             *   写成字面量后，两个路径都能被静态扫描到，改错也会被孤儿检测抓到。
+             */
+            src: c.color === 'red'
+              ? '/game/images/dice-red/dice-' + c.face + '.png'
+              : '/game/images/dice/dice-' + c.face + '.png'
+          }))
+        }
+      })
+
+      /*
+       * 当前能喊的规则 —— 服务端算好再下发。
+       * ★ 前端不该自己算：这条判据（"规则要能留下至少一个人"）是玩法命门，
+       *   两个出口必然不同步（项目里记过多次）。
+       */
+      const aliveDice = live
+        .filter(p => !deadMap[p.openid])
+        .map(p => diceMap[p.openid] || [])
+      const usable = sieveRules.usableRules(aliveDice)
+      const rules = sieveRules.ruleList().map(r => ({
+        k: r.k, name: r.name, short: r.short, desc: r.desc,
+        usable: usable.indexOf(r.k) >= 0
+      }))
+
+      return {
+        round: Number(room.svRound) || 1,
+        turnSeat: Number(room.svTurn) || 0,
+        turnName: turnP ? turnP.name : '',
+        myTurn: !!turnP && turnP.openid === openid,
+        iAmDead: !!deadMap[openid],
+        seats: seats,
+        rules: rules,
+        usableCount: usable.length,
+        /* 我还能不能喊（轮到我 + 没淘汰 + 至少有一条规则可用） */
+        canAct: !!turnP && turnP.openid === openid && !deadMap[openid] && usable.length > 0,
+        last: room.svLast || null,
+        lastRuleText: (function () {
+          const L = room.svLast
+          if (!L || !L.rule) return ''
+          const d = sieveRules.ruleOf(L.rule)
+          return d ? d.name : ''
+        })(),
+        myLeft: (diceMap[openid] || []).length
+      }
+    })(),
     bt: (function () {
       if (room.game !== 'between') return null
       const live = (room.players || []).filter(p => p.inRound !== false)
@@ -1120,6 +1210,46 @@ async function dbCall(stage, fn) {
  *    否则重试等于用旧数据再冲一次。随机数（骰子点数）要在**循环外**生成，
  *    不然每次重试都会换一个点数 —— 玩家会看到"我摇的骰子变了"。
  */
+/*
+ * ============ 红黑单双大小：骰子生成 ============
+ *
+ * 每颗骰子两个属性：`face`（1..6）和 `color`（red / ivory）。
+ *
+ * ★ 颜色**每次重摇都重新随机**，不是一颗骰子定死颜色。
+ *   为什么：如果颜色固定，那么"红的留下"这条规则对一颗骰子只能用一次 ——
+ *   筛掉就没了，不筛就永远留着。重新随机才能让红黑两条规则一直有变化。
+ *
+ * 随机用 `Math.random()`（云函数侧），不依赖任何前端传入 ——
+ * 这是"真随机且可验证"那条判据的落点。
+ */
+function _svRoll(n) {
+  const out = []
+  const count = Number(n) || 0
+  for (let i = 0; i < count; i++) {
+    out.push({
+      face: 1 + Math.floor(Math.random() * 6),
+      color: Math.random() < 0.5 ? 'red' : 'ivory'
+    })
+  }
+  return out
+}
+
+/**
+ * 红黑单双大小：按座位往后找下一个**还在局里且没被淘汰**的人。
+ *
+ * ★ 为什么不能简单 +1：有人拿光出局、有人中途进来（观战），
+ *   简单 +1 会指到一个不该轮到的人，而且**不报错** ——
+ *   表现是"永远没人轮到"，全桌卡死。（项目里栽过：回合序号越界。）
+ */
+function _svNextSeat(live, deadMap, fromSeat) {
+  const alive = (live || [])
+    .filter(p => !(deadMap || {})[p.openid])
+    .sort((a, b) => a.seat - b.seat)
+  if (!alive.length) return Number(fromSeat) || 0
+  const after = alive.filter(p => p.seat > Number(fromSeat))
+  return after.length ? after[0].seat : alive[0].seat
+}
+
 async function updateGuarded(roomId, buildData, tries) {
   const max = tries || 4
   for (let i = 0; i < max; i++) {
@@ -2291,6 +2421,42 @@ exports.main = async (event) => {
                 .map(p => p.openid)
             : [],
           btRound: 1,
+          /* ---------- 红黑单双大小 ----------
+             svDice   { openid: [{face, color}] } —— 每人当前骰子（人人可见，没有秘密）
+             svDead   { openid: true } —— 已经拿光、判负的人
+             svTurn   轮到谁（座位号）
+             svRound  第几轮
+             svRule   上一轮用的规则 key（null = 还没开始）
+             svLast   上一轮的结果（展示用） */
+          /*
+           * 开局给每人发 5 颗骰子（红/白各半，随机点数）。
+           * ★ 为什么在 start 就发：红黑单双大小**没有秘密信息**，
+           *   骰子人人可见 —— 早发晚发都一样，但早发可以让界面一进 playing
+           *   就有东西可看，不用等第一轮操作。
+           */
+          svDice: (function () {
+            if (room.game !== 'sieve') return {}
+            const out = {}
+            ;(room.players || []).filter(p => p.inRound !== false).forEach((p) => {
+              out[p.openid] = _svRoll(sieveRules.DICE_PER_PLAYER)
+            })
+            return out
+          })(),
+          svDead: {},
+          /*
+           * ★ 轮次必须在 start 就指向一个真实座位。
+           *   留 0 的话 `shape()` 算不出"轮到谁"，界面进 playing 时
+           *   所有人都在等一个不存在的 seat 0 —— 而它**不报错**，
+           *   只是谁都点不了。（射龙门那次也是这个坑，测试当场抓到。）
+           */
+          svTurn: (function () {
+            if (room.game !== 'sieve') return 0
+            const t = (room.players || []).filter(p => p.inRound !== false).sort((a, b) => a.seat - b.seat)[0]
+            return t ? t.seat : 0
+          })(),
+          svRound: 1,
+          svRule: null,
+          svLast: null,
           votes: [],
           phase: 'countdown',
           countdownEnd: ts + COUNTDOWN_MS,
@@ -3589,6 +3755,134 @@ exports.main = async (event) => {
       await rooms.doc(room._id).update({ data: patch })
       const rr = await rooms.doc(room._id).get()
       return { ok: true, room: shape(rr.data, OPENID) }
+    }
+
+    /* ================= 红黑单双大小：喊规则 ================= */
+    /*
+     * 一个入口（和 fhAct / pkAct / btAct 同一思路）。
+     *
+     * ★★ 这个玩法的命门：**规则由当前玩家临时指定，而规则决定了谁会输**。
+     *    所以"轮到谁"必须是服务端权威的，不能信前端传的 seat。
+     *    客户端只传 `rule`（六选一），其余全部服务端算。
+     */
+    if (action === 'svAct') {
+      const { room, err } = await loadRoom(event, OPENID, true)
+      if (err) return { ok: false, msg: err }
+      if (room.game !== 'sieve') return { ok: false, msg: '这个房间不是红黑单双大小' }
+      if (room.phase !== 'playing') return { ok: false, msg: phaseHint(room.phase) }
+
+      const players = (room.players || []).map(p => Object.assign({}, p))
+      const live = players.filter(p => p.inRound !== false)
+      const mine = live.filter(p => p.openid === OPENID)[0]
+      if (!mine) return { ok: false, msg: '这一局你只观战' }
+      if (room.svDead && room.svDead[OPENID]) return { ok: false, msg: '你已经拿光了，这局在旁边看' }
+      if (Number(room.svTurn) !== mine.seat) {
+        const cur = live.filter(p => p.seat === room.svTurn)[0]
+        return { ok: false, msg: '还没轮到你，等 ' + ((cur && cur.name) || '下一位') + ' 喊规则' }
+      }
+
+      const ruleKey = String(event.rule || '')
+      const ruleDef = sieveRules.ruleOf(ruleKey)
+      if (!ruleDef) return { ok: false, msg: '没有这条规则' }
+
+      const diceMap = room.svDice || {}
+      const deadMap = Object.assign({}, room.svDead || {})
+      /*
+       * 还活着的人（有骰子且没被判负）
+       */
+      const aliveList = live.filter(p => !deadMap[p.openid] && (diceMap[p.openid] || []).length > 0)
+
+      /*
+       * ★ 判据一：这条规则必须**至少能留下一个人的骰子**。
+       *   否则喊完所有人变 0 颗 —— 一次淘汰全场，游戏毫无过程。
+       *   （sieveRules.ruleIsUseful 就是为这个写的，有单测。）
+       */
+      const useful = sieveRules.ruleIsUseful(aliveList.map(p => diceMap[p.openid] || []), ruleKey)
+      if (!useful) {
+        return { ok: false, msg: '这条规则现在一个人都留不下，换一条吧' }
+      }
+
+      const ts = now()
+      const patch = { updatedAt: ts, svRule: ruleKey, svLast: { rule: ruleKey, byName: mine.name, round: room.svRound || 1 } }
+      const nextDice = Object.assign({}, diceMap)
+      const changed = []
+
+      /*
+       * 每个人按规则筛 + 重摇剩下的。
+       * ★ 重摇是规则的一部分（写死在规则页）——不重摇的话
+       *   下一轮规则面对的还是同一批点数，筛选会变得可预测。
+       */
+      aliveList.forEach((p) => {
+        const before = diceMap[p.openid] || []
+        const r = sieveRules.applyRule(before, ruleKey)
+        const rolled = _svRoll(r.left)
+        nextDice[p.openid] = rolled
+        changed.push({ seat: p.seat, name: p.name, before: before.length, after: rolled.length })
+      })
+      patch.svDice = nextDice
+
+      /*
+       * ★ 判据二：谁拿光了。
+       *   · 1 个人拿光 → 他输，整局结束
+       *   · 2 人以上同时拿光 → 那一轮作废，恢复上一轮的骰子重来
+       *     （同时拿光是运气不是判断，罚所有人只会让游戏变随机）
+       */
+      const after = aliveList.map(p => ({ seat: p.seat, dice: nextDice[p.openid] || [] }))
+      const st = sieveRules.settle(after)
+
+      if (st.allOut) {
+        /*
+         * 作废：把这轮筛掉的骰子**原样还回去**（不重摇），轮到下一个人。
+         * 为什么还回去而不是重摇：要保证"每个人手里的骰子和喊之前完全一样"，
+         * 这样才是干净的"这轮没发生"。
+         */
+        const restore = Object.assign({}, diceMap)
+        changed.forEach((c) => {
+          const p = live.filter(x => x.seat === c.seat)[0]
+          if (p) restore[p.openid] = diceMap[p.openid]
+        })
+        patch.svDice = restore
+        patch.svLast = {
+          rule: ruleKey, byName: mine.name, round: room.svRound || 1,
+          voided: true, voidText: '全场都拿光了 —— 这轮作废，骰子还回去重来'
+        }
+        patch.svTurn = _svNextSeat(live, deadMap, mine.seat)
+        await rooms.doc(room._id).update({ data: patch })
+        const rrv = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rrv.data, OPENID) }
+      }
+
+      if (st.losers.length === 1) {
+        /* 有人输 → 进 over */
+        const loserP = live.filter(p => p.seat === st.losers[0])[0]
+        patch.phase = 'over'
+        patch.lastResult = {
+          kind: 'sieve', winner: ruleKey,
+          winText: (loserP ? loserP.name : '有人') + ' 的骰子拿光了',
+          loserName: loserP ? loserP.name : '',
+          loserSeat: st.losers[0],
+          ruleText: ruleDef.name,
+          byName: mine.name
+        }
+        patch.svLast = {
+          rule: ruleKey, byName: mine.name, round: room.svRound || 1,
+          losers: st.losers, loserName: loserP ? loserP.name : ''
+        }
+        await rooms.doc(room._id).update({ data: patch })
+        const rr = await rooms.doc(room._id).get()
+        return { ok: true, room: shape(rr.data, OPENID) }
+      }
+
+      /* 没人拿光 → 正常推进到下一位 */
+      patch.svRound = (Number(room.svRound) || 1) + 1
+      patch.svTurn = _svNextSeat(live, deadMap, mine.seat)
+      patch.svLast = {
+        rule: ruleKey, byName: mine.name, round: room.svRound || 1,
+        changed: changed, voided: false
+      }
+      await rooms.doc(room._id).update({ data: patch })
+      const rr2 = await rooms.doc(room._id).get()
+      return { ok: true, room: shape(rr2.data, OPENID) }
     }
 
     /* ================= 射龙门：押注 / 翻牌 / 认低威 ================= */

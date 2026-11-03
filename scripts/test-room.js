@@ -3520,6 +3520,144 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★★ 射龙门：队首掉线自动跳过，剩下的人能继续玩')
   }
 
+  /* ============================================================================
+   * ㉗ 红黑单双大小（2026-11-03，第 8 个玩法）
+   *
+   * 命门：**规则由当前玩家临时指定，而规则决定了谁会输**。
+   * 所以"轮到谁"必须是服务端权威的 —— 客户端只能传 rule。
+   * ========================================================================== */
+  console.log('\n=== ㉗ 红黑单双大小：规则在变，判定在服务端 ===')
+  {
+    const V1 = 'oid_sv_1', V2 = 'oid_sv_2'
+    OPENID = V1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'sieve' })
+    assert.ok(cr.ok, '建房应成功：' + (cr.msg || ''))
+    const sid = cr.room.id
+    OPENID = V2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+    OPENID = V1
+    await room.main({ action: 'start', id: sid })
+    store.rooms.filter(x => x._id === sid)[0].countdownEnd = Date.now() - 100
+    const st = await room.main({ action: 'status', id: sid })
+    assert.strictEqual(st.room.phase, 'playing', '开局后应进 playing')
+    assert.ok(st.room.sv, '★ 响应里必须有 sv 块')
+    assert.strictEqual(st.room.sv.seats.length, 2, '两个人')
+    assert.strictEqual(st.room.sv.seats[0].left, 5, '★ 开局每人 5 颗骰子')
+    assert.ok(st.room.sv.rules.length === 6, '★ 六条规则都要下发')
+    ok('★★ 开局每人 5 颗骰子、六条规则全部下发')
+
+    /* ---- 不是自己的回合不能喊 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      const notTurn = (raw.players || []).filter(p => p.seat !== raw.svTurn)[0]
+      OPENID = notTurn.openid
+      const bad = await room.main({ action: 'svAct', rule: 'big', id: sid })
+      assert.ok(!bad.ok, '★ 不是自己的回合喊规则必须被拒')
+      assert.ok(/还没轮到你/.test(bad.msg || ''), '理由要说清：' + bad.msg)
+      ok('★ 不是当前轮次不能喊规则（服务端拦）')
+    }
+
+    /* ---- 不存在的规则被拒 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      const turnP = (raw.players || []).filter(p => p.seat === raw.svTurn)[0]
+      OPENID = turnP.openid
+      const bad = await room.main({ action: 'svAct', rule: 'zzz', id: sid })
+      assert.ok(!bad.ok, '不存在的规则必须被拒')
+      ok('不存在的规则被拒')
+    }
+
+    /* ---- 正常喊规则：骰子被筛掉、重摇、轮次推进 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      const turnP = (raw.players || []).filter(p => p.seat === raw.svTurn)[0]
+      OPENID = turnP.openid
+      const before = JSON.parse(JSON.stringify(store.rooms.filter(x => x._id === sid)[0].svDice))
+
+      /* 找一条可用的规则 */
+      const usable = (await room.main({ action: 'status', id: sid })).room.sv.rules.filter(r => r.usable)
+      assert.ok(usable.length > 0, '★ 开局至少有一条规则可用')
+      const pick = usable[0].k
+
+      const r = await room.main({ action: 'svAct', rule: pick, id: sid })
+      assert.ok(r.ok, '喊规则应成功：' + (r.msg || ''))
+
+      const after = store.rooms.filter(x => x._id === sid)[0]
+      assert.strictEqual(after.svRule, pick, '★ 规则要落库')
+      /* 每个人的骰子数必须 ≤ 之前（只减不增） */
+      Object.keys(before).forEach((oid) => {
+        if (!after.svDice[oid]) return
+        assert.ok(after.svDice[oid].length <= before[oid].length,
+          '★ 筛完骰子数只能变少或不变，不能变多')
+      })
+      ok('★★ 喊规则 → 骰子被筛 → 剩下的重摇 → 数量只减不增')
+    }
+
+    /* ---- 轮次自动推进（服务端做，不让前端点）---- */
+    {
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      assert.strictEqual(raw.round, raw.round, 'round 字段存在')
+      const turnSeat = raw.svTurn
+      assert.ok(turnSeat > 0, '★ 轮次必须指向一个真实座位')
+      const turnP = (raw.players || []).filter(p => p.seat === turnSeat)[0]
+      assert.ok(turnP, '★ 轮次指向的人必须还在房间里')
+      ok('★ 轮次自动推进到下一位（服务端做）')
+    }
+
+    /* ---- 规则可用性：全场都不符合的规则不能喊 ---- */
+    {
+      /*
+       * 构造：把所有骰子改成全是红 3 点，然后试图喊「双数留下」（3 是单数）
+       * —— 全场都不符合，必须被拒。
+       */
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      const allRed3 = {}
+      ;(raw.players || []).filter(p => p.inRound !== false).forEach((p) => {
+        allRed3[p.openid] = [{ face: 3, color: 'red' }, { face: 3, color: 'red' }]
+      })
+      raw.svDice = allRed3
+      raw.svRule = null
+      raw.svDead = {}
+      /*
+       * ★ 必须把 phase 拉回 playing —— 上一条用例可能已经把局面推到 over 了。
+       *   这类"用例之间共享状态"的坑：不重置的话，测的就成了
+       *   "结束态拒绝一切"（那是对的，但和本条要验的东西无关）。
+       */
+      raw.phase = 'playing'
+      const turnP = (raw.players || []).filter(p => p.seat === raw.svTurn)[0]
+      OPENID = turnP.openid
+      const bad = await room.main({ action: 'svAct', rule: 'even', id: sid })
+      assert.ok(!bad.ok, '★★ 全场都是单数时，「双数留下」必须被拒（否则一次淘汰所有人）')
+      assert.ok(/换一条/.test(bad.msg || ''), '理由要引导换一条：' + bad.msg)
+      ok('★★ 全场都不符合的规则被拒（不会一次淘汰所有人）')
+    }
+
+    /* ---- 单人拿光 → 进 over，且结算文案点名 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      /* 让甲只剩 1 颗红 6，乙剩 3 颗红 6 —— 喊「大的留下」后甲仍在、乙仍在 */
+      /* 改为：甲 1 颗红 1，乙 2 颗红 6 —— 喊「大的留下」→ 甲 0 颗（输） */
+      const oids = (raw.players || []).filter(p => p.inRound !== false).map(p => p.openid)
+      raw.svDice = {}
+      raw.svDice[oids[0]] = [{ face: 1, color: 'red' }]
+      raw.svDice[oids[1]] = [{ face: 6, color: 'red' }, { face: 6, color: 'red' }]
+      raw.svDead = {}
+      raw.phase = 'playing'
+      raw.lastResult = null
+      const turnP = (raw.players || []).filter(p => p.seat === raw.svTurn)[0]
+      OPENID = turnP.openid
+      const r = await room.main({ action: 'svAct', rule: 'big', id: sid })
+      assert.ok(r.ok, '喊「大的留下」应成功：' + (r.msg || ''))
+      const after = store.rooms.filter(x => x._id === sid)[0]
+      assert.strictEqual(after.phase, 'over', '★ 有人拿光 → 整局结束')
+      assert.ok(after.lastResult, '★ 必须有结算结果')
+      assert.ok(/拿光/.test(after.lastResult.winText || ''),
+        '★ 结算文案要说明骰子拿光了：' + JSON.stringify(after.lastResult))
+      assert.ok(after.lastResult.loserSeat > 0, '★ 要记下输的人座位')
+      ok('★★ 单人拿光 → 进 over + 结算文案点名')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

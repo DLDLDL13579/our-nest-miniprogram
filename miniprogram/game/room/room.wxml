@@ -1226,6 +1226,61 @@
       </view>
     </block>
 
+    <!-- ============ 红黑单双大小（2026-11-03，第 8 个玩法） ============
+      这是唯一的「规则本身在变」的玩法：
+      每轮由当前玩家临时指定一条筛选规则，所有人按它筛骰、重摇。
+      界面必须让"这一轮用的是哪条规则"一直可见 —— 否则玩家会按上一轮的规则想。
+    -->
+    <block wx:elif="{{room.game === 'sieve'}}">
+      <view class="sv-stage">
+
+        <!-- 上一轮用了什么规则（全场可见，避免记混） -->
+        <view wx:if="{{room.sv.lastRuleText}}" class="sv-last">
+          <text class="sv-last-k">上一轮</text>
+          <text class="sv-last-r">{{room.sv.lastRuleText}}</text>
+          <text wx:if="{{room.sv.last.byName}}" class="sv-last-by">{{room.sv.last.byName}} 喊的</text>
+        </view>
+        <view wx:if="{{room.sv.last.voided}}" class="sv-void">{{room.sv.last.voidText}}</view>
+
+        <!-- 所有人：骰子 + 剩几颗 + 死了没 -->
+        <view class="sv-seats">
+          <view wx:for="{{room.sv.seats}}" wx:key="seat"
+                class="sv-seat {{item.isMe ? 'me' : ''}} {{item.dead ? 'dead' : ''}}">
+            <view class="sv-seat-h">
+              <text class="sv-seat-n">{{item.name}}</text>
+              <text class="sv-seat-c">{{item.dead ? '拿光了' : item.left + ' 颗'}}</text>
+            </view>
+            <view class="sv-dice">
+              <image wx:for="{{item.dice}}" wx:for-item="d" wx:key="index"
+                     class="sv-die"
+                     src="{{d.src}}"
+                     mode="aspectFit" />
+              <text wx:if="{{!item.dice.length}}" class="sv-none">—</text>
+            </view>
+          </view>
+        </view>
+
+        <!-- 轮到谁喊规则 -->
+        <block wx:if="{{room.sv.canAct}}">
+          <view class="sv-cmd">你来定这一轮的规则</view>
+          <view class="sv-rules">
+            <view wx:for="{{room.sv.rules}}" wx:key="k"
+                  class="sv-rule {{item.usable ? '' : 'off'}}"
+                  data-rule="{{item.k}}" bindtap="svPick">
+              <text class="sv-rule-n">{{item.name}}</text>
+              <text class="sv-rule-d">{{item.desc}}</text>
+            </view>
+          </view>
+        </block>
+        <view wx:else class="pk-wait">
+          <text class="pw-t waitpulse">等 {{room.sv.turnName}} 定规则</text>
+          <text class="pw-s">规则每轮都换 —— 这就是这个玩法</text>
+        </view>
+
+        <view wx:if="{{room.sv.iAmDead}}" class="sv-out">你的骰子拿光了，这局在旁边看</view>
+      </view>
+    </block>
+
     <!-- ============ 射龙门（2026-11-03，第 7 个玩法） ============
       ★ 这个界面的信息结构和其他玩法都不一样：
         **押注时屏幕上什么都没有**（连龙门都没开），

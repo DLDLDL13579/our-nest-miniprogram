@@ -32,6 +32,54 @@ let code = ''
   }
 })(MP)
 
+/*
+ * ★★ 2026-11-03：**云函数里也可能出现包内图片路径**。
+ *
+ *   起因：红黑单双大小的骰子图片路径由 `shape()` 下发
+ *   （因为模板里做三元拼接的目录名，契约断言解析不了、会误报"文件不存在"）。
+ *   而这条孤儿图检测只扫 `miniprogram/` —— 于是那 6 张红色骰子
+ *   被判成"包里没人引用"。
+ *
+ *   这是断言的**扫描范围**问题，不是"放宽判据"：
+ *   云函数里出现的 `/game/images/xxx.png` 确实是在描述一个包内资源，
+ *   扫它不会掩盖任何真实问题（拼错路径反而会被孤儿检测抓到）。
+ *
+ *   ⚠️ 只扫 cloudfunctions 下的 .js，且只取含 `/game/images/` 或 `/images/`
+ *      字面量的行 —— 不把整个云端源码混进来（那会把别处的 `/` 也当路径）。
+ */
+;(function walkCloud(d) {
+  if (!fs.existsSync(d)) return
+  for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+    const fp = path.join(d, f.name)
+    if (f.isDirectory()) { walkCloud(fp); continue }
+    if (!f.name.endsWith('.js')) continue
+    const src = fs.readFileSync(fp, 'utf8')
+    /*
+     * 云端是**拼接**出来的路径（`'/game/images/dice-red/dice-' + face + '.png'`），
+     * 所以要按字符串字面量逐个抽，再自己拼成 § 模板。
+     * 这里处理的是"含 game/images 前缀的那一段字面量"。
+     */
+    /*
+     * 云端拼路径的形态是：'/game/images/dice-red/dice-' + c.face + '.png'
+     * 也就是"前半段字面量 + 变量 + 后半段字面量"。
+     * 这里直接按**整行**找这种形态，拼成 § 模板交给后面的匹配。
+     */
+    src.split('\n').forEach((line) => {
+      const m = line.match(/'([^']*(?:\/game\/images|\/images)\/[^']*)'/)
+      if (!m) return
+      let tpl = m[1]
+      /*
+       * ★ 必须补成"带扩展名的完整模板"。
+       *   下游的模板正则要求路径**以 .png 结尾**，
+       *   而云端拼出来的前半段是 `.../dice-`（没有扩展名）——
+       *   不补的话这条模板永远匹配不到任何文件（假阴性）。
+       */
+      if (!/\.(png|jpg|jpeg)$/.test(tpl)) tpl += '§.png'
+      code += tpl + ' '
+    })
+  }
+})(path.join(ROOT, 'cloudfunctions'))
+
 /* 所有图片 */
 const images = []
 ;(function walk(d) {

@@ -232,7 +232,8 @@ const HAS_SETTLE_CUE = {
   poker: null,              /* win / penalized 已在比牌结算时播过 */
   wheel: null,              /* 转盘停在扇区那一刻已经响了 */
   forehead: 'revealHit',    /* ★ 新补：开牌揭晓的重击 */
-  between: 'diceSettleLast' /* ★ 新补：最后一把落定的收尾声 */
+  between: 'diceSettleLast', /* ★ 新补：最后一把落定的收尾声 */
+  sieve: 'penalized'       /* ★ 第 8 个玩法：有人骰子拿光了 = 有人要喝 */
 }
 
 Page({
@@ -2702,6 +2703,44 @@ Page({
     }, ms)
     this._cupTimers.push(id)
     return id
+  },
+
+  /* ================= 红黑单双大小（2026-11-03） ================= */
+
+  /*
+   * 点一条规则 = 直接喊（不做二次确认）。
+   *
+   * ★ 为什么不用确认卡：这个玩法里喊规则是**每轮都要做的高频动作**，
+   *   加一次确认就多一次点击，而项目铁律①是"手机是桌上道具，不是要一直点的 App"。
+   *   误点代价也小 —— 这一轮筛掉的骰子下一轮还会重摇，不是不可逆的。
+   *   （对比：金花的换牌要确认，因为那是**花真钱（酒）**，且不可逆。）
+   */
+  async svPick(e) {
+    if (!this.specGuard()) return
+    const room = this.data.room
+    if (!room || !room.sv || this._svBusy) return
+    const rule = e.currentTarget.dataset.rule
+    if (!rule) return
+    /* 不可用的规则点了要说清为什么，不能静默忽略 */
+    const def = (room.sv.rules || []).filter(r => r.k === rule)[0]
+    if (def && !def.usable) {
+      sfx.play('tapSoft')
+      wx.showToast({ title: '这条规则现在一个人都留不下', icon: 'none', duration: 2200 })
+      return
+    }
+    this._svBusy = true
+    sfx.play('tap')
+    const r = await call('room', { action: 'svAct', rule: rule, id: room.id }, { silent: true })
+      .catch((err) => {
+        wx.showToast({ title: (err && err.friendly) || '没喊成，再点一次', icon: 'none' })
+        this.resyncAfterFail()
+        return null
+      })
+    this._svBusy = false
+    if (!this.okOrSay(r)) return
+    /* 筛骰 + 重摇：给一串骰子滚动声，让"骰子在动"被听见 */
+    sfx.play('diceOnTable')
+    this.applyRoom(r.room)
   },
 
   /* ================= 射龙门（2026-11-03） ================= */

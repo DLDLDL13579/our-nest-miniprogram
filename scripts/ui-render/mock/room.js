@@ -1233,6 +1233,65 @@ module.exports = {
      *   中心按钮像圆片）我在本地一次都看不到。
      *   补上之后，转盘的每次改动才有"眼睛"。
      */
+    /* ============ 红黑单双大小（2026-11-03）============ */
+    /* 轮到我喊规则 */
+    svTurn: () => ({
+      stage: 'playing',
+      room: pkRoom({
+        game: 'sieve', phase: 'playing', host: true, count: 3,
+        gameName: '红黑单双大小', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
+        sv: {
+          round: 3, turnSeat: 1, turnName: '邓林', myTurn: true,
+          iAmDead: false, canAct: true, usableCount: 6,
+          seats: [
+            { seat: 1, name: '邓林', isMe: true, dead: false, left: 3,
+              dice: [{ face: 2, color: 'red' }, { face: 5, color: 'ivory' }, { face: 6, color: 'red' }] },
+            { seat: 2, name: '倩萍', isMe: false, dead: false, left: 4,
+              dice: [{ face: 1, color: 'ivory' }, { face: 3, color: 'ivory' },
+                     { face: 4, color: 'red' }, { face: 6, color: 'ivory' }] },
+            { seat: 3, name: '阿杰', isMe: false, dead: false, left: 2,
+              dice: [{ face: 3, color: 'red' }, { face: 5, color: 'ivory' }] }
+          ],
+          /*
+           * ★★ 2026-11-03：可用性**用真实函数算**，不手写。
+           *
+           *   第一版我手写了 `usable: false` 给「黑的留下」，
+           *   而上面 seats 里明明有白骰子 —— 截图里那张卡被置灰，
+           *   和真实逻辑矛盾。
+           *
+           *   项目里记过：「mock 的每个数字都要能回答产品在什么条件下会出现这个值」。
+           *   手写布尔值是**用一个假的判断去描述一个真的判断**，
+           *   必然有一天和真实逻辑对不上，而且看起来像界面 bug。
+           */
+          rules: (function () {
+            const S = require('../../../miniprogram/utils/sieveRules.js')
+            const allDice = [
+              [{ face: 2, color: 'red' }, { face: 5, color: 'ivory' }, { face: 6, color: 'red' }],
+              [{ face: 1, color: 'ivory' }, { face: 3, color: 'ivory' },
+               { face: 4, color: 'red' }, { face: 6, color: 'ivory' }],
+              [{ face: 3, color: 'red' }, { face: 5, color: 'ivory' }]
+            ]
+            const usable = S.usableRules(allDice)
+            return S.ruleList().map(r => ({
+              k: r.k, name: r.name, short: r.short, desc: r.desc,
+              usable: usable.indexOf(r.k) >= 0
+            }))
+          })(),
+          last: { rule: 'small', byName: '倩萍', round: 2 },
+          lastRuleText: '小的留下', myLeft: 3
+        }
+      })
+    }),
+    /* 等别人喊 */
+    svWait: () => {
+      const base = module.exports.states.svTurn()
+      base.room.sv.canAct = false
+      base.room.sv.myTurn = false
+      base.room.sv.turnSeat = 2
+      base.room.sv.turnName = '倩萍'
+      return base
+    },
+
     /* ============ 射龙门（2026-11-03）============ */
     /* 轮到我押注：屏幕上刻意什么都没有 */
     btBet: () => ({
