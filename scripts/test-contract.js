@@ -5348,3 +5348,29 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些字号不在 10 档阶梯里（' + LADDER.join(' ') + '）：\n    ' + bad.join('\n    '))
   ok('★ 字号只用 10 档（' + LADDER.length + ' 个值，没有散落）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**每个测试脚本都要能 `require('assert')` 和 `ok()`**
+ *
+ * 三个测试脚本原来用三套不同的输出方式，而"从别的文件复制一段断言过来"
+ * 最常见的失败是 `ReferenceError: assert is not defined` ——
+ * **它会整个文件崩掉，而不是"这一条不通过"**（这个坑我一天踩了两次）。
+ *
+ * 判据：不管用哪套输出，`assert` 和 `ok` 这两种写法都得能用。
+ * ========================================================================== */
+{
+  const bad = []
+  ;['test-docs.js', 'test-mock.js', 'test-rules-doc.js', 'test-contract.js'].forEach(f => {
+    const p = path.join(ROOT, 'scripts', f)
+    if (!fs.existsSync(p)) return
+    const src = fs.readFileSync(p, 'utf8')
+    const hasAssert = /require\('assert'\)|require\("assert"\)/.test(src)
+    const hasOk = /function ok\s*\(|const ok\s*=/.test(src)
+    if (!hasAssert) bad.push(f + '：不能 require(\'assert\')')
+    if (!hasOk) bad.push(f + '：没有定义 ok()')
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '这些测试脚本缺基础能力（复制断言过来会崩）：\n    ' + bad.join('\n    '))
+  ok('★ 四个测试脚本都能用 assert 和 ok()（复制断言不会崩）')
+}

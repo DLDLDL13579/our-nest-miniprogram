@@ -15,6 +15,23 @@
  */
 const fs = require('fs')
 const path = require('path')
+const assert = require('assert')
+
+/*
+ * ★ 2026-11-03：**兼容层**。
+ *
+ * 本仓库三个测试脚本用了三套不同的输出方式：
+ *   · `test-contract.js` → `assert` + `ok()`（`ok` 是它自己定义的）
+ *   · `test-mock.js`     → `assert` + `console.log`
+ *   · `test-docs.js`     → 纯 `console.log` + `process.exitCode`   ← 原来没有 assert
+ *
+ * 而"从别的文件复制一段断言过来"时，最常见的失败是 `ReferenceError: assert is not defined` ——
+ * **它会整个文件崩掉，而不是"这一条不通过"**（这个坑我一天踩了两次）。
+ *
+ * 所以这里把 `assert` 引进来，让复制过来的断言至少能跑；
+ * 而 `ok()` 也定义成 `console.log` 的语法糖，让三种写法都能用。
+ */
+function ok(msg) { console.log('  ' + msg) }
 
 const ROOT = path.join(__dirname, '..')
 const DOCS = path.join(ROOT, 'docs')

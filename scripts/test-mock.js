@@ -23,6 +23,16 @@
  *   · 结算的 ranked 里每个 seat 都能在 players 里找到
  */
 const assert = require('assert')
+
+/*
+ * ★ 2026-11-03：**兼容层**。
+ * 本仓库三个测试脚本原来用三套输出（`ok()` / `console.log` / `process.exitCode`），
+ * 而"从别的文件复制一段断言过来"时最常见的失败是 `ReferenceError: assert is not defined`
+ * 或 `ok is not defined` —— **它会整个文件崩掉，而不是"这一条不通过"**。
+ *
+ * 这里补上 `ok()`（`console.log` 的语法糖），让三种写法都能用。
+ */
+function ok(msg) { console.log('  ' + msg) }
 const mock = require('./ui-render/mock/room.js')
 
 const states = mock.states
