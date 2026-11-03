@@ -1742,7 +1742,17 @@ Page({
       const win = raw.poker.winner
       if (win !== (this._lastPkWin || '')) {
         this._lastPkWin = win
-        const iWon = raw.me && win === raw.me.name
+        /*
+         * ★★ 2026-11-03：`iWon` 原来写的是 `win === raw.me.name` —— 比**昵称**。
+         *
+         *   昵称是玩家自填的，重名完全可能（join 只查长度和内容安全，不查重）。
+         *   两人同名时：赢的人和输的人会同时放撒花 + 胜利音效，
+         *   或者真正赢的人听到的是"罚酒"下坠声。**全程不报错。**
+         *
+         *   改成读服务端已经算好的 `room.poker.iWon`（按 openid 比），
+         *   前端不再自己推一遍"我是谁" —— 派生字段只在一处算，这是项目一贯做法。
+         */
+        const iWon = !!(raw.poker && raw.poker.iWon)
         /* 输了 = 罚酒：penalized 是"下坠 + 碰杯"两层，比单薄的 lose 更贴酒桌 */
         feedback.fire(iWon ? 'win' : 'penalized')
         if (iWon) this.celebrate()

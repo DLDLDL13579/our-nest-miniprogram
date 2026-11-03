@@ -3269,6 +3269,87 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   }
 
 
+  /* ============================================================================
+   * ㉔ 重名（2026-11-03）
+   *
+   * 昵称是玩家自填的，`join` 只查长度和内容安全，**不查重** ——
+   * 桌上两个人甚至都能叫「小明」。而金花原来有两处按名字判身份：
+   *   · 座位条 `item.name === room.me.name` → 两条同时高亮
+   *   · `iWon = win === raw.me.name` → 撒花/胜利音效给错人
+   * 全程不报错。
+   *
+   * 判据：**身份只能走 openid。** 这一组用两个同名玩家真跑一遍。
+   * ========================================================================== */
+  console.log('\n=== ㉔ 重名：身份判定不能走昵称 ===')
+  {
+    const D1 = 'oid_dup_1', D2 = 'oid_dup_2', DUP_NAME = '小明'
+    OPENID = D1
+    const cr = await room.main({ action: 'create', name: DUP_NAME, game: 'poker' })
+    assert.ok(cr.ok, '建房应成功：' + (cr.msg || ''))
+    const did = cr.room.id
+    OPENID = D2
+    const jn = await room.main({ action: 'join', code: cr.room.code, name: DUP_NAME })
+    assert.ok(jn.ok, '同名也应该能加入（不查重是对的 —— 现实里真会有同名）')
+    assert.strictEqual(jn.room.count, 2, '两个人都该在房里')
+
+    OPENID = D1
+    await room.main({ action: 'start', id: did })
+    store.rooms.filter(x => x._id === did)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: did })
+
+    /* ---- 座位条：必须只有一个 isMe ---- */
+    {
+      const v1 = await room.main({ action: 'status', id: did })
+      const drinks = v1.room.poker.drinks
+      assert.strictEqual(drinks.length, 2, '座位条应有两行')
+      assert.strictEqual(drinks.filter(d => d.isMe).length, 1,
+        '★★ 同名局里"我"必须只有一个（按名字比会变成两个）')
+      assert.strictEqual(drinks.filter(d => d.isMe)[0].name, DUP_NAME, '标出来的名字也对')
+
+      OPENID = D2
+      const v2 = await room.main({ action: 'status', id: did })
+      assert.strictEqual(v2.room.poker.drinks.filter(d => d.isMe).length, 1,
+        '★★ 换个人看，也只有一个 isMe')
+      OPENID = D1
+      ok('★★ 同名局：每个人的座位条只有一个「我」（按 openid 而非昵称）')
+    }
+
+    /* ---- iWon：赢家和输家的必须相反 ---- */
+    {
+      const raw = store.rooms.filter(x => x._id === did)[0]
+      const turnP = (raw.players || []).filter(p => p.seat === raw.turn)[0]
+      OPENID = turnP.openid
+      await room.main({ action: 'pkAct', act: 'fold', id: did })
+
+      const rawAfter = store.rooms.filter(x => x._id === did)[0]
+      assert.strictEqual(rawAfter.phase, 'over', '一方弃牌后应结算')
+      assert.ok(rawAfter.pkWinnerOid, '★ 必须记下赢家的 openid（不只是名字）')
+
+      const winnerOid = rawAfter.pkWinnerOid
+      const loserOid = (rawAfter.players || []).filter(p => p.openid !== winnerOid)[0].openid
+
+      OPENID = winnerOid
+      const wView = await room.main({ action: 'status', id: did })
+      assert.strictEqual(wView.room.poker.iWon, true, '★★ 赢家的 iWon 必须是 true')
+
+      OPENID = loserOid
+      const lView = await room.main({ action: 'status', id: did })
+      assert.strictEqual(lView.room.poker.iWon, false,
+        '★★ 输家的 iWon 必须是 false —— 同名时按名字比会让两人都 true')
+      ok('★★ 同名局：赢家和输家的 iWon 相反（撒花/音效不会给错人）')
+    }
+
+    /* ---- 新一局必须清掉上一局的赢家 ---- */
+    {
+      OPENID = D1
+      await room.main({ action: 'again', id: did })
+      const fresh = store.rooms.filter(x => x._id === did)[0]
+      assert.strictEqual(fresh.pkWinnerOid, null,
+        '★★ 重开一局必须清 pkWinnerOid（不清的话 iWon 会对还没比过的局返回 true）')
+      ok('★★ 重开一局清掉 pkWinnerOid（不会提前撒花）')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

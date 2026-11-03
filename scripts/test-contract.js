@@ -5615,3 +5615,46 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '\n    要么接到模板上，要么删掉。')
   ok('★ 页面 data 字段全部有人读（扫了主包 + 分包 ' + pages.length + ' 个 js）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**不许用「昵称」判断「我是谁」**
+ *
+ * 金花的座位条原来写的是：
+ *     class="pk-seat {{item.name === room.me.name ? 'me' : ''}}"
+ *
+ * 而**昵称是玩家自己填的**（`join` 只做长度与内容安全，不查重），
+ * 两个人甚至都能叫「小明」。重名时两条座位同时高亮，
+ * 玩家会以为"我换了两杯" —— 不报错、不看真机发现不了。
+ *
+ * 判据：**身份判定只能走 openid**（唯一），不能走昵称（不唯一）。
+ * 所以模板里不许出现 `name ===` / `name ==` 这类比较，js 里也不许。
+ *
+ * ⚠️ 之所以写成"扫整仓"而不是"只改金花那一处"：
+ *    项目记过「修一类只改被点名的页面」的坑，而同类代码可能藏在别的玩法里。
+ *    这条断言是**覆盖性**的，加新玩法时也自动受约束。
+ * ========================================================================== */
+{
+  const bad = []
+  const walkW = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d, { withFileTypes: true }).forEach((e) => {
+      const p = path.join(d, e.name)
+      if (e.isDirectory()) return walkW(p)
+      if (!/\.(wxml|js)$/.test(e.name)) return
+      const t = fs.readFileSync(p, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+      /* 只看「拿 name 去比」的形态：xxx.name === yyy / yyy == xxx.name */
+      const hits = [
+        ...t.matchAll(/\b([a-zA-Z_$][\w.$]*)\.name\s*===?\s*([a-zA-Z_$][\w.$]*)/g),
+        ...t.matchAll(/\b([a-zA-Z_$][\w.$]*)\s*===?\s*([a-zA-Z_$][\w.$]*)\.name\b/g)
+      ]
+      if (hits.length) bad.push(path.relative(ROOT, p) + ' → ' + hits[0][0].trim().slice(0, 44))
+    })
+  }
+  /* ★ 必须同时扫主包和分包 */
+  walkW(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual(bad, [],
+    '这些地方用「昵称」判断身份 —— 而昵称可以重名，判定必须走 openid：\n    ' + bad.join('\n    '))
+  ok('★ 身份判定不走昵称（重名不会导致"两个我"）')
+}

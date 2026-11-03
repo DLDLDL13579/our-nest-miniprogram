@@ -822,13 +822,32 @@ function shape(room, openid) {
           .filter(p => p.inRound !== false)
           .map(p => ({
             name: p.name,
+            /*
+             * ★ 2026-11-03：补 `isMe`。
+             *
+             * 座位条原来是靠 `item.name === room.me.name` 判断"哪个是我" ——
+             * 而**昵称是玩家自己填的，重名完全可能**（两个人甚至都能叫"小明"）。
+             * 重名时两条座位同时高亮，玩家会以为"我换了两杯"。
+             *
+             * 判据只看 openid（唯一），不看昵称。这是本项目"派生字段只在一处算"
+             * 的又一处应用 —— 前端不该自己再推一遍"我是谁"。
+             */
+            isMe: p.openid === openid,
             cups: Number((room.pkDrink || {})[p.openid]) || 0,
             out: !!p.out
           })),
         aliveCount: alive.length,
         /* 比牌历史：双方亮过的牌（公开信息，本来就是为了让全场看见） */
         last: room.pkLast || null,
-        winner: room.pkWinner || null
+        /* 展示用（结算页标题念的是人名） */
+        winner: room.pkWinner || null,
+        /*
+         * ★ 判定用：openid 唯一，昵称可以重名（2026-11-03）。
+         * 只给**布尔结果**，不把 winnerOid 本身透给前端 ——
+         * 前端拿它也没用（它只知道"我赢了没"），多透一个字段就多一处
+         * "幽灵字段"（服务端返回、前端从不引用）的嫌疑。
+         */
+        iWon: !!room.pkWinnerOid && room.pkWinnerOid === openid
       }
     })(),
     /*
@@ -2101,6 +2120,9 @@ exports.main = async (event) => {
           pkDrink: {},
           pkLast: null,
           pkWinner: null,
+          /* ★ 和 pkWinner 一起清 —— 不清的话新一局会带着上一局的赢家 openid，
+             `iWon` 会对一个还没比过的局返回 true（撒花 + 胜利音效提前放） */
+          pkWinnerOid: null,
           /* 谁是卧底的进度：开局直接进"说描述"（看词是按住看，不需要单独一步） */
           uwStep: room.game === 'undercover' ? 'talk' : null,
           uwOut: [],
@@ -2858,7 +2880,7 @@ exports.main = async (event) => {
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
         spin: null,
         /* 金花 / 卧底的局内状态一起清 */
-        pkStep: null, pkLast: null, pkWinner: null, pkPublic: null, pkRest: [], pkDrink: {},
+        pkStep: null, pkLast: null, pkWinner: null, pkWinnerOid: null, pkPublic: null, pkRest: [], pkDrink: {},
         /*
          * ★★ 卧底这一批也要在这里清（2026-10-28）。
          *
@@ -3191,12 +3213,22 @@ exports.main = async (event) => {
         patch.pkStep = 'result'
         patch.pkWinner = stillAlive.length ? stillAlive[0].name : ''
         /*
-         * 金花：只有最后站着的那个人赢。
-         * ⚠️ 用 **名字** 判而不是座位 —— pkwInner 存的是名字，
-         *    而这里 players 已经改过（out 标记），用名字更直接。
+         * ★★ 2026-11-03：新增 `pkWinnerOid`，把"谁是赢家"从**昵称**改成 **openid**。
+         *
+         *   原来这里（以及前端判断"我赢了没"）都拿名字比 —— 而昵称是玩家自填的，
+         *   两个人重名时：两条座位同时高亮、撒花和胜利音效会同时给错的人、
+         *   连胜统计也会记到两个人头上。全程不报错。
+         *
+         *   ⚠️ 上面原来还写着一句「用名字判而不是座位 —— 存的是名字，用名字更直接」，
+         *      那个"更直接"正是问题本身：**名字不唯一，不能当身份**。
+         *      （注释里的判断也会错 —— 项目里记过"注释声称的机制要能在代码里找到"。）
+         *
+         *   pkwInner 保留名字只为**展示**（结算页大标题要念人名），
+         *   一切**判定**走 openid。
          */
+        patch.pkWinnerOid = stillAlive.length ? stillAlive[0].openid : ''
         const pkStreak = bumpStreaks(room.streaks, room.players,
-          (p) => p.name === patch.pkWinner && p.inRound !== false)
+          (p) => p.openid === patch.pkWinnerOid && p.inRound !== false)
         patch.streaks = pkStreak.streaks
         patch.lastResult = {
           kind: 'poker',
@@ -3426,7 +3458,7 @@ exports.main = async (event) => {
           }))
           Object.assign(upd, {
             phase: 'lobby', bid: null, lastResult: null, turn: 0, spin: null,
-            pkStep: null, pkLast: null, pkWinner: null,
+            pkStep: null, pkLast: null, pkWinner: null, pkWinnerOid: null,
             pkPublic: null, pkRest: [], pkDrink: {}
           })
         }
