@@ -1267,6 +1267,44 @@ const settleMod = require(path.join(ROOT, 'miniprogram/game/settle.js'))
     ok('★ 三处全屏状态都有出口（遮罩 / 倒计时 / 返回）')
   }
 
+  /* ============================================================================
+   * ★★ 轮询去重必须覆盖所有「会显示出来的」字段（2026-11-03）
+   *
+   * `roomChanged()` 决定"这次轮询要不要 setData"。漏一个字段的后果是
+   * **数据变了但界面不动** —— 看起来和"功能坏了"一模一样。
+   * 项目里因此栽过两次（金花换手牌、轮次提示）。
+   *
+   * 这一轮又发现：**bt（射龙门）和 fh（额头牌）整个块都没参与比较**。
+   * 别人押注、翻牌、同意、换牌时，我这边判定"无变化"→ 跳过 setData
+   * → 界面停在旧状态，直到别的字段碰巧变了才刷。
+   *
+   * 判据：**每个玩法在 shape() 里给出的顶层块，都必须在 roomChanged 里被比较。**
+   * 结构性判据 —— 加新玩法时自动受约束，不用靠人记得去改。
+   * ========================================================================== */
+  {
+    const js = fs.readFileSync(JS, 'utf8')
+    const iCmp = js.indexOf('roomChanged(prev, room)')
+    assert.ok(iCmp > 0, '找不到 roomChanged')
+    const iEnd = js.indexOf('\n  },', iCmp)
+    const cmpBody = js.slice(iCmp, iEnd > 0 ? iEnd : iCmp + 6000)
+
+    /*
+     * 各玩法在 shape() 里的顶层块名（和 mock/wxml 用的是同一批）。
+     * 只列"随别人操作而变化、必须实时反映"的 ——
+     * 骰子类走 players/dice 里的字段，已经有覆盖。
+     */
+    const LIVE_BLOCKS = ['uw', 'poker', 'fh', 'bt']
+    const missing = LIVE_BLOCKS.filter((k) => {
+      /* 允许 `prev.fh` / `pfa` 等任意变量名，但属性名必须是 fh */
+      const re = new RegExp('\.' + k + '\\b')
+      return !re.test(cmpBody)
+    })
+    assert.deepStrictEqual(missing, [],
+      '★ 这些玩法的状态块没有参与 roomChanged 去重 —— ' +
+      '别人操作时界面会不刷新：\n    ' + missing.join('\n    '))
+    ok('★ 4 个玩法状态块都参与轮询去重（uw / poker / fh / bt）')
+  }
+
   console.log(`\n${'='.repeat(58)}`)
   console.log(`  房间页状态机：全部 ${n} 项断言通过`)
   console.log(`${'='.repeat(58)}\n`)

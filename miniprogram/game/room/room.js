@@ -845,6 +845,25 @@ Page({
     if (pka.drinkText !== pkb.drinkText) return true
     if (pka.folded !== pkb.folded) return true
 
+    /*
+     * ★★★ 2026-11-03：额头牌 / 射龙门的状态块也要参与比较。
+     *
+     *   这两个玩法加进来时**都漏了这里**，而 roomChanged 的返回值决定
+     *   "这次轮询要不要 setData"。漏掉的后果：
+     *     别人押注 / 翻牌 / 同意 / 换牌 → 我这边判定"无变化" → 跳过 setData
+     *     → 界面停在旧状态，直到别的字段碰巧变了才刷。
+     *
+     *   表现是「别人已经翻牌了，我屏幕上还在等他押注」——
+     *   而它和"服务端没收到"看起来一模一样，最难查。
+     *
+     *   ⚠️ 这里**整块 JSON 比**而不是逐字段：这两个玩法的字段多且集中
+     *      （step / bet / gate / third / last / agreed / acts …），
+     *      逐字段比一定会漏，而漏的后果比"多刷几次 setData"严重得多。
+     *      它们的数据量很小（一局最多几条），JSON.stringify 的代价可忽略。
+     */
+    if (JSON.stringify(prev.fh || null) !== JSON.stringify(room.fh || null)) return true
+    if (JSON.stringify(prev.bt || null) !== JSON.stringify(room.bt || null)) return true
+
     /* 转盘这一转 */
     const sa = prev.spin, sb = room.spin
     if (!!sa !== !!sb) return true
