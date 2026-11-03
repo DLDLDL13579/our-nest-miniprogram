@@ -584,3 +584,40 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
 
   console.log('  ✓ 8 人局有"轮到我"的状态（myTurn=' + s.room.myTurn + '，' + s.room.count + ' 人）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**mock 状态的名字要和它实际走的分支一致**
+ *
+ * 起因：我加了 `liar8`（8 人局），而它的 `myTurn` 是 false ——
+ * **名字说有 8 人，实际走的是"等别人"分支，看不到叫骰区**。
+ *
+ * 这是"自欺"：以为加了状态就覆盖了场景，而字段值让它走了另一条路。
+ *
+ * ⚠️ 判据写窄：只查**名字里明确带阶段词**的那几个。
+ *    第一版写成"含 Guest 就是大厅"，而 `overGuest` 是"非房主的**结算**页" —— 误报。
+ *    这类"名字里恰好含另一个词"的情况，正则越宽越容易错。
+ * ========================================================================== */
+{
+  const mock = require('./ui-render/mock/room.js')
+  const bad = []
+
+  Object.keys(mock.states).forEach(k => {
+    let s
+    try { s = mock.states[k]() } catch (e) { return }
+    const r = s.room || {}
+    const stage = s.stage || ''
+
+    /* 名字以 Over / Win / Blowup 结尾或开头的 → 必须是结算 */
+    if (/^(over|iLost|.*Over|.*Win|.*Blowup)$/i.test(k) && stage !== 'over') {
+      bad.push(k + '：名字像结算，但 stage=' + stage)
+    }
+    /* 名字带 Mine / MyTurn → 必须 myTurn 为真 */
+    if (/Mine$|MyTurn/i.test(k) && r.myTurn !== true) {
+      bad.push(k + '：名字像"轮到我了"，但 myTurn=' + r.myTurn)
+    }
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '这些 mock 状态的字段值让它走了和名字不符的分支：\n    ' + bad.join('\n    '))
+  console.log('  ✓ mock 状态的名字和它走的分支一致（' + Object.keys(mock.states).length + ' 个）')
+}
