@@ -2974,7 +2974,12 @@
     rgba(255, 248, 224, 0) 0%,
     rgba(255, 248, 224, .55) 50%,
     rgba(255, 248, 224, 0) 100%);
-  transform: skewX(-18deg);
+  /*
+   * ⚠️ `skewX(-18deg)` 已经写进 keyframes 的每一帧了 ——
+   *   如果这里再写一次，两者会**叠加**（-36deg）。
+   *   为什么挪进 keyframes：transform 的多个函数在动画里会整体替换，
+   *   元素上的 transform 会被 keyframes 覆盖，而不是合并。写两处必错一处。
+   */
   /*
    * ★ 2026-11-02：原来写 `infinite`，但 `nameShine` 的 55%~100% 都停在
    *   `left: 115%`（框外）—— 视觉上就是"扫一次就停了"。
@@ -2986,10 +2991,22 @@
   animation: nameShine 2.6s ease-in-out 1.2s 1 backwards;
   pointer-events: none;
 }
+/*
+ * ⚠️ 2026-11-03：从 `left: -50% → 115%` 改成 `transform: translateX()`。
+ *
+ *   两者视觉完全一样，但 `left` **每帧触发布局重算（reflow）**，
+ *   而 `transform` 走合成器、代价几乎为零。
+ *   这个动画正好在**结算页的大名字**上，是全场最显眼的元素之一，
+ *   而且是一屏里唯一用布局属性的动画（其余 45 个都已经是合成属性）。
+ *
+ *   位移距离：元素宽度 36%，要从 -50% 走到 115% = 走 165%（相对元素自身）。
+ *   而 transform 的百分比是**相对元素自身宽度**，所以 165% 直接可用。
+ *   起点 -50% 同理。两者数值可以在 keyframes 里原样搬过来 —— 相对宽度一致。
+ */
 @keyframes nameShine {
-  0%   { left: -50% }
-  55%  { left: 115% }
-  100% { left: 115% }
+  0%   { transform: translateX(-50%) skewX(-18deg) }
+  55%  { transform: translateX(115%) skewX(-18deg) }
+  100% { transform: translateX(115%) skewX(-18deg) }
 }
 
 /* 叫骰按钮的横向滚动：右侧渐隐，提示"还有内容"（2026-11-02） */

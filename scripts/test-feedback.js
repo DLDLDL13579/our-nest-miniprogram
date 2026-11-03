@@ -479,7 +479,41 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
     })
     assert.deepStrictEqual(missing, [],
       '这些动作的 animMs 在 wxss 里找不到 —— 音效会和画面错位：\n    ' + missing.join('\n    '))
-    ok('★ 每个 animMs 都在 wxss 里真实存在（' + Object.keys(FEEDBACK).length +
+    /* ============================================================================
+   * ★★ 动画只能用合成属性（2026-11-03）
+   *
+   * `left` / `top` / `width` / `height` / `margin` 这类属性每帧都触发**布局重算**，
+   * 而真机上布局是主线程干的 —— 一屏同时有几个这样的动画就掉帧。
+   * `transform` / `opacity` 走合成器，代价几乎为零。
+   *
+   * 项目里 46 个 keyframes 中只有 1 个用了 `left`（nameShine），
+   * 覆盖率其实很好 —— 但"只有 1 个"也值得改成 0 个：
+   * 它正好在**结算页的大名字**上，是全场最显眼的元素之一。
+   *
+   * ⚠️ `filter: brightness` 不算在这一类里（它触发重绘但不触发布局，
+   *    而且只用在 260ms 的小元素上，代价可接受）。
+   * ========================================================================== */
+  {
+    const wxss = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.wxss'), 'utf8')
+    const blocks = [...wxss.matchAll(/@keyframes\s+(\w+)\s*\{([\s\S]*?)\n\}/g)]
+    assert.ok(blocks.length >= 40, 'keyframes 解析异常（只拿到 ' + blocks.length + ' 个）')
+
+    /* 布局属性：每帧触发 reflow */
+    const LAYOUT_PROPS = ['left', 'top', 'right', 'bottom', 'width', 'height',
+      'margin', 'padding', 'font-size', 'line-height', 'border-width']
+    const bad = []
+    blocks.forEach(([, name, body]) => {
+      const hits = LAYOUT_PROPS.filter((pr) =>
+        new RegExp('(^|[\\s{;])' + pr + '\\s*:', 'm').test(body))
+      if (hits.length) bad.push(name + '（' + hits.join(', ') + '）')
+    })
+    assert.deepStrictEqual(bad, [],
+      '这些动画用了布局属性，每帧触发 reflow，真机会掉帧：\n    ' +
+      bad.join('\n    ') + '\n  改用 transform / opacity。')
+    ok('★ ' + blocks.length + ' 个动画全部只用合成属性（无 left/top/width 之类）')
+  }
+
+  ok('★ 每个 animMs 都在 wxss 里真实存在（' + Object.keys(FEEDBACK).length +
        ' 个动作，排除了 ' + Object.keys(SUSTAIN).length + ' 个流程型）')
   }
 
