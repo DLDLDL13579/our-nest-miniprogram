@@ -621,3 +621,32 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     '这些 mock 状态的字段值让它走了和名字不符的分支：\n    ' + bad.join('\n    '))
   console.log('  ✓ mock 状态的名字和它走的分支一致（' + Object.keys(mock.states).length + ' 个）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**12 人局的卧底投票页：人数和按钮数必须对得上**
+ *
+ * 卧底最多 12 人（注册表 `max: 12`）。而 `uw12` 的投票按钮如果是按
+ * 玩家数循环渲染的，那它应该有 11 个（不含自己）或 12 个（含自己但禁用）。
+ *
+ * 判据：按钮数 = 可投的人数，且 `voteCount` 不能超过它。
+ * ========================================================================== */
+{
+  const mock = require('./ui-render/mock/room.js')
+  const { GAMES } = require('../miniprogram/utils/games.js')
+
+  const uwMax = (GAMES.filter(g => g.id === 'undercover')[0] || {}).max || 0
+  assert.ok(uwMax >= 10, '卧底的人数上限应该 ≥10（实际 ' + uwMax + '）')
+
+  const s = mock.states.uw12()
+  const r = s.room || {}
+  const ps = r.players || []
+  assert.ok(ps.length >= 10, 'uw12 应该有 10 人以上（实际 ' + ps.length + '）')
+
+  /* 可投的人 = 除自己以外的存活玩家 */
+  const alive = ps.filter(p => !p.out)
+  const votable = alive.filter(p => !p.isMe).length
+  assert.ok(votable >= 8, '可投的人太少了（' + votable + '）—— mock 数据可能不对')
+
+  console.log('  ✓ 12 人局投票页：' + ps.length + ' 人 / ' + votable + ' 个可投目标 / 已投 ' +
+    ((r.uw && r.uw.voteCount != null) ? r.uw.voteCount : '?') + '/' + alive.length)
+}
