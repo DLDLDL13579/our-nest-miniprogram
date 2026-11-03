@@ -214,6 +214,27 @@ function stageOf(phase) {
   return 'over'
 }
 
+/*
+ * ★★ 每个玩法「结算那一刻」的反馈（2026-11-03）
+ *
+ * 为什么要有这张表：这个判断原来是 `phase === 'over'` 分支里的一个 if，
+ * 只写了骰子类，旁边还加了一句注释「别的玩法有自己的（结算音效）」——
+ * **那句话是错的**：额头牌和射龙门那时候根本没有结算音，
+ * 画面静着切到结算页，而酒桌上这一下正是"谁喝"的判决时刻。
+ *
+ * 表本身就是判据：`test-game.js` 会要求它覆盖注册表里的全部玩法，
+ * 加新玩法时漏了会当场报错，而不是靠"记得去看那个 if"。
+ */
+const HAS_SETTLE_CUE = {
+  liar: 'cupOpen',          /* 开盅 —— 整条摇盅流程的收尾 */
+  dice: 'cupOpen',          /* 同上 */
+  undercover: null,         /* uwReveal 已在摊牌时播过，这里不重复 */
+  poker: null,              /* win / penalized 已在比牌结算时播过 */
+  wheel: null,              /* 转盘停在扇区那一刻已经响了 */
+  forehead: 'revealHit',    /* ★ 新补：开牌揭晓的重击 */
+  between: 'diceSettleLast' /* ★ 新补：最后一把落定的收尾声 */
+}
+
 Page({
   data: {
     ic: _IC,
@@ -1007,8 +1028,13 @@ Page({
         /* 金花的发牌声由发牌动画那段统一播（_pkDealt），这里不重复；
            转盘开局不需要额外音效 —— 倒计时的"开始！"已经给了落点。 */
       } else if (room.phase === 'over') {
-        /* "开盅"是骰子类专属的收尾声，别的玩法有自己的（结算音效） */
-        if (room.game === 'liar' || room.game === 'dice') feedback.fire('cupOpen')
+        /*
+         * ★ 2026-11-03：查显式清单，不再写死骰子类。
+         *   原来这里只有 `game === 'liar' || 'dice'`，而注释还写着
+         *   「别的玩法有自己的（结算音效）」—— 额头牌和射龙门并没有。
+         */
+        const cue = HAS_SETTLE_CUE[room.game]
+        if (cue) feedback.fire(cue)
       }
     }
     /*

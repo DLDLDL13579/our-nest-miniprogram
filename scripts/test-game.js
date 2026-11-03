@@ -371,7 +371,66 @@ function extractBuildSectors(src) {
     assert.ok(/delete pool\[/.test(evictBody),
       '★ evictIfNeeded 里必须 delete pool[slot]，否则下次还会拿到那个已销毁的实例')
 
-    ok('★ 音频实例有硬上限 ' + cap + '（play() 里 ' + playEvicts + ' 处建实例全部守着 LRU）')
+      ok('★ 音频实例有硬上限 ' + cap + '（play() 里 ' + playEvicts + ' 处建实例全部守着 LRU）')
+  }
+
+  /* ============================================================================
+   * ★★ 每个玩法都要有「结算那一刻」的反馈（2026-11-03）
+   *
+   * over 阶段原来只处理骰子类：
+   *     if (game === 'liar' || game === 'dice') feedback.fire('cupOpen')
+   * 旁边还写着一句注释「别的玩法有自己的（结算音效）」——
+   * **那句话是错的**：额头牌和射龙门那时候根本没有结算音。
+   *
+   * 结果：玩额头牌开牌、玩射龙门最后一把结算，画面切到结算页但**完全没有声音提示**。
+   * 酒桌上这一下是"谁喝"的判决时刻，静着切过去像卡了。
+   *
+   * 判据：**7 个玩法一个都不能漏**，且必须是"fire"而不是裸 sfx.play
+   *（裸播没有音量档位和震动分级）。
+   * ========================================================================== */
+  {
+    const roomJs = fs.readFileSync(path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+    const stripC2 = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    const rj = stripC2(roomJs)
+    assert.ok(/HAS_SETTLE_CUE/.test(rj),
+      '★ room.js 必须有明确的「哪些玩法有结算反馈」清单（HAS_SETTLE_CUE）—— ' +
+      '散在各处的 if 判断迟早会漏一个')
+
+    /* 清单必须覆盖注册表里的每个玩法 */
+    const gamesJs = fs.readFileSync(path.join(ROOT, 'miniprogram/utils/games.js'), 'utf8')
+    /*
+     * ⚠️ 原来用 `match(/^\\s*id:\\s*'([a-z]+)'/gm)` 再 replace 提取 ——
+     *   `^` + `m` 会让 `\\s*` 吃掉换行，于是捕获组的边界和 replace 的边界
+     *   对不上，解析出 `'    \\nbetween'` 这种带换行的脏值，
+     *   后面 `covered.indexOf(id)` 永远匹配不到 → 假报"未覆盖"。
+     *   直接用捕获组的第 1 组，不再二次 replace。
+     */
+    const ids = []
+    const idRe = /(?:^|\n)\s*id:\s*'([a-z]+)'/g
+    let idM
+    const gj = stripC2(gamesJs)
+    while ((idM = idRe.exec(gj))) ids.push(idM[1])
+    assert.ok(ids.length >= 7, '玩法 id 解析失败（只拿到 ' + ids.length + ' 个）')
+
+    const cueM = rj.match(/const HAS_SETTLE_CUE = \{([\s\S]*?)\n\s*\}/)
+    assert.ok(cueM, '找不到 HAS_SETTLE_CUE 定义')
+    const covered = (cueM[1].match(/(\w+):/g) || []).map((x) => x.replace(':', ''))
+
+    const missing = ids.filter((id) => covered.indexOf(id) < 0)
+    assert.deepStrictEqual(missing, [],
+      '★ 这些玩法的结算时刻没有任何反馈，画面会静着切到结算页：\n    ' + missing.join('\n    '))
+    /*
+     * ★ 光有清单不够 —— 必须证明它**真的被用了**。
+     *   第一版只查"清单覆盖全部玩法"，把 over 分支里的查表删掉，
+     *   断言照样通过（假阳性）：表在、但没人查它 = 一样没有结算音。
+     *   判据：清单必须被 `[room.game]` 索引，且索引结果必须交给 feedback.fire。
+     */
+    assert.ok(/HAS_SETTLE_CUE\[room\.game\]/.test(rj),
+      '★ HAS_SETTLE_CUE 定义了却没人查 —— 等于没有结算音')
+    assert.ok(/feedback\.fire\(cue\)/.test(rj),
+      '★ 查出来的 cue 必须真的交给 feedback.fire')
+
+    ok('★ 7 个玩法的结算时刻都有反馈（HAS_SETTLE_CUE 全覆盖且真的被使用）')
   }
   }
 
