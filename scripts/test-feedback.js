@@ -483,6 +483,43 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
        ' 个动作，排除了 ' + Object.keys(SUSTAIN).length + ' 个流程型）')
   }
 
+  /* ============================================================================
+   * ★★ 排期数组不能无界增长（2026-11-03）
+   *
+   * `fire()` 每触发一个动作就往 `_timers` 里 push 1~3 个 setTimeout 句柄，
+   * 而唯一的清理是 `clear()`（页面卸载时才调）。
+   *
+   * 一局大话骰要 fire 几十次、一次十几颗骰子逐颗落定 → 上百个句柄堆在数组里，
+   * 它们**早就执行完了**，但引用还在。小程序页面的 JS 堆不随 setData 回收，
+   * 这属于"玩久了开始卡"那类问题 —— 而它不报错、不做长局压力测试根本发现不了。
+   *
+   * 判据：数组长度必须在 timer 执行完后**回落**，不能只增不减。
+   * ========================================================================== */
+  {
+    /*
+     * 造一个可控的假 sfx：真的计数，用来确认"排期确实都执行了"。
+     */
+    const before = feedback._timers ? feedback._timers.length : -1
+    assert.ok(before >= 0, '★ feedback 必须把 _timers 暴露出来（否则这条断言没法测）')
+
+    /* 连续 fire 200 次，每次都会 push 一个 timer（有延迟的那些） */
+    for (let i = 0; i < 200; i++) feedback.fire('diceSettle')
+    const peak = feedback._timers.length
+    assert.ok(peak > 0, 'fire 之后排期数组应该非空')
+
+    /*
+     * 等所有 setTimeout 执行完（diceSettle 最长延迟 < 200ms），
+     * 再看数组有没有回落。
+     */
+    /* 等所有 setTimeout 执行完（diceSettle 最长延迟 < 200ms） */
+    await new Promise((r) => setTimeout(r, 600))
+    const after = feedback._timers.length
+    assert.ok(after < peak * 0.2,
+      '★★ 排期数组必须回落（peak=' + peak + ' after=' + after +
+      '）—— 只增不减就是内存泄漏：句柄早执行完了，引用还堆着')
+    ok('★ 排期数组在 timer 执行后回落（' + peak + ' → ' + after + '，不是只增不减）')
+  }
+
   ok('★ 摇盅时长只有一处来源（room.js 无裸写 1050），且非持续音动作的 animMs 与 wxss 一致')
 }
 

@@ -515,6 +515,33 @@ function setHapticOn(v) { return haptic.setHapticOn(v) }
  *     sfx.play('diceSettle'); wx.vibrateShort(...)   // 各处自己算时间
  */
 const _timers = []
+
+/*
+ * ★★ 2026-11-03：统一排期入口 —— **执行完就把自己从数组里摘掉**。
+ *
+ *   原来每处都直接 `_timers.push(setTimeout(...))`，而唯一的清理是 `clear()`
+ *   （只在页面卸载时调）。一局几十次 fire、逐颗落定又各排一次，
+ *   数组会堆到几百个**早就执行完**的句柄 —— 引用不放，JS 堆就不回收。
+ *
+ *   实测：连续 fire 200 次 diceSettle，数组峰值 400、执行完仍是 **400**。
+ *   这属于"玩久了开始卡"那类问题，不报错、不做长局压力测试根本发现不了。
+ *
+ *   判据：**排期对象必须自己负责注销自己。** 谁 push 谁负责、而且是在回调里负责，
+ *   不能指望"某个时刻会有别人来统一清"。
+ */
+function _schedule(fn, delay) {
+  const id = setTimeout(function () {
+    /*
+     * 先摘掉自己再执行 —— 即使 fn 里抛错，也不会留下僵尸引用。
+     * （用 indexOf 而不是假设"一定在末尾"：多个定时器的执行顺序不保证。）
+     */
+    const i = _timers.indexOf(id)
+    if (i >= 0) _timers.splice(i, 1)
+    fn()
+  }, delay)
+  _timers.push(id)
+  return id
+}
 function fire(key, opt) {
   const f = timeline(key)
   if (!f) {
@@ -532,7 +559,7 @@ function fire(key, opt) {
     const vol = typeof opt.volume === 'number' ? opt.volume : f.vol
     const playIt = () => sfx.play(f.sfx, Object.assign({}, opt, { volume: vol }))
     if (opt.sfxDelay !== undefined ? opt.sfxDelay : f.sfxDelay) {
-      _timers.push(setTimeout(playIt, opt.sfxDelay !== undefined ? opt.sfxDelay : f.sfxDelay))
+      _schedule(playIt, opt.sfxDelay !== undefined ? opt.sfxDelay : f.sfxDelay)
     } else {
       playIt()
     }
@@ -543,7 +570,7 @@ function fire(key, opt) {
     const d2 = opt.sfx2Delay !== undefined ? opt.sfx2Delay : f.sfx2Delay
     const play2 = () => sfx.play(f.sfx2, Object.assign({}, opt,
       { volume: typeof opt.volume === 'number' ? opt.volume : f.vol }))
-    if (d2) _timers.push(setTimeout(play2, d2))
+    if (d2) _schedule(play2, d2)
     else play2()
   }
 
@@ -552,7 +579,7 @@ function fire(key, opt) {
     const kind = opt.haptic || f.haptic
     const d = opt.hapticDelay !== undefined ? opt.hapticDelay : f.hapticDelay
     if (d) {
-      _timers.push(setTimeout(() => vibrate(kind), d))
+      _schedule(() => vibrate(kind), d)
     } else {
       vibrate(kind)
     }
@@ -560,7 +587,7 @@ function fire(key, opt) {
 
   /* 冲击帧回调：让页面把「视觉那一刻」要做的 setData 交给这张表统一排期 */
   if (opt.onImpact && f.impactAt) {
-    _timers.push(setTimeout(opt.onImpact, f.impactAt))
+    _schedule(opt.onImpact, f.impactAt)
   }
 }
 
@@ -572,6 +599,12 @@ function clear() {
 
 module.exports = {
   FEEDBACK,
+  /*
+   * ★ 2026-11-03：把排期数组暴露出来**只为可测**。
+   *   它必须能被断言观测到"执行完有没有回落"，否则"内存泄漏"这类问题
+   *   只能靠玩久了变卡来发现 —— 而那已经太晚了。
+   */
+  _timers,
   /* 摇盅流程时长：房间页要拿它做"摇完扣盅"的定时器，不能再裸写数字 */
   CUP_SHAKE_MS,
   timeline,

@@ -995,11 +995,11 @@ Page({
         if (room.game === 'liar' || room.game === 'dice') {
           /* 骰子类：先把骰子放进盅（入盅声），再自动起摇 ——
              现实里没人会放好骰子再等半天。 */
-          this._cupTimers.push(setTimeout(() => {
+          this._after(() => {
             feedback.fire('diceIn')
             this.setData({ cupSrc: 'cup-down', cupCls: 'into', cupHint: '骰子进盅了' })
-          }, 260))
-          this._cupTimers.push(setTimeout(() => this.autoShake(), 1000))
+          }, 260)
+          this._after(() => this.autoShake(), 1000)
         } else if (room.game === 'undercover') {
           /* 卧底：词卡到手 —— 三声发牌，和"每人拿到一张卡"对应 */
           sfx.play('cardDeal')
@@ -1060,10 +1060,10 @@ Page({
            别人叫骰后 260ms 内退出房间，它仍会执行 sfx.play()，
            而此时 onUnload 里的 sfx.destroy() 已经把音频池清空了 ——
            于是**又新建一个再也没人销毁的 InnerAudioContext**（实例泄漏）。 */
-        this._cupTimers.push(setTimeout(() => {
+        this._after(() => {
           if (this._dead) return
           sfx.play('tapSoft')
-        }, 260))
+        }, 260)
       }
     }
 
@@ -1203,11 +1203,11 @@ Page({
     /* 场面音：等盅真的开始晃了再响（setData 是异步的，见 doRoll 里的说明） */
     this.setData({ cupSrc: 'cup-shake', cupCls: 'shaking', cupHint: '摇盅中…' },
       () => { if (!this._dead) feedback.fire('cupShake') })
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       if (this.data.stage !== 'playing') return
       /* 摇完自然扣下 —— 但玩家的骰子还没摇，所以扣的是"空盅" */
       this.setData({ cupSrc: 'cup-down', cupCls: '', cupHint: HINT_ROLL_NOW })
-    }, feedback.CUP_SHAKE_MS))
+    }, feedback.CUP_SHAKE_MS)
   },
 
   /**
@@ -1586,7 +1586,7 @@ Page({
     if (raw.phase === 'over' && raw.game === 'dice' && !this.data.diceShown && !this._revealBeforeOver) {
       this._revealBeforeOver = true
       this.revealCup()
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         this._revealBeforeOver = false
         if (this._pendingOver) {
@@ -1594,7 +1594,7 @@ Page({
           this._pendingOver = null
           this.applyRoom(p)
         }
-      }, 1500))
+      }, 1500)
       this._pendingOver = raw
       return
     }
@@ -1768,10 +1768,10 @@ Page({
         if (iWon) this.celebrate()
         /* 豹子：等上面的胜负音播完（confetti/failDrop 约 1.2s）再补一层 */
         if (hasLeopard) {
-          this._cupTimers.push(setTimeout(() => {
+          this._after(() => {
             if (this._dead) return
             feedback.fire('luckyHit')
-          }, 1400))
+          }, 1400)
         }
       }
     } else if (raw.game !== 'poker') {
@@ -2567,14 +2567,14 @@ Page({
      */
     if (act === 'switch') {
       feedback.fire('pkFlip')
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         sfx.play('cardDeal')
-      }, 90))
-      this._cupTimers.push(setTimeout(() => {
+      }, 90)
+      this._after(() => {
         if (this._dead) return
         sfx.play('gulp')
-      }, 320))
+      }, 320)
     }
     const r = await call('room',
       { action: 'fhAct', act: act, id: this.data.room.id },
@@ -2610,10 +2610,10 @@ Page({
      */
     feedback.fire('pkSpread')
     /* 80ms 后顿帧 —— 对齐 pkSpread.impactAt（牌拍下去的那一刻） */
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       if (this._dead) return
       this.bump(60)
-    }, 80))
+    }, 80)
     const r = await call('room', { action: 'pkAct', act: 'vs', target: target, id: this.data.room.id }, { silent: true })
       .catch((err) => {
         wx.showToast({ title: (err && err.friendly) || '没提交上，再点一次', icon: 'none' })
@@ -2622,6 +2622,30 @@ Page({
       })
     this.data._pkBusy = false
     if (this.okOrSay(r)) this.applyRoom(r.room)
+  },
+
+  /* ================= 排期：执行完自动注销 ================= */
+
+  /*
+   * ★★ 2026-11-03：`_cupTimers` 的统一入口 —— **执行完就把自己从数组里摘掉**。
+   *
+   *   原来全仓 32 处都是 `this._after(...))`，
+   *   而清理只在 onUnload 做一次。一局要排几十上百个定时器，
+   *   它们早就执行完了，句柄引用却一直堆着 —— 小程序的页面实例不随 setData 回收，
+   *   这就是"玩久了开始卡"那一类，**不报错、不做长局测试发现不了**。
+   *
+   *   `feedback.js` 里有同一个坑，这轮一起修的（`_schedule`）。
+   *   两套体系都改成"谁 push 谁负责注销"。
+   */
+  _after(fn, ms) {
+    const id = setTimeout(() => {
+      /* 先摘自己再执行 —— fn 抛错也不留僵尸引用 */
+      const i = this._cupTimers.indexOf(id)
+      if (i >= 0) this._cupTimers.splice(i, 1)
+      fn()
+    }, ms)
+    this._cupTimers.push(id)
+    return id
   },
 
   /* ================= 射龙门（2026-11-03） ================= */
@@ -3522,10 +3546,10 @@ Page({
     this.setData({ cupSrc: 'cup-down', cupCls: 'slam', cupHint: '扣盅…' },
       () => { if (!this._dead) feedback.fire('cupSlam') })
     /* 扣盅：60ms 顿帧（重击第一）—— 盅砸住的瞬间画面定住，之后再震 */
-    this._cupTimers.push(setTimeout(() => this.bump(60), 70))
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => this.bump(60), 70)
+    this._after(() => {
       this.setData({ cupCls: '' })
-    }, 400))
+    }, 400)
 
     const r = await req
     this.setData({ rolling: false })
@@ -3539,20 +3563,20 @@ Page({
     /* ③ 揭盅：盅提起来，我的骰子露出来 */
     if (this._dead) return          // 云函数往返期间页面可能已卸载
     this.setData({ room: this.safeDecorate(r.room), myDice: (r.room.me && r.room.me.dice) || [] })
-    this._cupTimers.push(setTimeout(() => this.revealCup(), 260))
+    this._after(() => this.revealCup(), 260)
 
     if (r.result) {
       /* 全员摇完 → 出结果 */
-      this._cupTimers.push(setTimeout(() => this.showFinalResult(r), 1300))
+      this._after(() => this.showFinalResult(r), 1300)
     } else {
       /* 还没轮完 → 扣回盅，等别人 */
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         this.setData({
           myRolled: true,
           cupSrc: 'cup-down', cupCls: '', diceShown: false,
           cupHint: '已扣盅，等其他人摇完'
         })
-      }, 1150))
+      }, 1150)
     }
   },
 
@@ -3591,11 +3615,11 @@ Page({
      *   再叠 90ms 的通道补偿就变成"晚于画面"了。
      */
     const DIE_DROP_MS = 90
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       feedback.fire('diceTable')
       const n = (this.data.myDice || []).length
       for (let k = 0; k < n; k++) {
-        this._cupTimers.push(setTimeout(() => {
+        this._after(() => {
           if (this._dead) return
           /*
            * ★ 最后一颗走重音（2026-10-28）。
@@ -3604,7 +3628,7 @@ Page({
           const last = k === n - 1
           feedback.fire(last ? 'diceSettleLast' : 'diceSettle',
             { sfxDelay: 0, hapticDelay: 0 })
-        }, DIE_DROP_MS * k))
+        }, DIE_DROP_MS * k)
       }
       /*
        * ⚠️ 显式传 0：这里**不要顿帧**。
@@ -3614,11 +3638,11 @@ Page({
        * 和"逐颗落定只给 light 震动"是同一条分级原则。
        */
       this.bump(0)
-    }, 180))
+    }, 180)
     /* 盅提走之后留在画面外 */
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       this.setData({ cupCls: 'gone' })
-    }, 520))
+    }, 520)
   },
 
   /** 全员摇完的结果演出 */
@@ -3634,19 +3658,19 @@ Page({
      * （380ms 是试出来的：再短感觉不到，再长会急。）
      */
     this.setData({ suspense: true })
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       if (this._dead) return
       this.setData({ suspense: false })
       this.revealCup()
-    }, 380))
-    this._cupTimers.push(setTimeout(() => {
+    }, 380)
+    this._after(() => {
       if (this._dead) return
       sfx.play('impactLow', { volume: 0.5 })
       /* 揭盅：这是"露出结果"的一下，给 70ms 顿帧（比扣盅略长 —— 
          玩家要在这几十毫秒里读懂"骰子出来了"） */
       this.bump(70)
-    }, 440))
-    this._cupTimers.push(setTimeout(() => sfx.play('revealHit'), 640))
+    }, 440)
+    this._after(() => sfx.play('revealHit'), 640)
 
     const mySeat = (r.room.me || {}).seat
     const iWon = (r.result.winnerSeats || []).indexOf(mySeat) >= 0
@@ -3658,11 +3682,11 @@ Page({
      * 都走 fire('win' / 'penalized')，带音效 + 震动 + 延时补偿。
      * 同一个"这一局结束了"，手上有没有反馈不该看玩法。
      */
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       if (this._dead) return
       feedback.fire(iWon ? 'win' : 'penalized')
       if (iWon) this.celebrate()
-    }, 820))  /*
+    }, 820)  /*
                 * ★★★ 2026-11-02 重排：原来 1750ms，理由是"revealHit 长 1.05 秒、
                 *   要到 1690ms 才播完"。而 reveal-hit **换成真实录音后只有 123ms**
                 *   （640ms 起、763ms 就完了）—— 于是这里有 **987ms 的静默**。
@@ -3682,7 +3706,7 @@ Page({
     const myStreak = (r.result.streaks || {})[mySeat] || 0
     if (myStreak >= 1) {
       const comboKey = 'combo' + Math.min(4, myStreak)
-      this._cupTimers.push(setTimeout(() => sfx.play(comboKey, { pitch: false }), 880))
+      this._after(() => sfx.play(comboKey, { pitch: false }), 880)
     }
 
     /*
@@ -3698,20 +3722,20 @@ Page({
      * 排期放在 combo 之后（880ms 起、0.9s 长），2.0s 时接上，不重叠。
      */
     if (r.result.leopardWin) {
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         /* 用 feedback 的动作而不是裸调 sfx —— luckyHit 这套动作
            自带「confetti 音 + double 震动」，比手拼更一致。 */
         feedback.fire('luckyHit')
-      }, 2000))
+      }, 2000)
     }
 
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       /* 双重守卫：页面可能已卸载（_dead），也可能人已经离开房间（room 被清空）。
          只判 _dead 不够 —— 后者页面还活着，但它描述的实体没了。 */
       if (this._dead || !this.data.room) return
       this.setData({ result: r.result, stage: 'over' })
-    }, 1500))
+    }, 1500)
   },
 
   /**
@@ -4183,11 +4207,11 @@ Page({
      * 网络卡住时"蓄力音一直响"比静默更糟 —— 用户以为 App 卡死了。
      * 6 秒还没回来就停音并说一句。（定时器走 _cupTimers，离开房间能清掉。）
      */
-    this._cupTimers.push(setTimeout(() => {
+    this._after(() => {
       if (this._dead) return
       sfx.stop('chargeUp')
       wx.showToast({ title: '网络有点慢，再等一下', icon: 'none', duration: 2000 })
-    }, 6000))
+    }, 6000)
     this.setData({ suspense: true })
     const r = await call('room', { action: 'open', id: this.data.room.id }, { silent: true })
       .catch((e) => {
@@ -4252,11 +4276,11 @@ Page({
        * ★ 换了音效素材之后，**所有"等它播完"的定时器都要重算** ——
        *   这类数字看起来像常量，其实是"某个素材时长"的副本。
        */
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         feedback.vibrate('long')          /* 手上先有反馈，不等声音 */
-      }, 120))
-      this._cupTimers.push(setTimeout(() => {
+      }, 120)
+      this._after(() => {
         if (this._dead) return
         const mySeat = (r.room.me || {}).seat
         const iLost = r.result.loserSeat === mySeat
@@ -4270,7 +4294,7 @@ Page({
          */
         feedback.fire(iLost ? 'penalized' : 'win')
         if (!iLost) this.celebrate()
-      }, 820))                             /*
+      }, 820)                             /*
                                             * ★★ 2026-11-02 重排：原来写 1080ms，
                                             *   注释是「revealHit(1.05s) 播完之后」——
                                             *   而 reveal-hit 换成真实录音后只有 **123ms**。
@@ -4282,10 +4306,10 @@ Page({
                                             *   新编排按真实时长算：
                                             *     640ms 揭盅 → 763ms 播完 → 820ms 胜负音（留 57ms 余量）
                                             */
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         sfx.play('gulp')
-      }, 2080))                            /*
+      }, 2080)                            /*
                                             * ★ 2260ms（原 1900）：
                                             * 结算音 win='confetti' 实测 **1.20 秒**，
                                             * 1080 + 1200 = 2280ms 才播完。
@@ -4432,10 +4456,10 @@ Page({
        */
       this.setData({ wheelSpinning: false, wheelCls: 'settle' })
       feedback.fire('wheelStop')
-      this._cupTimers.push(setTimeout(() => {
+      this._after(() => {
         if (this._dead) return
         this.setData({ wheelCls: '' })
-      }, 280))
+      }, 280)
       /*
        * ★ 题卡与结果**同一次 setData**。
        *   分两次设（先显示"真心话"，再显示题目）会有一帧只显示类别，
@@ -4480,7 +4504,7 @@ Page({
           default: break
         }
       }
-      this._cupTimers.push(setTimeout(fireWheelSfx, 160))
+      this._after(fireWheelSfx, 160)
     }, 2700)
   },
 
@@ -4496,7 +4520,7 @@ Page({
     }
     timers.forEach((at, i) => {
       if (i > 60) return          // 上限保护：别排太多定时器
-      this._cupTimers.push(setTimeout(() => sfx.play('tick', { pitch: false }), at))
+      this._after(() => sfx.play('tick', { pitch: false }), at)
     })
     /*
      * ★ 2026-11-02：gap 按 1.075 递增，循环会因为 `t + gap > durationMs`
@@ -4504,7 +4528,7 @@ Page({
      *   还有 300ms 空档，而画面正在最慢的那一段。
      *   真实的转盘是一路"咔哒"到停的，最后那一声就是指针落定的声音。
      */
-    this._cupTimers.push(setTimeout(() => sfx.play('tick', { pitch: false }), Math.max(0, durationMs - 40)))
+    this._after(() => sfx.play('tick', { pitch: false }), Math.max(0, durationMs - 40))
   },
 
   /* ================= 离开 ================= */

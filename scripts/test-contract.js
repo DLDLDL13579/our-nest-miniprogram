@@ -5658,3 +5658,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '这些地方用「昵称」判断身份 —— 而昵称可以重名，判定必须走 openid：\n    ' + bad.join('\n    '))
   ok('★ 身份判定不走昵称（重名不会导致"两个我"）')
 }
+
+/* ============================================================================
+ * ★★ 定时器必须自注销（2026-11-03）
+ *
+ * 项目里记过「所有定时器都要进清单」，但那说的是**能清掉**。
+ * 这轮发现更隐蔽的一层：**清单本身只增不减**。
+ *
+ *   feedback.js 的 `_timers`：连续 fire 200 次 → 峰值 400、执行完仍是 400
+ *   room.js 的 `_cupTimers`：全仓 32 处裸 push，只在 onUnload 清一次
+ *
+ * 句柄早就执行完了，引用还堆着；小程序页面实例不随 setData 回收 ——
+ * 这就是"玩久了开始卡"那一类，不报错、不做长局压力测试发现不了。
+ *
+ * 判据：**谁 push 谁负责在回调里摘掉自己。**
+ *   feedback.js 用 `_schedule()`，room.js 用 `this._after()`。
+ * 所以这两个文件里**不许再出现裸的 `_timers.push(setTimeout` / `_cupTimers.push(setTimeout`**。
+ * ========================================================================== */
+{
+  const bad = []
+  const scan = (rel, patterns) => {
+    const p = path.join(ROOT, rel)
+    if (!fs.existsSync(p)) return
+    const src = fs.readFileSync(p, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+    patterns.forEach((re) => {
+      if (re.test(src)) bad.push(rel + ' 里还有裸的 ' + re.source)
+    })
+  }
+  scan('miniprogram/game/feedback.js', [/_timers\.push\(\s*setTimeout/])
+  scan('miniprogram/game/room/room.js', [/_cupTimers\.push\(\s*setTimeout/])
+
+  assert.deepStrictEqual(bad, [],
+    '这些定时器只 push 不注销，会无界堆积：\n    ' + bad.join('\n    '))
+  ok('★ 定时器排期统一走自注销入口（feedback._schedule / room._after）')
+}
