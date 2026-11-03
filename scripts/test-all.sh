@@ -111,6 +111,9 @@ node scripts/check-audio-tail.js 2>/dev/null || python3 scripts/check-audio-tail
 # ★ 2026-11-03：注释里说"有断言"的地方，断言是否真的存在
 python3 scripts/check-claims.py 2>/dev/null
 
+# ★ 2026-11-03：玩法专属的字段/动作有没有跑错分支
+python3 scripts/check-branch-owner.py 2>/dev/null
+
 # ★ 显式汇总（2026-10-30）。
 #   起因：有两次 test-all 以 exit=1 结束却只有一行 SyntaxError，重跑又过。
 #   `set -e` 理论上该让脚本中途退出，但它对**管道/子 shell/命令替换**有已知盲区，
