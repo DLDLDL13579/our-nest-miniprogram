@@ -5403,3 +5403,32 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 分享链路完整（按钮 + 带码 path + 封面图 ' + Math.round(size / 1024) + ' KB）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**前端调的每个 action，云函数都必须有**
+ *
+ * 这是"本地新版 + 云端旧版"那一类故障的核心：
+ * 前端调 `action: 'reroll'`，而云函数不认识 → `return { ok:false, msg:'不认识的操作：reroll' }`
+ * —— **不是崩，是"点了没反应"**。
+ *
+ * ⚠️ 云函数用的是 `if (action === 'x')` 链，**不是 switch/case** ——
+ *    第一版我按 `case 'x'` 抓，抓到 0 个，差点以为云函数什么都没处理。
+ * ========================================================================== */
+{
+  const page = fs.readFileSync(
+    path.join(ROOT, 'miniprogram/game/room/room.js'), 'utf8')
+  const cloud = fs.readFileSync(
+    path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+
+  const called = new Set([...page.matchAll(/action:\s*'(\w+)'/g)].map(m => m[1]))
+  const handled = new Set([...cloud.matchAll(/action === '(\w+)'/g)].map(m => m[1]))
+
+  assert.ok(called.size >= 15, '前端只调了 ' + called.size + ' 个 action？先确认抽取正则')
+  assert.ok(handled.size >= 15, '云函数只认 ' + handled.size + ' 个 action？先确认抽取正则')
+
+  const missing = [...called].filter(a => !handled.has(a)).sort()
+  assert.deepStrictEqual(missing, [],
+    '前端调了但云函数不认识的 action（表现为"点了没反应"）：\n    ' + missing.join('\n    '))
+
+  ok('★ action 契约完整（前端调 ' + called.size + ' 个 / 云函数认 ' + handled.size + ' 个）')
+}
