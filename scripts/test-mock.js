@@ -534,3 +534,32 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
 
   console.log('  ✓ 「我的」页的玩法统计与真实代码一致（颜色 ' + rows.length + ' 项 / 按次数降序）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**大厅的玩法卡永远不该为空**
+ *
+ * `list` 来自注册表（5 个玩法），所以正常情况下不会空。
+ * 而如果哪天注册表读失败 / 顺序函数返回空数组，大厅会变成一片空白 ——
+ * **没有"空状态"文案，用户只会以为 App 坏了**。
+ *
+ * 判据：每个 lobby 状态的 `list` 要么显式给了，要么继承默认值 —— 但**结果必须非空**。
+ * ========================================================================== */
+{
+  const mock = require('./ui-render/mock/lobby.js')
+  const base = typeof mock.data === 'function' ? mock.data() : mock.data
+
+  const bad = []
+  Object.keys(mock.states || {}).forEach(k => {
+    const s = mock.states[k]()
+    /* 状态自己给了 list 就用它，否则继承 base */
+    const list = s.list !== undefined ? s.list : (base && base.list)
+    if (!Array.isArray(list) || list.length === 0) {
+      bad.push(k + '：list=' + JSON.stringify(list))
+    }
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '这些大厅状态没有玩法卡（大厅会一片空白）：\n    ' + bad.join('\n    '))
+
+  console.log('  ✓ 大厅每个状态都有玩法卡（' + Object.keys(mock.states || {}).length + ' 个状态）')
+}
