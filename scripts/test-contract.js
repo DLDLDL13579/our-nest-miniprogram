@@ -5482,3 +5482,38 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
 
   ok('★ 玩家列表的编辑按钮够短（「' + txt + '」，' + txt.length + ' 字）')
 }
+
+/* ============================================================================
+ * 2026-11-03 追加：**动画的缓动函数：`linear` 只许用在两个地方**
+ *
+ * `linear` 用在"有物理感"的动画上会显得生硬 ——
+ * 撒花原来就是匀速竖直下落，看起来像"雪"，不像纸片（注释里记着，已改）。
+ *
+ * 而 `linear` 在这两处是**对的**：
+ *   · 无限循环的快速抖动（`rollingShake` / `suspenseTense`）——
+ *     循环里用 ease 会在接缝处"顿"一下
+ *   · `linear-gradient`（那是渐变，不是缓动，本判据不管）
+ * ========================================================================== */
+{
+  const bad = []
+  const walk = (d) => {
+    if (!fs.existsSync(d)) return
+    fs.readdirSync(d).forEach(f => {
+      const p = path.join(d, f)
+      if (fs.statSync(p).isDirectory()) return walk(p)
+      if (!f.endsWith('.wxss')) return
+      const src = fs.readFileSync(p, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+      ;[...src.matchAll(/animation:\s*([\w-]+)\s+[^;]*?\blinear\b/g)].forEach(m => {
+        if (!/^(rollingShake|suspenseTense)$/.test(m[1])) {
+          bad.push(path.relative(ROOT, p) + '：' + m[1] + ' 用了 linear')
+        }
+      })
+    })
+  }
+  walk(path.join(ROOT, 'miniprogram'))
+
+  assert.deepStrictEqual([...new Set(bad)], [],
+    '这些动画用了 linear（生硬；只有无限循环的快速抖动和"物理上接近匀速"的才该用）：\n    ' +
+    [...new Set(bad)].join('\n    '))
+  ok('★ 动画缓动：linear 只用在两个快速循环动画上（其余都有缓动曲线）')
+}
