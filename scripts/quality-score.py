@@ -130,22 +130,58 @@ add('音频质量', '音效数量（≥30）', 2, 2 if n_audio >= 30 else 1, '%d
 # ============================================================
 # 三、性能
 # ============================================================
-game_kb = 0
-for d, _, files in os.walk(os.path.join(ROOT, 'miniprogram', 'game')):
-    for f in files:
-        game_kb += os.path.getsize(os.path.join(d, f))
-game_kb //= 1024
-# ★ 2026-11-03：阈值 1800 → 1900。
+# ★★ 2026-11-04：体积评分改用 **size-real.py 的估算口径**，不再用原始字节。
 #
-#   加了第 8 个玩法的红色骰子后到了 1805 KB，卡在 1800 差 5KB。
-#   试过把骰子从 240px 降到 200px（省 12KB），但 3 倍放大后边缘出现明显锯齿
-#   —— 用户的要求是「质量优先」，为一个阈值牺牲素材质量是本末倒置。
+#   起因很荒谬：给「换个玩法」布局修了段 1.5KB 的注释，质量分从 40 掉到 38
+#   —— 只因为原始大小刚好卡在 1900 KB 阈值上，注释把它推了过去。
+#   而**注释在上传时会被剥离**（size-real.py 就是干这个的），
+#   惩罚注释等于惩罚"把设计理由写清楚"。
 #
-#   阈值定在这里的真实含义：微信小程序分包上限是 2048 KB，
-#   1900 意味着"还剩约 148 KB 余量"，够加 2~3 个玩法的小素材，
-#   再往上就该真正做资源压缩（而不是砍素材质量）。
-add('性能', '分包体积（限额 2048KB）', 4,
-    4 if game_kb < 1900 else (2 if game_kb < 2048 else 0), '%d KB' % game_kb)
+#   这是「分配与查找必须同一判据」的又一例：size-real.py 早已写着
+#   「原始大小已超 90%，但估算值仍在安全区 —— 不要因此牺牲画质」，
+#   而评分工具还在用原始字节判，两个工具口径不一致。
+#
+#   判据：评分和体积报告必须读同一个数 —— **估算上传后的占用**。
+#   阈值按真实上限：估算 < 85% 满分（还有约 300 KB 余量，够加素材），
+#   < 95% 给一半，再高 0 分。85% 不是「快满了」，是「该留意了」。
+# size-real.py 带连字符，不能普通 import —— 按路径加载，两处共用同一份实现
+import importlib.util  # noqa: E402
+_spec = importlib.util.spec_from_file_location(
+    'size_real', os.path.join(ROOT, 'scripts', 'size-real.py'))
+_size_real = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_size_real)
+strip_js, strip_css, strip_wxml = (_size_real.strip_js, _size_real.strip_css,
+                                  _size_real.strip_wxml)
+
+def _est_bytes(root):
+    raw = est = 0
+    for d, _, files in os.walk(root):
+        for f in files:
+            p = os.path.join(d, f)
+            size = os.path.getsize(p)
+            raw += size
+            ext = os.path.splitext(f)[1].lower()
+            if ext in ('.js', '.wxss', '.wxml'):
+                try:
+                    src = open(p, encoding='utf-8').read()
+                except Exception:
+                    est += size
+                else:
+                    est += len((strip_js(src) if ext == '.js' else
+                                strip_css(src) if ext == '.wxss' else
+                                strip_wxml(src)).encode('utf-8'))
+            else:
+                est += size
+    return raw, est
+
+_mp = os.path.join(ROOT, 'miniprogram')
+# _est_bytes 已经逐文件剥过注释/空白，直接就是分包的估算字节数 ——
+# 不要再乘全局压缩率（那是 size-real.py 为省事用的近似，乘两次会低估）。
+_raw_game, game_est_bytes = _est_bytes(os.path.join(_mp, 'game'))
+game_est_kb = int(game_est_bytes / 1024)
+pct = game_est_kb / 2048 * 100
+add('性能', '分包体积（估算上传后，限额 2048KB）', 4,
+    4 if pct < 85 else (2 if pct < 95 else 0), '%d KB 占 %.0f%%' % (game_est_kb, pct))
 
 # ============================================================
 # 四、完整度

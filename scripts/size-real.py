@@ -98,9 +98,26 @@ def main():
         est_total += est
 
     game_raw = sum(os.path.getsize(p) for p in walk(GAME)) if os.path.isdir(GAME) else 0
-    # 分包的估算值：按同样的比例缩
+    # ★★ 2026-11-04：分包估算改为**逐文件压缩后求和**，不再用全局比例摊。
+    #   全局比例里混着主包（主包文本多、压缩率高），会把分包估得偏小：
+    #   实测全局比例法 73%，逐文件法 77% —— 差 4 个百分点 / 约 80 KB。
+    #   每个文件实际会多大，就按它自己算。评分工具 quality-score.py 同口径。
+    game_est = 0
+    for p in walk(GAME):
+        size = os.path.getsize(p)
+        ext = os.path.splitext(p)[1].lower()
+        if ext in ('.js', '.wxss', '.wxml'):
+            try:
+                src = open(p, encoding='utf-8').read()
+            except Exception:
+                game_est += size
+            else:
+                game_est += len((strip_js(src) if ext == '.js' else
+                                 strip_css(src) if ext == '.wxss' else
+                                 strip_wxml(src)).encode('utf-8'))
+        else:
+            game_est += size
     ratio = est_total / raw_total if raw_total else 1
-    game_est = game_raw * ratio
 
     print('包体积估算（源码 → 估算上传后）')
     print('=' * 50)

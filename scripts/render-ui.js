@@ -298,8 +298,15 @@ function renderPage(key, { state = 'default', outDir = OUT, width = 0, height = 
      *   `--dump-dom` + `getComputedStyle` 里返回 `none`（规则没错），
      *   而同一份 HTML 的截图里那行文字**还在**。
      *   加了 800ms 虚拟时间后一致。
+     *
+     * ★★★ 2026-11-04：800 → **2000**。
+     *   修「换个玩法」9 卡换行时，`flex-wrap: wrap` 的**第二行在 800ms
+     *   截图里根本没出现** —— 我一度以为五列布局没生效、差点去改正确代码。
+     *   用 `--dump-dom` + `getBoundingClientRect` 量到 9 个卡片位置全对
+     *   （前 5 个 y=555、后 4 个 y=617），才确认是**截图早于重排完成**。
+     *   同一类"测量工具骗我"，本项目已栽过多次：**先看数据，别看截图下结论**。
      */
-    '--virtual-time-budget=800',
+    '--virtual-time-budget=2000',
     '--screenshot=' + pngFile,
     '--window-size=' + w + ',' + h,
     'file://' + htmlFile

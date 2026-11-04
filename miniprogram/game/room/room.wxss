@@ -1769,16 +1769,30 @@
   border: 2rpx solid rgba(255,255,255,.10);
 }
 .gs-lbl { font-size: 20rpx; color: rgba(255, 255, 255, 0.52); margin-bottom: 16rpx }
-.gs-row { display: flex; gap: 14rpx }
+/*
+ * ★★★ 2026-11-04 真机截图：9 个玩法后这块**挤成了一条竖排文字**。
+ *
+ *   原来是 `display:flex` 单行 + 9 个 `flex:1` —— 6 个玩法时每个约 100rpx
+ *   还能看，涨到 9 个后每个只剩 ~65rpx：「大话骰」折成两行、
+ *   「红黑单双大小」折成四行，图标和字全糊在一起。
+ *   **这是"数量增长撑破固定布局"，和加玩法时漏字段是同一类病**：
+ *   加进注册表时不报错，只有真机才看得见。
+ *
+ *   改成 flex-wrap 五列，9 个玩法 = 2 行（5+4），每个约 120rpx。
+ *   与大厅 `.ggrid` 用同一套 wrap 思路 —— 那边早就避开了这个坑。
+ */
+.gs-row { display: flex; flex-wrap: wrap; gap: 8rpx }
 .gspill {
-  flex: 1;
-  display: flex; flex-direction: column; align-items: center; gap: 8rpx;
-  padding: 18rpx 8rpx;
+  flex: 0 0 18.4%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6rpx;
+  min-height: 116rpx;
+  padding: 12rpx 4rpx;
   border-radius: var(--r-2);
   background: rgba(255,255,255,.05);
   border: 2rpx solid rgba(255,255,255,.10);
-  font-size: 20rpx;
+  font-size: 20rpx; line-height: 1.25;
   color: rgba(255,255,255,.6);
+  text-align: center;
   transition: background .18s ease, border-color .18s ease;
 }
 /* 当前玩法高亮 —— 一眼看出"现在玩的是哪个" */

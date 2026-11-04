@@ -3906,45 +3906,43 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     OPENID = L2
     await room.main({ action: 'join', code: cr.room.code, name: '乙' })
 
-    /* 连打 3 局，看 score 会不会跨局累计 */
-    for (let round = 0; round < 3; round++) {
-      OPENID = L1
-      await room.main({ action: 'start', id: lid })
-      store.rooms.filter(x => x._id === lid)[0].countdownEnd = Date.now() - 100
-      /* countdown → playing 是惰性的，要靠一次 status 推进 */
-      await room.main({ action: 'status', id: lid })
-      /* 两个人都摇 */
-      for (const oid of [L1, L2]) {
-        OPENID = oid
-        await room.main({ action: 'roll', id: lid })
-      }
-      const raw = store.rooms.filter(x => x._id === lid)[0]
-      assert.strictEqual(raw.phase, 'over', '第 ' + (round + 1) + ' 局应结束')
-      /*
-       * 最后一局**不要再开新局** —— 否则 again 会把 score 清零，
-       * 读到的就永远是 0（第一版就是这么写的，测了个寂寞）。
-       */
-      if (round < 2) {
-        raw.hostOpenid = L1
-        OPENID = L1
-        await room.main({ action: 'again', id: lid })
-      }
+    /*
+     * ★★ 2026-11-04：原来这里"连打 3 局看最惨的人到不到 -2"——
+     *   **偶发假红**：5 次里 2 次失败。因为比大小的输赢靠 Math.random()，
+     *   3 局各赢不同、或有人赢两局时，最惨的只到 -1。
+     *   而断言报错说的是「score 没跨局累计」，**病因完全指错了** ——
+     *   实际是随机分布，score 机制本来是好的。
+     *
+     *   修法：不测随机结果，直接测**因果** ——
+     *     手动把 score 设成 -2 → 调 again → 断言仍是 -2。
+     *   「again 不清 score」才是这个功能的唯一契约，
+     *   而骰子摇出什么跟它没关系。
+     *   （判据必须只被目标改动影响 —— 项目里已栽过多次。）
+     */
+    OPENID = L1
+    await room.main({ action: 'start', id: lid })
+    store.rooms.filter(x => x._id === lid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: lid })
+    for (const oid of [L1, L2]) {
+      OPENID = oid
+      await room.main({ action: 'roll', id: lid })
     }
+    const raw0 = store.rooms.filter(x => x._id === lid)[0]
+    assert.strictEqual(raw0.phase, 'over', '前置：这一局应结算完')
+
+    /* 模拟「今晚已经输了 2 局」—— 前端 loserBoard 的阈值就是 -2 */
+    raw0.players = raw0.players.map(p =>
+      p.openid === L2 ? Object.assign({}, p, { score: -2 }) : p)
+    raw0.hostOpenid = L1
+    OPENID = L1
+    await room.main({ action: 'again', id: lid })
 
     const fin = store.rooms.filter(x => x._id === lid)[0]
-    const scores = (fin.players || []).map(p => ({ name: p.name, score: Number(p.score) || 0 }))
-    const worst = Math.min(...scores.map(x => x.score))
-
-    /*
-     * 3 局过后，如果 score 跨局累计，最惨的人应该到 -3 左右；
-     * 如果每局清零，永远只可能是 -1（本局输家）。
-     */
-    assert.ok(worst <= -2,
-      '★★ 连打 3 局后最惨的人 score 只有 ' + worst + ' —— ' +
-      '而前端 loserBoard 的判据是 score <= -2，所以那句「今晚已经输了 N 局」' +
-      '**一次都显示不出来**。score 必须跨局累计（文案说的是"今晚"）。' +
-      '\n  实际分数表：' + JSON.stringify(scores))
-    ok('★★ 连打 3 局后 score 跨局累计（最惨 ' + worst + '），loserBoard 能显示')
+    const scoreOfL2 = Number((fin.players || []).filter(p => p.openid === L2)[0].score) || 0
+    assert.strictEqual(scoreOfL2, -2,
+      '★★ 再来一局后 score 被清零了 —— 前端 loserBoard 判据是 score <= -2，' +
+      '那句「今晚已经输了 N 局」一次都显示不出来。score 必须跨局累计（文案说的是"今晚"）')
+    ok('★★ again 不清 score：跨局累计成立，loserBoard 能显示')
   }
 
   /* ============================================================================
@@ -4225,16 +4223,15 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
           return { ok: r.ok, msg: r.msg, check: (raw) => !!raw.spin }
         } },
       { game: 'consensus', do: async (id) => {
-          /* 众口一致：只有房主能「下一轮」—— 先让双方都交答案进揭晓态 */
-          await room.main({ action: 'csAct', value: 50, id })
-          /* 找到另一个人交答案 → 收齐揭晓 */
+          /* 众口一致：只有房主能「下一轮」—— 先让全员交答案进揭晓态 */
+          const hostOid = OPENID          /* 实际接任者，不是写死的 M2 */
           const raw0 = store.rooms.filter(x => x._id === id)[0]
-          const other = (raw0.players || []).filter(p => p.openid !== M2)[0]
-          if (other) {
-            OPENID = other.openid
-            await room.main({ action: 'csAct', value: 55, id })
-            OPENID = M2
+          const live = (raw0.players || []).filter(p => p.inRound !== false)
+          for (const p of live) {
+            OPENID = p.openid
+            await room.main({ action: 'csAct', value: 50 + p.seat, id })
           }
+          OPENID = hostOid
           const r = await room.main({ action: 'csAct', act: 'next', id })
           return { ok: r.ok, msg: r.msg, check: (raw) => true }
         } },
@@ -4261,13 +4258,26 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
         p.openid === M1 ? Object.assign({}, p, { lastSeen: Date.now() - 90000 }) : p)
       await room.main({ action: 'status', id: gid })
       const moved = store.rooms.filter(x => x._id === gid)[0]
-      assert.strictEqual(moved.hostOpenid, M2,
-        c.game + '：房主掉线后应转给乙（实际 ' + moved.hostOpenid + '）')
+      /*
+       * ★★ 2026-11-04：原来写死「必须转给 M2（乙）」—— **偶发假红**。
+       *   服务端的设计是按「心跳最新的其他人」接任，而 M3 是最后 join 的、
+       *   lastSeen 最晚，按规则就该是 M3。30 次跑里有几次报
+       *   「应转给乙（实际 oid_mh_3）」—— 不是产品错，是断言的期望错了。
+       *
+       *   改成测**契约**：房主必须变成「另一个在局的人」，
+       *   且新房主能做房主操作（下面那条才是重点）。
+       *   具体是谁由服务端按心跳选，不该由测试钉死。
+       */
+      assert.notStrictEqual(moved.hostOpenid, M1,
+        c.game + '：房主掉线后必须换人（实际还是原房主 ' + moved.hostOpenid + '）')
+      assert.ok((moved.players || []).some(p => p.openid === moved.hostOpenid && p.inRound !== false),
+        c.game + '：新房主必须是本局在场的人（实际 ' + moved.hostOpenid + '）')
       assert.strictEqual(moved.phase, 'playing',
         c.game + '：转移后应还在 playing（实际 ' + moved.phase + '）')
+      /* 后续房主操作由「实际接任者」执行，而不是写死的 M2 */
+      OPENID = moved.hostOpenid
 
-      /* 新房主做"只有房主能"的操作 */
-      OPENID = M2
+      /* 新房主做"只有房主能"的操作（OPENID 已在上面设成实际接任者） */
       const r = await c.do(gid)
       assert.ok(r.ok, '★★ ' + c.game + '：房主转移后，新房主应能执行房主操作（' +
         (r.msg || '成功但状态未变') + '）')
