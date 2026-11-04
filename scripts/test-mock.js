@@ -579,12 +579,22 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   const mock = require('./ui-render/mock/lobby.js')
   const base = typeof mock.data === 'function' ? mock.data() : mock.data
 
+  /*
+   * ⚠️ 2026-11-04：`emptyList` 是**故意为空**的——它要渲染的就是
+   * 模板里那句「还没有玩法」的兜底。它正是为了验证那个分支才存在的。
+   *
+   * 而这条断言本来要抓的是「某个状态**忘了给** list，导致大厅一片空白」。
+   * 两者意图不同，用白名单区分，不要放宽整条判据。
+   */
+  const DELIBERATE_EMPTY = { emptyList: '故意空列表，用来渲染「还没有玩法」兜底' }
+
   const bad = []
   Object.keys(mock.states || {}).forEach(k => {
     const s = mock.states[k]()
     /* 状态自己给了 list 就用它，否则继承 base */
     const list = s.list !== undefined ? s.list : (base && base.list)
     if (!Array.isArray(list) || list.length === 0) {
+      if (DELIBERATE_EMPTY[k]) return
       bad.push(k + '：list=' + JSON.stringify(list))
     }
   })

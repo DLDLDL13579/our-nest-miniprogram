@@ -35,6 +35,8 @@ node scripts/test-dicerank.js
 node scripts/test-rules-doc.js
 node scripts/test-reroll.js
 node scripts/test-mock.js
+# ★ 2026-11-04：模板里的每个 wx:if 分支，必须有 mock 状态能触发
+node scripts/test-page-coverage.js
 python3 scripts/check-docs-sync.py
 
 echo "═══ 2/9 游戏逻辑（转盘前后端一致 / 摇盅五步流程）═══"

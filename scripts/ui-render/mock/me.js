@@ -46,6 +46,33 @@ module.exports = {
     /* 都关了 */
     off: () => ({ muted: true, hapticOn: false }),
     /* 没有错误记录时那一行不该出现 */
-    clean: () => ({ errCount: 0, nightGames: 0 })
+    clean: () => ({ errCount: 0, nightGames: 0 }),
+
+    /*
+     * ★★ 2026-11-04：补两个**从来没被渲染过**的状态。
+     *
+     * 原来只有 empty / off / clean 三个，而：
+     *   · `diagOpen` 在 `data()` 里没有、任何状态也不设 →
+     *     **诊断弹层一次都没被看过**。而那正是用户报障时要截图发我的界面。
+     *   · `reduceMotion` 三个状态里全是 false → "减少动效“开着时的样子从没验证过。
+     *
+     * 这类"整块没渲染过"是最隐蔽的盲区 —— 代码在、模板在、不报错，
+     * 只是从来没有人看过它长什么样。
+     */
+    diag: () => ({
+      diagOpen: true,
+      diagText: [
+        '环境：WX 8.0.49 / iOS 17.4 / iPhone 14',
+        '版本：v3.46.1',
+        '最近错误（2）：',
+        '  01:22:10 · room/create：cloud.callFunction:fail timeout',
+        '  01:22:41 · room/create：cloud.callFunction:fail timeout',
+        '失败次数：3',
+        '最远走到：大厅（停留 12s）',
+        '轨迹：启动 → 大厅 → 新建房间'
+      ].join('\n')
+    }),
+    /* 减少动效开着的样子 */
+    calm: () => ({ reduceMotion: true, muted: true })
   }
 }
