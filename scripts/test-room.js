@@ -3884,6 +3884,69 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★★ 7 个有个人输家的玩法都会记「输了几局」')
   }
 
+  /* ============================================================================
+   * ㉚ 「今晚已经输了 N 局」必须真的能显示出来（2026-11-04）
+   *
+   * 前端 `loserBoard` 的判据是 `score <= -2`，文案是「今晚已经输了 N 局」。
+   *
+   * 而 `score` 在 `again`（再来一局）时被**清零**，一局又只有 1 个输家得 -1
+   * → score 最多到 -1 → **`<= -2` 永远不成立** → 这句话在 9 个玩法上
+   * **一次都显示不出来**。
+   *
+   * 两个错叠在一起：
+   *   ① 计数器每局清零，而文案说的是「今晚」（跨局）
+   *   ② 阈值按"跨局"设计（-2 = 输两局），却配了个每局清零的计数器
+   * ========================================================================== */
+  console.log('\n=== ㉚ 「今晚输了 N 局」能显示吗 ===')
+  {
+    const L1 = 'oid_lb_1', L2 = 'oid_lb_2'
+    OPENID = L1
+    const cr = await room.main({ action: 'create', name: '甲', game: 'dice' })
+    const lid = cr.room.id
+    OPENID = L2
+    await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+
+    /* 连打 3 局，看 score 会不会跨局累计 */
+    for (let round = 0; round < 3; round++) {
+      OPENID = L1
+      await room.main({ action: 'start', id: lid })
+      store.rooms.filter(x => x._id === lid)[0].countdownEnd = Date.now() - 100
+      /* countdown → playing 是惰性的，要靠一次 status 推进 */
+      await room.main({ action: 'status', id: lid })
+      /* 两个人都摇 */
+      for (const oid of [L1, L2]) {
+        OPENID = oid
+        await room.main({ action: 'roll', id: lid })
+      }
+      const raw = store.rooms.filter(x => x._id === lid)[0]
+      assert.strictEqual(raw.phase, 'over', '第 ' + (round + 1) + ' 局应结束')
+      /*
+       * 最后一局**不要再开新局** —— 否则 again 会把 score 清零，
+       * 读到的就永远是 0（第一版就是这么写的，测了个寂寞）。
+       */
+      if (round < 2) {
+        raw.hostOpenid = L1
+        OPENID = L1
+        await room.main({ action: 'again', id: lid })
+      }
+    }
+
+    const fin = store.rooms.filter(x => x._id === lid)[0]
+    const scores = (fin.players || []).map(p => ({ name: p.name, score: Number(p.score) || 0 }))
+    const worst = Math.min(...scores.map(x => x.score))
+
+    /*
+     * 3 局过后，如果 score 跨局累计，最惨的人应该到 -3 左右；
+     * 如果每局清零，永远只可能是 -1（本局输家）。
+     */
+    assert.ok(worst <= -2,
+      '★★ 连打 3 局后最惨的人 score 只有 ' + worst + ' —— ' +
+      '而前端 loserBoard 的判据是 score <= -2，所以那句「今晚已经输了 N 局」' +
+      '**一次都显示不出来**。score 必须跨局累计（文案说的是"今晚"）。' +
+      '\n  实际分数表：' + JSON.stringify(scores))
+    ok('★★ 连打 3 局后 score 跨局累计（最惨 ' + worst + '），loserBoard 能显示')
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

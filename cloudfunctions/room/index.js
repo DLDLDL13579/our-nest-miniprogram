@@ -3337,7 +3337,24 @@ exports.main = async (event) => {
          *   观战者会永远观战下去（而且不报错）。
          */
         players: (room.players || []).map(p =>
-          Object.assign({}, p, { dice: [], inRound: true, score: 0, out: false, cards: [], uwWord: '', uwRole: '' })),
+          /*
+           * ⚠️ **`score` 不在这里清零**（2026-11-04 修）。
+           *
+           *   结算页那句「XX 今晚已经输了 N 局」用的就是 score，
+           *   而它的显示条件是 `score <= -2`。
+           *   原来这里每局清零，而一局只有 1 个输家得 -1
+           *   → score 最多 -1 → **`<= -2` 永远不成立 → 那句话一次都出不来**。
+           *
+           *   两个错叠在一起：文案说的是"今晚"（跨局），
+           *   阈值按跨局设计（-2 = 输两局），却配了个每局清零的计数器。
+           *
+           *   房间 2 小时过期，所以"跨局累计"天然被房间生命周期兜住，
+           *   不会无限增长。改名/换玩法也不清 —— 还是同一晚。
+           *
+           *   ⚠️ 唯一的例外是"本局参与者全部离开"那条（见 leave 分支）——
+           *      那里换了一批人，清零是对的。
+           */
+          Object.assign({}, p, { dice: [], inRound: true, out: false, cards: [], uwWord: '', uwRole: '' })),
         phase: 'lobby',
         bid: null, lastResult: null, turn: 0,
         /* 转盘这一转的结果也要清 —— 否则换到转盘后，屏幕上还留着上一轮的扇区 */
