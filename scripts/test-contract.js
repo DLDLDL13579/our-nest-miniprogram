@@ -5926,3 +5926,77 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
   const total = decks.reduce((a, d) => a + (d.truth || []).length + (d.dare || []).length, 0)
   ok('★ ' + total + ' 条题卡：不要求道具、同套牌内不重复')
 }
+
+/* ============================================================================
+ * ★★ 谁是卧底的词对：三条质量判据（2026-11-04）
+ *
+ * 这个游戏能不能玩，完全取决于一对词「够像但分得出」：
+ *   · 两个词是同一样东西 → **永远分不出谁是卧底**，游戏崩掉
+ *   · 两个词八竿子打不着 → 一眼就看出，游戏没意思
+ *
+ * 第一条是硬缺陷，必须由断言守住。而"同一样东西"是语义判断，
+ * 没有通用算法 —— 所以用**维护的同义词/包含关系表**。
+ * 这张表每发现一个新案例就补一条，是经验库不是装饰。
+ * ========================================================================== */
+{
+  const decks = require(path.join(ROOT, 'miniprogram/utils/words.js')).DECKS
+
+  /*
+   * 已知的「同一样东西」关系（会被判为坏词对）：
+   *   格式 [A, B, 为什么]
+   */
+  const SAME = [
+    ['豆腐脑', '豆花', '南北叫法'],
+    ['馄饨', '云吞', '粤语叫法'],
+    ['馄饨', '抄手', '川渝叫法'],
+    ['果冻', '啫喱', '粤语叫法'],
+    ['葡萄', '提子', '提子 ⊂ 葡萄'],
+    ['斯诺克', '桌球', '斯诺克 ⊂ 桌球'],
+    ['蛋挞', '葡挞', '葡挞 ⊂ 蛋挞'],
+    ['雪糕筒', '甜筒', '同一样东西'],
+    ['八宝粥', '腊八粥', '腊八粥 ⊂ 八宝粥'],
+    ['桌球', '台球', '同一样东西'],
+    ['汤圆', '元宵', '南北叫法'],
+  ]
+
+  const bad = []
+  decks.forEach((d) => {
+    ;(d.pairs || []).forEach((p) => {
+      const [a, b] = p
+      SAME.forEach(([x, y, why]) => {
+        if ((a === x && b === y) || (a === y && b === x)) {
+          bad.push(d.name + '：' + a + '/' + b + '（' + why + '）')
+        }
+      })
+      /* 一、两个词不能相同 */
+      if (a === b) bad.push(d.name + '：' + a + '/' + b + '（同一个词）')
+      /* 二、一个词不能是另一个的子串（"葡萄"/"葡萄干"这种） */
+      if (a !== b && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0)) {
+        bad.push(d.name + '：' + a + '/' + b + '（一个包含另一个）')
+      }
+    })
+  })
+  assert.deepStrictEqual(bad, [],
+    '★ 这些词对是"同一样东西"或互相包含 —— 玩家永远分不出谁是卧底：\n    ' + bad.join('\n    '))
+
+  /* 三、同一个词不能出现在多对里（否则"我听过这个词"会误导） */
+  const cnt = {}
+  decks.forEach((d) => (d.pairs || []).forEach((p) => p.forEach((x) => { cnt[x] = (cnt[x] || 0) + 1 })))
+  const reused = Object.keys(cnt).filter((k) => cnt[k] > 1)
+  assert.deepStrictEqual(reused, [],
+    '★ 这些词在多对里重复出现（会让玩家误判）：\n    ' + reused.join('\n    '))
+
+  /* 四、每对必须正好两个词、都非空 */
+  const shapeBad = []
+  decks.forEach((d) => {
+    ;(d.pairs || []).forEach((p, i) => {
+      if (!Array.isArray(p) || p.length !== 2 || !p[0] || !p[1]) {
+        shapeBad.push(d.name + ' 第 ' + (i + 1) + ' 对：' + JSON.stringify(p))
+      }
+    })
+  })
+  assert.deepStrictEqual(shapeBad, [], '★ 这些词对不是"两个非空词"：\n    ' + shapeBad.join('\n    '))
+
+  const total = decks.reduce((a, d) => a + (d.pairs || []).length, 0)
+  ok('★ ' + total + ' 对卧底词：无同义/包含、无跨对复用、每对两个非空词')
+}
