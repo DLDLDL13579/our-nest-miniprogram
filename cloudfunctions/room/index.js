@@ -3303,11 +3303,20 @@ exports.main = async (event) => {
        * "你欠几杯"在酒桌上是较真的事，**算错比不算更糟**。
        */
       const nightDrinks = Object.assign({}, room.nightDrinks || {})
+      /*
+       * ★★ 2026-11-04：补传 btDrink / fhDrinks。
+       *
+       *   loser.js 的 drinkers 新认了射龙门和额头牌，
+       *   但这里不传参，那两个分支照样算出空 ——
+       *   「函数认」和「调用方真的把数据给它」是两件事。
+       */
       loser.drinkers({
         game: room.game,
         lastResult: room.lastResult,
         players: room.players || [],
-        pkDrink: room.pkDrink || {}
+        pkDrink: room.pkDrink || {},
+        btDrink: room.btDrink || {},
+        fhDrinks: room.fhDrinks || {}
       }).forEach(d => {
         nightDrinks[d.name] = (Number(nightDrinks[d.name]) || 0) + d.cups
       })

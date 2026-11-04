@@ -42,10 +42,22 @@ function drinkers(o) {
     else out.push({ name: name, cups: cups })
   }
 
-  const lr = o && o.lastResult
-  if (!lr) return out
+  const lr = (o && o.lastResult) || {}
   const game = o.game
   const players = Array.isArray(o.players) ? o.players : []
+
+  /*
+   * ★★ 2026-11-04：**不能在这里就 return**。
+   *
+   *   原来是 `if (!lr) return out` —— 而**射龙门认低威根本不写 lastResult**
+   *   （它只写 btLast 和 btDrink，因为认低威不是"结算"而是"中途放弃"）。
+   *   于是认低威的半杯永远进不了「今晚战况」。
+   *
+   *   正确语义：lastResult 是"谁输了"的依据（liar/dice/poker/consensus/sieve
+   *   靠它），但**射龙门和额头牌的杯数在 btDrink / fhDrinks 里就有**，
+   *   不依赖 lastResult。所以把"要不要继续"推迟到每个分支自己判。
+   */
+  if (!o.lastResult && game !== 'between' && game !== 'forehead') return out
 
   if (game === 'liar' && lr.loserName) {
     push(lr.loserName, 1)
@@ -63,7 +75,37 @@ function drinkers(o) {
       if (p) push(p.name, Number(pkd[oid]) || 0)
     })
   }
-  /* undercover / wheel：不统计，见文件头的说明 */
+  /*
+   * ★★ 2026-11-04：额头牌 / 射龙门 / 众口一致 / 红黑单双 也进「今晚战况」。
+   *
+   * 原来只认前三个玩法（大话骰 / 比大小 / 金花）——
+   * 后果：用射龙门（喝得最细的玩法，一把 0.5～6 杯）玩一晚上，
+   * 结算页那条「今晚：某某 2 杯」永远不出现。不报错，只是永远黑着。
+   *
+   * 口径沿用同一条：**只统计输家明确的玩法**，
+   * 谁喝几杯服务端已经算好（btDrink / fhDrinks / loserSeat），
+   * 这里只做「openid → 昵称」的转换，不重新判定。
+   */
+  if (game === 'between' && o.btDrink) {
+    /* 射龙门：btDrink 按 openid 记喝的量（可能是 0.5 这种小数） */
+    const btd = o.btDrink
+    Object.keys(btd).forEach(oid => {
+      const p = players.filter(x => x.openid === oid)[0]
+      if (p) push(p.name, Number(btd[oid]) || 0)
+    })
+  } else if (game === 'forehead' && o.fhDrinks) {
+    /* 额头牌：fhDrinks 记换牌喝的半杯，累计 */
+    const fhd = o.fhDrinks
+    Object.keys(fhd).forEach(oid => {
+      const p = players.filter(x => x.openid === oid)[0]
+      if (p) push(p.name, Number(fhd[oid]) || 0)
+    })
+  } else if ((game === 'consensus' || game === 'sieve') && lr.loserName) {
+    /* 众口一致 / 红黑单双：输家喝 1 杯 */
+    push(lr.loserName, 1)
+  }
+
+  /* undercover / wheel：不统计，见文件头的说明（前者是阵营胜负，后者扇区决定谁喝） */
 
   return out
 }

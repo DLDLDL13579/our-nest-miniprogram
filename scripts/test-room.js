@@ -3947,6 +3947,67 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★★ 连打 3 局后 score 跨局累计（最惨 ' + worst + '），loserBoard 能显示')
   }
 
+  /* ============================================================================
+   * ⓕⓖ 射龙门玩一晚上，「今晚战况」必须真的有数（2026-11-04）
+   *
+   * 跨玩法的用例：用射龙门（喝得最细的玩法）打两把，
+   * 再来一局，检查 nightDrinks。
+   *
+   * 修过两层：Ⅰ loser.js 不认 between；Ⅱ 调用处没把 btDrink 传进去。
+   * 这条端到端测试验的就是「两层都修了之后，最终那个字段真的有数」。
+   * ========================================================================== */
+  console.log('\n=== ⓕⓖ 射龙门的杯数进「今晚战况」 ===')
+  {
+    const B1 = 'oid_nt_1', B2 = 'oid_nt_2'
+    OPENID = B1
+    const cr = await room.main({ action: 'create', name: '邓林', game: 'between' })
+    const bid = cr.room.id
+    OPENID = B2
+    await room.main({ action: 'join', code: cr.room.code, name: '倩萍' })
+    OPENID = B1
+    await room.main({ action: 'start', id: bid })
+    /* countdown → playing 是惰性推进，必须先过一次 status */
+    store.rooms.filter(x => x._id === bid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: bid })
+
+    /*
+     * ★ 射龙门是**队列制**：能操作的是 `btQueue[0]`，不是 turn。
+     *   （第一版用 turn 找人，押注被拒 → btStep 停在 bet。）
+     */
+    const raw0 = store.rooms.filter(x => x._id === bid)[0]
+    const turnP = (raw0.players || []).filter(p => p.openid === raw0.btQueue[0])[0]
+    assert.ok(turnP, '队首必须存在：btQueue=' + JSON.stringify(raw0.btQueue))
+    OPENID = turnP.openid
+    const betR = await room.main({ action: 'btAct', act: 'bet', bet: 1.5, id: bid })
+    assert.ok(betR.ok, '押注 1.5 应成功：' + (betR.msg || ''))
+    const raw1 = store.rooms.filter(x => x._id === bid)[0]
+    assert.ok(raw1.btStep === 'gate', '押注后应进 gate 阶段，实际 ' + raw1.btStep)
+
+    /*
+     * 选「认低威」而不是翻牌 —— 它固定喝 0.5 杯，结果确定。
+     * （翻牌可能“穿过”或“撞柱”，结果随机，第一版抽到“穿过”就没人喝。）
+     */
+    const r2 = await room.main({ action: 'btAct', act: 'bail', id: bid })
+    assert.ok(r2.ok, '认低威应成功：' + (r2.msg || ''))
+
+    const raw2 = store.rooms.filter(x => x._id === bid)[0]
+    const cups = raw2.btDrink || {}
+    const total = Object.keys(cups).reduce((a, k) => a + (Number(cups[k]) || 0), 0)
+    assert.ok(total > 0, '★ 玩完一把必须有人喝（btDrink=' + JSON.stringify(cups) + '）')
+
+    /* 再来一局 → nightDrinks 必须有数 */
+    raw2.hostOpenid = B1
+    OPENID = B1
+    const ra = await room.main({ action: 'again', id: bid })
+    assert.ok(ra.ok, '再来一局应成功')
+    const nd = ra.room.nightDrinks || {}
+    const ndTotal = Object.keys(nd).reduce((a, k) => a + (Number(nd[k]) || 0), 0)
+    assert.ok(ndTotal > 0,
+      '★★ 玩完射龙门再来一局，nightDrinks 必须有数（实际 ' + JSON.stringify(nd) +
+      '）—— 否则「今晚战况：某某 N 杯」对射龙门永远不显示')
+    ok('★★ 射龙门玩一把 + 再来一局 → nightDrinks=' + JSON.stringify(nd))
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

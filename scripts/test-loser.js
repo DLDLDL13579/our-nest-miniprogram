@@ -86,6 +86,63 @@ assert.deepStrictEqual(
 )
 ok('杯数为 0 的人不进列表')
 
+/* ============================================================================
+ * ★★ 2026-11-04：额头牌 / 射龙门 / 众口一致 也要进「今晚战况」
+ *
+ * 这三个玩法都有明确的「谁喝几杯」，但 `drinkers` 只认前三个玩法
+ * （大话骰 / 比大小 / 金花）。后果：用这些玩法玩一晚上，
+ * 结算页那条「今晚：某某 2 杯」**永远不出现** —— 不报错，只是永远黑着。
+ *
+ * 而射龙门恰恰是喝得最细的玩法（一把 0.5 ～ 6 杯）。
+ * ========================================================================== */
+{
+  /* ① 射龙门：btDrink 里记着每个人喝的量（按 openid） */
+  assert.deepStrictEqual(
+    drinkers({
+      game: 'between',
+      lastResult: { kind: 'between', loserName: '倩萍', cups: 1.5 },
+      players: [{ openid: 'a', name: '倩萍', seat: 2 }, { openid: 'b', name: '邓林', seat: 1 }],
+      btDrink: { a: 1.5, b: 0.5 }
+    }),
+    [{ name: '倩萍', cups: 1.5 }, { name: '邓林', cups: 0.5 }]
+  )
+  ok('射龙门：btDrink 进「今晚战况」（含 1.5 这种小数）')
+
+  /* ② 额头牌：fhDrinks 记换牌的半杯，累计 */
+  assert.deepStrictEqual(
+    drinkers({
+      game: 'forehead',
+      lastResult: { kind: 'forehead', loserNames: '倩萍' },
+      players: [{ openid: 'a', name: '倩萍', seat: 2 }],
+      fhDrinks: { a: 1 }
+    }),
+    [{ name: '倩萍', cups: 1 }]
+  )
+  ok('额头牌：fhDrinks 进「今晚战况」')
+
+  /* ③ 众口一致：lastResult.loserSeat → 名字 */
+  assert.deepStrictEqual(
+    drinkers({
+      game: 'consensus',
+      lastResult: { kind: 'consensus', loserName: '阿杰', loserSeat: 3 },
+      players: [{ openid: 'c', name: '阿杰', seat: 3 }]
+    }),
+    [{ name: '阿杰', cups: 1 }]
+  )
+  ok('众口一致：loserSeat → 名字，喝 1 杯')
+
+  /* ④ 红黑单双：loserSeat 同样适用 */
+  assert.deepStrictEqual(
+    drinkers({
+      game: 'sieve',
+      lastResult: { kind: 'sieve', loserName: '老王', loserSeat: 4 },
+      players: [{ openid: 'd', name: '老王', seat: 4 }]
+    }),
+    [{ name: '老王', cups: 1 }]
+  )
+  ok('红黑单双：loserSeat → 名字')
+}
+
 console.log('\n' + '='.repeat(50))
 console.log(`  「今晚战况」提取规则：全部 ${n} 项通过`)
 console.log('='.repeat(50) + '\n')
