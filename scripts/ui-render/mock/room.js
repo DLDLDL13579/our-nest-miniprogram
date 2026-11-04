@@ -19,6 +19,7 @@
 const iconSet = require('../../../miniprogram/utils/iconSet.js')
 const { GAMES } = require('../../../miniprogram/utils/games.js')
 const decks = require('../../../miniprogram/utils/decks.js')
+const settle = require('../../../miniprogram/game/settle.js')
 const poker = require('../../../miniprogram/utils/poker.js')
 
 const IC = iconSet.build(['speakerOn', 'speakerOff', 'bulb'], '#E8B33C')
@@ -132,7 +133,6 @@ function pkRoom(r) {
      *   · nightDrinkList —— 今晚酒量条
      */
     myCards: [],
-    nightDrinkList: [],
     // ★ 2026-11-02：金花「可比的人」数量。mock 缺它会永远渲染成「只有你一个人」
     pkTargetCount: 2,
     // ★ 2026-11-02：大话骰起叫下限（没叫过时）。mock 缺它会渲染成「从 个起叫」
@@ -149,7 +149,7 @@ function pkRoom(r) {
     wheelGradient: 'conic-gradient(#9E4029 0deg 79.2deg, #3F5A7A 79.2deg 151.2deg, #573E7A 151.2deg 216deg, #36654C 216deg 266.4deg, #8C6226 266.4deg 309.6deg, #7D3549 309.6deg 338.4deg, #3F6579 338.4deg 360deg)',
     wheelDeg: 0,
     /* 今晚战况（decorate 派生；mock 里给默认值，否则截图会缺这一行） */
-    nightDrinks: {}, nightDrinkList: [],
+    nightDrinks: {}, 
     id: 'r3', code: '627', count: 3,
     me: { seat: 1, name: '邓林', initial: '邓', dice: [] },
     players: [
@@ -188,7 +188,6 @@ function uwRoom(r) {
     howList: require('../../../miniprogram/utils/games.js').GAMES.filter(function (x) {
       return x.id === 'undercover'
     })[0].how,
-    nightDrinkList: [], myCards: [], confetti: []
   }, r)
 }
 
@@ -220,7 +219,7 @@ module.exports = {
      *
      *   mock 的意义是复刻真实数据；缺字段 = 那块永远验证不到。
      */
-    confetti: [], myCards: [], events: [], nightDrinkList: [],
+    confetti: [], myCards: [], events: [], 
     stage: 'entry',
     room: null,
     games: GAME_SWITCH,
@@ -527,7 +526,6 @@ module.exports = {
         game: 'liar', phase: 'over', host: true, count: 3,
         /* 今晚战况（decorate 会排好序；这里直接给排好的） */
         nightDrinks: { '倩萍': 2, '邓林': 1 },
-        nightDrinkList: [{ name: '倩萍', cups: 2 }, { name: '邓林', cups: 1 }],
         players: [
           { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
           { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
@@ -571,7 +569,6 @@ module.exports = {
       room: pkRoom({
         game: 'liar', phase: 'over', host: true, count: 3,
         nightDrinks: { '倩萍': 3, '邓林': 1 },
-        nightDrinkList: [{ name: '倩萍', cups: 3 }, { name: '邓林', cups: 1 }],
         players: [
           { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, inRound: true, diceCount: 5 },
           { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, inRound: true, diceCount: 5 },
@@ -813,7 +810,6 @@ module.exports = {
             seat: i + 1, name: n, initial: String(n).charAt(0), isMe: i === 0, isHost: i === 0, online: true,
             diceCount: 0, inRound: true, out: i > 0
           })),
-          settleFoot: '邓林 没换过牌就赢了',
           lastResult: {
             kind: 'poker', winner: '邓林', winText: '邓林 赢',
             hands: hands
@@ -1180,7 +1176,6 @@ module.exports = {
       },
       room: pkRoom({
         game: 'poker', phase: 'over', host: true, turn: 0, myTurn: false, turnName: '',
-        settleFoot: '你为了换牌喝了 1.5 杯',
         streaks: { 1: 3, 2: 0, 3: 0 },
         streakText: '邓林 连赢 3 把',
         loserBoard: '倩萍 今晚已经输了 4 局',
@@ -1228,10 +1223,18 @@ module.exports = {
           { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, out: true, score: -4 },
           { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, out: true, score: -1 }
         ],
-        poker: { drinks: [], 
+        poker: { drinks: [],
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),
           myKnown: PK_MINE[1], myKnownText: poker.cardText(PK_MINE[1]),
-          folded: false, aliveCount: 1, myDrink: 0, last: null, winner: '邓林'
+          folded: false, aliveCount: 1,
+          /*
+           * ★★ 2026-11-04：`myDrink` 从 0 改成 1.5。
+           *   上面 `settleFoot` 写的是「你为了换牌喝了 1.5 杯」，
+           *   而 `settle.js` 的 footText 要求 `myDrink > 0` 才产出那句话 ——
+           *   myDrink 是 0 时它算出来的是「邓林 没换过牌就赢了」。
+           *   也就是说：截图上的文案真实代码产不出来。
+           */
+          myDrink: 1.5, last: null, winner: '邓林'
         }
       })
     }),
@@ -1259,7 +1262,7 @@ module.exports = {
       room: pkRoom({
         game: 'wheel', phase: 'over', host: true, count: 3,
         gameName: '命运转盘', myCards: [], minPlayers: 1, maxPlayers: 8, shortBy: 0,
-        streakText: '', nightDrinkList: [],
+        streakText: '', 
         spin: { k: 'both', t: '一起喝', whoText: '全场一起喝', card: null, at: 0 }
       })
     }),
@@ -1270,7 +1273,7 @@ module.exports = {
       room: pkRoom({
         game: 'between', phase: 'over', host: true, count: 3,
         gameName: '射龙门', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
-        streakText: '', nightDrinkList: [],
+        streakText: '', 
         bt: {
           step: 'done', bet: 1.5, betText: '1.5 杯', gate: [], third: null,
           last: {
@@ -1299,7 +1302,7 @@ module.exports = {
       room: pkRoom({
         game: 'sieve', phase: 'over', host: true, count: 3,
         gameName: '红黑单双大小', myCards: [], minPlayers: 2, maxPlayers: 8, shortBy: 0,
-        streakText: '', nightDrinkList: [],
+        streakText: '', 
         sv: {
           round: 5, turnSeat: 0, turnName: '', myTurn: false,
           iAmDead: false, canAct: false, usableCount: 0,
@@ -1726,7 +1729,16 @@ module.exports = {
       result: { kind: 'undercover', winner: 'civilian', civilianWord: '苹果', spyWord: '梨' },
       room: uwRoom({
         id: 'r2', code: '418', game: 'undercover', phase: 'over', host: true,
-        settleFoot: '卧底是 老王',
+        /*
+         * ★★ 2026-11-04：**补 `lastResult`**。
+         *   真实运行时 `data.result` 就是 `room.lastResult`（room.js 的 applyRoom），
+         *   而 mock 原来只写了顶层 `result`、`room.lastResult` 是空的 ——
+         *   这种状态真实运行时不可能出现。
+         *
+         *   后果具体：`settle.js` 的 footText 读 `room.lastResult`，
+         *   于是手写的「卧底是 老王」真实函数算不出来（返回空串）。
+         */
+        lastResult: { kind: 'undercover', winner: 'civilian', civilianWord: '苹果', spyWord: '梨' },
         players: UW_PLAYERS.map(p => p.name === '老王' ? Object.assign({}, p, { out: true }) : p), count: 4,
         uw: {
           step: 'result', word: '苹果', myRole: '', myVote: 'c', voteCount: 0, voterCount: 4, aliveCount: 3,
@@ -1748,3 +1760,59 @@ module.exports = {
     })
   }
 }
+
+/* ============================================================================
+ * ★★★ mock 必须复刻真实语义：`result` 恒等于 `room.lastResult`（2026-11-04）
+ *
+ * 真实运行时 `applyRoom` 里是这样赋值的：
+ *
+ *     setData({ room, stage, result: room.lastResult || null })
+ *
+ * 也就是说两者**永远是同一个对象**，不可能一个有值另一个没有。
+ *
+ * 而 mock 里有 **13 个状态只手写了顶层 `result`、`room.lastResult` 是空的** ——
+ * 这种状态真实运行时不可能出现，后果是具体的：
+ * `settle.js` 的 `footText(room)` 读 `room.lastResult`，
+ * 于是那些 mock 里手写的 `settleFoot`（比如 uwOver 的「卧底是 老王」）
+ * **真实函数根本算不出来**（返回空串）。
+ *
+ * 修法不是逐个改 13 处，而是**在 mock 侧实现同一条不变量** ——
+ * 和当年给写操作 mock 加「深度合并 + null 报错」是同一思路：
+ * mock 的职责是复刻真实语义，不是"看起来像"。
+ *
+ * ⚠️ 归一化放在**所有状态定义之后**统一做，这样新加状态不用记得手写两遍。
+ * ========================================================================== */
+;(function normalizeResult() {
+  const st = module.exports.states
+  Object.keys(st).forEach((k) => {
+    const orig = st[k]
+    if (typeof orig !== 'function') return
+    st[k] = function () {
+      const s = orig.apply(this, arguments)
+      if (s && s.room) {
+        if (s.room.lastResult) s.result = s.room.lastResult
+        else if (s.result) s.room.lastResult = s.result
+
+        /*
+         * ★ 这两个都是**纯函数能算出来的派生字段**，所以 mock 不该手写 ——
+         *   手写就会出现"截图上有、真实代码产不出"（或反过来"真实会显示、截图没有"）。
+         *
+         *   · settleFoot   = game/settle.js 的 footText(room)
+         *   · nightDrinkList = nightDrinks 排序取前 3（只留 >0）
+         *
+         *   这正是 acgn 里记过的做法：mock 复刻真实语义，而不是"看起来像"。
+         *   （写操作 mock 加深度合并 + null 报错，是同一条原则的另一处应用。）
+         */
+        s.room.settleFoot = settle.footText(s.room)
+
+        const nd = s.room.nightDrinks || {}
+        s.room.nightDrinkList = Object.keys(nd)
+          .map((n) => ({ name: n, cups: Number(nd[n]) || 0 }))
+          .filter((x) => x.cups > 0)
+          .sort((a, b) => b.cups - a.cups)
+          .slice(0, 3)
+      }
+      return s
+    }
+  })
+})()

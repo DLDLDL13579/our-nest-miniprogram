@@ -773,3 +773,41 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     '截图好看但数据不可能成立：\n    ' + bad.join('\n    '))
   console.log('  ✓ 所有 mock 的 loserBoard / streakText 都能由自身数据推出')
 }
+/* ============================================================================
+ * ★ settleFoot / nightDrinkList 由 mock **自己用真实函数算**（2026-11-04）
+ *
+ * 这两个字段原来是手写的，而手写必然出现两种偏差：
+ *   · 写的比真值多（pkOver 写「你为了换牌喝了 1.5 杯」，而 myDrink=0 时算不出这句）
+ *   · 写的比真值少（8 个结算态 settleFoot 是空串，而真实运行时会显示「某某 喝 1 杯」）
+ *
+ * 所以改成在 mock 的归一化层里**直接调真实函数**：
+ *   settleFoot     = settle.footText(room)
+ *   nightDrinkList = nightDrinks 排序取前 3
+ *
+ * ⚠️ 这里**不再重复断言**"等于重算结果" —— 因为 mock 已经是算出来的，
+ *    那条断言会变成恒真。**恒真的断言比没有更危险**：它占着位置让人以为验过了。
+ *    真正需要断言的、mock 算不出来的那两个（loserBoard / streakText）在上一块。
+ *
+ * ★ 但要防另一种退化：**有人又在状态里手写这两个字段**（绕过归一化）。
+ *   判据放在源码层：mock 里除了归一化那几行，不许出现 `settleFoot:` /
+ *   `nightDrinkList:` 的赋值。
+ * ========================================================================== */
+{
+  const src = require('fs').readFileSync(
+    require('path').join(__dirname, 'ui-render', 'mock', 'room.js'), 'utf8')
+  /* 允许出现的唯一位置：归一化层里 */
+  const normStart = src.indexOf('normalizeResult')
+  const before = normStart < 0 ? src : src.slice(0, normStart)
+
+  const lines = before.split('\n')
+  const hand = []
+  lines.forEach((l, i) => {
+    if (/^\s*(settleFoot|nightDrinkList)\s*:/.test(l)) {
+      hand.push('第 ' + (i + 1) + ' 行：' + l.trim().slice(0, 50))
+    }
+  })
+  assert.deepStrictEqual(hand, [],
+    '★ mock 里又手写了 settleFoot / nightDrinkList —— 它们该由归一化层用真实函数算：\n    ' +
+    hand.join('\n    '))
+  console.log('  ✓ mock 里没有手写 settleFoot / nightDrinkList（都由真实函数算）')
+}
