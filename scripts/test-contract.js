@@ -6056,3 +6056,50 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     '★ 这些题卡会影响到不在场的人，且后果不可控/不可撤回：\n    ' + bad.join('\n    '))
   ok('★ 题卡不牵连第三方（随机发消息 / 别人代发 / 强制公开发布）')
 }
+
+/* ============================================================================
+ * ★ 题卡的数量与分布（2026-11-04）
+ *
+ * 一副牌太少会"玩两轮就见底"。扩到每套 70 条（35 真心话 + 35 大冒险）后，
+ * 这里锁住三条防线：
+ *   ① 每套牌的量下限（防止有人删卡删到打不了）
+ *   ② truth / dare 数量**不能失衡**（全是真心话会闷，全是大冒险会累）
+ *   ③ 四套牌之间不能有完全重复的题（同一句在两个场合出现说明没收好）
+ * ========================================================================== */
+{
+  const decks = require(path.join(ROOT, 'miniprogram/utils/decks.js')).DECKS
+
+  const MIN_PER_TYPE = 30          /* 每种类型至少 30 条 */
+  const MAX_IMBALANCE = 0.34       /* |truth - dare| / max ≤ 34% */
+
+  const thin = []
+  decks.forEach((d) => {
+    const t = (d.truth || []).length
+    const r = (d.dare || []).length
+    if (t < MIN_PER_TYPE) thin.push(d.name + '：真心话只有 ' + t + ' 条（至少 ' + MIN_PER_TYPE + '）')
+    if (r < MIN_PER_TYPE) thin.push(d.name + '：大冒险只有 ' + r + ' 条（至少 ' + MIN_PER_TYPE + '）')
+    const mx = Math.max(t, r)
+    if (mx && Math.abs(t - r) / mx > MAX_IMBALANCE) {
+      thin.push(d.name + '：真心话 ' + t + ' / 大冒险 ' + r + '，数量失衡')
+    }
+  })
+  assert.deepStrictEqual(thin, [],
+    '★ 题卡数量不足或失衡：\n    ' + thin.join('\n    '))
+
+  /* 跨套牌完全重复 */
+  const seen = {}
+  const dup = []
+  decks.forEach((d) => {
+    ;['truth', 'dare'].forEach((k) => {
+      ;(d[k] || []).forEach((c) => {
+        if (seen[c]) dup.push(seen[c] + ' ↔ ' + d.name + '/' + k + '：' + c)
+        else seen[c] = d.name + '/' + k
+      })
+    })
+  })
+  assert.deepStrictEqual(dup, [],
+    '★ 这些题在两个场合里都出现（同一句题换了场合就说不得）：\n    ' + dup.join('\n    '))
+
+  const total = decks.reduce((a, d) => a + (d.truth || []).length + (d.dare || []).length, 0)
+  ok('★ ' + total + ' 条题卡：每套 ≥' + MIN_PER_TYPE + ' 条/类型、无失衡、跨套无重复')
+}
