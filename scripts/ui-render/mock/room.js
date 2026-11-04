@@ -1212,9 +1212,21 @@ module.exports = {
          *   于是同一页里两套 out 不一致：`aliveCount: 1` 说只剩邓林，列表里三个人都活着。
          */
         players: [
-          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, out: false },
-          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, out: true },
-          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, out: true }
+          /*
+           * ★★ 2026-11-04：**补 `score`**。
+           *
+           *   下面 `loserBoard` 写的是「倩萍 今晚已经输了 4 局」，
+           *   而这三个玩家原来**一个都没有 score 字段** ——
+           *   真实代码从这个数据里产不出那句话。
+           *
+           *   也就是说：这张截图每个字都是真的排版、**假的数据**，
+           *   而我拿它给用户看"功能正常"。
+           *
+           *   现在让分数和文案严格对应：倩萍 score=-4 ↔ "输了 4 局"。
+           */
+          { seat: 1, name: '邓林', initial: '邓', isMe: true, isHost: true, online: true, out: false, score: 0 },
+          { seat: 2, name: '倩萍', initial: '倩', isMe: false, isHost: false, online: true, out: true, score: -4 },
+          { seat: 3, name: '阿杰', initial: '阿', isMe: false, isHost: false, online: true, out: true, score: -1 }
         ],
         poker: { drinks: [], 
           step: 'result', publicCard: PK_PUB, publicText: poker.cardText(PK_PUB),

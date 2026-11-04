@@ -3319,11 +3319,16 @@ exports.main = async (event) => {
        *   phase / bid / lastResult / turn / round / spin
        *   pk*（金花：比牌步骤、公共牌、牌堆、喝的记录）
        *   uw*（卧底：环节、出局名单、摊牌、票数、重投）
-       *   每人 dice / cards / uwWord / uwRole / out / score
+       *   每人 dice / cards / uwWord / uwRole / out
        *
        * 留（跨局累计，**绝对不能清**）：
        *   · nightDrinks —— 今晚谁喝过几杯（清了就每局从 0 开始）
        *   · streaks     —— 连胜（清了连击音效永远触发不到 combo2 以上）
+       *   · score       —— 今晚输了 N 局（2026-11-04 从"清"移到"留"）
+       *
+       *     ⚠️ score 原来在"清"那一栏，而结算页「XX 今晚已经输了 N 局」
+       *        的判据是 score <= -2。每局清零 + 一局只 -1
+       *        → 那句话**一次都显示不出来**。文案说的是"今晚"，就该跨局。
        *
        * 判据：**"这一局结束之后还有意义吗"** —— 有就留。
        * 两类混在同一个入口，最容易顺手把该留的一起清掉，而不报错。

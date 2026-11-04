@@ -71,11 +71,32 @@ for (const k of Object.keys(states)) {
     bad.push(k + '：已摇 ' + room.rolledCount + ' > 总人数 ' + room.count)
   }
 
-  /* ④ 分数/杯数非负 */
+  /*
+   * ④ 计数器的符号
+   *
+   * ★★ 2026-11-04：这条原来写的是「分数/杯数非负」并只查 score < 0 —— **前提错了**。
+   *
+   *   `score` 是**输局计数**，按设计就是负的（每输一局 -1，
+   *   结算页「今晚已经输了 N 局」取的就是 |score|）。
+   *   把它当"非负"查，等于要求正确数据必须不合格 ——
+   *   而 AGENTS.md 记过：**前提错了的断言会让你去改好代码，比没有更危险**。
+   *
+   *   真正该非负的是**杯数**（drinks / cups / myDrink）。
+   *   而 score 该查的是"不能为正"（赢不加分，只有输才 -1）。
+   */
   players.forEach((p, i) => {
-    if (typeof p.score === 'number' && p.score < 0) {
-      bad.push(k + '：players[' + i + '](' + p.name + ') score 为负')
+    if (typeof p.score === 'number' && p.score > 0) {
+      bad.push(k + '：players[' + i + '](' + p.name + ') score 为正（' + p.score +
+        '）—— 它是输局计数，只会 ≤ 0')
     }
+  })
+  const cupsFields = ['cups', 'drinkCups', 'myDrink', 'totalCups']
+  players.forEach((p, i) => {
+    cupsFields.forEach((f) => {
+      if (typeof p[f] === 'number' && p[f] < 0) {
+        bad.push(k + '：players[' + i + '](' + p.name + ') ' + f + ' 为负')
+      }
+    })
   })
 
   /* ⑤ 结算里的 seat 必须存在 */
@@ -687,4 +708,68 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
   assert.strictEqual(got, want, 'mock 读到的版本（' + got + '）和 config（' + want + '）不一致')
 
   console.log('  ✓ mock 的版本号来自 config（当前 v' + got + '）')
+}
+
+/* ============================================================================
+ * ★★★ 派生文案必须能由 mock 自己的数据推出来（2026-11-04）
+ *
+ * 起因：`loserBoard` 的判据是 `score <= -2`，而 `pkOver` 这个 mock 状态里
+ *   **所有玩家的 score 都是 undefined**，却手写了一句
+ *   「倩萍 今晚已经输了 4 局」。
+ *
+ *   也就是说：那张截图上的每个字都是真的排版、**假的数据**。
+ *   我拿它给用户看"功能正常"，而真实代码从这个 mock 数据里
+ *   根本产不出那句话。
+ *
+ * AGENTS.md 记过「mock 失真比没工具更危险」——
+ * 看着截图去改一段正确的代码，是这类问题的最终代价。
+ *
+ * 判据：**凡是"由数据算出来的一句话"，就必须能用这份数据算回去。**
+ * 这里查两条：
+ *   · loserBoard 里有"输了 N 局" → 必须存在 score ≤ -2 且 |score| = N 的人
+ *   · streakText 里有"连赢 N 把" → streaks 里必须有值等于 N 的人
+ * ========================================================================== */
+{
+  const bad = []
+  Object.keys(states).forEach((k) => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s && s.room
+    if (!r) return
+
+    /* ① loserBoard */
+    const lb = r.loserBoard
+    if (lb) {
+      const m = /输了\s*(\d+)\s*局/.exec(lb)
+      if (!m) { bad.push(k + '：loserBoard 文案里没有"N 局"' + JSON.stringify(lb)); return }
+      const want = parseInt(m[1], 10)
+      const hit = (r.players || []).some((p) =>
+        (Number(p.score) || 0) <= -2 && Math.abs(Number(p.score)) === want)
+      if (!hit) {
+        const scores = (r.players || []).map((p) => p.name + '=' + p.score).join(', ')
+        bad.push(k + '：loserBoard 说「' + lb + '」，但 players 里没有 score=' + (-want) +
+          ' 的人（实际：' + scores + '）')
+      }
+    }
+
+    /* ② streakText */
+    const stx = r.streakText
+    if (stx) {
+      const m = /连赢\s*(\d+)\s*把/.exec(stx)
+      if (!m) { bad.push(k + '：streakText 文案里没有"N 把"' + JSON.stringify(stx)); return }
+      const want = parseInt(m[1], 10)
+      const st = r.streaks || {}
+      const hit = Object.keys(st).some((seat) => Number(st[seat]) === want &&
+        (r.players || []).some((p) => String(p.seat) === String(seat)))
+      if (!hit) {
+        bad.push(k + '：streakText 说「' + stx + '」，但 streaks 里没有值为 ' + want +
+          ' 的座位（实际：' + JSON.stringify(st) + '）')
+      }
+    }
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '★★ 这些 mock 状态的"派生文案"和自己的数据对不上 —— ' +
+    '截图好看但数据不可能成立：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 所有 mock 的 loserBoard / streakText 都能由自身数据推出')
 }
