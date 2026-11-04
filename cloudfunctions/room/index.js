@@ -1324,6 +1324,37 @@ function _svNextSeat(live, deadMap, fromSeat) {
   return after.length ? after[0].seat : alive[0].seat
 }
 
+/**
+ * 给输家记一笔「输了一局」（score - 1）。
+ *
+ * ============ 为什么抽成函数 ============
+ *
+ * 结算页有一句「XX 今晚已经输了 N 局」（`loserBoard`，条件 score <= -2）。
+ * 而 `score` 原来**只有大话骰在写** —— 其余 7 个玩法从不记分，
+ * 于是那句话在它们身上**永远不显示**。
+ *
+ * 同一句话在 9 个玩法里有 8 个不生效，不是"少了个功能"，
+ * 而是**跨玩法不一致**：玩家在大话骰上看到「老张已经输了 3 局」，
+ * 换到金花就再也看不到 —— 他会以为那功能坏了。
+ *
+ * ★ 抽成函数而不是在 6 处各抄一遍：项目里「同一个判定有两个调用方
+ *   必须抽函数」那条规则的直接应用。抄 6 遍必然有一处写成 `+ 1`。
+ *
+ * @param {Array} players 原始玩家数组（不改动入参）
+ * @param {number|number[]} seats 输家的座位号（可传数组，支持多人同时输）
+ * @returns {Array} 新数组
+ */
+function markLosers(players, seats) {
+  const list = Array.isArray(seats) ? seats : [seats]
+  const set = {}
+  list.forEach((x) => { if (Number(x) > 0) set[Number(x)] = true })
+  if (!Object.keys(set).length) return players
+  return (players || []).map((p) =>
+    set[Number(p.seat)]
+      ? Object.assign({}, p, { score: (Number(p.score) || 0) - 1 })
+      : p)
+}
+
 async function updateGuarded(roomId, buildData, tries) {
   const max = tries || 4
   for (let i = 0; i < max; i++) {
@@ -3101,8 +3132,20 @@ exports.main = async (event) => {
         result = calcDiceResult(players, fresh.streaks || {}).result
       }
 
+      /*
+       * 比大小：不在 winnerSeats 里的人就是输家，记一笔「输了几局」。
+       * ★ 只在真的结算时记（allRolled），不能每轮摇完都记。
+       */
+      const diceLoseSeats = (allRolled && result && result.winnerSeats)
+        ? players.filter(p => p.inRound !== false &&
+            (result.winnerSeats || []).indexOf(p.seat) < 0).map(p => p.seat)
+        : []
+      const finalPlayers = diceLoseSeats.length
+        ? markLosers(players, diceLoseSeats)
+        : players
+
       return {
-        players: players,
+        players: finalPlayers,
         phase: allRolled ? 'over' : 'playing',
         lastResult: result,
         /* 连庄要跨局保留，所以存在房间上而不是 result 里 */
@@ -3666,6 +3709,13 @@ exports.main = async (event) => {
         patch.pkStep = 'result'
         patch.pkWinner = stillAlive.length ? stillAlive[0].name : ''
         /*
+         * 出局的人是输家，记一笔「输了几局」。
+         * ★ 用 `out` 标记而不是"不是赢家"：金花里弃牌也算出局，
+         *   而"不是赢家"会把中途进来看戏的人也算进去。
+         */
+        const outSeats = players.filter(p => p.out).map(p => p.seat)
+        if (outSeats.length) patch.players = markLosers(room.players, outSeats)
+        /*
          * ★★ 2026-11-03：新增 `pkWinnerOid`，把"谁是赢家"从**昵称**改成 **openid**。
          *
          *   原来这里（以及前端判断"我赢了没"）都拿名字比 —— 而昵称是玩家自填的，
@@ -3806,6 +3856,12 @@ exports.main = async (event) => {
         patch.fhStep = 'reveal'
         patch.fhAgreed = live.map(p => p.openid)
         patch.fhLast = settleFh(live, cmd, why)
+        /*
+         * 记一笔「输了几局」—— 结算页的 loserBoard 靠它。
+         * 额头牌可能是**多人同时输**（同点全算被喊中），所以传数组。
+         */
+        const loseSeats = (patch.fhLast.losers || []).map(x => x.seat)
+        if (loseSeats.length) patch.players = markLosers(room.players, loseSeats)
       }
 
       if (act === 'pass') {
@@ -3946,6 +4002,8 @@ exports.main = async (event) => {
             loserSeat: r.outlierSeat,
             detail: r.detail
           }
+          /* 记一笔「输了几局」—— 结算页的 loserBoard 靠它 */
+          patch.players = markLosers(room.players, r.outlierSeat)
         } else {
           patch.lastResult = {
             kind: 'consensus', winner: 'all',
@@ -4071,6 +4129,8 @@ exports.main = async (event) => {
           rule: ruleKey, byName: mine.name, round: room.svRound || 1,
           losers: st.losers, loserName: loserP ? loserP.name : ''
         }
+        /* 记一笔「输了几局」—— 结算页的 loserBoard 靠它 */
+        patch.players = markLosers(room.players, st.losers)
         await rooms.doc(room._id).update({ data: patch })
         const rr = await rooms.doc(room._id).get()
         return { ok: true, room: shape(rr.data, OPENID) }
@@ -4170,6 +4230,12 @@ exports.main = async (event) => {
         }
         drinks[OPENID] = (Number(drinks[OPENID]) || 0) + r.cups
         patch.btDrink = drinks
+        /*
+         * 喝了就算输一把 —— 记给 loserBoard。
+         * ★ 按**把**记而不是按杯记：那一句写的是「今晚已经输了 N 局」，
+         *   而一把可能喝 3 杯（撞柱双倍），按杯记会变成"输了 3 局"，读起来是错的。
+         */
+        if (r.cups > 0) patch.players = markLosers(room.players, mine.seat)
       } else if (act === 'bail') {
         /* ---------- ③ 认低威 ---------- */
         if (room.btStep !== 'gate') return { ok: false, msg: '先押注再看牌' }
@@ -4184,6 +4250,7 @@ exports.main = async (event) => {
         }
         drinks[OPENID] = (Number(drinks[OPENID]) || 0) + r.cups
         patch.btDrink = drinks
+        if (r.cups > 0) patch.players = markLosers(room.players, mine.seat)
       } else {
         return { ok: false, msg: '不认识的操作：' + act }
       }

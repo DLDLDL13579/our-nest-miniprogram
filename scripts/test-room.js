@@ -3809,6 +3809,81 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============================================================================
+   * ㉙ 输赢局数必须跨玩法一致（2026-11-03）
+   *
+   * 结算页有一句「XX 今晚已经输了 N 局」（`loserBoard`，条件 score <= -2）。
+   * 而 `score` **只有大话骰在写** —— 其余 7 个玩法从不记分，
+   * 于是那句战况在它们身上**永远不显示**。
+   *
+   * 这不是"少了个功能"，是**同一句话在 9 个玩法里有 8 个不生效** ——
+   * 玩家在大话骰上看到「老张今晚已经输了 3 局」，换到金花就再也看不到。
+   * ========================================================================== */
+  console.log('\n=== ㉙ 输赢局数跨玩法一致 ===')
+  {
+    /*
+     * 每个"有明确个人输家"的玩法，输家都要 score -1。
+     * 谁是卧底 / 命运转盘没有个人输家（前者是阵营胜负，后者的扇区决定谁喝），
+     * 它们不记分是对的。
+     */
+    const MUST_SCORE = {
+      liar: { action: 'open' },
+      dice: { action: 'roll' },
+      poker: { action: 'pkAct' },
+      between: { action: 'btAct' },
+      sieve: { action: 'svAct' },
+      consensus: { action: 'csAct' },
+      forehead: { action: 'fhAct' }
+    }
+
+    const src = fs.readFileSync(path.join(ROOT, 'cloudfunctions/room/index.js'), 'utf8')
+    /*
+     * 判据：每个玩法块里必须出现 `score:` 的递减写法。
+     * 只查字面量 `score: (p.score || 0) - 1` 那种形态 ——
+     * 这是项目里"输家扣分"的唯一写法。
+     */
+    const missing = []
+    Object.keys(MUST_SCORE).forEach((g) => {
+      /*
+       * ★★ 判据要覆盖**这个玩法的所有 action 分支**，不能只取第一个。
+       *
+       *   一个玩法通常有 3~5 个 action（bid / pi / open …），
+       *   每个都有一句 `if (room.game !== 'x') return` 校验。
+       *   而记分只发生在**结算那个 action** 里（比如大话骰的 open）。
+       *
+       *   走过的弯路：
+       *     v1 取 idx+20000 宽窗口 → 覆盖好几个玩法，删掉记分抓不到（假通过）
+       *     v2 精确到"下一个 game !== " → 只覆盖**第一个** action，
+       *        而第一个往往是 bid 不是 open，于是大话骰反而误报
+       *     v3（本版）枚举**所有** `game !== 'gid'` 的位置，逐个取块，
+       *        任意一块里有记分就算过
+       */
+      const re = new RegExp("room\\.game !== '" + g + "'", 'g')
+      const blocks = []
+      let mm
+      while ((mm = re.exec(src))) {
+        const rest = src.slice(mm.index)
+        const nextGame = rest.slice(10).search(/room\.game !== '/)
+        blocks.push(nextGame < 0 ? rest.slice(0, 20000) : rest.slice(0, nextGame + 10))
+      }
+      if (!blocks.length) { missing.push(g + '（找不到玩法分支）'); return }
+      /*
+       * 两种合法写法：
+       *   · 直接 `score: (p.score || 0) - 1`（大话骰的老写法）
+       *   · 调 `markLosers(...)`（2026-11-03 抽出来的共用函数）
+       */
+      const ok = blocks.some((seg) =>
+        /score:\s*\(\s*p\.score\s*\|\|\s*0\s*\)\s*-\s*1/.test(seg) ||
+        /markLosers\(/.test(seg))
+      if (!ok) missing.push(g)
+    })
+    assert.deepStrictEqual(missing, [],
+      '★★ 这些玩法有明确的个人输家，但从不给输家 score -1 —— ' +
+      '结算页那句「今晚已经输了 N 局」在它们身上永远不显示：\n    ' +
+      missing.join('\n    '))
+    ok('★★ 7 个有个人输家的玩法都会记「输了几局」')
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
