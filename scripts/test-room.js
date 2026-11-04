@@ -4008,6 +4008,105 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★★ 射龙门玩一把 + 再来一局 → nightDrinks=' + JSON.stringify(nd))
   }
 
+  /* ============================================================================
+   * ⓕⓗ 换玩法后，上一局的战况必须消失（2026-11-04）
+   *
+   * 完整酒桌路径：玩射龙门（认低威喝 0.5 杯）→ 房主换玩法（比如转盘）
+   * → 新玩法界面上**不该再看到射龙门的东西**。
+   *
+   * again 的清理块原来只有 9 个键（nightDrinks、players、phase、bid、spin、pk 系列、uw 系列），
+   * **24 个新玩法字段（bt* / sv* / cs* / fh*）全都不在里面** ——
+   * 而 shape() 按 `room.game` 判断给哪个块：换成转盘后虽然 bt* 不再下发，
+   * 但**换回射龙门时上一局的 btDrink/btQueue 原样回来**。
+   * ========================================================================== */
+  console.log('\n=== ⓕⓗ 换玩法后上一局状态必须清干净 ===')
+  {
+    /* 两个人：换玩法涉及"夜累计"，走真实的多人数路径 */
+    const C1 = 'oid_sw_1', C2 = 'oid_sw_2'
+    OPENID = C1
+    const cr = await room.main({ action: 'create', name: '邓林', game: 'between' })
+    const sid = cr.room.id
+    OPENID = C2
+    await room.main({ action: 'join', code: cr.room.code, name: '倩萍' })
+    OPENID = C1
+    const st0 = await room.main({ action: 'start', id: sid })
+    assert.ok(st0.ok, 'start 应成功：' + (st0.msg || ''))
+    store.rooms.filter(x => x._id === sid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: sid })
+
+    /* 玩一把：押注 + 认低威（0.5 杯） */
+    const raw0 = store.rooms.filter(x => x._id === sid)[0]
+    OPENID = (raw0.btQueue || [C1])[0]
+    await room.main({ action: 'btAct', act: 'bet', bet: 1, id: sid })
+    await room.main({ action: 'btAct', act: 'bail', id: sid })
+    const after = store.rooms.filter(x => x._id === sid)[0]
+    assert.ok((Number(after.btDrink[C1]) || 0) > 0, '前置：玩完该有 btDrink')
+    /*
+     * ⚠️ 认低威后队首出队，轮到第二个人 → btStep 回到 bet（队列制的正确行为）。
+     *   所以不断言 btStep === 'done'，只断言“上一把的结果还在”。
+     */
+    assert.ok(after.btLast && after.btLast.cups > 0, '前置：上一把的结果应在 btLast')
+    assert.ok(after.btQueue && after.btQueue.length >= 1, '前置：btQueue 应存在')
+
+    /* 房主回 lobby（再来一局）→ 换玩法 → 转盘。
+     * ★ 换玩法只在 lobby 允许（playing 中途换会让已摇的东西失去意义 —— 设计如此）。 */
+    after.hostOpenid = C1
+    OPENID = C1
+    const ag0 = await room.main({ action: 'again', id: sid })
+    assert.ok(ag0.ok, '再来一局应成功：' + (ag0.msg || ''))
+    const sw = await room.main({ action: 'game', game: 'wheel', id: sid })
+    assert.ok(sw.ok, '换玩法应成功：' + (sw.msg || ''))
+
+    const raw2 = store.rooms.filter(x => x._id === sid)[0]
+    assert.strictEqual(raw2.game, 'wheel', '前置：已换成转盘')
+
+    /* ★ 再换回射龙门 —— 上一局的状态必须已经清掉 */
+    const sw2 = await room.main({ action: 'game', game: 'between', id: sid })
+    assert.ok(sw2.ok, '换回射龙门应成功')
+    const raw3 = store.rooms.filter(x => x._id === sid)[0]
+
+    assert.deepStrictEqual(raw3.btDrink, {},
+      '★★ 换回射龙门后 btDrink 必须是空 —— 原来留着上一局的 ' +
+      JSON.stringify(raw3.btDrink) + '，界面会显示"你今晚在射龙门喝了 0.5 杯"，' +
+      '而那是别的玩法喝的')
+    assert.deepStrictEqual(raw3.btQueue, [],
+      '★ btQueue 必须清空（等 start 重排）—— 留着的话 start 前 shape 会显示旧的"轮到谁"')
+    assert.strictEqual(raw3.btStep, null, '★ btStep 必须清空')
+    assert.strictEqual(raw3.btLast, null, '★ btLast 必须清空')
+    ok('★★ 射龙门 → 转盘 → 射龙门：btDrink / btQueue / btStep / btLast 全部清干净')
+
+    /* 顺手验另一家：换到红黑单双 → start 玩一局 → 换走再换回，svDice 不能残留 */
+    OPENID = C1
+    const sw0 = await room.main({ action: 'game', game: 'sieve', id: sid })
+    assert.ok(sw0.ok, '前置：应能换到红黑单双：' + (sw0.msg || ''))
+    const st2 = await room.main({ action: 'start', id: sid })
+    assert.ok(st2.ok, '前置：start 应成功（sieve）：' + (st2.msg || ''))
+    store.rooms.filter(x => x._id === sid)[0].countdownEnd = Date.now() - 100
+    await room.main({ action: 'status', id: sid })
+    const raw4 = store.rooms.filter(x => x._id === sid)[0]
+    assert.ok(raw4.svDice && Object.keys(raw4.svDice).length > 0,
+      '前置：红黑单双局的 svDice 该有骰子（phase=' + raw4.phase +
+      ' game=' + raw4.game + ' svDice=' + JSON.stringify(raw4.svDice) + '）')
+    /*
+     * ★ 换玩法只在 lobby 态合法（playing 中途换被设计拒绝）。
+     *   所以真实路径是：再来一局回 lobby → 换走 → 换回。
+     *   第一版直接在 playing 里换 → 被拒但我没接返回值 →
+     *   房间根本没离开红黑单双，svDice 本来就该有 → 假红。
+     */
+    const ag1 = await room.main({ action: 'again', id: sid })
+    assert.ok(ag1.ok, '再来一局回 lobby：' + (ag1.msg || ''))
+    const gCons = await room.main({ action: 'game', game: 'consensus', id: sid })
+    assert.ok(gCons.ok, '换到众口一致：' + (gCons.msg || ''))
+    const gSieve = await room.main({ action: 'game', game: 'sieve', id: sid })
+    assert.ok(gSieve.ok, '换回红黑单双：' + (gSieve.msg || ''))
+    const raw5 = store.rooms.filter(x => x._id === sid)[0]
+    assert.deepStrictEqual(raw5.svDice, {},
+      '★★ 换回红黑单双后 svDice 必须为空 —— 留着的话上一局的骰子直接显示在桌上')
+    assert.deepStrictEqual(raw5.csAnswers, {}, '★ csAnswers 必须清空')
+    assert.strictEqual(raw5.csReveal, null, '★ csReveal 必须清空')
+    ok('★★ 红黑单双 → 众口一致 → 红黑单双：svDice / cs* 清干净')
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')

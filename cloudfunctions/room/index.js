@@ -3376,6 +3376,32 @@ exports.main = async (event) => {
         /* 金花 / 卧底的局内状态一起清 */
         pkStep: null, pkLast: null, pkWinner: null, pkWinnerOid: null, pkPublic: null, pkRest: [], pkDrink: {},
         /*
+         * ★★ 2026-11-04：**射龙门 / 额头牌 / 红黑单双 / 众口一致的局内字段也要清**。
+         *
+         *   这块原来只有 pk 系列 + uw 系列那两行 —— 前 6 个玩法之外的 24 个字段
+         *   一个都不在里面。后果（测试抓到的真实链路）：
+         *
+         *     玩射龙门（认低威喝 0.5 杯）→ 再来一局 → 换成转盘 → 换回射龙门
+         *     → `btDrink` 还留着 {张三: 0.5}
+         *     → 界面显示「你今晚在射龙门喝了 0.5 杯」，**而那是别的玩法喝的**。
+         *
+         *   为什么 shape() 平时兜住了：它按 `room.game` 决定下发哪个块，
+         *   玩转盘时 bt* 不下发 —— 但换**回来**的那一刻就原样回来了。
+         *   「玩别的玩法时看不见」不等于「已经清了」。
+         *
+         *   ★ 判据：**清理块必须对着 shape() 的每个玩法块逐字段清零** ——
+         *     新玩法加进 shape 的同时就要在这里加一行，漏了不报错。
+         */
+        /* 射龙门 */
+        btQueue: [], btStep: null, btBet: 0, btGate: [], btThird: null,
+        btLast: null, btDrink: {}, btRound: 1, btTurn: 0,
+        /* 额头牌 */
+        fhStep: null, fhAgreed: [], fhDrinks: {}, fhLast: null, fhCmd: null, fhActs: 0,
+        /* 红黑单双大小 */
+        svDice: {}, svDead: {}, svTurn: 0, svRule: null, svLast: null, svRound: 1,
+        /* 众口一致 */
+        csAnswers: {}, csRound: 1, csReveal: null, csLast: null,
+        /*
          * ★★ 卧底这一批也要在这里清（2026-10-28）。
          *
          * 原来只有 pk* 那几项，uw* 与 votes 全靠**下一次 start 时**才清
