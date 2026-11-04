@@ -2155,6 +2155,98 @@ exports.main = async (event) => {
       }
 
       /*
+       * ★★ 红黑单双：svTurn 指向的人掉线 → 轮次自动跳过（2026-11-04）。
+       *
+       *   「掉线死路」那轮补了 5 处，但第 8、9 个玩法是之后加的，
+       *   没进那张表。这里补齐：
+       *
+       *   红黑单双的卡点：svTurn 指向的人不喊规则，全桌等一个锁屏的人 ——
+       *   而且界面上那句「等某某定规则」会一直挂着，不报错。
+       *
+       *   兑底：轮到的人心跳 > 30s → 把他 inRound=false，轮次用 _svNextSeat 跳到下一个在局的人。
+       *   全部掉线（没有在局的人了）→ 不动，等心跳恢复（不要把房间扔掉）。
+       */
+      if (room.game === 'sieve' && room.phase === 'playing') {
+        const playersS = room.players || []
+        const ghostsS = playersS.filter(p =>
+          p.inRound !== false &&
+          p.seat === room.svTurn &&
+          ts - (p.lastSeen || 0) > 30000)
+        if (ghostsS.length) {
+          const aliveS = playersS.filter(p =>
+            p.inRound !== false &&
+            !ghostsS.some(g => g.openid === p.openid))
+          if (aliveS.length) {
+            const deadMapS = {}
+            ;(room.svDead || {}).constructor === Object && Object.keys(room.svDead || {}).forEach(k => { deadMapS[k] = true })
+            ghostsS.forEach(g => { deadMapS[g.openid] = false })   /* 还没拿光，只是掉线 */
+            const nextSeat = _svNextSeat(
+              playersS.map(p => ghostsS.some(g => g.openid === p.openid)
+                ? Object.assign({}, p, { inRound: false }) : p),
+              room.svDead || {}, room.svTurn)
+            const markedS = playersS.map(p =>
+              ghostsS.some(g => g.openid === p.openid) ? Object.assign({}, p, { inRound: false }) : p)
+            await dbCall('status.svGhost', () => rooms.doc(room._id).update({
+              data: { players: markedS, svTurn: nextSeat, updatedAt: ts }
+            }))
+            const rrs = await rooms.doc(room._id).get()
+            return { ok: true, room: shape(rrs.data, OPENID) }
+          }
+          /* 全部掉线：不动。心跳恢复后自动回到正常流程。 */
+        }
+      }
+
+      /*
+       * ★★ 众口一致：等收齐 allIn 时有人掉线 → 把他移出本局（2026-11-04）。
+       *
+       *   卡点：少一个人交答案，needCount 永远凑不齐 → 永远揭晓不了，
+       *   界面停在「已交 1 / 2」。
+       *
+       *   兑底：没交且心跳 > 30s 的人 inRound=false → 剩下的人自然收齐→ 照常揭晓。
+       */
+      if (room.game === 'consensus' && room.phase === 'playing' &&
+          !(room.csReveal)) {
+        const playersC = room.players || []
+        const answers = room.csAnswers || {}
+        const ghostsC = playersC.filter(p =>
+          p.inRound !== false &&
+          answers[p.openid] === undefined &&
+          ts - (p.lastSeen || 0) > 30000)
+        if (ghostsC.length) {
+          const markedC = playersC.map(p =>
+            ghostsC.some(g => g.openid === p.openid) ? Object.assign({}, p, { inRound: false }) : p)
+          /*
+           * ★ 踢人之后当场判收齐：剩下的人都交了就直接揭晓 ——
+           *   不要让玩家再等下一次轮询（1.5s 虽短，但“出结果了却黑一拍”体验不好）。
+           */
+          const patchC = { players: markedC, updatedAt: ts }
+          const liveC = markedC.filter(p => p.inRound !== false)
+          if (liveC.length > 0 && consensusRules.allIn(liveC, answers)) {
+            const listC = consensusRules.toAnswerList(liveC, answers)
+            const rC = consensusRules.judge(listC)
+            patchC.csReveal = {
+              answers: listC, pass: rC.pass, spread: rC.spread,
+              allowed: Math.round(rC.allowed), min: rC.min, max: rC.max,
+              median: rC.median, outlierSeat: rC.outlierSeat,
+              outlierName: rC.outlierName, detail: rC.detail
+            }
+            patchC.csLast = patchC.csReveal
+            if (!rC.pass && rC.outlierSeat) {
+              patchC.lastResult = {
+                kind: 'consensus', winner: '',
+                winText: rC.outlierName + ' 离得最远，喝 1 杯',
+                loserName: rC.outlierName, loserSeat: rC.outlierSeat, detail: rC.detail
+              }
+              patchC.players = markLosers(markedC, rC.outlierSeat)
+            }
+          }
+          await dbCall('status.csGhost', () => rooms.doc(room._id).update({ data: patchC }))
+          const rrc = await rooms.doc(room._id).get()
+          return { ok: true, room: shape(rrc.data, OPENID) }
+        }
+      }
+
+      /*
        * ★★ 射龙门：队首掉线必须自动跳过（2026-11-03）。
        *
        *   这是项目里的**第四条**同类死路（比大小不摇 / 卧底不投 / 额头牌不表态）。

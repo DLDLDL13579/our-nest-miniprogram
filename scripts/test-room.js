@@ -4107,6 +4107,93 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     ok('★★ 红黑单双 → 众口一致 → 红黑单双：svDice / cs* 清干净')
   }
 
+  /* ============================================================================
+   * ⓕⓡ 掉线兑底的两个新玩法：红黑单双 / 众口一致（2026-11-04）
+   *
+   * 「掉线死路四连」那轮补了大话骰 / 比大小 / 卧底 / 房主转移 / 射龙门，
+   * 但第 8、9 个玩法是之后加的，没进那张表：
+   *
+   *   · 红黑单双：svTurn 指向的人不喊规则 → 全桌等一个锁屏的人
+   *   · 众口一致：等收齐 allIn → 少一个人永远收不齐
+   *
+   * 通用判据（AGENTS.md 记过）：判据里出现「every(所有人完成)」或「等某个人」，
+   * 就必须同时写“某个人不在了”的出口。
+   * ========================================================================== */
+  console.log('\n=== ⓕⓡ 红黑单双 / 众口一致的掉线兑底 ===')
+  {
+    /* ① 红黑单双：轮到的人掉线 30 秒 → 轮次应跳过他 */
+    {
+      const D1 = 'oid_sv_1', D2 = 'oid_sv_2'
+      OPENID = D1
+      const cr = await room.main({ action: 'create', name: '邓林', game: 'sieve' })
+      const sid = cr.room.id
+      OPENID = D2
+      await room.main({ action: 'join', code: cr.room.code, name: '倩萍' })
+      OPENID = D1
+      await room.main({ action: 'start', id: sid })
+      store.rooms.filter(x => x._id === sid)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: sid })
+
+      const raw = store.rooms.filter(x => x._id === sid)[0]
+      assert.strictEqual(raw.phase, 'playing', '前置：应进 playing')
+      const turnOpenid = (raw.players || []).filter(p => p.seat === raw.svTurn)[0].openid
+      assert.ok(turnOpenid, '前置：svTurn 应指向真人')
+
+      /* 让轮到的人掉线（lastSeen 拨回 31 秒前） */
+      const dead = store.rooms.filter(x => x._id === sid)[0]
+      dead.players = dead.players.map(p =>
+        p.openid === turnOpenid ? Object.assign({}, p, { lastSeen: Date.now() - 31000 }) : p)
+
+      await room.main({ action: 'status', id: sid })
+      const after = store.rooms.filter(x => x._id === sid)[0]
+      const nowTurnP = (after.players || []).filter(p => p.seat === after.svTurn)[0]
+      assert.ok(nowTurnP && nowTurnP.openid !== turnOpenid,
+        '★★ 轮到的人掉线 30 秒后，svTurn 应跳过他（实际还指着 ' +
+        JSON.stringify(after.svTurn) + '）—— 否则全桌等一个锁屏的人')
+      ok('★★ 红黑单双：轮次掉线 30s 自动跳过，不卡死全桌')
+    }
+
+    /* ② 众口一致：有人掉线不交 → 剩下的人能推进 */
+    {
+      const E1 = 'oid_cs_1', E2 = 'oid_cs_2'
+      OPENID = E1
+      const cr = await room.main({ action: 'create', name: '邓林', game: 'consensus' })
+      const cid = cr.room.id
+      OPENID = E2
+      await room.main({ action: 'join', code: cr.room.code, name: '倩萍' })
+      OPENID = E1
+      await room.main({ action: 'start', id: cid })
+      store.rooms.filter(x => x._id === cid)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: cid })
+
+      /* 邓林交答案；倩萍掉线不交 */
+      await room.main({ action: 'csAct', value: 66, id: cid })
+      const raw = store.rooms.filter(x => x._id === cid)[0]
+      assert.strictEqual(raw.csAnswers[E2], undefined, '前置：倩萍没交')
+
+      raw.players = raw.players.map(p =>
+        p.openid === E2 ? Object.assign({}, p, { lastSeen: Date.now() - 31000 }) : p)
+      const r1 = await room.main({ action: 'status', id: cid })
+      const after = store.rooms.filter(x => x._id === cid)[0]
+
+      /*
+       * ★ 兜底后应当一次到位：踢人 + 收齐 + 揭晓写库。
+       *   这里读的是**库字段**（after.csReveal）——
+       *   第一版误写成 after.cs（那是响应里 shape 块的路径），
+       *   恒为 undefined，差点以为是服务端没揭晓。
+       *   相同的错误形态：先怀疑产品，再怀疑断言，最后才发现是自己的路径错。
+       */
+      const kicked = (after.players || []).filter(p => p.openid === E2)[0]
+      assert.ok(kicked && kicked.inRound === false,
+        '★ 掉线的人应被移出本局（inRound=false）')
+      assert.ok(after.csReveal,
+        '★★ 踢人后剩下的人都交了 → 应当当场揭晓（不让玩家等下一次轮询）')
+      assert.ok(r1.ok && r1.room.cs && r1.room.cs.reveal,
+        '★ 同一次响应里玩家就能看到揭晓')
+      ok('★★ 众口一致：掉线不交 30s → 移出本局 + 当场揭晓')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
