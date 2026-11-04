@@ -1471,6 +1471,21 @@ module.exports = {
       return base
     },
 
+    /*
+     * ★★ 跨玩法的「今晚战况」（2026-11-04）。
+     *
+     *   44~47 轮修完后，这条横幅应该能把射龙门（喝得最细，含 0.5 这种小数）
+     *   和大话骰的账合在一起——真实酒桌上就是这样换着玩的。
+     *   原来只有大话骰的状态有这个数据，其它玩法的横幅从没渲染过。
+     */
+    crossGameOver: () => {
+      const base = module.exports.states.btOver()
+      base.room.nightDrinks = { '邓林': 2, '倩萍': 0.5 }
+      base.room.streaks = { 1: 2 }
+      base.room.streakText = '邓林 连赢 2 把'
+      return base
+    },
+
     /* ============ 众口一致（2026-11-03）============ */
     csInput: () => ({
       stage: 'playing', csInput: '65',

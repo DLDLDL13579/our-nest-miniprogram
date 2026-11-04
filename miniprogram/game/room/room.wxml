@@ -1821,9 +1821,12 @@
     -->
     <view wx:if="{{nightRound > 0}}" class="night-round">今晚第 {{nightRound}} 局</view>
     <!--
-      今晚战况：谁喝过几杯（2026-10-29）。
-      只统计输家明确的玩法（大话骰 / 比大小）—— 金花的输家要按比牌过程算、
-      卧底和转盘没有输家。**算错比不算更糟**，所以宁可少显示。
+      今晚战况：谁喝过几杯（2026-10-29 建，2026-11-04 扩）。
+      ⚠️ 这段注释原来写"只统计大话骰 / 比大小"—— 扩完之后过时了，
+      **注释里的口径必须跟着代码走**，否则会误导下一个人以为别的玩法不该统计。
+      现在的口径（见 cloudfunctions/room/loser.js 的 drinkers）：
+      输家明确的都算 —— 大话骰 / 比大小 / 金花（出局者+换牌）/ 射龙门 / 额头牌 /
+      众口一致 / 红黑单双；卧底是阵营胜负、转盘由扇区决定，**没有个人输家**，不算。
     -->
     <view wx:if="{{room.nightDrinkList.length}}" class="night-round">
       今晚：<text wx:for="{{room.nightDrinkList}}" wx:key="name">{{index ? ' · ' : ''}}{{item.name}} {{item.cups}} 杯</text>
