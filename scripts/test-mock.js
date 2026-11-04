@@ -858,3 +858,50 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     bad.join('\n    '))
   console.log('  ✓ 所有 mock 的 stage 与 room.phase 一致（判据来自真实 stageOf）')
 }
+
+/* ============================================================================
+ * ★ mock 状态不许有「逻辑上不可能同时成立」的字段组合（2026-11-04）
+ *
+ * 这轮先手工扫了一遍（0 矛盾 —— 前几轮的自洽断言已经把这里清干净了），
+ * 这里固化成断言防将来漂移。每条都对应**服务端不可能产出的状态**：
+ *
+ *   ① 拿光的人不能还能喊规则（sv.iAmDead 与 canAct）
+ *   ② 观战者不会被轮到（spectating 与 myTurn）
+ *   ③ 出局的人不会被轮到（myOut 与 myTurn）
+ *   ④ 众口一致的进度数字（submittedCount ≤ needCount；交过的人算进计数）
+ *   ⑤ 红黑单双的座位（dead 的人 left 必须是 0）
+ *
+ * ⚠️ 与"分支覆盖"互补：覆盖查「有没有状态能进这个分支」，
+ *    这里查「有没有状态进的是**不该存在的组合**」。
+ * ========================================================================== */
+{
+  const roomMock = require('./ui-render/mock/room.js')
+  const T = (x) => x === true
+  const bad = []
+
+  Object.keys(roomMock.states || {}).forEach((k) => {
+    let s
+    try { s = roomMock.states[k]() } catch (e) { return }
+    const r = (s && s.room) || {}
+    const sv = r.sv || {}
+    const cs = r.cs || {}
+
+    if (T(sv.iAmDead) && T(sv.canAct)) bad.push(k + '：iAmDead=true 且 canAct=true（拿光的人不能喊规则）')
+    if (T(r.spectating) && T(r.myTurn)) bad.push(k + '：spectating=true 且 myTurn=true（观战者不会被轮到）')
+    if (T(r.myOut) && T(r.myTurn)) bad.push(k + '：myOut=true 且 myTurn=true（出局者不该轮到）')
+    if (cs.needCount !== undefined && cs.submittedCount !== undefined &&
+        cs.submittedCount > cs.needCount) {
+      bad.push(k + '：submittedCount ' + cs.submittedCount + ' > needCount ' + cs.needCount)
+    }
+    if (cs.submittedCount === 0 && T(cs.submitted)) {
+      bad.push(k + '：submitted=true 但 submittedCount=0')
+    }
+    ;(sv.seats || []).forEach((p) => {
+      if (p.dead && p.left > 0) bad.push(k + '：seats 里 ' + p.name + ' dead=true 但 left=' + p.left)
+    })
+  })
+
+  assert.deepStrictEqual(bad, [],
+    '★ 这些 mock 状态的字段组合在真实运行时不可能出现：\n    ' + bad.join('\n    '))
+  console.log('  ✓ 无矛盾状态组合（死人不能行动 / 观战不轮到 / 进度数字自洽）')
+}
