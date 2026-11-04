@@ -811,3 +811,40 @@ console.log('  ✓ mock 数据自洽（' + Object.keys(states).length + ' 个状
     hand.join('\n    '))
   console.log('  ✓ mock 里没有手写 settleFoot / nightDrinkList（都由真实函数算）')
 }
+
+/* ============================================================================
+ * ★ mock 的 `stage` 必须等于 `stageOf(room.phase)`（2026-11-04）
+ *
+ * 真实运行时 `stage` 由 `stageOf(phase)` 唯一推导（applyRoom 里赋值）。
+ * mock 里两者是分开手写的 —— 和 `result` / `lastResult` 同一类结构问题。
+ *
+ * 已经核对过 72 个状态全部一致（0 处矛盾），所以这条是**防将来漂移**的。
+ * ========================================================================== */
+{
+  /* 从源码里抽 stageOf 的映射，不手抄一份（否则两处必然不同步） */
+  const roomSrc = require('fs').readFileSync(
+    require('path').join(__dirname, '..', 'miniprogram', 'game', 'room', 'room.js'), 'utf8')
+  const fn = /function stageOf\s*\([^)]*\)\s*\{([\s\S]*?)\n\}/.exec(roomSrc)
+  assert.ok(fn, '找不到 stageOf()')
+  const stageOf = new Function('phase', fn[1].replace(/^\s*/, '') + ';')
+  /* 冒烟：先确认抽出来的函数是对的 */
+  assert.strictEqual(stageOf('lobby'), 'lobby', 'stageOf 抽取失败（lobby）')
+  assert.strictEqual(stageOf('playing'), 'playing', 'stageOf 抽取失败（playing）')
+  assert.strictEqual(stageOf('over'), 'over', 'stageOf 抽取失败（over）')
+
+  const bad = []
+  Object.keys(states).forEach((k) => {
+    let s
+    try { s = states[k]() } catch (e) { return }
+    const r = s && s.room
+    if (!r || !r.phase) return
+    const want = stageOf(r.phase)
+    if (s.stage !== want) {
+      bad.push(k + '：stage=' + s.stage + ' 但 phase=' + r.phase + '（stageOf 应为 ' + want + '）')
+    }
+  })
+  assert.deepStrictEqual(bad, [],
+    '★ 这些 mock 的 stage 和 room.phase 对不上（真实运行时 stage 由 stageOf 唯一推导）：\n    ' +
+    bad.join('\n    '))
+  console.log('  ✓ 所有 mock 的 stage 与 room.phase 一致（判据来自真实 stageOf）')
+}
