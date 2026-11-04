@@ -4194,6 +4194,89 @@ function ok(msg) { n++; console.log('  ✓ ' + msg) }
     }
   }
 
+  /* ============================================================================
+   * ⓕⓣ 房主掉线转移后，新房主在每个玩法里都能实际操作（2026-11-04）
+   *
+   * ⓙ 只验了「转盘房里房主会转移”，但真实需求是：
+   *   转移之后新房主要能做那些「只有房主能」的操作。
+   *   各玩法的房主操作不同，而转移只改 hostOpenid 一个字段 ——
+   *   若某个玩法的校验用了别的字段（比如 iAmHost 缓存、别的判据），
+   *   转移后依旧卡死，而且只在那个玩法里发生。
+   * ========================================================================== */
+  console.log('\n=== ⓕⓣ 房主掉线转移后，新房主能操作每个玩法 ===')
+  {
+    const M1 = 'oid_mh_1', M2 = 'oid_mh_2', M3 = 'oid_mh_3'
+    /*
+     * 每个玩法：建房 → 加人 → start → 房主掉线 90s → status 转移 →
+     * 新房主做一次“只有房主能”的操作 → 必须成功。
+     *
+     * ⚠️ 各玩法的 min 不同（卧底 3 人），所以每个用例都拉满 3 人——
+     *   start 被拒时房间停在 lobby，后面全部白跑还报一个误导人的错（第一版就这样）。
+     */
+    const CASES = [
+      { game: 'undercover', do: async (id) => {
+          /* 卧底：只有房主能「开始投票」（talk → vote） */
+          const r = await room.main({ action: 'uwSay', id })
+          return { ok: r.ok, msg: r.msg, check: (raw) => raw.uwStep === 'vote' }
+        } },
+      { game: 'wheel', do: async (id) => {
+          /* 转盘：只有房主能「转」 */
+          const r = await room.main({ action: 'spin', id })
+          return { ok: r.ok, msg: r.msg, check: (raw) => !!raw.spin }
+        } },
+      { game: 'consensus', do: async (id) => {
+          /* 众口一致：只有房主能「下一轮」—— 先让双方都交答案进揭晓态 */
+          await room.main({ action: 'csAct', value: 50, id })
+          /* 找到另一个人交答案 → 收齐揭晓 */
+          const raw0 = store.rooms.filter(x => x._id === id)[0]
+          const other = (raw0.players || []).filter(p => p.openid !== M2)[0]
+          if (other) {
+            OPENID = other.openid
+            await room.main({ action: 'csAct', value: 55, id })
+            OPENID = M2
+          }
+          const r = await room.main({ action: 'csAct', act: 'next', id })
+          return { ok: r.ok, msg: r.msg, check: (raw) => true }
+        } },
+    ]
+
+    for (const c of CASES) {
+      OPENID = M1
+      const cr = await room.main({ action: 'create', name: '甲', game: c.game })
+      assert.ok(cr.ok, c.game + ' 前置：建房：' + (cr.msg || ''))
+      const gid = cr.room.id
+      OPENID = M2
+      await room.main({ action: 'join', code: cr.room.code, name: '乙' })
+      OPENID = M3
+      await room.main({ action: 'join', code: cr.room.code, name: '丙' })
+      OPENID = M1
+      const stt = await room.main({ action: 'start', id: gid })
+      assert.ok(stt.ok, c.game + ' 前置：start 应成功：' + (stt.msg || ''))
+      store.rooms.filter(x => x._id === gid)[0].countdownEnd = Date.now() - 100
+      await room.main({ action: 'status', id: gid })
+
+      /* 房主掉线 90 秒 */
+      const raw = store.rooms.filter(x => x._id === gid)[0]
+      raw.players = raw.players.map(p =>
+        p.openid === M1 ? Object.assign({}, p, { lastSeen: Date.now() - 90000 }) : p)
+      await room.main({ action: 'status', id: gid })
+      const moved = store.rooms.filter(x => x._id === gid)[0]
+      assert.strictEqual(moved.hostOpenid, M2,
+        c.game + '：房主掉线后应转给乙（实际 ' + moved.hostOpenid + '）')
+      assert.strictEqual(moved.phase, 'playing',
+        c.game + '：转移后应还在 playing（实际 ' + moved.phase + '）')
+
+      /* 新房主做"只有房主能"的操作 */
+      OPENID = M2
+      const r = await c.do(gid)
+      assert.ok(r.ok, '★★ ' + c.game + '：房主转移后，新房主应能执行房主操作（' +
+        (r.msg || '成功但状态未变') + '）')
+      const raw2 = store.rooms.filter(x => x._id === gid)[0]
+      assert.ok(r.check(raw2), c.game + '：操作后状态应真的变化')
+      ok('★★ ' + c.game + '：转移后新房主操作成功')
+    }
+  }
+
   console.log(`${'='.repeat(58)}\n`)
 })().catch(e => {
   console.error('\n  ✗ 断言失败：', e.message, '\n')
