@@ -28,7 +28,12 @@ const path = require('path')
 const ROOT = path.join(__dirname, '..')
 const PAGES = [
   { name: '我的', wxml: 'miniprogram/pages/me/me.wxml', mock: 'scripts/ui-render/mock/me.js' },
-  { name: '大厅', wxml: 'miniprogram/pages/lobby/lobby.wxml', mock: 'scripts/ui-render/mock/lobby.js' }
+  { name: '大厅', wxml: 'miniprogram/pages/lobby/lobby.wxml', mock: 'scripts/ui-render/mock/lobby.js' },
+  /*
+   * ★ 2026-11-04：加房间页。它有 75 个渲染状态、9 个玩法 × 4 个阶段，
+   * wx:if 分支比另两个页面多一个量级 —— **最可能藏着没渲染过的分支**。
+   */
+  { name: '房间', wxml: 'miniprogram/game/room/room.wxml', mock: 'scripts/ui-render/mock/room.js' }
 ]
 
 /** 把 {{expr}} 求值；不支持就返回 {ok:false} */
@@ -119,3 +124,42 @@ if (problems.length) {
 }
 
 console.log('\n' + '='.repeat(58) + '\n')
+
+/* ============================================================================
+ * ★★★ mock 的 states 里不许有重名（2026-11-04）
+ *
+ * 对象字面量的重复键会被**静默覆盖**：写在后面的赢，前面的根本不生效，
+ * 而且不报错、不警告。
+ *
+ * 这一轮我被它坑了**两次**：
+ *   · 新建 `uwTie`（两轮平票→卧底拖赢）→ 而库里早有 `uwTie`（首次平票→重投），
+ *     我那个被覆盖，覆盖断言一直报"没状态能触发"
+ *   · 新建 `wheelCard`（结算页的题卡）→ 库里早有 `wheelCard`（转轮中的题卡），
+ *     同样被覆盖
+ *
+ * 症状是"我明明加了状态，断言还是说没有"—— 很容易误判成断言写错了。
+ * 运行期查不出来（对象建出来时重名已经没了），只能查**源码**。
+ * ========================================================================== */
+{
+  const fs2 = require('fs')
+  const dupBad = []
+  PAGES.forEach((pg) => {
+    const src = fs2.readFileSync(require('path').join(ROOT, pg.mock), 'utf8')
+    /* 只数 `states: {` 之后、4 空格缩进的 `名字: `（= 状态定义） */
+    const si = src.indexOf('states:')
+    const seg = si < 0 ? '' : src.slice(si)
+    const names = [...seg.matchAll(/^\s{4}([a-zA-Z_]\w*):/gm)].map((m) => m[1])
+    const seen = {}
+    names.forEach((n) => {
+      if (seen[n]) dupBad.push(pg.name + '：`' + n + '` 定义了两次（后面那个会静默覆盖前面）')
+      seen[n] = 1
+    })
+  })
+  if (dupBad.length) {
+    console.log('  ✗ mock 状态重名（对象字面量重复键静默覆盖）：')
+    dupBad.forEach((x) => console.log('      ' + x))
+    process.exitCode = 1
+  } else {
+    ok('所有 mock 状态名唯一（无静默覆盖）')
+  }
+}

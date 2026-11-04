@@ -1336,6 +1336,141 @@ module.exports = {
       return base
     },
 
+    /*
+     * ★★ 2026-11-04：补 8 个**从来没被渲染过**的分支。
+     *
+     * 新加的「页面分支覆盖」断言扫出房间页有 14 个 wx:if
+     * 在 75 个状态里一次都不成立。
+     *
+     * 这里先补**最该被看一眼的那几个**——
+     * 它们都是「发生了一件不常见的事，界面要解释清楚」的分支。
+     * ——越是少见，玩家越需要文字告诉他发生了什么，而它恰恰没人验过。
+     */
+    /*
+     * 卧底：两轮投票都平票，一个人都没投出去 → 卧底拖赢。
+     *
+     * ⚠️ 不能叫 `uwTie` —— 那个名字已经被「首次平票 → 重投」占了（它是 playing 阶段）。
+     *    而这里是**结算阶段**的另一件事。重名会被对象字面量后面那个静默覆盖。
+     */
+    uwDeadlock: () => {
+      const base = module.exports.states.uwOver()
+      base.result = Object.assign({}, base.result, { tieDeadlock: true, winner: 'spy' })
+      base.room.lastResult = base.result
+      return base
+    },
+
+    /* 大话骰：对手掉线，服务端自动开骰（要告诉玩家为什么自己开了） */
+    liarAutoOpen: () => {
+      const base = module.exports.states.liarOver()
+      base.result = Object.assign({}, base.result, { autoOpened: true })
+      base.room.lastResult = base.result
+      return base
+    },
+
+    /* 射龙门：点「认低威」后的二次确认（付出代价前的最后一步） */
+    btAskBail: () => {
+      const base = module.exports.states.btGate()
+      base.btAskBail = true
+      return base
+    },
+
+    /* 红黑单双：全场都拿光了，这一轮作废 */
+    svVoided: () => {
+      const base = module.exports.states.svTurn()
+      base.room.sv.last = {
+        rule: 'big', byName: '邓林', round: 4, voided: true,
+        voidText: '全场都拿光了 —— 这轮作废，骰子还回去重来'
+      }
+      base.room.sv.lastRuleText = '大的留下'
+      return base
+    },
+
+    /* 红黑单双：自己的骰子拿光了，只能在旁边看 */
+    svDead: () => {
+      const base = module.exports.states.svTurn()
+      base.room.sv.iAmDead = true
+      base.room.sv.canAct = false
+      base.room.sv.seats[0] = Object.assign({}, base.room.sv.seats[0],
+        { dead: true, left: 0, dice: [] })
+      base.room.sv.myLeft = 0
+      return base
+    },
+
+    /* 金花：换牌喝了几杯（结算页下方那句个人化的收尾） */
+    pkDrinkText: () => {
+      const base = module.exports.states.pkMine()
+      base.room.poker.drinkText = '1.5 杯'
+      return base
+    },
+
+    /* 房主锁房：别人进不来，房主要看得出自己锁了 */
+    roomLocked: () => {
+      const base = module.exports.states.lobby()
+      base.room.locked = true
+      return base
+    },
+
+    /* 分享直达：页面栈没有上一页，「返回」要换成回大厅 */
+    noBackStack: () => {
+      const base = module.exports.states.lobby()
+      base.noBackStack = true
+      return base
+    },
+
+    /*
+     * 剩下 4 个从未渲染过的分支（2026-11-04）。
+     *
+     * 其中最意外的是转盘的「抽到题卡」——
+     * 真心话 22% + 大冒险 20% = **42% 的概率**，
+     * 居然没有一个状态能把它渲染出来。
+     * 而那一行是转盘最重要的产出（“转到了什么”）。
+     */
+    wheelResultCard: () => {
+      const base = module.exports.states.wheelOver()
+      const card = { type: 'truth', deckName: '朋友聚会', q: '你最近一次笑到肚子疼是因为什么' }
+      base.room.spin = { k: 'truth', t: '真心话', whoText: '抽一道真心话', card: card, at: 0 }
+      base.result = Object.assign({}, base.result, { card: card, winText: '转到「真心话」' })
+      base.room.lastResult = base.result
+      return base
+    },
+
+    /* 大话骰：叫得太保守（gap ≥ 3）—— 另一种情绪，和“吹得离谱”相反 */
+    liarGapGood: () => {
+      const base = module.exports.states.liarOver()
+      base.result = Object.assign({}, base.result, { gap: 4, actual: 7 })
+      base.room.lastResult = base.result
+      return base
+    },
+
+    /* 额头牌：表态次数到上限→ 直接开牌（要告诉玩家为什么突然结束） */
+    fhAutoSettle: () => {
+      const base = module.exports.states.fhOver()
+      base.room.fh.result = Object.assign({}, base.room.fh.result, {
+        why: '表态次数到上限，直接开牌'
+      })
+      return base
+    },
+
+    /* 额头牌：已加了自定义题卡（“已加 N 条 · 抽得到”） */
+    cardsAdded: () => {
+      const base = module.exports.states.lobby()
+      base.room.myCards = [
+        { t: 1, type: 'truth', text: '你今年做过最冲动的一个决定' },
+        { t: 2, type: 'dare', text: '用三个动作描述你今天的心情' }
+      ]
+      return base
+    },
+
+    /* 选中了转盘的玩法选择器（高亮在第几个 pill 上） */
+    pickWheel: () => ({ pickGame: 'wheel', pickGameName: '命运转盘' }),
+
+    /* 额头牌：换牌按钮上的动作描述（服务端算好下发） */
+    fhSwitchText: () => {
+      const base = module.exports.states.fhAct()
+      base.room.fh.mySwitchText = '指令改成「最小的喝」'
+      return base
+    },
+
     /* ============ 众口一致（2026-11-03）============ */
     csInput: () => ({
       stage: 'playing', csInput: '65',
